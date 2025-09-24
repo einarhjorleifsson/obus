@@ -1,0 +1,26 @@
+Package: obus
+Title: Implementing More and Better Use of ICES Survey data
+Version: 2025.09.21
+Authors@R: c(person("Einar", "Hjorleifsson", role=c("cre"), email="einar.hjorleifsson@gmail.com"),
+             person("Martin", "Pastoors"   , role=c("aut"), email="martin.pastoors@gmail.com"))
+Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
+Description: What the package does (one paragraph). Here is a second sentance.
+License: CC BY 4.0
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: 
+    R (>= 3.5)
+LazyData: true
+Imports: 
+    arrow,
+    dplyr,
+    icesDatras,
+    lubridate,
+    purrr,
+    stringr,
+    tibble,
+    tidyr
