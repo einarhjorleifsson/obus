@@ -1,0 +1,6 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^data-raw$
+^garbage$
+^README.Rmd
+^LICENSE\.md$
