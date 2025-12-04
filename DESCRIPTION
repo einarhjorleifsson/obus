@@ -1,6 +1,6 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey data
-Version: 2025.09.21
+Version: 2025.19.26
 Authors@R: c(person("Einar", "Hjorleifsson", role=c("cre"), email="einar.hjorleifsson@gmail.com"),
              person("Martin", "Pastoors"   , role=c("aut"), email="martin.pastoors@gmail.com"))
 Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>

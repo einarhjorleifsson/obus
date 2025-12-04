@@ -4,10 +4,12 @@
 \alias{dr_tidyhl}
 \title{Tidy DATRAS length (HL) data}
 \usage{
-dr_tidyhl(d)
+dr_tidyhl(d, trim = TRUE)
 }
 \arguments{
 \item{d}{A duckdb-table connection or a tibble containing HL data.}
+
+\item{trim}{Boolean (default TRUE) remove haul data}
 }
 \value{
 A duckdb-table connection or a tibble with tidied HL data.

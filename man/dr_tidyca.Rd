@@ -4,10 +4,12 @@
 \alias{dr_tidyca}
 \title{Tidy DATRAS age (CA) data}
 \usage{
-dr_tidyca(d)
+dr_tidyca(d, trim = TRUE)
 }
 \arguments{
 \item{d}{A duckdb-table connection or a tibble containing CA data.}
+
+\item{trim}{Boolean (default TRUE) remove haul data}
 }
 \value{
 A duckdb-table connection or a tibble with tidied CA data.

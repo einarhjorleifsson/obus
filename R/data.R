@@ -12,3 +12,9 @@
 "dr_coltypes"
 
 
+#' Coastline covering majority of DATRAS data
+#'
+#' Simple shapefile
+#' @source R-package rnaturalearth
+"dr_coastline"
+
