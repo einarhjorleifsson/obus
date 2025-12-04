@@ -1,3 +1,23 @@
+dr_aphia <- function(d) {
+  d |>
+    dplyr::mutate(
+      aphia =
+        dplyr::case_when(
+          !is.na(valid_aphia) & valid_aphia != "0" ~ valid_aphia,
+          speccodetype                      == "W" ~ speccode,
+          TRUE                                     ~ NA_character_),
+      aphia = as.integer(aphia)
+    )
+}
+
+dr_trim <- function(d) {
+  d |>
+    dplyr::select(-c(quarter, country, ship, gear, sweeplngt,
+                     gearex, doortype, stno, haulno, year,
+                     dateofcalculation, recordtype, survey))
+}
+
+
 #' Tidy DATRAS data
 #'
 #' Cleans and formats a DATRAS data table by dispatching to table-specific tidying functions.
@@ -51,10 +71,13 @@ dr_tidyhh <- function(d, valid_hauls = TRUE) {
 #' Cleans and formats length (HL) data, removing records with missing length class or numbers, converting length units, applying subfactors, and finalizing aphia codes.
 #'
 #' @param d A duckdb-table connection or a tibble containing HL data.
+#' @param trim Boolean (default TRUE) remove haul data
 #'
 #' @return A duckdb-table connection or a tibble with tidied HL data.
 #' @export
-dr_tidyhl <- function(d) {
+dr_tidyhl <- function(d, trim = TRUE) {
+
+  cn <- colnames(d)
 
   d <-
     d |>
@@ -67,17 +90,19 @@ dr_tidyhl <- function(d) {
 
     # Apply subfactor
     dplyr::mutate(subfactor = ifelse(is.na(subfactor),1, subfactor)) |>
-    dplyr::mutate(hlnoatlngt = hlnoatlngt * subfactor) |>
+    dplyr::mutate(hlnoatlngt = hlnoatlngt * subfactor)
 
-    # Finalize aphia
-    dplyr::mutate(
-      aphia =
-        dplyr::case_when(
-          !is.na(valid_aphia) & valid_aphia != "0" ~ valid_aphia,
-          speccodetype                      == "W" ~ speccode,
-          TRUE                                     ~ NA_character_),
-      aphia = as.integer(aphia),
-      year = as.integer(year))
+  if("valid_aphia" %in% cn) {
+    d <-
+      d |>
+      dr_aphia()
+  }
+
+  if(trim == TRUE) {
+    d <-
+      d |>
+      dr_trim()
+  }
 
   return(d)
 
@@ -88,10 +113,13 @@ dr_tidyhl <- function(d) {
 #' Cleans and formats age (CA) data, converting length units, setting weights, and finalizing aphia codes.
 #'
 #' @param d A duckdb-table connection or a tibble containing CA data.
+#' @param trim Boolean (default TRUE) remove haul data
 #'
 #' @return A duckdb-table connection or a tibble with tidied CA data.
 #' @export
-dr_tidyca <- function(d) {
+dr_tidyca <- function(d, trim = TRUE) {
+
+  cn <- colnames(d)
 
   d <-
     d |>
@@ -99,11 +127,19 @@ dr_tidyca <- function(d) {
     dplyr::mutate(
       length = ifelse(lngtcode %in% c(".", "0"), lngtclass / 10, lngtclass),
       indwgt = ifelse(indwgt <= 0, NA, indwgt),
-      aphia = dplyr::case_when(!is.na(valid_aphia) & valid_aphia != "0" ~ valid_aphia,
-                               speccodetype == "W" ~ speccode,
-                               TRUE ~ NA_character_),
-      aphia = as.integer(aphia),
       year = as.integer(year))
+
+  if("valid_aphia" %in% cn) {
+    d <-
+      d |>
+      dr_aphia()
+  }
+
+  if(trim == TRUE) {
+    d <-
+      d |>
+      dr_trim()
+  }
 
   return(d)
 
