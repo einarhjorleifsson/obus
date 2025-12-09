@@ -18,6 +18,8 @@ LazyData: true
 Imports: 
     arrow,
     dplyr,
+    duckdbfs,
+    ggplot2,
     icesDatras,
     lubridate,
     purrr,

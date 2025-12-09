@@ -56,15 +56,16 @@ dr_download_data <- function(surveys = NULL, years = NULL, quarters = NULL, outp
 
 #' Get DATRAS tables with latin names
 #'
-#' @param recordtype Any of HH, HL or CA
+#' @param recordtype Any of HH, HL, CA or all
 #' @param survey Name of the survey, e.g. "ROCKALL"
 #' @param year A text string, like "1999:2009"
-#' @param quarters A text string, like "1:4"
+#' @param quarter A text string, like "1:4"
+#' @param quiet A boolean (default TRUE) - suppress messages
 #' '
 #' @return A tibble
 #' @export
 #'
-dr_get_data_latin <- function(recordtype, survey, year, quarter) {
+dr_get_data_latin <- function(recordtype, survey, year, quarter, quiet = TRUE) {
 
   # Store original timeout setting
   original_timeout <- getOption("timeout")
@@ -87,12 +88,13 @@ dr_get_data_latin <- function(recordtype, survey, year, quarter) {
   temp_dir <- tempdir()
 
 
-  message("Downloading from: ", full_url)
-  download.file(full_url, destfile = temp_zip, mode = "wb", quiet = TRUE)
+  if(!quiet) message("Downloading from: ", full_url)
+  utils::download.file(full_url, destfile = temp_zip, mode = "wb", quiet = TRUE)
 
   # ---- Unzip ----
-  message("Unzipping...")
-  unzip(temp_zip, exdir = temp_dir)
+  if(!quiet) message("Unzipping...")
+  # Gives warning message, "error 1 in extracting from zip file"
+  suppressWarnings(utils::unzip(temp_zip, exdir = temp_dir))
 
   # Find CSV file
   csv_file <- list.files(temp_dir, pattern = "Table\\.csv$", full.names = TRUE)
@@ -102,13 +104,77 @@ dr_get_data_latin <- function(recordtype, survey, year, quarter) {
   }
 
   # ---- Read CSV ----
-  message("Reading table.csv into dataframe...")
-  df <- read.csv(csv_file[1], stringsAsFactors = FALSE)
+  if(!quiet) message("Reading table.csv into dataframe...")
+  df <- utils::read.csv(csv_file[1], stringsAsFactors = FALSE)
 
   # ---- Clean up ----
   unlink(temp_zip)
 
-  message("Done! Returning dataframe.")
+  if(!quiet) message("Done! Returning dataframe.")
   return(df)
+}
+
+
+#' Download DATRAS latin tables
+#'
+#' Each DATRAS latin table (HH, HL, CA) is downloaded and saved.
+#'
+#' @param surveys Survey to get, if none specified get all
+#' @param years Years to download, if none specified attempt to download all
+#' @param quarters Quarters to download, if none specified attempt to download all
+#' @param outpath The path (default 'data') where saved DATRAS exchange files are stored
+#' @param filetype File type (default 'parquet'). Currently inactive.
+#' '
+#' @return Files on disk
+#' @export
+#'
+dr_download_data_latin <- function(surveys = NULL, years = NULL, quarters = NULL, outpath = "data", filetype = "parquet") {
+
+
+  if(is.null(surveys)) {
+    surveys <- c("BITS", "BTS", "BTS-GSA17", "BTS-VIII",
+                 "Can-Mar",   "DWS",       "DYFS",      "EVHOE",
+                 "FR-CGFS",   "FR-WCGFS",  "IE-IAMS",   "IE-IGFS",
+                 "IS-IDPS",   "NIGFS",     "NL-BSAS",   "NS-IBTS",
+                 "NS-IDPS",   "NSSS",      "PT-IBTS",   "ROCKALL",
+                 "SCOROC",    "SCOWCGFS",  "SE-SOUND",  "SNS",
+                 "SP-ARSA",   "SP-NORTH",  "SP-PORC",   "SWC-IBTS")
+  }
+  if(is.null(years)) years <- "1965:2030"
+  if(is.null(quarters)) quarters <- "1:4"
+
+  # Need check on years and surveys
+
+  for(i in 1:length(surveys)) {
+
+    hh <-
+      dr_get_data_latin("HH", surveys[i], years, quarters, quiet = TRUE) |>
+      dr_settypes()
+    if(nrow(hh) >= 1) {
+      hh |>
+        dplyr::group_by(RecordType, Survey) |>
+        duckdbfs::write_dataset(path = outpath)
+    }
+
+    hl <-
+      dr_get_data_latin("HL", surveys[i], years, quarters, quiet = TRUE) |>
+      dr_settypes()
+    if(nrow(hl) >= 1) {
+      hl |>
+        dplyr::group_by(RecordType, Survey) |>
+        duckdbfs::write_dataset(path = outpath) |>
+        dr_settypes()
+    }
+
+    ca <-
+      dr_get_data_latin("CA", surveys[i], years, quarters, quiet = TRUE) |>
+      dr_settypes()
+    if(nrow(ca) >= 1) {
+      ca |>
+        dplyr::group_by(RecordType, Survey) |>
+        duckdbfs::write_dataset(path = outpath)
+    }
+
+  }
 }
 

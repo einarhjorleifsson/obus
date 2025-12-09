@@ -3,7 +3,9 @@ utils::globalVariables(
     "RecordType", "Survey", "TimeShot", "Year", "dr_coltypes",
     "field", "quarter", "survey", "type", "val", "year",
     "aphia", "haulval", "hlnoatlngt", "indwgt", "lngtclass", "lngtcode",
-    "recordtype", "subfactor"
+    "recordtype", "subfactor",
+    "LngtClass", "country", "dateofcalculation", "doortype", "gear", "gearex",
+    "haulno", "lat1", "lon1", "n", "ship",  "stno", "sweeplngt"
   )
 )
 
