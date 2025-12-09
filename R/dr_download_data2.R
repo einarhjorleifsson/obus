@@ -182,7 +182,7 @@ get_datras_table_base <- function(recordtype, survey, year, quarter,
   }
   if (length(csv_files) == 0) {
     files_list <- list.files(td, recursive = TRUE, full.names = FALSE)
-    stop("No CSV found in ZIP. Extracted files: ", paste(head(files_list, 20), collapse = ", "))
+    stop("No CSV found in ZIP. Extracted files: ", paste(utils::head(files_list, 20), collapse = ", "))
   }
   csv_file <- csv_files[1]
 

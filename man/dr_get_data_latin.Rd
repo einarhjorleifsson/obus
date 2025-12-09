@@ -4,16 +4,18 @@
 \alias{dr_get_data_latin}
 \title{Get DATRAS tables with latin names}
 \usage{
-dr_get_data_latin(recordtype, survey, year, quarter)
+dr_get_data_latin(recordtype, survey, year, quarter, quiet = TRUE)
 }
 \arguments{
-\item{recordtype}{Any of HH, HL or CA}
+\item{recordtype}{Any of HH, HL, CA or all}
 
 \item{survey}{Name of the survey, e.g. "ROCKALL"}
 
 \item{year}{A text string, like "1999:2009"}
 
-\item{quarters}{A text string, like "1:4"
+\item{quarter}{A text string, like "1:4"}
+
+\item{quiet}{A boolean (default TRUE) - suppress messages
 '}
 }
 \value{

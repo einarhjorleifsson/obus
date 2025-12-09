@@ -3,7 +3,7 @@ library(tidyverse)
 # column class -----------------------------------------------------------------
 url <- "https://www.ices.dk/data/Documents/DATRAS/DATRAS_Field_descriptions_and_example_file_May2022.xlsx"
 tmp <- tempfile()
-download.file(url, destfile = tmp)
+utils::download.file(url, destfile = tmp)
 
 hh <-
   readxl::read_excel(path  = tmp, sheet = "HH") |>
