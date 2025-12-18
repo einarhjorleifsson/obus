@@ -5,7 +5,10 @@ utils::globalVariables(
     "aphia", "haulval", "hlnoatlngt", "indwgt", "lngtclass", "lngtcode",
     "recordtype", "subfactor",
     "LngtClass", "country", "dateofcalculation", "doortype", "gear", "gearex",
-    "haulno", "lat1", "lon1", "n", "ship",  "stno", "sweeplngt"
+    "haulno", "lat1", "lon1", "n", "ship",  "stno", "sweeplngt",
+    ".id", ".hour", ".minute", ".timeshot",
+    "make_date", "make_datetime", "dr_coastline",
+    "DataType", "HaulDur", "SpecCodeType"
   )
 )
 

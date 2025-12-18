@@ -66,6 +66,11 @@ hl |> glimpse()
 
 ``` r
 library(santoku)
+#> 
+#> Attaching package: 'santoku'
+#> The following object is masked from 'package:tidyr':
+#> 
+#>     chop
 # Grid resolution
 dx <- 1
 dy <- dx / 2
