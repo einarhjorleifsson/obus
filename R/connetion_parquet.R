@@ -6,6 +6,8 @@
 #' The connection is to an experimental table setup that includes latin name in the HL and CA files
 #'
 #' @param type A character string specifying the type of the dataset. Must be one of "HH", "HL", or "CA".
+#' @param trim A boolean (default TRUE) which removes station variables from the HL and CA data, the join
+#' be made via the ".id" variable.
 #' @return A DuckDB dataset object.
 #' @export
 #'
@@ -13,15 +15,25 @@
 #' \dontrun{
 #'   dr_con("HH")
 #' }
-dr_con <- function(type = NULL) {
+dr_con <- function(type = NULL, trim = TRUE) {
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
   }
 
-  paste0("https://heima.hafro.is/~einarhj/datras_latin/",
+  q <-
+    paste0("https://heima.hafro.is/~einarhj/datras_latin/",
          type,
          ".parquet") |>
     duckdbfs::open_dataset()
+
+  if(trim == TRUE & type %in% c("HL", "CA")) {
+    q <-
+      q |>
+      dplyr::select(.id, SpecCodeType:DateofCalculation)
+  }
+
+  return(q)
+
 }
 
 #' Create a DuckDB connection to a DATRAS dataset (exchange format)
