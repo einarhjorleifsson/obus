@@ -4,10 +4,13 @@
 \alias{dr_con}
 \title{Create a DuckDB connection to a DATRAS dataset (latin names included)}
 \usage{
-dr_con(type = NULL)
+dr_con(type = NULL, trim = TRUE)
 }
 \arguments{
 \item{type}{A character string specifying the type of the dataset. Must be one of "HH", "HL", or "CA".}
+
+\item{trim}{A boolean (default TRUE) which removes station variables from the HL and CA data, the join
+be made via the ".id" variable.}
 }
 \value{
 A DuckDB dataset object.
