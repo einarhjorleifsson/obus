@@ -121,7 +121,7 @@
 
   # Check if the required variables exist in the table
   required_vars <- c("LngtCode", "LngtClass")
-  missing_vars <- setdiff(required_vars, names(d))
+  missing_vars <- setdiff(required_vars, colnames(d))
   if (length(missing_vars) > 0) {
     stop(paste("The following required variables are missing from the table:",
                paste(missing_vars, collapse = ", ")))
@@ -144,8 +144,8 @@
 #' The calculation of `n` depends on the values of the `DataType` column and the duration of the haul (`HaulDur`).
 #' The function ensures all required columns exist in the input tables before processing.
 #'
-#' @param hh A table containing columns `.id`, `DataType`, and `HaulDur`.
 #' @param hl A table containing columns `.id` and `HLNoAtLngt`.
+#' @param hh A table containing columns `.id`, `DataType`, and `HaulDur`.
 #'
 #' @return A table created by joining `hh` with `hl`, with an additional column `n`:
 #' - If `DataType == "R"`, `n` is set to `HLNoAtLngt` (data by haul).
@@ -154,7 +154,7 @@
 #' - If `DataType == "-9"` or `is.na(DataType)`, `n` is set to `NA`.
 #' - All other `DataType` values default to `-10000` (unexpected).
 #'
-.dr_calc_n <- function(hh, hl) {
+.dr_calc_n <- function(hl, hh) {
 
   # Check whether the required columns exist in `hh` and `hl`
   required_vars_hh <- c(".id", "DataType", "HaulDur")
@@ -180,14 +180,25 @@
     dplyr::mutate(
       n =
         dplyr::case_when(
-          DataType == "R" ~ HLNoAtLngt,              # Data by haul
-          DataType == "C" ~ HLNoAtLngt * HaulDur / 60, # Data calculated as CPUE (number per hour)
-          DataType == "P" ~ -9999,                  # Pseudocategory sampling
-          DataType == "S" ~ -9999,                  # Subsampled data
+          DataType == "R" ~ HLNoAtLngt * SubFactor,              # Data by haul
+          DataType == "C" ~ HLNoAtLngt * HaulDur / 60 * SubFactor, # Data calculated as CPUE (number per hour)
+          DataType == "P" ~ NA,                  # Pseudocategory sampling
+          DataType == "S" ~ NA,                  # Subsampled data
           DataType == "-9" ~ NA,                    # Invalid hauls
           is.na(DataType) ~ NA,                     # Same as -9
-          .default = -10000                         # Unexpected DataType
+          .default = NA                         # Unexpected DataType
+        ),
+      n_total =
+        dplyr::case_when(
+          DataType == "R" ~ TotalNo,              # Data by haul
+          DataType == "C" ~ TotalNo * HaulDur / 60 * SubFactor, # Data calculated as CPUE (number per hour)
+          DataType == "P" ~ NA,                  # Pseudocategory sampling
+          DataType == "S" ~ NA,                  # Subsampled data
+          DataType == "-9" ~ NA,                    # Invalid hauls
+          is.na(DataType) ~ NA,                     # Same as -9
+          .default = NA                         # Unexpected DataType
         )
+
     )
 }
 
