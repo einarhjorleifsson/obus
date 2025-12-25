@@ -27,3 +27,4 @@ Imports:
     tibble,
     tidyr
 Config/Needs/website: rmarkdown
+URL: https://einarhjorleifsson.github.io/obus/
