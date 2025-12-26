@@ -8,7 +8,8 @@ utils::globalVariables(
     "haulno", "lat1", "lon1", "n", "ship",  "stno", "sweeplngt",
     ".id", ".hour", ".minute", ".timeshot",
     "make_date", "make_datetime", "dr_coastline",
-    "DataType", "HaulDur", "SpecCodeType"
+    "DataType", "HaulDur", "SpecCodeType",
+    ".effort"
   )
 )
 
