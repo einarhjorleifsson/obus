@@ -7,20 +7,16 @@
 
   Calculate date based on `Year`, `Month`, and `Day`.
 
-- [`.dr_calc_length2cm()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_calc_length2cm.md)
-  :
-
-  Calculate length based on `LngtCode` and `LngtClass`.
-
-- [`.dr_calc_n()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_calc_n.md)
-  :
-
-  Calculate column `n` based on `DataType` and `HaulDur`.
-
 - [`.dr_calc_time()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_calc_time.md)
   :
 
   Calculate timestamp based on `Year`, `Month`, `Day`, and `TimeShot`.
+
+- [`.dr_length_cm()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_length_cm.md)
+  : Standardize length to cm
+
+- [`.dr_n_and_cpue()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_n_and_cpue.md)
+  : Numbers caught and the CPUE in each length class
 
 - [`dr_coastline`](https://einarhjorleifsson.github.io/obus/reference/dr_coastline.md)
   : Coastline covering majority of DATRAS data
@@ -29,8 +25,8 @@
   : Datras variable types
 
 - [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
-  : Create a DuckDB connection to a DATRAS dataset (latin names
-  included)
+  : Create a DuckDB connection to a DATRAS Exchange dataset with Latin
+  names included
 
 - [`dr_con_exchange()`](https://einarhjorleifsson.github.io/obus/reference/dr_con_exchange.md)
   : Create a DuckDB connection to a DATRAS dataset (exchange format)
