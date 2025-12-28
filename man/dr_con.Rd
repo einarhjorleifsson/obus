@@ -4,7 +4,11 @@
 \alias{dr_con}
 \title{Create a DuckDB connection to a DATRAS Exchange dataset with Latin names included}
 \usage{
-dr_con(type = NULL, trim = TRUE)
+dr_con(
+  type = NULL,
+  trim = TRUE,
+  url = "https://heima.hafro.is/~einarhj/datras_latin/"
+)
 }
 \arguments{
 \item{type}{A character string specifying the type of dataset. Must be \code{"HH"}, \code{"HL"}, or \code{"CA"}.
@@ -12,6 +16,8 @@ This parameter maps to specific files in the provided data source.}
 
 \item{trim}{A boolean flag (default \code{TRUE}). If \code{TRUE} and the \code{type} is \code{"HL"} or \code{"CA"},
 the dataset is trimmed to ignore station-level fields.}
+
+\item{url}{The http path to the DATRAS parquet files}
 }
 \value{
 A DuckDB dataset object.
