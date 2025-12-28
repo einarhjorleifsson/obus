@@ -21,22 +21,23 @@
 #'             This parameter maps to specific files in the provided data source.
 #' @param trim A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or `"CA"`,
 #'             the dataset is trimmed to ignore station-level fields.
+#' @param url The http path to the DATRAS parquet files
 #' @return A DuckDB dataset object.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#'   dr_con("HH")          # Connect to haul-level data.
+#'   dr_con("HH")              # Connect to haul-level data.
 #'   dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
 #' }
-dr_con <- function(type = NULL, trim = TRUE) {
+dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras_latin/") {
 
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
   }
 
   q <-
-    paste0("https://heima.hafro.is/~einarhj/datras_latin/",
+    paste0(url,
            type,
            ".parquet") |>
     duckdbfs::open_dataset()
