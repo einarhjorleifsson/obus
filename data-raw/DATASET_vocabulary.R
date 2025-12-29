@@ -1,3 +1,4 @@
+library(tidyverse)
 library(obus)
 cn_hh <- dr_con("HH") |> colnames() |> as_tibble()
 cn_hl <- dr_con("HL") |> colnames() |> as_tibble()
@@ -34,5 +35,9 @@ colnames(ices_vocabulary) <- tolower(colnames(ices_vocabulary))
 
 ices_vocabulary |>
   filter(cn == "DataType") |>
+  select(key, description) |>
+  knitr::kable()
+ices_vocabulary |>
+  filter(cn == "SpecVal") |>
   select(key, description) |>
   knitr::kable()
