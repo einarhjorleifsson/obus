@@ -9,7 +9,7 @@ function.
 ## Usage
 
 ``` r
-dr_con_exchange(type = NULL)
+dr_con_exchange(type = NULL, url = "https://heima.hafro.is/~einarhj/datras/")
 ```
 
 ## Arguments
@@ -19,6 +19,10 @@ dr_con_exchange(type = NULL)
   A character string specifying the type of dataset. Must be `"HH"`,
   `"HL"`, or `"CA"`. This parameter maps to specific file types stored
   in the DATRAS data source.
+
+- url:
+
+  The http path to the DATRAS parquet files
 
 ## Value
 

@@ -10,7 +10,11 @@ Latin names in the "HL" and "CA" files.
 ## Usage
 
 ``` r
-dr_con(type = NULL, trim = TRUE)
+dr_con(
+  type = NULL,
+  trim = TRUE,
+  url = "https://heima.hafro.is/~einarhj/datras_latin/"
+)
 ```
 
 ## Arguments
@@ -25,6 +29,10 @@ dr_con(type = NULL, trim = TRUE)
 
   A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or
   `"CA"`, the dataset is trimmed to ignore station-level fields.
+
+- url:
+
+  The http path to the DATRAS parquet files
 
 ## Value
 
@@ -45,13 +53,14 @@ The `type` parameter determines the specific file to connect to, where:
 Optionally, for the "HL" and "CA" types, setting `trim = TRUE` (the
 default) excludes station-level variables. This allows a narrower view
 (read: fewer variables) of these observations, station-level variables
-can be retrieved by a join using the `.id` column.
+can be retrieved by a join to the haul table (HH) using the `.id`
+column.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-  dr_con("HH")          # Connect to haul-level data.
+  dr_con("HH")              # Connect to haul-level data.
   dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
 } # }
 ```

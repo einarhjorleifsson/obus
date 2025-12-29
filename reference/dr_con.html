@@ -48,7 +48,11 @@ The function operates on experimental tables that include Latin names in the "HL
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dr_con</span><span class="op">(</span>type <span class="op">=</span> <span class="cn">NULL</span>, trim <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dr_con</span><span class="op">(</span></span>
+<span>  type <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  trim <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  url <span class="op">=</span> <span class="st">"https://heima.hafro.is/~einarhj/datras_latin/"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -64,6 +68,10 @@ This parameter maps to specific files in the provided data source.</p></dd>
 <dd><p>A boolean flag (default <code>TRUE</code>). If <code>TRUE</code> and the <code>type</code> is <code>"HL"</code> or <code>"CA"</code>,
 the dataset is trimmed to ignore station-level fields.</p></dd>
 
+
+<dt id="arg-url">url<a class="anchor" aria-label="anchor" href="#arg-url"></a></dt>
+<dd><p>The http path to the DATRAS parquet files</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -78,13 +86,13 @@ The <code>type</code> parameter determines the specific file to connect to, wher
 <li><p><code>"CA"</code> refers to age-based biological sampling data.</p></li>
 </ul><p>Optionally, for the "HL" and "CA" types, setting <code>trim = TRUE</code> (the default) excludes station-level variables.
 This allows a narrower view (read: fewer variables) of these observations, station-level variables can be retrieved
-by a join using the <code>.id</code> column.</p>
+by a join to the haul table (HH) using the <code>.id</code> column.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span>  <span class="fu">dr_con</span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span>          <span class="co"># Connect to haul-level data.</span></span></span>
+<span class="r-in"><span>  <span class="fu">dr_con</span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span>              <span class="co"># Connect to haul-level data.</span></span></span>
 <span class="r-in"><span>  <span class="fu">dr_con</span><span class="op">(</span><span class="st">"HL"</span>, trim<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span>  <span class="co"># Get all fields for catch-at-length data.</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
