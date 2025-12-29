@@ -4,11 +4,13 @@
 \alias{dr_con_exchange}
 \title{Create a DuckDB connection to a DATRAS dataset (exchange format)}
 \usage{
-dr_con_exchange(type = NULL)
+dr_con_exchange(type = NULL, url = "https://heima.hafro.is/~einarhj/datras/")
 }
 \arguments{
 \item{type}{A character string specifying the type of dataset. Must be \code{"HH"}, \code{"HL"}, or \code{"CA"}.
 This parameter maps to specific file types stored in the DATRAS data source.}
+
+\item{url}{The http path to the DATRAS parquet files}
 }
 \value{
 A DuckDB dataset object representing the combined data for the specified \code{type}.

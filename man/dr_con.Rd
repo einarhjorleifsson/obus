@@ -39,12 +39,12 @@ The \code{type} parameter determines the specific file to connect to, where:
 
 Optionally, for the "HL" and "CA" types, setting \code{trim = TRUE} (the default) excludes station-level variables.
 This allows a narrower view (read: fewer variables) of these observations, station-level variables can be retrieved
-by a join using the \code{.id} column.
+by a join to the haul table (HH) using the \code{.id} column.
 }
 
 \examples{
 \dontrun{
-  dr_con("HH")          # Connect to haul-level data.
+  dr_con("HH")              # Connect to haul-level data.
   dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
 }
 }
