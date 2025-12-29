@@ -52,9 +52,6 @@
 - [`dr_get_data_latin()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_data_latin.md)
   : Get DATRAS tables with latin names
 
-- [`dr_getoverview()`](https://einarhjorleifsson.github.io/obus/reference/dr_getoverview.md)
-  : Summarize Data Availability
-
 - [`dr_settypes()`](https://einarhjorleifsson.github.io/obus/reference/dr_settypes.md)
   : Set variable types
 
@@ -72,7 +69,3 @@
 
 - [`dr_tidyhl()`](https://einarhjorleifsson.github.io/obus/reference/dr_tidyhl.md)
   : Tidy DATRAS length (HL) data
-
-- [`get_datras_table_base()`](https://einarhjorleifsson.github.io/obus/reference/get_datras_table_base.md)
-  : Download and read DATRAS data, single-year or contiguous year-range
-  only
