@@ -22,9 +22,7 @@ Imports:
     ggplot2,
     icesDatras,
     lubridate,
-    purrr,
     stringr,
-    tibble,
-    tidyr
+    tibble
 Config/Needs/website: rmarkdown
 URL: https://einarhjorleifsson.github.io/obus/
