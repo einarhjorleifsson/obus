@@ -15,7 +15,7 @@
 #'
 #' Optionally, for the "HL" and "CA" types, setting `trim = TRUE` (the default) excludes station-level variables.
 #' This allows a narrower view (read: fewer variables) of these observations, station-level variables can be retrieved
-#' by a join using the `.id` column.
+#' by a join to the haul table (HH) using the `.id` column.
 #'
 #' @param type A character string specifying the type of dataset. Must be `"HH"`, `"HL"`, or `"CA"`.
 #'             This parameter maps to specific files in the provided data source.
@@ -34,6 +34,9 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
+  }
+  if(grepl("/$", url) == FALSE) {
+    url <- paste0(url, "/")
   }
 
   q <-
@@ -85,6 +88,8 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 #'
 #' @param type A character string specifying the type of dataset. Must be `"HH"`, `"HL"`, or `"CA"`.
 #'             This parameter maps to specific file types stored in the DATRAS data source.
+#' @param url The http path to the DATRAS parquet files
+#'
 #' @return A DuckDB dataset object representing the combined data for the specified `type`.
 #' @export
 #'
@@ -93,15 +98,19 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 #'   dr_con_exchange("HH")  # Connect to haul-level data for all years.
 #'   dr_con_exchange("CA")  # Connect to age-based biological data for all years.
 #' }
-dr_con_exchange <- function(type = NULL) {
+dr_con_exchange <- function(type = NULL, url = "https://heima.hafro.is/~einarhj/datras/") {
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
   }
+  if(grepl("/$", url) == FALSE) {
+    url <- paste0(url, "/")
+  }
 
-  paste0("https://heima.hafro.is/~einarhj/datras/RecordType=",
-         type,
-         "/Year=",
-         1965:2025,
-         "/part-0.parquet") |>
+  q <-
+    paste0(url,
+           type,
+           ".parquet") |>
     duckdbfs::open_dataset()
+
+  return(q)
 }
