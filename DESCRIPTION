@@ -16,7 +16,6 @@ Depends:
     R (>= 3.5)
 LazyData: true
 Imports: 
-    arrow,
     dplyr,
     duckdbfs,
     ggplot2,
