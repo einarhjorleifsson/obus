@@ -34,14 +34,7 @@ dr_getHH <- function(survey, years, quarters, quiet = TRUE) {
       tmp |>
       tibble::as_tibble() |>
       dr_settypes() |>
-      dplyr::mutate(
-        TimeShot = stringr::str_pad(TimeShot, width = 4, side = "left", pad = "0"),
-        TimeShot = paste0(stringr::str_sub(TimeShot, 1, 2),
-                          ":",
-                          stringr::str_sub(TimeShot, 3, 4)),
-        .timeshot = lubridate::ymd_hm(paste(Year, Month, Day, TimeShot)),
-        DateofCalculation = lubridate::ymd(DateofCalculation)
-      )
+      dplyr::mutate(DateofCalculation = lubridate::ymd(DateofCalculation))
 
     return(tmp)
   } else {
@@ -225,11 +218,13 @@ dr_download_data <- function(surveys = NULL, years = NULL, quarters = NULL, outp
       hh |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
+    #if(FALSE) {
     hl <-
       dr_getHL(surveys[i], years, quarters)
     if(nrow(hl) >= 1) {
       hl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
+
 
     ca <- dr_getCA(surveys[i], years, quarters)
     if(nrow(ca) >= 1) {
@@ -240,5 +235,6 @@ dr_download_data <- function(surveys = NULL, years = NULL, quarters = NULL, outp
     if(nrow(fl) >= 1) {
     fl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
+    #}
   }
 }

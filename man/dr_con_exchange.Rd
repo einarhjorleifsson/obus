@@ -21,7 +21,7 @@ The dataset is accessed via a URL and opened using the \code{duckdbfs::open_data
 }
 \section{Datapath Explanation}{
 The function constructs a URL for the dataset as:
-"https://heima.hafro.is/~einarhj/datras/RecordType={type}/Year={year}/part-0.parquet".
+"https://heima.hafro.is/~einarhj/datras/RecordType=\code{{type}}/Year=\code{{year}}/part-0.parquet".
 The \code{type} parameter determines the file category (e.g., "HH", "HL", "CA").
 The function dynamically generates URLs for all years between 1965 and 2025.
 The DATRAS exchange dataset includes the following:
