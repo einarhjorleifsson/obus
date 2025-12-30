@@ -222,23 +222,23 @@ dr_download_data <- function(surveys = NULL, years = NULL, quarters = NULL, outp
     hh <-
       dr_getHH(surveys[i], years, quarters)
     if(nrow(hh) >= 1) {
-      hh |> dplyr::group_by(RecordType, Survey) |> arrow::write_dataset(path = outpath)
+      hh |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
     hl <-
       dr_getHL(surveys[i], years, quarters)
     if(nrow(hl) >= 1) {
-      hl |> dplyr::group_by(RecordType, Survey) |> arrow::write_dataset(path = outpath)
+      hl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
     ca <- dr_getCA(surveys[i], years, quarters)
     if(nrow(ca) >= 1) {
-      ca |> dplyr::group_by(RecordType, Survey) |> arrow::write_dataset(path = outpath)
+      ca |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
-    # fl <- dr_getFL(surveys[i], years, quarters)
-    # if(nrow(fl) >= 1) {
-    #   fl |> dplyr::group_by(RecordType, Survey) |> arrow::write_dataset(path = outpath)
-    # }
+    fl <- dr_getFL(surveys[i], years, quarters)
+    if(nrow(fl) >= 1) {
+    fl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
+    }
   }
 }
