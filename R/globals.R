@@ -7,7 +7,7 @@ utils::globalVariables(
     "LngtClass", "country", "dateofcalculation", "doortype", "gear", "gearex",
     "haulno", "lat1", "lon1", "n", "ship",  "stno", "sweeplngt",
     ".id", ".hour", ".minute", ".timeshot",
-    "make_date", "make_datetime", "dr_coastline",
+    "make_date", "make_timestamp", "dr_coastline",
     "DataType", "HaulDur", "SpecCodeType",
     ".effort"
   )

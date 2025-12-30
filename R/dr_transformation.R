@@ -77,21 +77,18 @@
   if ("tbl_duckdb_connection" %in% class(d)) {
     d <-
       d |>
-      dplyr::mutate(.timeshot = stringr::str_pad(TimeShot, width = 4, pad = "0"),
+      dplyr::mutate(.timeshot = stringr::str_pad(as.character(TimeShot), width = 4, pad = "0"),
                     .hour = as.integer(stringr::str_sub(.timeshot, 1, 2)),
                     .minute = as.integer(stringr::str_sub(.timeshot, 3, 4)),
-                    timeshot = make_datetime(Year, Month, Day, .hour, .minute, 0)) |>
+                    time = make_timestamp(Year, Month, Day, .hour, .minute, 0)) |>
       dplyr::select(-c(.timeshot, .hour, .minute))
 
   } else {
     if ("data.frame" %in% class(d)) {
       d <-
         d |>
-        dplyr::mutate(.timeshot = stringr::str_pad(TimeShot, width = 4, pad = "0"),
-                      .hour = as.integer(stringr::str_sub(.timeshot, 1, 2)),
-                      .minute = as.integer(stringr::str_sub(.timeshot, 3, 4)),
-                      timeshot = lubridate::make_datetime(Year, Month, Day, .hour, .minute, 0)) |>
-        dplyr::select(-c(.timeshot, .hour, .minute))
+        dplyr::mutate(
+          time = lubridate::make_datetime(Year, Month, Day, TimeShot%/%100, TimeShot%%100, 0))
 
     } else {
       message("Object is neither a DuckDB table nor a dataframe")
