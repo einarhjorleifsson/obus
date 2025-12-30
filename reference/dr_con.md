@@ -41,8 +41,9 @@ A DuckDB dataset object.
 ## Datapath Explanation
 
 The function constructs a URL for the dataset based on the following
-pattern: "https://heima.hafro.is/~einarhj/datras_latin/type.parquet".
-The `type` parameter determines the specific file to connect to, where:
+pattern:
+"https://heima.hafro.is/~einarhj/datras_latin/`{type}`.parquet". The
+`type` parameter determines the specific file to connect to, where:
 
 - `"HH"` refers to haul-level data.
 

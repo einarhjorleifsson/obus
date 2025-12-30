@@ -156,21 +156,6 @@ hh |>
 - [`dr_settypes()`](https://einarhjorleifsson.github.io/obus/reference/dr_settypes.md)
   : Set variable types
 
-- [`dr_tidy()`](https://einarhjorleifsson.github.io/obus/reference/dr_tidy.md)
-  : Tidy DATRAS data
-
-- [`dr_tidyca()`](https://einarhjorleifsson.github.io/obus/reference/dr_tidyca.md)
-  : Tidy DATRAS age (CA) data
-
-- [`dr_tidyfl()`](https://einarhjorleifsson.github.io/obus/reference/dr_tidyfl.md)
-  : Tidy DATRAS flex (FL) data
-
-- [`dr_tidyhh()`](https://einarhjorleifsson.github.io/obus/reference/dr_tidyhh.md)
-  : Tidy DATRAS station (HH) data
-
-- [`dr_tidyhl()`](https://einarhjorleifsson.github.io/obus/reference/dr_tidyhl.md)
-  : Tidy DATRAS length (HL) data
-
 # Articles
 
 ### All vignettes

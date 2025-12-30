@@ -32,7 +32,7 @@ A DuckDB dataset object representing the combined data for the specified
 ## Datapath Explanation
 
 The function constructs a URL for the dataset as:
-"https://heima.hafro.is/~einarhj/datras/RecordType=type/Year=year/part-0.parquet".
+"https://heima.hafro.is/~einarhj/datras/RecordType=`{type}`/Year=`{year}`/part-0.parquet".
 The `type` parameter determines the file category (e.g., "HH", "HL",
 "CA"). The function dynamically generates URLs for all years between
 1965 and 2025. The DATRAS exchange dataset includes the following:

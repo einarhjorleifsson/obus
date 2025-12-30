@@ -80,7 +80,7 @@ the dataset is trimmed to ignore station-level fields.</p></dd>
     <div class="section level2">
     <h2 id="datapath-explanation">Datapath Explanation<a class="anchor" aria-label="anchor" href="#datapath-explanation"></a></h2>
     <p>The function constructs a URL for the dataset based on the following pattern:
-"https://heima.hafro.is/~einarhj/datras_latin/type.parquet".
+"https://heima.hafro.is/~einarhj/datras_latin/<code>{type}</code>.parquet".
 The <code>type</code> parameter determines the specific file to connect to, where:</p><ul><li><p><code>"HH"</code> refers to haul-level data.</p></li>
 <li><p><code>"HL"</code> refers to catch-at-length data.</p></li>
 <li><p><code>"CA"</code> refers to age-based biological sampling data.</p></li>
