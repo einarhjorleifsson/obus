@@ -7,7 +7,7 @@
 #'
 #' # Datapath Explanation
 #' The function constructs a URL for the dataset based on the following pattern:
-#' "https://heima.hafro.is/~einarhj/datras_latin/{type}.parquet".
+#' "https://heima.hafro.is/~einarhj/datras_latin/`{type}`.parquet".
 #' The `type` parameter determines the specific file to connect to, where:
 #' - `"HH"` refers to haul-level data.
 #' - `"HL"` refers to catch-at-length data.
@@ -78,7 +78,7 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 #'
 #' # Datapath Explanation
 #' The function constructs a URL for the dataset as:
-#' "https://heima.hafro.is/~einarhj/datras/RecordType={type}/Year={year}/part-0.parquet".
+#' "https://heima.hafro.is/~einarhj/datras/RecordType=`{type}`/Year=`{year}`/part-0.parquet".
 #' The `type` parameter determines the file category (e.g., "HH", "HL", "CA").
 #' The function dynamically generates URLs for all years between 1965 and 2025.
 #' The DATRAS exchange dataset includes the following:
