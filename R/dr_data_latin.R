@@ -47,6 +47,10 @@ dr_get_data_latin <- function(recordtype, survey, year, quarter, quiet = TRUE) {
     stop("No table.csv found inside the ZIP file.")
   }
 
+  if (length(csv_file) > 1) {
+    stop("More than one table.csv found inside the ZIP file.")
+  }
+
   # ---- Read CSV ----
   if(!quiet) message("Reading table.csv into dataframe...")
   df <- utils::read.csv(csv_file[1], stringsAsFactors = FALSE)

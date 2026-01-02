@@ -9,8 +9,7 @@
 #' @param quiet Logical; if \code{TRUE} (default), suppress messages.
 #'
 #' @return A tibble with station data or an empty tibble if no data is available.
-#' @export
-dr_getHH <- function(survey, years, quarters, quiet = TRUE) {
+dr_get_hh <- function(survey, years, quarters, quiet = TRUE) {
 
   if(quiet) {
     suppressMessages(
@@ -53,8 +52,7 @@ dr_getHH <- function(survey, years, quarters, quiet = TRUE) {
 #' @param quiet Logical; if \code{TRUE} (default), suppress messages.
 #'
 #' @return A tibble with station data or an empty tibble if no data is available.
-#' @export
-dr_getHL <- function(survey, years, quarters, quiet = TRUE) {
+dr_get_hl <- function(survey, years, quarters, quiet = TRUE) {
 
   if(quiet) {
     suppressMessages(
@@ -95,8 +93,7 @@ dr_getHL <- function(survey, years, quarters, quiet = TRUE) {
 #' @param quiet Logical; if \code{TRUE} (default), suppress messages.
 #'
 #' @return A tibble with station data or an empty tibble if no data is available.
-#' @export
-dr_getCA <- function(survey, years, quarters, quiet = TRUE) {
+dr_get_ca <- function(survey, years, quarters, quiet = TRUE) {
 
   if(quiet) {
     suppressMessages(
@@ -139,7 +136,7 @@ dr_getCA <- function(survey, years, quarters, quiet = TRUE) {
 #'
 #' @return A tibble with station data or an empty tibble if no data is available.
 #' @export
-dr_getFL <- function(surveys, years, quarters, quiet = TRUE) {
+dr_get_fl <- function(surveys, years, quarters, quiet = TRUE) {
 
 
   yrs <- years
@@ -182,6 +179,41 @@ dr_getFL <- function(surveys, years, quarters, quiet = TRUE) {
 }
 
 
+#' Retrieve DATRAS exchange table
+#'
+#' This function combines the functionality of dr_get_HH, dr_get_HL, dr_get_CA and
+#' dr_get_FL. It supports querying many surveys, years and quarters in one
+#' function call.
+#'
+#' This function is a wrapper around \code{icesDatras::getDATRAS()} that
+#' ensures variable types are properly set.
+#'
+#' @param type A character string, the DATRAS exchange table type (e.g., "HH").
+#' @param survey A character string, the survey acronym (e.g., \code{"NS-IBTS"}).
+#' @param years An integer vector of years (e.g., \code{2010} or \code{2005:2010}).
+#' @param quarters An integer vector of quarters (1, 2, 3, or 4).
+#' @param quiet Logical; if \code{TRUE} (default), suppress messages.
+#'
+#' @return A tibble with exchange data or an empty tibble if no data is available.
+#'
+#' @export
+dr_get_datras <- function(type, survey, years = NULL, quarters = NULL, quiet = TRUE) {
+
+  if (!type %in% c("HH", "HL", "CA", "FL")) {
+    stop('Invalid type. Please provide one of the following: "HH", "HL", "CA", "FL".')
+  }
+
+  if(is.null(years)) years <- 1965:2028
+  if(is.null(quarters)) quarters <- 1:4
+
+  if(type == "HH") return(dr_get_hh(survey, years, quarters, quiet))
+  if(type == "HL") return(dr_get_hl(survey, years, quarters, quiet))
+  if(type == "CA") return(dr_get_ca(survey, years, quarters, quiet))
+  if(type == "FL") return(dr_get_fl(survey, years, quarters, quiet))
+
+}
+
+
 #' Download DATRAS tables
 #'
 #' Each DATRAS table (HH, HL, CA and FL) is downloaded and saved.
@@ -195,7 +227,7 @@ dr_getFL <- function(surveys, years, quarters, quiet = TRUE) {
 #' @return Files on disk
 #' @export
 #'
-dr_download_data <- function(surveys = NULL, years = NULL, quarters = NULL, outpath = "data", filetype = "parquet") {
+dr_get_datras_download <- function(surveys = NULL, years = NULL, quarters = NULL, outpath = "data", filetype = "parquet") {
 
 
   if(is.null(surveys)) {
@@ -213,25 +245,25 @@ dr_download_data <- function(surveys = NULL, years = NULL, quarters = NULL, outp
   for(i in 1:length(surveys)) {
 
     hh <-
-      dr_getHH(surveys[i], years, quarters)
+      dr_get_hh(surveys[i], years, quarters)
     if(nrow(hh) >= 1) {
       hh |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
     #if(FALSE) {
     hl <-
-      dr_getHL(surveys[i], years, quarters)
+      dr_get_hl(surveys[i], years, quarters)
     if(nrow(hl) >= 1) {
       hl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
 
-    ca <- dr_getCA(surveys[i], years, quarters)
+    ca <- dr_get_ca(surveys[i], years, quarters)
     if(nrow(ca) >= 1) {
       ca |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
-    fl <- dr_getFL(surveys[i], years, quarters)
+    fl <- dr_get_fl(surveys[i], years, quarters)
     if(nrow(fl) >= 1) {
     fl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }

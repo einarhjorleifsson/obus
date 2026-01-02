@@ -1,79 +1,46 @@
-library(tidyverse)
+# Valid_Aphia latin lookup
 
-# Species joins ----------------------------------------------------------------
+## get all combination of speccodetype, speccode and valid_aphia ---------------
+species <-
+  dplyr::bind_rows(
+    duckdbfs::open_dataset("/home/hafri/einarhj/public_html/datras/raw/RecordType=HL") |>
+      dplyr::select(Valid_Aphia) |>
+      dplyr::distinct() |>
+      dplyr::collect(),
+    duckdbfs::open_dataset("/home/hafri/einarhj/public_html/datras/raw/RecordType=HL") |>
+      dplyr::select(Valid_Aphia) |>
+      dplyr::distinct() |>
+      dplyr::collect()) |>
+  dplyr::distinct() |>
+  dplyr::mutate(Valid_Aphia = as.integer(Valid_Aphia))
 
-## get all combination of speccodetype, speccode and valid_aphia --------------
-fil <- fs::dir_ls("~/stasi/datras/data-raw/datras", glob = "*_hl.rds")
-hl <-
-  map_df(fil, read_rds) |> tidydatras::dr_tidy() |>
-  mutate(aphia = case_when(!is.na(valid_aphia) & valid_aphia != "0" ~ valid_aphia,
-                           speccodetype == "W" ~ speccode,
-                           TRUE ~ NA_character_),
-         aphia = as.integer(aphia))
-fil <- fs::dir_ls("~/stasi/datras/data-raw/datras", glob = "*_ca.rds")
-ca <-
-  map_df(fil, read_rds) |>
-  tidydatras::dr_tidy() |>
-  mutate(aphia = case_when(!is.na(valid_aphia) & valid_aphia != "0" ~ valid_aphia,
-                           speccodetype == "W" ~ speccode,
-                           TRUE ~ NA_character_),
-         aphia = as.integer(aphia))
-sp <-
-  bind_rows(hl |> select(speccodetype, speccode, valid_aphia, aphia) |> distinct(),
-            ca |> select(speccodetype, speccode, valid_aphia, aphia) |> distinct()) |>
-  distinct() |>
-  rename(type = speccodetype, code = speccode)
-# tests
-sp |> filter(is.na(aphia))
-sp |> filter(valid_aphia == "0")
+# get latin and english name ---------------------------------------------------
+species <-
+  dplyr::bind_rows(
+    hl |>
+      dplyr::select(Valid_Aphia) |>
+      dplyr::distinct() |>
+      dplyr::collect(),
+    ca |>
+      dplyr::select(Valid_Aphia) |>
+      dplyr::distinct() |>
+      dplyr::collect()) |>
+  dplyr::distinct() |>
+  dplyr::mutate(Valid_Aphia = as.integer(Valid_Aphia))
 
-##   there is a repeat of aphia, may be ok but would be Kosher to check why
-sp$aphia |> na.omit() |> unique() |> length()
-sp |>
-  group_by(aphia) |>
-  mutate(n.rep = n()) |>
-  filter(n.rep > 1) |>
-  arrange(aphia)
+latin <- worrms::wm_id2name_(id = species$Valid_Aphia)
+species_en <- worrms::wm_common_id_(id = species$Valid_Aphia)
 
-## trial with DATRASWebService -------------------------------------------------
+dr_latin_aphia <-
+  tibble::tibble(Valid_Aphia = names(latin), latin = unlist(latin)) |>
+  dplyr::left_join(species_en |>
+                     filter(language == "English") |>
+                     group_by(Valid_Aphia = id) |>
+                     slice(1) |>
+                     ungroup() |>
+                     select(Valid_Aphia, species = vernacular),
+                   by = dplyr::join_by(Valid_Aphia)) |>
+  dplyr::mutate(Valid_Aphia = as.integer(Valid_Aphia))
 
-pfix <- "https://datras.ices.dk/WebServices/DATRASWebService.asmx/getSpecies?codename=aphia&code="
-res <-
-  tibble::tibble(aphia = sp$aphia |> na.omit() |> unique()) |>
-  dplyr::mutate(q = paste0(pfix, aphia),
-                raw = map(q, icesDatras:::readDatras))
-# write_rds(res, "tmp_res.rds")
-dws <-
-  res |>
-  # this record won't parse
-  slice(-114) |>
-  mutate(parsed = map(raw, icesDatras:::parseDatras)) |>
-  select(parsed) |>
-  unnest(parsed) |>
-  select(aphia, latin = latinname) |>
-  distinct() |>
-  # the record 114 added again, manual lookup on ices webpage
-  add_row(aphia = 127178, latin = "Coregonus albula")
-
-# tests
-dws |> count(aphia) |> filter(n > 1)
-dws |> count(latin) |> filter(n > 1)
-
-# tests
-sp |>
-  left_join(dws) |>
-  filter(is.na(latin))
-hl |>
-  left_join(dws) |>
-  filter(is.na(latin)) |>
-  pull(speccode) |>
-  unique()
-ca |>
-  left_join(dws) |>
-  filter(is.na(latin)) |>
-  pull(speccode) |>
-  unique()
-
-aphia_latin <- dws
-usethis::use_data(aphia_latin)
-
+# add to package ---------------------------------------------------------------
+usethis::use_data(dr_latin_aphia)
