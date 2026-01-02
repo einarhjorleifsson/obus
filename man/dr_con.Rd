@@ -2,12 +2,12 @@
 % Please edit documentation in R/dr_connection.R
 \name{dr_con}
 \alias{dr_con}
-\title{Create a DuckDB connection to a DATRAS Exchange dataset with Latin names included}
+\title{Create a DuckDB connection to a DATRAS tables}
 \usage{
 dr_con(
   type = NULL,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras_latin/"
+  url = "https://heima.hafro.is/~einarhj/datras/"
 )
 }
 \arguments{
@@ -29,7 +29,7 @@ The function operates on experimental tables that include Latin names in the "HL
 }
 \section{Datapath Explanation}{
 The function constructs a URL for the dataset based on the following pattern:
-"https://heima.hafro.is/~einarhj/datras_latin/\code{{type}}.parquet".
+"https://heima.hafro.is/~einarhj/datras/\code{{type}}.parquet".
 The \code{type} parameter determines the specific file to connect to, where:
 \itemize{
 \item \code{"HH"} refers to haul-level data.

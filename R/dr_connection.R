@@ -1,5 +1,5 @@
 
-#' Create a DuckDB connection to a DATRAS Exchange dataset with Latin names included
+#' Create a DuckDB connection to a DATRAS tables
 #'
 #' This function establishes a DuckDB connection to a DATRAS dataset based on the specified `type` ("HH", "HL" or "CA").
 #' The dataset is accessed via a URL and opened using the `duckdbfs::open_dataset` function.
@@ -64,46 +64,31 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
   return(q)
 }
 
-#' Create a DuckDB connection to a DATRAS dataset (exchange format)
+#' Connect to the Species WoRMS Dataset
 #'
-#' This function establishes a DuckDB connection to DATRAS exchange-format data based on the specified `type`.
-#' The dataset is accessed via a URL and opened using the `duckdbfs::open_dataset` function.
+#' This function provides a connection to the 'species_worms' dataset stored in a Parquet file.
+#' The dataset was created based on the ICES vocabulary code list 'SpecWoRMS'.
 #'
-#' # Datapath Explanation
-#' The function constructs a URL for the dataset as:
-#' "https://heima.hafro.is/~einarhj/datras/RecordType=`{type}`/Year=`{year}`/part-0.parquet".
-#' The `type` parameter determines the file category (e.g., "HH", "HL", "CA").
-#' The function dynamically generates URLs for all years between 1965 and 2025.
-#' The DATRAS exchange dataset includes the following:
-#' - `"HH"` refers to haul-level data.
-#' - `"HL"` refers to catch-at-length data.
-#' - `"CA"` refers to age-based biological sampling data.
+#' @details
+#' The parquet file was generated from the ICES vocabulary code list "SpecWoRMS" with the following steps:
+#' - The code list is obtained using `icesVocab::getCodeList("SpecWoRMS")`.
+#' - It is processed to contain two columns: `Valid_Aphia` (integer) and `latin` (scientific name).
+#' - The resulting data is written as a Parquet file
 #'
-#' @param type A character string specifying the type of dataset. Must be `"HH"`, `"HL"`, or `"CA"`.
-#'             This parameter maps to specific file types stored in the DATRAS data source.
-#' @param url The http path to the DATRAS parquet files
+#' Path to the Parquet file: [https://heima.hafro.is/~einarhj/datras/species_worms.parquet](https://heima.hafro.is/~einarhj/datras/species_worms.parquet)
 #'
-#' @return A DuckDB dataset object representing the combined data for the specified `type`.
-#' @export
+#' @return
+#' A `duckdbfs` dataset object pointing to the Parquet file.
 #'
 #' @examples
-#' \dontrun{
-#'   dr_con_exchange("HH")  # Connect to haul-level data for all years.
-#'   dr_con_exchange("CA")  # Connect to age-based biological data for all years.
-#' }
-dr_con_exchange <- function(type = NULL, url = "https://heima.hafro.is/~einarhj/datras/") {
-  if (!type %in% c("HH", "HL", "CA")) {
-    stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
-  }
-  if(grepl("/$", url) == FALSE) {
-    url <- paste0(url, "/")
-  }
-
-  q <-
-    paste0(url,
-           type,
-           ".parquet") |>
+#' # Example of connecting to the species dataset
+#' latin <- dr_con_latin()
+#' dplyr::glimpse(latin)  # Peek at the dataset
+#'
+#' @export
+dr_con_latin <- function() {
+  url = "https://heima.hafro.is/~einarhj/datras/"
+  paste0(url, "species_worms.parquet") |>
     duckdbfs::open_dataset()
-
-  return(q)
 }
+
