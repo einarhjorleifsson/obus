@@ -3,7 +3,7 @@
 \docType{data}
 \name{dr_coastline}
 \alias{dr_coastline}
-\title{Coastline covering majority of DATRAS data}
+\title{A valid aphia id - latin name lookup}
 \format{
 An object of class \code{sf} (inherits from \code{data.frame}) with 102 rows and 1 columns.
 }

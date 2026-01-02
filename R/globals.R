@@ -9,7 +9,8 @@ utils::globalVariables(
     ".id", ".hour", ".minute", ".timeshot",
     "make_date", "make_timestamp", "dr_coastline",
     "DataType", "HaulDur", "SpecCodeType",
-    ".effort"
+    ".effort",
+    "quiet"
   )
 )
 
