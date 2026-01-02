@@ -120,7 +120,7 @@ hh |>
   : Numbers caught and the CPUE in each length class
 
 - [`dr_coastline`](https://einarhjorleifsson.github.io/obus/reference/dr_coastline.md)
-  : Coastline covering majority of DATRAS data
+  : A valid aphia id - latin name lookup
 
 - [`dr_coltypes`](https://einarhjorleifsson.github.io/obus/reference/dr_coltypes.md)
   : Datras variable types
@@ -132,26 +132,32 @@ hh |>
 - [`dr_con_exchange()`](https://einarhjorleifsson.github.io/obus/reference/dr_con_exchange.md)
   : Create a DuckDB connection to a DATRAS dataset (exchange format)
 
-- [`dr_download_data()`](https://einarhjorleifsson.github.io/obus/reference/dr_download_data.md)
-  : Download DATRAS tables
-
 - [`dr_download_data_latin()`](https://einarhjorleifsson.github.io/obus/reference/dr_download_data_latin.md)
   : Download DATRAS latin tables
 
-- [`dr_getCA()`](https://einarhjorleifsson.github.io/obus/reference/dr_getCA.md)
+- [`dr_get_ca()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_ca.md)
   : Retrieve DATRAS Age (CA) Table
-
-- [`dr_getFL()`](https://einarhjorleifsson.github.io/obus/reference/dr_getFL.md)
-  : Retrieve DATRAS Flex (FL) Table
-
-- [`dr_getHH()`](https://einarhjorleifsson.github.io/obus/reference/dr_getHH.md)
-  : Retrieve DATRAS Station (HH) Table
-
-- [`dr_getHL()`](https://einarhjorleifsson.github.io/obus/reference/dr_getHL.md)
-  : Retrieve DATRAS Length (HL) Table
 
 - [`dr_get_data_latin()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_data_latin.md)
   : Get DATRAS tables with latin names
+
+- [`dr_get_datras()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_datras.md)
+  : Retrieve DATRAS exchange table
+
+- [`dr_get_datras_download()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_datras_download.md)
+  : Download DATRAS tables
+
+- [`dr_get_fl()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_fl.md)
+  : Retrieve DATRAS Flex (FL) Table
+
+- [`dr_get_hh()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_hh.md)
+  : Retrieve DATRAS Station (HH) Table
+
+- [`dr_get_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_hl.md)
+  : Retrieve DATRAS Length (HL) Table
+
+- [`dr_latin_aphia`](https://einarhjorleifsson.github.io/obus/reference/dr_latin_aphia.md)
+  : Coastline covering majority of DATRAS data
 
 - [`dr_settypes()`](https://einarhjorleifsson.github.io/obus/reference/dr_settypes.md)
   : Set variable types

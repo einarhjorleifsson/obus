@@ -1,4 +1,4 @@
-# Coastline covering majority of DATRAS data
+# A valid aphia id - latin name lookup
 
 Simple shapefile
 

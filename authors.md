@@ -8,14 +8,14 @@
 
 ## Citation
 
-Pastoors M (2025). *obus: Implementing More and Better Use of ICES
+Pastoors M (2026). *obus: Implementing More and Better Use of ICES
 Survey data*. R package version 2025.12.24,
 <https://einarhjorleifsson.github.io/obus/>.
 
     @Manual{,
       title = {obus: Implementing More and Better Use of ICES Survey data},
       author = {Martin Pastoors},
-      year = {2025},
+      year = {2026},
       note = {R package version 2025.12.24},
       url = {https://einarhjorleifsson.github.io/obus/},
     }
