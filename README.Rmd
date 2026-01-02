@@ -63,11 +63,11 @@ hh |>
   mutate(lon = ShootLong%/%dx * dx + dx/2,
          lat = ShootLat%/%dy * dy + dy/2) |> 
   left_join(hl |> 
-              select(.id, ScientificName_WoRMS),
+              select(.id, latin),
            by = join_by(.id)) |>
   # analyse by grid
   group_by(lon, lat) |> 
-  summarise(n_taxa = n_distinct(ScientificName_WoRMS),
+  summarise(n_taxa = n_distinct(latin),
             .groups = "drop") |> 
   # load data into R memory because santoku::chop not in duckdb lingo
   #  chop is also nicer than cut - keeps things more orderly
