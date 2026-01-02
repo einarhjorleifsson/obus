@@ -7,7 +7,7 @@
 #'
 #' # Datapath Explanation
 #' The function constructs a URL for the dataset based on the following pattern:
-#' "https://heima.hafro.is/~einarhj/datras_latin/`{type}`.parquet".
+#' "https://heima.hafro.is/~einarhj/datras/`{type}`.parquet".
 #' The `type` parameter determines the specific file to connect to, where:
 #' - `"HH"` refers to haul-level data.
 #' - `"HL"` refers to catch-at-length data.
@@ -30,7 +30,7 @@
 #'   dr_con("HH")              # Connect to haul-level data.
 #'   dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
 #' }
-dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras_latin/") {
+dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras/") {
 
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
@@ -45,27 +45,20 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
            ".parquet") |>
     duckdbfs::open_dataset()
 
-  if(trim == TRUE & type %in% c("HL", "CA")) {
-    q <-
-      q |>
-      dplyr::select(.id, SpecCodeType:DateofCalculation)
-  }
-
   if(type == "HL") {
-    q <-
-      q |>
-      dplyr::left_join(dr_con("HH") |>
-                         dplyr::select(.id, DataType, HaulDur),
-                       by = dplyr::join_by(.id)) |>
-      .dr_length_cm() |>
-      .dr_n_and_cpue() |>
-      dplyr::select(-c(DataType, HaulDur))
+    if(trim == TRUE) {
+      q <-
+        q |>
+        dplyr::select(.id, latin, length, Sex, DevStage, n, cpue, species)
+    }
   }
 
   if(type == "CA") {
-    q <-
-      q |>
-      .dr_length_cm()
+    if(trim == TRUE) {
+      q <-
+        q |>
+        dplyr::select(.id, latin, length, Sex:MaturityScale, species, LngtCode, LngtClass)
+    }
   }
 
   return(q)
