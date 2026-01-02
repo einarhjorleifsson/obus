@@ -10,7 +10,9 @@ utils::globalVariables(
     "make_date", "make_timestamp", "dr_coastline",
     "DataType", "HaulDur", "SpecCodeType",
     ".effort",
-    "quiet"
+    "quiet",
+    "CatCatchWgt", "CatIdentifier", "DevStage", "LngtCode", "MaturityScale",
+    "Sex", "TotalNo", "cpue", "latin", "species"
   )
 )
 
