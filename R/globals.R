@@ -12,7 +12,8 @@ utils::globalVariables(
     ".effort",
     "quiet",
     "CatCatchWgt", "CatIdentifier", "DevStage", "LngtCode", "MaturityScale",
-    "Sex", "TotalNo", "cpue", "latin", "species"
+    "Sex", "TotalNo", "cpue", "latin", "species",
+    "Valid_Aphia"
   )
 )
 
