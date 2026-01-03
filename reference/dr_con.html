@@ -50,7 +50,6 @@ The function operates on experimental tables that include Latin names in the "HL
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dr_con</span><span class="op">(</span></span>
 <span>  type <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  add_species <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  trim <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  url <span class="op">=</span> <span class="st">"https://heima.hafro.is/~einarhj/datras/"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -63,11 +62,6 @@ The function operates on experimental tables that include Latin names in the "HL
 <dl><dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
 <dd><p>A character string specifying the type of dataset. Must be <code>"HH"</code>, <code>"HL"</code>, or <code>"CA"</code>.
 This parameter maps to specific files in the provided data source.</p></dd>
-
-
-<dt id="arg-add-species">add_species<a class="anchor" aria-label="anchor" href="#arg-add-species"></a></dt>
-<dd><p>A boolean flag (default <code>TRUE</code>). If <code>TRUE</code> and the <code>type</code> is <code>"HL"</code> or <code>"CA"</code>,
-variable latin and species is added to the output table.</p></dd>
 
 
 <dt id="arg-trim">trim<a class="anchor" aria-label="anchor" href="#arg-trim"></a></dt>
