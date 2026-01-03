@@ -1,12 +1,12 @@
 library(tidyverse)
 library(obus)
-cn_hh <- dr_con("HH") |> colnames() |> as_tibble()
-cn_hl <- dr_con("HL") |> colnames() |> as_tibble()
-cn_ca <- dr_con("CA") |> colnames() |> as_tibble()
+cn_hh <- dr_con("HH", trim = FALSE) |> colnames() |> as_tibble()
+cn_hl <- dr_con("HL", trim = FALSE) |> colnames() |> as_tibble()
+cn_ca <- dr_con("CA", trim = FALSE) |> colnames() |> as_tibble()
 cn <-
-  bind_rows(cn_hh |> mutate(table = "hh"),
-            cn_hl |> mutate(table = "hl"),
-            cn_ca |> mutate(table = "ca")) |>
+  bind_rows(cn_hh |> mutate(table = "HH"),
+            cn_hl |> mutate(table = "HL"),
+            cn_ca |> mutate(table = "CA")) |>
   rename(cn = value)
 
 library(tidyverse)
