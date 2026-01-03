@@ -1,4 +1,4 @@
-# Create a DuckDB connection to a DATRAS Exchange dataset with Latin names included
+# Create a DuckDB connection to a DATRAS tables
 
 This function establishes a DuckDB connection to a DATRAS dataset based
 on the specified `type` ("HH", "HL" or "CA"). The dataset is accessed
@@ -12,8 +12,9 @@ Latin names in the "HL" and "CA" files.
 ``` r
 dr_con(
   type = NULL,
+  add_species = TRUE,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras_latin/"
+  url = "https://heima.hafro.is/~einarhj/datras/"
 )
 ```
 
@@ -24,6 +25,11 @@ dr_con(
   A character string specifying the type of dataset. Must be `"HH"`,
   `"HL"`, or `"CA"`. This parameter maps to specific files in the
   provided data source.
+
+- add_species:
+
+  A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or
+  `"CA"`, variable latin and species is added to the output table.
 
 - trim:
 
@@ -41,8 +47,7 @@ A DuckDB dataset object.
 ## Datapath Explanation
 
 The function constructs a URL for the dataset based on the following
-pattern:
-"https://heima.hafro.is/~einarhj/datras_latin/`{type}`.parquet". The
+pattern: "https://heima.hafro.is/~einarhj/datras/`{type}`.parquet". The
 `type` parameter determines the specific file to connect to, where:
 
 - `"HH"` refers to haul-level data.

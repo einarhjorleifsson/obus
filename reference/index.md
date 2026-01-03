@@ -18,6 +18,9 @@
 - [`.dr_n_and_cpue()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_n_and_cpue.md)
   : Numbers caught and the CPUE in each length class
 
+- [`dr_catch_weight()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_weight.md)
+  : Get catch weights
+
 - [`dr_coastline`](https://einarhjorleifsson.github.io/obus/reference/dr_coastline.md)
   : A valid aphia id - latin name lookup
 
@@ -25,11 +28,10 @@
   : Datras variable types
 
 - [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
-  : Create a DuckDB connection to a DATRAS Exchange dataset with Latin
-  names included
+  : Create a DuckDB connection to a DATRAS tables
 
-- [`dr_con_exchange()`](https://einarhjorleifsson.github.io/obus/reference/dr_con_exchange.md)
-  : Create a DuckDB connection to a DATRAS dataset (exchange format)
+- [`dr_con_latin()`](https://einarhjorleifsson.github.io/obus/reference/dr_con_latin.md)
+  : Connect to the Species WoRMS Dataset
 
 - [`dr_download_data_latin()`](https://einarhjorleifsson.github.io/obus/reference/dr_download_data_latin.md)
   : Download DATRAS latin tables

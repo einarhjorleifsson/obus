@@ -18,6 +18,7 @@ library(dplyr)
 #>     intersect, setdiff, setequal, union
 hh <- dr_con("HH")
 hl <- dr_con("HL")
+#> Joining with `by = join_by(Valid_Aphia, latin, species)`
 ```
 
 ## DataType
