@@ -19,8 +19,6 @@
 #'
 #' @param type A character string specifying the type of dataset. Must be `"HH"`, `"HL"`, or `"CA"`.
 #'             This parameter maps to specific files in the provided data source.
-#' @param add_species A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or `"CA"`,
-#'             variable latin and species is added to the output table.
 #' @param trim A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or `"CA"`,
 #'             the dataset is trimmed to ignore station-level fields.
 #' @param url The http path to the DATRAS parquet files
@@ -32,7 +30,7 @@
 #'   dr_con("HH")              # Connect to haul-level data.
 #'   dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
 #' }
-dr_con <- function(type = NULL, add_species = TRUE, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras/") {
+dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras/") {
 
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
@@ -49,46 +47,21 @@ dr_con <- function(type = NULL, add_species = TRUE, trim = TRUE, url = "https://
 
   if(type == "HL") {
 
-    if(add_species == TRUE) {
-      q <-
-        q |>
-        dplyr::left_join(dr_con_latin(),
-                       by = dplyr::join_by(Valid_Aphia))
-    }
-
-    if(trim == TRUE & add_species == TRUE) {
+    if(trim == TRUE) {
       q <-
         q |>
         dplyr::left_join(dr_con_latin()) |>
         dplyr::select(.id, latin, length, Sex, DevStage, n, cpue, species)
     }
 
-    if(trim == TRUE & add_species == FALSE) {
-      q <-
-        q |>
-        dplyr::select(.id, Valid_Aphia, length, Sex, DevStage, n, cpue)
-    }
   }
 
   if(type == "CA") {
-    if(add_species == TRUE) {
-      q <-
-        q |>
-        dplyr::left_join(dr_con_latin(),
-                         by = dplyr::join_by(Valid_Aphia))
-    }
-    if(trim == TRUE & add_species == TRUE) {
-      q <-
-        q |>
-        dplyr::left_join(dr_con_latin()) |>
-        dplyr::select(.id, latin, length, Sex:MaturityScale, species)
-    }
 
-    if(trim == TRUE & add_species == FALSE) {
+    if(trim == TRUE) {
       q <-
         q |>
-        dplyr::left_join(dr_con_latin()) |>
-        dplyr::select(.id, Valid_Aphia, length, Sex:MaturityScale)
+        dplyr::select(.id, latin, length, Sex:MaturityScale, species)
     }
   }
 

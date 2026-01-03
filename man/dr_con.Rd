@@ -6,7 +6,6 @@
 \usage{
 dr_con(
   type = NULL,
-  add_species = TRUE,
   trim = TRUE,
   url = "https://heima.hafro.is/~einarhj/datras/"
 )
@@ -14,9 +13,6 @@ dr_con(
 \arguments{
 \item{type}{A character string specifying the type of dataset. Must be \code{"HH"}, \code{"HL"}, or \code{"CA"}.
 This parameter maps to specific files in the provided data source.}
-
-\item{add_species}{A boolean flag (default \code{TRUE}). If \code{TRUE} and the \code{type} is \code{"HL"} or \code{"CA"},
-variable latin and species is added to the output table.}
 
 \item{trim}{A boolean flag (default \code{TRUE}). If \code{TRUE} and the \code{type} is \code{"HL"} or \code{"CA"},
 the dataset is trimmed to ignore station-level fields.}
