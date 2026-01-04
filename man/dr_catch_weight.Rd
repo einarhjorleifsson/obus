@@ -4,12 +4,18 @@
 \alias{dr_catch_weight}
 \title{Get catch weights}
 \usage{
-dr_catch_weight()
+dr_catch_weight(latin)
+}
+\arguments{
+\item{latin}{Latin species name}
+}
+\value{
+A DuckDB view
 }
 \description{
 Calculate the total reported catch numbers and weight by species and haul.
 }
 \details{
 The functions is supposed to give the same results as icesDatras::getCatchWgt
-(needs checking), except gives latin (and english) name.
+(needs checking).
 }

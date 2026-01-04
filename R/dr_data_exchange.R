@@ -229,6 +229,15 @@ dr_get_datras <- function(type, survey, years = NULL, quarters = NULL, quiet = T
 #'
 dr_get_datras_download <- function(surveys = NULL, years = NULL, quarters = NULL, outpath = "data", filetype = "parquet") {
 
+  # Store original timeout setting
+  original_timeout <- getOption("timeout")
+  # Temporarily increase timeout just for this function's scope
+  options(timeout = 1800)
+  # This gives a 30-minute timeout - if you have a slow internet connection you might need to increase this
+  # Use on.exit to ensure the original timeout value is restored even if the function errors
+  on.exit(options(timeout = original_timeout))
+
+
 
   if(is.null(surveys)) {
     surveys <- c("BITS", "BTS", "BTS-GSA17", "BTS-VIII",
@@ -245,20 +254,20 @@ dr_get_datras_download <- function(surveys = NULL, years = NULL, quarters = NULL
   for(i in 1:length(surveys)) {
 
     hh <-
-      dr_get_hh(surveys[i], years, quarters)
+      dr_get_hh(surveys[i], years, quarters, quiet = FALSE)
     if(nrow(hh) >= 1) {
       hh |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
     #if(FALSE) {
     hl <-
-      dr_get_hl(surveys[i], years, quarters)
+      dr_get_hl(surveys[i], years, quarters, quiet = FALSE)
     if(nrow(hl) >= 1) {
       hl |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }
 
 
-    ca <- dr_get_ca(surveys[i], years, quarters)
+    ca <- dr_get_ca(surveys[i], years, quarters, quiet = FALSE)
     if(nrow(ca) >= 1) {
       ca |> dplyr::group_by(RecordType, Survey) |> duckdbfs::write_dataset(path = outpath)
     }

@@ -13,7 +13,8 @@ utils::globalVariables(
     "quiet",
     "CatCatchWgt", "CatIdentifier", "DevStage", "LngtCode", "MaturityScale",
     "Sex", "TotalNo", "cpue", "latin", "species",
-    "Valid_Aphia"
+    "Valid_Aphia",
+    "Country", "Gear", "HaulNo", "Ship", "StNo", "b"
   )
 )
 
