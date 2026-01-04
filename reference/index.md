@@ -18,6 +18,9 @@
 - [`.dr_n_and_cpue()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_n_and_cpue.md)
   : Numbers caught and the CPUE in each length class
 
+- [`dr_add_id()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_id.md)
+  : Generate a haul id
+
 - [`dr_catch_weight()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_weight.md)
   : Get catch weights
 

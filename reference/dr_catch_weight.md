@@ -6,11 +6,20 @@ haul.
 ## Usage
 
 ``` r
-dr_catch_weight()
+dr_catch_weight(latin)
 ```
+
+## Arguments
+
+- latin:
+
+  Latin species name
+
+## Value
+
+A DuckDB view
 
 ## Details
 
 The functions is supposed to give the same results as
-icesDatras::getCatchWgt (needs checking), except gives latin (and
-english) name.
+icesDatras::getCatchWgt (needs checking).
