@@ -27,5 +27,8 @@ A DuckDB view
 ## Details
 
 The functions is supposed to give the same results as
-icesDatras::getCatchWgt. If argument "not_numbers" is set to FALSE this
-may though not hold true.
+icesDatras::getCatchWgt, here the name of the variable returned is "b"
+instead of "CatchWgt". In addition as standardized catch per unit effort
+("cpue") is return, the effort being 60 minute haul duration.
+
+If argument "not_numbers" is set to FALSE this may though not hold true.
