@@ -4,10 +4,13 @@
 \alias{dr_catch_weight}
 \title{Get catch weights}
 \usage{
-dr_catch_weight(latin)
+dr_catch_weight(latin, not_numbers = TRUE)
 }
 \arguments{
 \item{latin}{Latin species name}
+
+\item{not_numbers}{A boolean (default TRUE), indicating if total abundance
+(TotalNo) should also be calculated}
 }
 \value{
 A DuckDB view
@@ -16,6 +19,6 @@ A DuckDB view
 Calculate the total reported catch numbers and weight by species and haul.
 }
 \details{
-The functions is supposed to give the same results as icesDatras::getCatchWgt
-(needs checking).
+The functions is supposed to give the same results as icesDatras::getCatchWgt.
+If argument "not_numbers" is set to FALSE this may though not hold true.
 }
