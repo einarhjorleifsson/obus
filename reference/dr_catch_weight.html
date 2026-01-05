@@ -42,7 +42,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dr_catch_weight</span><span class="op">(</span><span class="va">latin</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dr_catch_weight</span><span class="op">(</span><span class="va">latin</span>, not_numbers <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -52,6 +52,11 @@
 <dl><dt id="arg-latin">latin<a class="anchor" aria-label="anchor" href="#arg-latin"></a></dt>
 <dd><p>Latin species name</p></dd>
 
+
+<dt id="arg-not-numbers">not_numbers<a class="anchor" aria-label="anchor" href="#arg-not-numbers"></a></dt>
+<dd><p>A boolean (default TRUE), indicating if total abundance
+(TotalNo) should also be calculated</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -59,8 +64,8 @@
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The functions is supposed to give the same results as icesDatras::getCatchWgt
-(needs checking).</p>
+    <p>The functions is supposed to give the same results as icesDatras::getCatchWgt.
+If argument "not_numbers" is set to FALSE this may though not hold true.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
