@@ -19,6 +19,10 @@ A DuckDB view
 Calculate the total reported catch numbers and weight by species and haul.
 }
 \details{
-The functions is supposed to give the same results as icesDatras::getCatchWgt.
+The functions is supposed to give the same results as icesDatras::getCatchWgt,
+here the name of the variable returned is "b" instead of "CatchWgt". In addition
+as standardized catch per unit effort ("cpue") is return, the effort being 60
+minute haul duration.
+
 If argument "not_numbers" is set to FALSE this may though not hold true.
 }
