@@ -63,5 +63,8 @@
 - [`dr_latin_aphia`](https://einarhjorleifsson.github.io/obus/reference/dr_latin_aphia.md)
   : Coastline covering majority of DATRAS data
 
+- [`dr_read_datras()`](https://einarhjorleifsson.github.io/obus/reference/dr_read_datras.md)
+  : Download, extract, and import DATRAS Data
+
 - [`dr_settypes()`](https://einarhjorleifsson.github.io/obus/reference/dr_settypes.md)
   : Set variable types
