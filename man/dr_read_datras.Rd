@@ -4,7 +4,14 @@
 \alias{dr_read_datras}
 \title{Download, extract, and import DATRAS Data}
 \usage{
-dr_read_datras(recordtype, survey, year, quarter, quiet = TRUE)
+dr_read_datras(
+  recordtype,
+  survey,
+  year = 1965:2030,
+  quarter = 1:4,
+  quiet = TRUE,
+  how = "parquet"
+)
 }
 \arguments{
 \item{recordtype}{A character string indicating the record type ("HH", "HL", or "CA").}
@@ -16,6 +23,8 @@ dr_read_datras(recordtype, survey, year, quarter, quiet = TRUE)
 \item{quarter}{A single text string specifying the range of quarters as \code{"start:end"} (e.g., \code{"1:4"}).}
 
 \item{quiet}{A logical value; if \code{FALSE}, progress messages are displayed.}
+
+\item{how}{Text string, any of "parquet", "arrow" or "data.table"}
 }
 \value{
 A data frame containing the requested DATRAS data for the specified year and quarter ranges.

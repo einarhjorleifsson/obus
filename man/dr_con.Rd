@@ -7,7 +7,7 @@
 dr_con(
   type = NULL,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras/"
+  url = "https://heima.hafro.is/~einarhj/datras_latin"
 )
 }
 \arguments{
