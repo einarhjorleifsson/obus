@@ -1,3 +1,54 @@
+#' Generate a unique haul id
+#'
+#' This function generates a haul ID by concatenating fields in
+#' the DATRAS tables. The generated ID is stored in a new variable `.id`.
+#' The input must contain the columns:
+#' \code{Survey, Year, Quarter, Country, Platform, Gear, StationName, HaulNumber}.
+#' If any of these columns are missing, an error will be raised.
+#'
+#' @param d A DATRAS table, one of HH, HL, or CA.
+#'
+#' @return A table (\code{d}) with an additional variable `.id`
+#' @export
+#'
+#' @examples
+#' # Example with a simulated DATRAS table
+#' example_data <- data.frame(
+#'   Survey = "Surv1",
+#'   Year = 2026,
+#'   Quarter = 1,
+#'   Country = "Country1",
+#'   Platform = "Platform1",
+#'   Gear = "Gear1",
+#'   StationName = "StationA",
+#'   HaulNumber = 123
+#' )
+#' example_data |> dr_add_id()
+dr_add_id <- function(d) {
+  # Required columns
+  required_vars <- c("Survey", "Year", "Quarter", "Country", "Platform",
+                     "Gear", "StationName", "HaulNumber")
+
+  # Check if all required variables exist in the input
+  missing_vars <- setdiff(required_vars, colnames(d))
+  if (length(missing_vars) > 0) {
+    stop("The following required columns are missing from the input table: ",
+         paste(missing_vars, collapse = ", "))
+  }
+
+  d |>
+    dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Platform, Gear,
+                              StationName, HaulNumber, sep = ":"))
+}
+
+# Old version retained for reference but can be updated similarly if needed
+dr_add_id_old <- function(d) {
+  d |>
+    dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Ship, Gear,
+                              StNo, HaulNo, sep = ":"))
+}
+
+
 #' Calculate date based on `Year`, `Month`, and `Day`.
 #'
 #' This function adds a new column `date` to the input table (DuckDB table or dataframe),
@@ -13,7 +64,9 @@
 #' @return The input table (DuckDB table or dataframe) with an additional `date` column,
 #' or `NULL` if the input is neither a DuckDB table nor a dataframe.
 #'
-.dr_add_date <- function(d) {
+#' @export
+
+dr_add_date <- function(d) {
 
   # Check whether required columns exist
   required_vars <- c("Year", "Month", "Day")
@@ -59,7 +112,8 @@
 #' @return The input table (DuckDB table or dataframe) with an additional `timestamp` column,
 #' calculated as a POSIXct timestamp, or `NULL` if the input is neither a DuckDB table nor a dataframe.
 #'
-.dr_add_starttime <- function(d) {
+#' @export
+dr_add_starttime <- function(d) {
 
   # Determine which column represents time
   time_col <- if ("StartTime" %in% colnames(d)) "StartTime" else if ("TimeShot" %in% colnames(d)) "TimeShot" else NULL
@@ -124,7 +178,9 @@
 #'        Defaults to `LengthClass`.
 #'
 #' @return The input table with an additional column `length_cm`.
-.dr_add_length_cm <- function(d, LengthCode = LengthCode, LengthClass = LengthClass) {
+#'
+#' @export
+dr_add_length_cm <- function(d, LengthCode = LengthCode, LengthClass = LengthClass) {
 
   # Validate that required columns exist
   required_vars <- c(rlang::as_name(rlang::enquo(LengthCode)), rlang::as_name(rlang::enquo(LengthClass)))
@@ -173,7 +229,9 @@
 #'        Defaults to `SubsamplingFactor`.
 #'
 #' @return The input table with additional columns `n` and `cpue`.
-.dr_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration = HaulDuration, SubsamplingFactor = SubsamplingFactor) {
+#'
+#' @export
+dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration = HaulDuration, SubsamplingFactor = SubsamplingFactor) {
 
   # Check whether the required columns exist
   required_vars <- c(".id", "DataType", rlang::as_name(rlang::enquo(NumberAtLength)),
