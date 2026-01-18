@@ -9,7 +9,14 @@ quarters). Temporary files are automatically cleaned up.
 ## Usage
 
 ``` r
-dr_read_datras(recordtype, survey, year, quarter, quiet = TRUE)
+dr_read_datras(
+  recordtype,
+  survey,
+  year = 1965:2030,
+  quarter = 1:4,
+  quiet = TRUE,
+  how = "parquet"
+)
 ```
 
 ## Arguments
@@ -35,6 +42,10 @@ dr_read_datras(recordtype, survey, year, quarter, quiet = TRUE)
 - quiet:
 
   A logical value; if `FALSE`, progress messages are displayed.
+
+- how:
+
+  Text string, any of "parquet", "arrow" or "data.table"
 
 ## Value
 

@@ -13,7 +13,7 @@ Latin names in the "HL" and "CA" files.
 dr_con(
   type = NULL,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras/"
+  url = "https://heima.hafro.is/~einarhj/datras_latin"
 )
 ```
 

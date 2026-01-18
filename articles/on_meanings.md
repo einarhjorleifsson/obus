@@ -18,7 +18,6 @@ library(dplyr)
 #>     intersect, setdiff, setequal, union
 hh <- dr_con("HH")
 hl <- dr_con("HL")
-#> Joining with `by = join_by(Valid_Aphia, latin, species)`
 ```
 
 ## DataType
@@ -33,9 +32,9 @@ hh |>
 #> # Ordered by: DataType
 #>   DataType     n     p
 #>   <chr>    <dbl> <dbl>
-#> 1 C        49178  33.4
+#> 1 C        49160  33.5
 #> 2 P         1683   1.1
-#> 3 R        95222  64.7
+#> 3 R        95092  64.7
 #> 4 S          969   0.7
 #> 5 NA          40   0
 ```
