@@ -30,7 +30,7 @@
 #'   dr_con("HH")              # Connect to haul-level data.
 #'   dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
 #' }
-dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras/") {
+dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras_latin") {
 
   if (!type %in% c("HH", "HL", "CA")) {
     stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
@@ -50,8 +50,8 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
     if(trim == TRUE) {
       q <-
         q |>
-        dplyr::left_join(dr_con_latin()) |>
-        dplyr::select(.id, latin, length, Sex, DevStage, n, cpue, species)
+        # dplyr::left_join(dr_con_latin()) |>
+        dplyr::select(.id, latin, length_cm, SpeciesSex, DevelopmentStage, n, cpue)
     }
 
   }
@@ -61,7 +61,7 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
     if(trim == TRUE) {
       q <-
         q |>
-        dplyr::select(.id, latin, length, Sex:MaturityScale, species)
+        dplyr::select(.id, latin, length_cm, IndividualSex:LiverWeight)
     }
   }
 

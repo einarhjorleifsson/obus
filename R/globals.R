@@ -14,7 +14,9 @@ utils::globalVariables(
     "CatCatchWgt", "CatIdentifier", "DevStage", "LngtCode", "MaturityScale",
     "Sex", "TotalNo", "cpue", "latin", "species",
     "Valid_Aphia",
-    "Country", "Gear", "HaulNo", "Ship", "StNo", "b"
+    "Country", "Gear", "HaulNo", "Ship", "StNo", "b",
+    "HaulNumber", "Platform", "StationName",
+    "DevelopmentStage", "IndividualSex", "LiverWeight", "SpeciesSex", "length_cm"
   )
 )
 

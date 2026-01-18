@@ -4,15 +4,30 @@
 \alias{.dr_n_and_cpue}
 \title{Numbers caught and the CPUE in each length class}
 \usage{
-.dr_n_and_cpue(d)
+.dr_n_and_cpue(
+  d,
+  NumberAtLength = NumberAtLength,
+  HaulDuration = HaulDuration,
+  SubsamplingFactor = SubsamplingFactor
+)
 }
 \arguments{
-\item{d}{DATRAS length table (HL) containing columns \code{.id}, \code{HLNoAtLngt}, \code{.datatype}, and \code{.effort}.}
+\item{d}{DATRAS length table (HL) containing columns \code{.id},
+a column for \code{NumberAtLength}, a column for \code{HaulDuration}, and a column for \code{SubsamplingFactor}.}
+
+\item{NumberAtLength}{The column specifying the number of individuals (unquoted).
+Defaults to \code{NumberAtLength}.}
+
+\item{HaulDuration}{The column specifying haul duration (unquoted).
+Defaults to \code{HaulDuration}.}
+
+\item{SubsamplingFactor}{The column specifying the subsampling factor (unquoted).
+Defaults to \code{SubsamplingFactor}.}
 }
 \value{
 The input table with additional columns \code{n} and \code{cpue}.
 }
 \description{
-This function generates two new column \code{n} (numbers caught) and
+This function generates two new columns: \code{n} (numbers caught) and
 \code{cpue} (numbers caught per one hour towing) for the length table (HL).
 }
