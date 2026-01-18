@@ -10,7 +10,7 @@ dr_read_datras(
   year = 1965:2030,
   quarter = 1:4,
   quiet = TRUE,
-  how = "parquet"
+  how = "data.table"
 )
 }
 \arguments{

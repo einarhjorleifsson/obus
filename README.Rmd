@@ -109,6 +109,7 @@ library(santoku)
 # Grid resolution
 dx <- 1
 dy <- dx / 2
+tic()
 # Limit analysis to certain time and space
 hh |> 
   filter(Year %in% 2001:2010,
@@ -134,5 +135,6 @@ hh |>
   coord_quickmap() +
   labs(x = NULL, y = NULL, fill = "Number of\ndistinct taxa",
        caption = "DATRAS 2001-2010, core area: Number of distinct taxa reported per rectangle")
+toc()
 ```
 
