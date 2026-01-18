@@ -2,30 +2,27 @@
 
 ## All functions
 
-- [`.dr_add_date()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_add_date.md)
+- [`dr_add_date()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_date.md)
   :
 
   Calculate date based on `Year`, `Month`, and `Day`.
 
-- [`.dr_add_length_cm()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_add_length_cm.md)
+- [`dr_add_id()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_id.md)
+  : Generate a unique haul id
+
+- [`dr_add_length_cm()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_length_cm.md)
   :
 
   Add a standardized `length_cm` column to the input table
 
-- [`.dr_add_starttime()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_add_starttime.md)
+- [`dr_add_n_and_cpue()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_n_and_cpue.md)
+  : Numbers caught and the CPUE in each length class
+
+- [`dr_add_starttime()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_starttime.md)
   :
 
   Calculate timestamp based on `Year`, `Month`, `Day`, and
   `StartTime`/`TimeShot`.
-
-- [`.dr_n_and_cpue()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_n_and_cpue.md)
-  : Numbers caught and the CPUE in each length class
-
-- [`dr_add_id()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_id.md)
-  : Generate a haul id
-
-- [`dr_add_id_new()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_id_new.md)
-  : Generate a haul id
 
 - [`dr_catch_weight()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_weight.md)
   : Get catch weights

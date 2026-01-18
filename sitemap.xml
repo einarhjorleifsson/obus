@@ -6,12 +6,11 @@
 <url><loc>https://einarhjorleifsson.github.io/obus/articles/overview.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/authors.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/index.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_add_date.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_add_length_cm.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_add_starttime.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_n_and_cpue.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_date.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_id.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_id_new.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_length_cm.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_n_and_cpue.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_starttime.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_catch_weight.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_coastline.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_coltypes.html</loc></url>
