@@ -15,7 +15,7 @@
 #' @return A data frame containing the requested DATRAS data for the specified year and quarter ranges.
 #' @export
 #'
-dr_read_datras <- function(recordtype, survey, year = 1965:2030, quarter = 1:4, quiet = TRUE, how = "data.table") {
+dr_get <- function(recordtype, survey, year = 1965:2030, quarter = 1:4, quiet = TRUE, how = "data.table") {
 
   if(how == "parquet") {
     data <-

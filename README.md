@@ -6,17 +6,13 @@
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![CRAN
-status](https://www.r-pkg.org/badges/version/obus)](https://CRAN.R-project.org/package=obus)
+status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
 {obus} is a temporary experimental package used to explore various
 DATRAS data connections and wrapper functions to make life a little
-easier for everyday DATRAS data user to access the data. Once that is
-settled the aim is to provide downstream convenience functions, again to
-make coding life a little bit more enjoyable.
-
-Some of this may potentially be taken up in a more offical package
-maintained by ICES datacenter.
+easier for everyday user. Some of this may be taken up in a more offical
+package.
 
 ## Installation
 
@@ -24,88 +20,15 @@ You can install the development version of imbus from
 [GitHub](https://github.com/einarhjorleifsson/obus) with:
 
 ``` r
-# install.packages("pak")
-#pak::pak("einarhjorleifsson/obus")
+devtools::install_github("einarhjorleifsson/obus")
 ```
 
-## Different ways to skin a cat
+## Table connections
 
-We currently have three way to skin the cat, excluding here the old
-faithful icesDatras::icesDATRAS. Here the focus is on accessing the full
-HL-type data in one function call:
-
-1.  Download via the new API
-
-- data.table:
-- arrow:
-
-2.  Read parquet files directly from “the cloud”
-
-- parquet:
-
-The first two approaches are the same when it comes to downloading the
-zip-file and unzipping the csv-file. The difference is how the csv-file
-is read.
-
-The second approach reads parquet file stored on a spartan url-server at
-a temporary site. Cloud based server is being explored by ICES
-datacenter, that may though be a bit of an overkill give that the DATRAS
-data is not really big.
+You can generate a connection to the main DATRAS tables by:
 
 ``` r
 library(obus)
-library(tidyverse)
-#> ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-#> ✔ dplyr     1.1.4     ✔ readr     2.1.6
-#> ✔ forcats   1.0.1     ✔ stringr   1.6.0
-#> ✔ ggplot2   4.0.1     ✔ tibble    3.3.1
-#> ✔ lubridate 1.9.4     ✔ tidyr     1.3.2
-#> ✔ purrr     1.2.0     
-#> ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-#> ✖ dplyr::filter() masks stats::filter()
-#> ✖ dplyr::lag()    masks stats::lag()
-#> ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
-library(tictoc)
-surveys <- c("BITS", "BTS", "BTS-GSA17", "BTS-VIII",
-             "Can-Mar",   "DWS",       "DYFS",      "EVHOE",
-             "FR-CGFS",   "FR-WCGFS",  "IE-IAMS",   "IE-IGFS",
-             "IS-IDPS",   "NIGFS",     "NL-BSAS",   "NS-IBTS",
-             "NS-IDPS",   "NSSS",      "PT-IBTS",   "ROCKALL",
-             "SCOROC",    "SCOWCGFS",  "SE-SOUND",  "SNS",
-             "SP-ARSA",   "SP-NORTH",  "SP-PORC",   "SWC-IBTS")
-
-# Use the new API, read downloaded file using data.table::fread
-tic()
-hl_data.table <- 
-  map2("HL", surveys, dr_read_datras, how = "data.table") |> 
-  bind_rows()
-toc()
-#> 75.083 sec elapsed
-# Use the new API, read downloaded file using arrow::read_csv_arrow
-tic()
-hl_arrow <- 
-  map2("HL", surveys, dr_read_datras, how = "arrow") |> 
-  bind_rows()
-toc()
-#> 74.384 sec elapsed
-# Read parquet files from url
-tic()
-hl_parquet <- dr_read_datras("HL", how = "parquet")
-toc()
-#> 12.935 sec elapsed
-```
-
-## Another way of thinking
-
-In all cases above we are importing the full sweep of the DATRAS data
-into R. This may be a bit of an overkill, given that R …
-
-There is another way:
-
-- Connect to web hosted parquet files
-- …
-
-``` r
 hh <- dr_con("HH")
 hl <- dr_con("HL")
 ca <- dr_con("CA")
@@ -114,57 +37,63 @@ ca <- dr_con("CA")
 ## A little peek
 
 ``` r
-library(tidyverse)
-hl |> glimpse()
-#> Rows: ??
-#> Columns: 7
-#> Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
-#> $ .id              <chr> "BITS:1991:1:DE:06S1:H20:48:43", "BITS:1991:1:DE:06S1…
-#> $ latin            <chr> "Pleuronectes platessa", "Pleuronectes platessa", "Po…
-#> $ length_cm        <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5,…
-#> $ SpeciesSex       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
-#> $ DevelopmentStage <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
-#> $ n                <dbl> 1.0, 2.0, 1.0, 4.5, 4.5, 14.0, 28.5, 9.5, 9.5, 23.5, …
-#> $ cpue             <dbl> 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, 9, 9, 376, 376…
+hh
+#> # Source:   table<bfcsclvbtjitoqz> [?? x 74]
+#> # Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#>    RecordHeader Survey Quarter Country Platform Gear  SweepLength GearExceptions
+#>    <chr>        <chr>    <int> <chr>   <chr>    <chr>       <int> <chr>         
+#>  1 ﻿HH           BITS         1 DK      26D4     CAM            NA <NA>          
+#>  2 HH           BITS         1 DK      26D4     CAM            NA <NA>          
+#>  3 HH           BITS         1 DK      26D4     CAM            NA <NA>          
+#>  4 HH           BITS         1 DK      26D4     EXP           110 <NA>          
+#>  5 HH           BITS         1 DK      26D4     EXP           110 <NA>          
+#>  6 HH           BITS         1 DK      26D4     GRT            NA <NA>          
+#>  7 HH           BITS         1 DK      26D4     GRT            NA <NA>          
+#>  8 HH           BITS         1 DK      26D4     GRT            NA <NA>          
+#>  9 HH           BITS         1 DK      26D4     GRT            NA <NA>          
+#> 10 HH           BITS         1 DK      26D4     GRT            NA <NA>          
+#> # ℹ more rows
+#> # ℹ 66 more variables: DoorType <chr>, StationName <chr>, HaulNumber <int>,
+#> #   Year <int>, Month <int>, Day <int>, StartTime <chr>, DepthStratum <chr>,
+#> #   HaulDuration <int>, DayNight <chr>, ShootLatitude <dbl>,
+#> #   ShootLongitude <dbl>, HaulLatitude <dbl>, HaulLongitude <dbl>,
+#> #   StatisticalRectangle <chr>, BottomDepth <int>, HaulValidity <chr>,
+#> #   HydrographicStationID <chr>, StandardSpeciesCode <chr>, …
+hl
+#> # Source:   SQL [?? x 7]
+#> # Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#>    .id                   latin length_cm SpeciesSex DevelopmentStage     n  cpue
+#>    <chr>                 <chr>     <dbl> <chr>      <chr>            <dbl> <dbl>
+#>  1 BITS:1991:1:DE:06S1:… Pleu…      24   <NA>       <NA>               1       2
+#>  2 BITS:1991:1:DE:06S1:… Pleu…      25   <NA>       <NA>               2       4
+#>  3 BITS:1991:1:DE:06S1:… Poll…      24   <NA>       <NA>               1       2
+#>  4 BITS:1991:1:DE:06S1:… Clup…      15   <NA>       <NA>               4.5     9
+#>  5 BITS:1991:1:DE:06S1:… Clup…      15.5 <NA>       <NA>               4.5     9
+#>  6 BITS:1991:1:DE:06S1:… Clup…      16   <NA>       <NA>              14      28
+#>  7 BITS:1991:1:DE:06S1:… Clup…      16.5 <NA>       <NA>              28.5    57
+#>  8 BITS:1991:1:DE:06S1:… Clup…      17   <NA>       <NA>               9.5    19
+#>  9 BITS:1991:1:DE:06S1:… Clup…      17.5 <NA>       <NA>               9.5    19
+#> 10 BITS:1991:1:DE:06S1:… Clup…      21   <NA>       <NA>              23.5    47
+#> # ℹ more rows
+ca
+#> # Source:   SQL [?? x 18]
+#> # Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#>    .id             latin length_cm IndividualSex IndividualMaturity AgePlusGroup
+#>    <chr>           <chr>     <dbl> <chr>         <chr>              <chr>       
+#>  1 BITS:1991:1:SE… Gadu…        34 M             2                  <NA>        
+#>  2 BITS:1991:1:SE… Gadu…        36 F             1                  <NA>        
+#>  3 BITS:1991:1:SE… Gadu…        39 F             2                  <NA>        
+#>  4 BITS:1991:1:SE… Gadu…        40 F             1                  <NA>        
+#>  5 BITS:1991:1:SE… Gadu…        43 F             2                  <NA>        
+#>  6 BITS:1991:1:SE… Gadu…        45 F             2                  <NA>        
+#>  7 BITS:1991:1:SE… Gadu…        30 M             1                  <NA>        
+#>  8 BITS:1991:1:SE… Gadu…        31 M             1                  <NA>        
+#>  9 BITS:1991:1:SE… Gadu…        34 M             1                  <NA>        
+#> 10 BITS:1991:1:SE… Gadu…        35 M             1                  <NA>        
+#> # ℹ more rows
+#> # ℹ 12 more variables: IndividualAge <int>, CANoAtLngt <dbl>,
+#> #   IndividualWeight <dbl>, FishID <chr>, GeneticSamplingFlag <chr>,
+#> #   StomachSamplingFlag <chr>, AgeSource <chr>, AgePreparationMethod <chr>,
+#> #   OtolithGrading <chr>, ParasiteSamplingFlag <chr>, MaturityScale <chr>,
+#> #   LiverWeight <dbl>
 ```
-
-## A little exploration
-
-``` r
-library(santoku)
-#> 
-#> Attaching package: 'santoku'
-#> The following object is masked from 'package:tidyr':
-#> 
-#>     chop
-# Grid resolution
-dx <- 1
-dy <- dx / 2
-# Limit analysis to certain time and space
-hh |> 
-  filter(Year %in% 2001:2010,
-         between(ShootLongitude, -20, 25),
-         between(ShootLatitude, -Inf, 65)) |> 
-  # assign coordinates to grid
-  mutate(lon = ShootLongitude%/%dx * dx + dx/2,
-         lat = ShootLatitude%/%dy * dy + dy/2) |> 
-  left_join(hl |> 
-              select(.id, latin),
-           by = join_by(.id)) |>
-  # analyse by grid
-  group_by(lon, lat) |> 
-  summarise(n_taxa = n_distinct(latin),
-            .groups = "drop") |> 
-  # load data into R memory because santoku::chop not in duckdb lingo
-  #  chop is also nicer than cut - keeps things more orderly
-  collect() |> 
-  mutate(n_taxa = chop(n_taxa, breaks = c(0, 25, 50, 75, 100, 125, 150, 200))) |> 
-  ggplot(aes(lon, lat, fill = n_taxa)) +
-  geom_tile() +
-  scale_fill_viridis_d(option = "inferno", direction = -1) +
-  coord_quickmap() +
-  labs(x = NULL, y = NULL, fill = "Number of\ndistinct taxa",
-       caption = "DATRAS 2001-2010, core area: Number of distinct taxa reported per rectangle")
-```
-
-<img src="man/figures/README-demo-1.png" alt="" width="100%" />

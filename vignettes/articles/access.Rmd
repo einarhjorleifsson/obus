@@ -1,0 +1,133 @@
+---
+title: "DATRAS data access points"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>"
+)
+```
+
+## Preamble
+
+There are (now) two principal ways to access the DATRAS data in R:
+
+1. Import the data into R via communication with web APIs
+2. Import or connect to web based parquet file system
+
+In the first approach a full dataset is imported into R while in the second approach only needed variables and data may in the end be imported into R.
+
+## 1. DATRAS Web Services
+
+### The old faithful
+
+The ICES datacenter has for some time provided [DATRAS Web Services](https://datras.ices.dk/WebServices/DATRASWebService.asmx). These API's are used by {icesDatras}-package, e.g. by running:
+
+```{r eval = FALSE}
+icesDatras::getDATRAS(record = "HH", survey = "NS-IBTS", 
+                      years = 2025, quarters = 1)
+```
+
+The process is relatively slow, in particular because of the parsing xlm-format to a proper R data.table.
+
+### DATRAS Download services (experimental)
+
+[DATRAS Download services](https://datras.ices.dk/Data_products/Download/DATRASDownloadAPI.aspx) is an experimental API. It is faster than the old faithful above, in part because the download is a csv file that can be read relatively quickly into R. Besides speed it differs from the above by:
+
+* Returns proper variable types (character, numeric, integer, ...)
+* The variable names are of the new format
+* Provides an additional variable containing the latin name
+
+Function sets have been implemented in {obus}, the call being similar as above:
+
+```{r}
+obus::dr_get(recordtype = "HH", survey = "NS-IBTS", 
+             year = "2000", quarter = "1") |>
+  dplyr::glimpse()
+```
+
+## 2. DATRAS web hosted parquet files
+
+### Reading in all the records
+
+In addition to above the ICES datacenter is also exploring setting up parquet files on a cloud server. So far the exploration has been limited to the NS-IBTS data, that can be fully imported into R by:
+
+```{r}
+url <- "https://stdatrastest001.blob.core.windows.net/datras/ns-ibts/HH.parquet"
+arrow::read_parquet(url) |> dplyr::glimpse()
+```
+
+Here type setting is pending ...
+
+One can also limit importing particular columns (of interest) using the 'col_select' argument:
+
+```{r}
+arrow::read_parquet(
+  url,
+  col_select = c(Survey, Year, Quarter, 
+                 ShootLongitude, ShootLatitude, HaulDuration)) |>
+  dplyr::glimpse()
+```
+
+This is (presumably) faster than if one where to import all the variables.
+
+An alternative exploratory repository that contains **all** the DATRAS data would give this:
+
+```{r}
+url_alt <- "https://heima.hafro.is/~einarhj/datras_latin/"
+tictoc::tic()
+hh <- 
+  paste0(url_alt, "HH.parquet") |> 
+  arrow::read_parquet()
+tictoc::toc()
+tictoc::tic()
+hl <- 
+  paste0(url_alt, "HL.parquet") |> 
+  arrow::read_parquet()
+tictoc::toc()
+```
+
+### Creating a connection to the file system
+
+Another way to access the DATRAS web-hosted parquet files sweeps is by creating a connection to the files, using an in-process temporary duckdb database as the middleman:
+
+```{r}
+paste0(url_alt, "HH.parquet") |> 
+  duckdbfs::open_dataset(url_alt) |> 
+  dplyr::select(Survey, Year, Quarter, 
+                ShootLongitude, ShootLatitude, HaulDuration) |> 
+  dplyr::glimpse()
+```
+
+Of note here is that the object returned is not a data.frame but rather connection to the temporary database. And we have actually not imported the full dataset into R (Rows: ??). More on this can be found here: [... pending].
+
+A sweep of wrapper functions have been setup in the {obus}-package create a connection to web-based parquet files via DuckDB:
+
+```{r}
+hh <- obus::dr_con("HH")
+hl <- obus::dr_con("HL")
+ca <- obus::dr_con("CA")
+```
+
+If we take a peek on the length data we get:
+
+```{r}
+hl |> dplyr::glimpse()
+```
+
+The default is to return only data associated with length measurements (arguement trim = FALSE would return all columns), as of now we have in addition to "known" exchange variables:
+
+*  .id: station id
+* latin: scientific name
+* length_cm: length in centimeters
+* n: number in haul
+* cpue: numbers per effort, effort being standardized to 60 minutes
+
+Discussion among IMBUS-members needed:
+
+* Should we include n and cpue by default on the server side?
+* Anything else needed from the server side?
+* What variable to include as the defalult (trim = TRUE) for the HL data?
