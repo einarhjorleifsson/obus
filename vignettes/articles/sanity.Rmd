@@ -1,0 +1,302 @@
+---
+title: "Sanity testing"
+format:
+  html:
+    message: false
+    warning: false
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r}
+# pak::pak("einarhjorleifsson/obus")
+library(icesDatras)
+library(tidyverse)
+library(obus)
+```
+
+## Catch weights
+
+### Preamble
+
+The {icesDatras::getCatchWgt} provides a function that calculates the total reported catch weight by Valid_Aphia and haul. In the calculation process the HH and HL data are first retrived via {icesDatras::getDATRAS} function.
+
+An analogous function {obus::dr_catch_weight) was generated that operates directly on the http stored parquet files. The difference between the two function (besides execution speed) is:
+
+In the obus function:
+
+* The user specifies the latin name in the arguement, not the aphia id
+* Only one species can be entered, however it operates on all the surveys
+* Both total numbers (n) and total weight (b) in a tow are returned
+* Zero values for tows where the species is not recorded in the length file for a particular haul are explicitly retured (in icesDatras::getCatchWgt these are reported as NA).
+* In cases where species record is reported in the length file but where "TotalNo" or "CatCatchWgt" has missing values for any of the "CatIdentifier" groups an NA is returned (same as icesDatras::getCatchWgt).
+* A duckdb table view is returned, importing into R requires an explicit call to `collect`
+
+Question remains if the last bullet point is a QC-issue.
+
+### Some comparative tests
+
+```{r, eval = FALSE}
+species <- obus::dr_con_species()
+species |> filter(latin == "Melanogrammus aeglefinus")
+
+cw1 <-
+  dr_catch_weight("Melanogrammus aeglefinus") |> 
+  filter(Survey == "NS-IBTS",
+         Year %in% 2010:2025,
+         Quarter == 1) |> 
+  collect()
+cw2 <- 
+  icesDatras::getCatchWgt("NS-IBTS", 2010:2025, quarters = 1, aphia = 126437) |> 
+  as_tibble() |> 
+  dr_add_id() |> 
+  select(Survey, Year, Quarter, .id, Valid_Aphia, CatchWgt) |> 
+  left_join(species |> select(Valid_Aphia, latin))
+
+cw1 |> glimpse()
+cw2 |> glimpse()
+```
+
+Both queries retrun the same number of rows. Now let's see if they return idenctical weights. First lets check for comparible NA's, zero and/or positive values:
+
+```{r, eval = FALSE}
+joined <- 
+  cw1 |> 
+    left_join(cw2 |> 
+                select(.id, CatchWgt),
+              by = join_by(.id)) |> 
+  mutate(comparison = obus:::check_nas_and_zeros(b, CatchWgt))
+joined |> count(comparison)
+```
+
+So basically we have:
+
+* 3647 tows where the values are the same.
+* 145 tows where a species is reported in the length table (HL) but with zero values in the CatchWgt.
+* 14 tows where the species is reported in the length data but at least one of the CatCatchWgt value is reported as missing.
+* 2074 tows where the Catchwgt is NA but b is zero. These are tows where species is not recorded in the length table, here the two functions treat those cases diffrently. 
+
+If we however also request a statistics on hte TotalNo, we do get some differences:
+
+```{r, eval = FALSE}
+cw1 <-
+  dr_catch_weight("Melanogrammus aeglefinus", not_numbers = FALSE) |> 
+  filter(Survey == "NS-IBTS",
+         Year %in% 2010:2025,
+         Quarter == 1) |> 
+  collect()
+joined <- 
+  cw1 |> 
+    left_join(cw2 |> 
+                select(.id, CatchWgt),
+              by = join_by(.id)) |> 
+  mutate(comparison = obus:::check_nas_and_zeros(b, CatchWgt)) 
+joined |> count(comparison)
+```
+
+This is kind of unexpected, let's dig in, taking one tow that is different:
+
+```{r, eval = FALSE}
+check_one <- 
+  joined |> 
+  filter(.id == "NS-IBTS:2012:1:NO:58G2:GOV:60030:30")
+check_one |> 
+  glimpse()
+dr_con("HL", trim = FALSE) |> 
+  filter(.id == "NS-IBTS:2012:1:NO:58G2:GOV:60030:30",
+         latin == "Melanogrammus aeglefinus") |> 
+  select(length, Sex, n, cpue, everything()) |> 
+  dplyr::select(.id, CatIdentifier, LngtClass, TotalNo, CatCatchWgt, Valid_Aphia, latin)
+```
+
+Let's get this from the API:
+
+```{r, eval = FALSE}
+d <- icesDatras::getDATRAS("HL", survey = "NS-IBTS", year = 2012, quarter = 1) 
+d |> 
+  filter(Valid_Aphia == 126437,
+         Country == "NO",
+         StNo == "60030",
+         HaulNo == 30) |> 
+  glimpse()
+```
+
+Here we have:
+
+* CatIdentifier being 1 for all the haddock records in the tow
+* The CatCatchWgt is the same for all three reocords
+* The TotalNo are different (and in this case they correspond to different sex)
+
+My assumption was that there is a 1:1:1 correspondence of CatIdentifier, TotalNo and CatCatchWgt
+
+
+```{r, eval = FALSE}
+cw1 |> 
+  select(.id, CatchWgt) |> 
+  mutate(CatchWgt = replace_na(CatchWgt, 0)) |> 
+  left_join(cw2) |> 
+  mutate(near = ifelse(near(CatchWgt, b), "yes", "no")) |>
+  filter(near == "no") |> 
+  mutate(r = b / CatchWgt)
+
+dr_con("HH", FALSE) |> 
+  filter(.id == "NS-IBTS:2012:1:NO:58G2:GOV:60001:1") |> 
+  glimpse()
+```
+
+```{r, eval = FALSE}
+hl <- dr_con("HL", trim = FALSE) |> filter(sur == "NS-IBTS-1") |>
+  count(Valid_Aphia) |> collect() |> arrange(-n)
+aphia <- dr_con_latin()
+
+# generates error
+if(FALSE) {
+catchwgt <- 
+  icesDatras::getCatchWgt("NS-IBTS", years = c(1980, 1990, 2000, 2010, 2020), 
+                        quarters = 1, aphia = c(126438, 126437, 126436, 126444))
+}
+catchwgt <- 
+  icesDatras::getCatchWgt("NS-IBTS", years = c(1980), 
+                        quarters = 1, aphia = c(126438, 126437, 126436, 126444)) |>
+  as_tibble() |> 
+  left_join(aphia |> collect(),
+            by = join_by(Valid_Aphia)) |> 
+  dr_add_id() |> 
+  select(.id, latin, CatchWgt)
+```
+
+What is the difference between CatchWgt being NA vs 0, as in?:
+
+
+```{r, eval = FALSE}
+my_species <- catchwgt |> pull(latin) |> unique()
+d <- 
+  dr_catch_weight() |> 
+  filter(latin %in% my_species) |> 
+  inner_join(dr_con("HH") |> 
+               filter(Survey == "NS-IBTS",
+                      Year == 1980,
+                      Quarter == 1) |> 
+             select(.id, HaulVal)) |> 
+  collect()
+comp <- 
+  catchwgt |> 
+  full_join(d)
+comp |> 
+  filter(is.na(CatchWgt) & !is.na(b)) |> 
+  knitr::kable()
+comp |> 
+  ggplot(aes(CatchWgt, b)) +
+  geom_abline() +
+  geom_point()
+
+comp |> 
+  mutate(r = b / n,
+         what = case_when(!is.na(CatchWgt) & !is.na(b) ~ "yes_yes",
+                           is.na(CatchWgt) & !is.na(b) ~ "na_yes",
+                          !is.na(CatchWgt) &  is.na(b) ~ "yes_na",
+                          .default = "other")) |> 
+  mutate(r = ifelse(r > 25, 25, r)) |> 
+  ggplot(aes(r, fill = what)) +
+  geom_histogram() +
+  facet_wrap(~ latin)
+
+dr_con("HL", trim = FALSE) |> 
+  filter(.id == "NS-IBTS:1980:1:SE:77AR:GOV:4",
+         latin == "Trisopterus esmarkii") |> 
+  glimpse()
+```
+
+
+
+## CPUE
+
+```{r, eval = FALSE}
+cpue <- 
+  icesDatras::getCPUELength("NS-IBTS", year = 2010, quarter = 1) |> 
+  as_tibble()
+cpue2 <- 
+  dr_con("HL", FALSE) |> 
+  filter(Survey == "NS-IBTS", Year == 2010, Quarter == 1) |> 
+  collect()
+cpue |> count(Sex)
+cpue2 |> count(Sex)
+
+cpue2 |> 
+  select(-Sex) |> 
+  rename(AphiaID = Valid_Aphia,
+         LngtClas = LngtClass) |> 
+  mutate(AphiaID = as.integer(AphiaID)) |> 
+  left_join(cpue) |> 
+  filter(CPUE_number_per_hour != 0) |> 
+  mutate(near = ifelse(near(CPUE_number_per_hour, cpue), "yes", "no")) |> 
+  filter(near == "no") |> 
+  select(.id, latin, length, CPUE_number_per_hour, cpue)
+
+cpue2 |> 
+  select(-Sex) |> 
+  rename(AphiaID = Valid_Aphia,
+         LngtClas = LngtClass) |> 
+  mutate(AphiaID = as.integer(AphiaID)) |> 
+  left_join(cpue) |> 
+  select(.id, latin, Species, LngtClas, cpue, CPUE_number_per_hour) |> 
+  filter(!is.na(CPUE_number_per_hour)) |> 
+  ggplot(aes(CPUE_number_per_hour, cpue)) +
+  geom_abline() +
+  geom_point(size = 0.5) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+
+## The alternative ICES function
+
+### HL ploblems
+
+```{r, eval = FALSE}
+ns_ibts_2020_1_hl <- obus::dr_get_data_latin("HL", "NS-IBTS", "2020", "1")
+n_tows1 <- 
+  ns_ibts_2020_1_hl |> 
+  select(RecordType:HaulNo, Year) |> 
+  distinct() |> 
+  count(Year)
+ns_ibts_yyyy_1_hh <- obus::dr_get_data_latin("HH", "NS-IBTS", "1965:2025", "1")
+n_tows2 <- 
+  ns_ibts_yyyy_1_hh |> 
+  select(RecordType:HaulNo, Year) |> 
+  distinct() |> 
+  count(Year)
+bind_rows(n_tows1 |> mutate(what = "HL"),
+          n_tows2 |> mutate(what = "HH")) |> 
+  ggplot(aes(Year, n, colour = what)) +
+  geom_point()
+
+hl_nsibts_fast <- obus::dr_get_data_latin(recordtype = "HL", survey = "NS-IBTS", year = "1965:2025", quarter = "1:4")
+hl_nsibts_fast |> 
+  select(RecordType:HaulNo, Year) |> 
+  distinct() |> 
+  count(Year)
+```
+
+### CA problem
+
+```{r, eval = FALSE}
+ns_ibts_2020_1_ca <- obus::dr_get_data_latin("CA", "NS-IBTS", 2020, 1)
+nrow(ns_ibts_2020_1_ca)
+nrow(ns_ibts_2020_1_ca |> distinct())
+```
+
+
+
+## Session info
+
+```{r}
+devtools::session_info()
+```
+

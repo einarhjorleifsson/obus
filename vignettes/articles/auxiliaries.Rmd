@@ -1,0 +1,18 @@
+---
+title: "auxiliaries"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  comment = "#>"
+)
+```
+
+## Taxonomy stuff
+
+```{r setup}
+obus::dr_con("species") |> dplyr::glimpse()
+```

@@ -1,0 +1,123 @@
+---
+title: "Case examples"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(obus)        # remotes::install_github("einarhjorleifsson/obus")
+library(santoku)     # nicer cuts
+library(tidyverse)   # dbplyr, dplyr, ggplot2 and family
+```
+
+## Preamble
+
+In the examples below all analysis prior to the "collect"-step is done within DuckDB, the collect-step is to import the table into R.
+
+```{r}
+hh <- obus::dr_con("HH")
+hl <- obus::dr_con("HL")
+```
+
+
+## Cod CPUE
+
+Here we create a quick and dirty biomass CPUE index. Some notes:
+
+* We have to join the station table with the length table because the latter now only has haul id (.id).
+* The biomass estimate is obtained from length using Newtons law for the length-weight relationship. For stations
+* Stations where no cod was caugth get a cpue value of zero
+
+```{r}
+hh |> 
+  select(.id, Survey, Year, Quarter) |> 
+  filter(Survey %in% c("NS-IBTS", "BTS"),
+         Year >= 2002,
+         Quarter %in% c(1, 3)) |> 
+  mutate(Year = case_when(Quarter == 1 ~ Year + 0.25,
+                          Quarter == 3 ~ Year + 0.75)) |> 
+  left_join(hl |> 
+              filter(latin == "Gadus morhua") |> 
+              mutate(b = cpue * 0.00001 * length_cm^3) |> 
+              group_by(.id) |> 
+              summarise(b = sum(b, na.rm = TRUE)),
+            by = join_by(.id)) |>
+  collect() |> 
+  # collect above because no translation (yet) for replace_na
+  mutate(b = replace_na(b, 0)) |> 
+  ggplot(aes(Year, b, colour = factor(Quarter))) +
+  stat_summary(fun.data = "mean_cl_boot") +
+  facet_wrap(~ Survey, scales = "free_y") +
+  expand_limits(y = 0) +
+  labs(x = NULL, y = "CPUE [kg/hour]", colour = "Quarter") +
+  scale_colour_brewer(palette = "Set1")
+```
+
+## Some quick-and-dirty diversity index
+
+Some notes:
+
+* Limit data in space and time
+* Grid coordinates by 1 degree longitude and 0.5 degree latitude
+* Count the distinct number of taxa by grid coordinates and plot
+
+```{r demo}
+# Grid resolution
+dx <- 1
+dy <- dx / 2
+# Limit analysis to certain time and space
+hh |> 
+  filter(Year %in% 2001:2010,
+         between(ShootLongitude, -20, 25),
+         between(ShootLatitude, -Inf, 65)) |> 
+  # assign coordinates to grid
+  mutate(lon = ShootLongitude%/%dx * dx + dx/2,
+         lat = ShootLatitude%/%dy * dy + dy/2) |> 
+  left_join(hl |> 
+              select(.id, latin),
+           by = join_by(.id)) |>
+  # analyse by grid
+  group_by(lon, lat) |> 
+  summarise(n_taxa = n_distinct(latin),
+            .groups = "drop") |> 
+  # load data into R memory because santoku::chop not in duckdb lingo
+  #  chop is also nicer than cut - keeps things more orderly
+  collect() |> 
+  mutate(n_taxa = santoku::chop(n_taxa, breaks = c(0, 25, 50, 75, 100, 125, 150, 200))) |> 
+  ggplot() +
+  geom_tile(aes(lon, lat, fill = n_taxa)) +
+  scale_fill_viridis_d(option = "inferno", direction = -1) +
+  coord_quickmap() +
+  labs(x = NULL, y = NULL, fill = "Number of\ndistinct taxa",
+       caption = "DATRAS 2001-2010, core area: Number of distinct taxa reported per rectangle")
+```
+
+## Species range along the Portugese coast
+
+```{r, fig.height = 10}
+hh |> 
+  filter(Year %in% 2020,
+         between(ShootLongitude, -12, 0),
+         between(ShootLatitude,  35, 47.5)) |>  
+  inner_join(hl |> 
+               filter(!is.na(length_cm)) |> 
+               group_by(.id, latin) |> 
+               summarise(n = sum(cpue, na.rm = TRUE))) |> 
+  group_by(latin) |> 
+  summarise(min = min(ShootLatitude, na.rm = TRUE),
+            med = median(ShootLatitude, na.rm = TRUE),
+            max = max(ShootLatitude, na.rm = TRUE)) |> 
+  collect() |> 
+  filter(min != max) |> 
+  filter(max < 42) |> 
+  ggplot(aes(med, reorder(latin, min))) +
+  geom_linerange(aes(xmin = min, xmax = max)) +
+  labs(x = "Latitude", y = "Species",
+       caption = "Species range along Portugal, max latitute less than 42N")
+```
+

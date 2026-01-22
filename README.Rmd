@@ -6,6 +6,8 @@ output: github_document
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
+  message = FALSE, 
+  warning = FALSE,
   fig.path = "man/figures/README-",
   out.width = "100%"
 )
@@ -15,79 +17,25 @@ knitr::opts_chunk$set(
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![CRAN status](https://www.r-pkg.org/badges/version/obus)](https://CRAN.R-project.org/package=obus)
+[![CRAN status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
-{obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday DATRAS data user to access the data. Once that is settled the aim is to provide downstream convenience functions, again to make coding life a little bit more enjoyable.
-
-Some of this may potentially be taken up in a more offical package maintained by ICES datacenter.
+{obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of this may be taken up in a more offical package.
 
 ## Installation
 
 You can install the development version of imbus from [GitHub](https://github.com/einarhjorleifsson/obus) with:
 
 ``` r
-# install.packages("pak")
-#pak::pak("einarhjorleifsson/obus")
+devtools::install_github("einarhjorleifsson/obus")
 ```
 
-## Different ways to skin a cat
+## Table connections
 
-We currently have three way to skin the cat, excluding here the old faithful icesDatras::icesDATRAS. Here the focus is on accessing the full HL-type data in one function call:
-
-1. Download via the new API
-  * data.table:
-  * arrow:
-2. Read parquet files directly from "the cloud"
-  * parquet:
-
-The first two approaches are the same when it comes to downloading the zip-file and unzipping the csv-file. The difference is how the csv-file is read.
-
-The second approach reads parquet file stored on a spartan url-server at a temporary site. Cloud based server is being explored by ICES datacenter, that may though be a bit of an overkill give that the DATRAS data is not really big.
+You can generate a connection to the main DATRAS tables by:
 
 ```{r}
 library(obus)
-library(tidyverse)
-library(tictoc)
-surveys <- c("BITS", "BTS", "BTS-GSA17", "BTS-VIII",
-             "Can-Mar",   "DWS",       "DYFS",      "EVHOE",
-             "FR-CGFS",   "FR-WCGFS",  "IE-IAMS",   "IE-IGFS",
-             "IS-IDPS",   "NIGFS",     "NL-BSAS",   "NS-IBTS",
-             "NS-IDPS",   "NSSS",      "PT-IBTS",   "ROCKALL",
-             "SCOROC",    "SCOWCGFS",  "SE-SOUND",  "SNS",
-             "SP-ARSA",   "SP-NORTH",  "SP-PORC",   "SWC-IBTS")
-
-# Use the new API, read downloaded file using data.table::fread
-tic()
-hl_data.table <- 
-  map2("HL", surveys, dr_read_datras, how = "data.table") |> 
-  bind_rows()
-toc()
-# Use the new API, read downloaded file using arrow::read_csv_arrow
-tic()
-hl_arrow <- 
-  map2("HL", surveys, dr_read_datras, how = "arrow") |> 
-  bind_rows()
-toc()
-# Read parquet files from url
-tic()
-hl_parquet <- dr_read_datras("HL", how = "parquet")
-toc()
-```
-
-
-## Another way of thinking
-
-In all cases above we are importing the full sweep of the DATRAS data into R. This may be a bit of an overkill, given that R ...
-
-There is another way:
-
-* Connect to web hosted parquet files
-* ...
-
-
-
-```{r}
 hh <- dr_con("HH")
 hl <- dr_con("HL")
 ca <- dr_con("CA")
@@ -98,43 +46,7 @@ ca <- dr_con("CA")
 ```{r}
 #| warning: false
 #| message: false
-library(tidyverse)
-hl |> glimpse()
+hh
+hl
+ca
 ```
-
-## A little exploration
-
-```{r demo}
-library(santoku)
-# Grid resolution
-dx <- 1
-dy <- dx / 2
-tic()
-# Limit analysis to certain time and space
-hh |> 
-  filter(Year %in% 2001:2010,
-         between(ShootLongitude, -20, 25),
-         between(ShootLatitude, -Inf, 65)) |> 
-  # assign coordinates to grid
-  mutate(lon = ShootLongitude%/%dx * dx + dx/2,
-         lat = ShootLatitude%/%dy * dy + dy/2) |> 
-  left_join(hl |> 
-              select(.id, latin),
-           by = join_by(.id)) |>
-  # analyse by grid
-  group_by(lon, lat) |> 
-  summarise(n_taxa = n_distinct(latin),
-            .groups = "drop") |> 
-  # load data into R memory because santoku::chop not in duckdb lingo
-  #  chop is also nicer than cut - keeps things more orderly
-  collect() |> 
-  mutate(n_taxa = chop(n_taxa, breaks = c(0, 25, 50, 75, 100, 125, 150, 200))) |> 
-  ggplot(aes(lon, lat, fill = n_taxa)) +
-  geom_tile() +
-  scale_fill_viridis_d(option = "inferno", direction = -1) +
-  coord_quickmap() +
-  labs(x = NULL, y = NULL, fill = "Number of\ndistinct taxa",
-       caption = "DATRAS 2001-2010, core area: Number of distinct taxa reported per rectangle")
-toc()
-```
-

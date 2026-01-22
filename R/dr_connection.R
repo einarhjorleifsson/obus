@@ -32,8 +32,8 @@
 #' }
 dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras_latin") {
 
-  if (!type %in% c("HH", "HL", "CA")) {
-    stop('Invalid type. Please provide one of the following: "HH", "HL", "CA".')
+  if (!type %in% c("HH", "HL", "CA", "species")) {
+    stop('Invalid type. Please provide one of the following: "HH", "HL", "CA", "species".')
   }
   if(grepl("/$", url) == FALSE) {
     url <- paste0(url, "/")
@@ -82,17 +82,17 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 #' Path to the Parquet file: [https://heima.hafro.is/~einarhj/datras/species_worms.parquet](https://heima.hafro.is/~einarhj/datras/species_worms.parquet)
 #'
 #' @return
-#' A `duckdbfs` dataset object pointing to the Parquet file.
+#' A `duckdb` object connected to the parquet file.
 #'
 #' @examples
 #' # Example of connecting to the species dataset
-#' latin <- dr_con_latin()
-#' dplyr::glimpse(latin)  # Peek at the dataset
+#' species <- dr_con_species()
+#' dplyr::glimpse(species)  # Peek at the dataset
 #'
 #' @export
-dr_con_latin <- function() {
-  url = "https://heima.hafro.is/~einarhj/datras/"
-  paste0(url, "species_worms.parquet") |>
+dr_con_species <- function() {
+  url = "https://heima.hafro.is/~einarhj/datras_latin/"
+  paste0(url, "species.parquet") |>
     duckdbfs::open_dataset()
 }
 
