@@ -2,36 +2,54 @@
 % Please edit documentation in R/dr_get.R
 \name{dr_get}
 \alias{dr_get}
-\title{Download, extract, and import DATRAS Data}
+\title{Download and Import DATRAS Data}
 \usage{
 dr_get(
   recordtype,
   surveys = NULL,
   years = 1965:2030,
   quarters = 1:4,
-  from = "new",
+  from = "parquet",
   quiet = TRUE
 )
 }
 \arguments{
-\item{recordtype}{A character string indicating the record type ("HH", "HL", or "CA").}
+\item{recordtype}{A string specifying the record type ("HH", "HL", or "CA"), indicating the data structure to retrieve.}
 
-\item{surveys}{A character string specifying the survey names.}
+\item{surveys}{A character vector of survey IDs. Defaults to all ICES-recognized surveys, excluding "Test-DATRAS".}
 
-\item{years}{An integer vector specifying year range}
+\item{years}{An integer vector of years (e.g., \code{1965:2030}). Values outside the range \verb{[1965, current year]} are invalid.}
 
-\item{quarters}{An integer vector (e.g., \code{"1:4"}).}
+\item{quarters}{An integer vector (e.g., \code{1:4}) representing quarter ranges.}
 
-\item{from}{A text string any of "old", "new", "parquet".}
+\item{from}{String (default 'parquet') specifying the data source: \code{"old"}, \code{"new"}, or \code{"parquet"}.}
 
-\item{quiet}{A logical value; if \code{FALSE}, progress messages are displayed.}
+\item{quiet}{Logical; suppresses progress messages if \code{TRUE} (default).}
 }
 \value{
-A data frame containing the requested DATRAS data for the specified year and quarter ranges.
+A data frame containing DATRAS data filtered by the specified parameters
+if from is 'old' or 'new'.
 }
 \description{
-This function automates the process of downloading, unzipping, and importing DATRAS
-(ICES Database of Trawl Surveys) data into R. The year and quarter parameters must be
-provided as single text strings specifying ranges (e.g., \code{"2020:2025"} for years and \code{"1:4"} for quarters).
-Temporary files are automatically cleaned up.
+This function streamlines the retrieval of DATRAS trawl survey data from
+various sources, offering distinct methods for fetching and loading the data:
+\itemize{
+\item \code{"old"}: Retrieves data using the legacy \code{icesDatras::getDATRAS} function.
+\item \code{"new"}: Uses the \code{icesDatras::get_datras_unaggregated_data} function.
+\item \code{"parquet"}: Reads directly from Parquet files via URL. survey, year, and
+quarter filter not applied.
+}
+}
+\details{
+Year and quarter ranges must be specified, and datasets are filtered accordingly.
+Surveys supported by ICES can be automatically retrieved if unspecified.
+}
+\examples{
+\dontrun{
+  # Download haul-level data (new API)
+  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, quarters = c(1, 3), from = "new")
+
+  # Read full dataset
+  dr_get("HL")
+}
 }

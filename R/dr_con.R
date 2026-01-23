@@ -1,45 +1,47 @@
-#' Create a DuckDB connection to a DATRAS tables
+#' Establish a DuckDB Connection to DATRAS Datasets
 #'
-#' This function establishes a DuckDB connection to a DATRAS dataset based on the specified `type` ("HH", "HL", "CA", or "species").
-#' The dataset is accessed via a URL and opened using the `duckdbfs::open_dataset` function.
-#' The function operates on experimental tables that include Latin names in the "HL" and "CA" files.
+#' This function creates a DuckDB connection to a specified DATRAS dataset type,
+#' facilitating access to trawl survey data stored in Parquet format. The
+#' dataset type determines which data is loaded from the remote source.
 #'
-#' @section Overview:
-#' This function connects to one of the following dataset types:
-#' - `"HH"`: Haul-level data.
-#' - `"HL"`: Catch-at-length data.
-#' - `"CA"`: Age-based biological sampling data.
-#' - `"species"`: Species dataset derived from the ICES vocabulary code list 'SpecWoRMS'.
+#' @section Dataset Types:
+#' This function operates on the following dataset types:
+#' - **"HH" (Haul-Level Data)**: Contains information related to individual haul events.
+#' - **"HL" (Catch-at-Length Data)**: Records catches categorized by length class.
+#' - **"CA" (Catch-at-Age Data)**: Includes age-based biological data (e.g., liver weight, length).
+#' - **"species" (Species List)**: Derived from the ICES vocabulary 'SpecWoRMS' and includes species names and related metadata.
 #'
-#' Optionally, for the `"HL"` and `"CA"` types, setting `trim = TRUE` (the default) excludes station-level variables.
-#' The `"species"` dataset is based on the SpecWoRMS code list and contains columns like `Valid_Aphia` and `latin`.
+#' @section Dataset Paths:
+#' The dataset is accessed via HTTP/HTTPS paths at a user-defined or default URL
+#' location. The file names are inferred from the provided `type` parameter
+#' (e.g., a Parquet file named `"HH.parquet"` for `"HH"` type data).
 #'
-#' @section .id Variable:
-#' For `"HH"`, `"HL"`, and `"CA"` datasets, a unique haul variable (`.id`) is generated to identify hauls within the datasets.
-#' The variable is constructed by concatenating fields: `Survey`, `Year`, `Quarter`, `Country`, `Platform`,
-#' `Gear`, `StationName`, and `HaulNumber` using ':' as the separator.
+#' @section Unique Identifier (.id):
+#' For dataset types `"HH"`, `"HL"`, and `"CA"`, a unique identifier column (`.id`)
+#' is generated to represent combinations of haul-related fields (e.g., Survey,
+#' Year, Country, Station Name).
 #'
-#' @section Datapath Explanation:
-#' - The function constructs a URL for the dataset based on the following pattern:
-#'   `"{url}/{type}.parquet"`.
-#' - Users may provide a custom `url` parameter, which must include valid file paths that match the dataset type.
-#'
-#' @param type A character string specifying the type of dataset. Must be `"HH"`, `"HL"`, `"CA"`, or `"species"`.
-#'             This parameter maps to specific files in the provided data source (`url`).
-#' @param trim A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or `"CA"`,
-#'             the dataset is trimmed to ignore station-level fields. Ignored for other dataset types.
-#' @param url The http path to the DATRAS parquet files. Defaults to `https://heima.hafro.is/~einarhj/datras_latin`.
-#' @param quiet Boolean (default TRUE)
-#' @return A DuckDB dataset object.
-#' @export
+#' @param type A character string specifying the dataset type. Possible values:
+#'   - `"HH"`: Haul-level data.
+#'   - `"HL"`: Catch-at-length data (filterable via the `trim` option).
+#'   - `"CA"`: Catch-at-age data (filterable via the `trim` option).
+#'   - `"species"`: Species dataset derived from ICES SpecWoRMS.
+#' @param trim Logical. For `"HL"` or `"CA"`, if `TRUE` (default), non-essential fields are excluded. Ignored for other datasets.
+#' @param url URL to the Parquet file directory, defaulting to `"https://heima.hafro.is/~einarhj/datras_latin"`.
+#' @param quiet Logical. If `TRUE` (default), suppresses connection warnings and messages.
+#' @return A DuckDB dataset object, representing the selected DATRAS dataset type.
 #'
 #' @examples
 #' \dontrun{
-#'   dr_con("HH")              # Connect to haul-level data.
-#'   dr_con("HL", trim = FALSE)  # Get all fields for catch-at-length data.
-#'   species <- dr_con("species")  # Connect to the species dataset.
-#'   dplyr::glimpse(species)       # Peek at the species dataset.
+#'   # Establish connections
+#'   dr_con("HH")                   # Connect to haul-level data.
+#'   dr_con("HL", trim = FALSE)     # Include all fields for catch-at-length data.
+#'   species_data <- dr_con("species")
+#'
+#'   # Inspect species data
+#'   dplyr::glimpse(species_data)
 #' }
+#' @export
 dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras_latin", quiet = TRUE) {
 
   # Validate `type` parameter
