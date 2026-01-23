@@ -4,24 +4,37 @@
 #  3. read a parquet file, all data
 
 
-#' Download, extract, and import DATRAS Data
+#' Download and Import DATRAS Data
 #'
-#' This function automates the process of downloading, unzipping, and importing DATRAS
-#' (ICES Database of Trawl Surveys) data into R. The year and quarter parameters must be
-#' provided as single text strings specifying ranges (e.g., `"2020:2025"` for years and `"1:4"` for quarters).
-#' Temporary files are automatically cleaned up.
+#' This function streamlines the retrieval of DATRAS trawl survey data from
+#' various sources, offering distinct methods for fetching and loading the data:
+#' - `"old"`: Retrieves data using the legacy `icesDatras::getDATRAS` function.
+#' - `"new"`: Uses the `icesDatras::get_datras_unaggregated_data` function.
+#' - `"parquet"`: Reads directly from Parquet files via URL. survey, year, and
+#' quarter filter not applied.
 #'
-#' @param recordtype A character string indicating the record type ("HH", "HL", or "CA").
-#' @param surveys A character string specifying the survey names.
-#' @param years An integer vector specifying year range
-#' @param quarters An integer vector (e.g., `"1:4"`).
-#' @param quiet A logical value; if `FALSE`, progress messages are displayed.
-#' @param from A text string any of "old", "new", "parquet".
+#' Year and quarter ranges must be specified, and datasets are filtered accordingly.
+#' Surveys supported by ICES can be automatically retrieved if unspecified.
 #'
-#' @return A data frame containing the requested DATRAS data for the specified year and quarter ranges.
+#' @param recordtype A string specifying the record type ("HH", "HL", or "CA"), indicating the data structure to retrieve.
+#' @param surveys A character vector of survey IDs. Defaults to all ICES-recognized surveys, excluding "Test-DATRAS".
+#' @param years An integer vector of years (e.g., `1965:2030`). Values outside the range `[1965, current year]` are invalid.
+#' @param quarters An integer vector (e.g., `1:4`) representing quarter ranges.
+#' @param quiet Logical; suppresses progress messages if `TRUE` (default).
+#' @param from String (default 'parquet') specifying the data source: `"old"`, `"new"`, or `"parquet"`.
+#' @return A data frame containing DATRAS data filtered by the specified parameters
+#' if from is 'old' or 'new'.
+#'
+#' @examples
+#' \dontrun{
+#'   # Download haul-level data (new API)
+#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, quarters = c(1, 3), from = "new")
+#'
+#'   # Read full dataset
+#'   dr_get("HL")
+#' }
 #' @export
-#'
-dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4, from = "new", quiet = TRUE) {
+dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4, from = "parquet", quiet = TRUE) {
 
   # input checks
   # add years checks - just check that it is at minimum any values (year) between 1965 and current year

@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 [![CRAN status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
-{obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of this may be taken up in a more offical package.
+{obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of this may be taken up in a more official package.
 
 ## Installation
 
@@ -36,30 +36,38 @@ Because in some explorations {obus} has wrapper functions over {icesDatras}-func
 remotes::install_github("einarhjorleifsson/icesDatras")
 ```
 
-There are two ways to connect to the DATRAS data, either by importing the whole datasets into R or by making a in-process DuckDB connection.
+There are two ways to connect to the DATRAS data, either by importing the whole datasets into R or by making an in-process DuckDB database connection.
 
 ```{r}
-library(tidyverse)
 library(obus)
-library(icesDatras)
 ```
 
 ## Importing
 
-The fastest way to import a the DATRAS tables into R is:
+The fastest way to import the full DATRAS dataset into R is:
 
 ```{r}
+tictoc::tic()
 system.time({
   hh <- dr_get("HH", from = "parquet")
   hl <- dr_get("HL", from = "parquet")
   ca <- dr_get("CA", from = "parquet")
 })
-hl |> glimpse()
+tictoc::toc()
+```
+
+So we are talking about less than 5 seconds if you on an optic fiber, if you are connected via wifi this may take closer to 60 seconds. Whatever the case one can assume that nobody will complain given that the dimenstion just imported are as follows:
+
+```{r}
+library(tidyverse)
+tibble(type = c("HL", "HH", "CA"),
+       rows = c(nrow(hh), nrow(hl), nrow(ca)),
+       cols = c(ncol(hh), ncol(hl), ncol(ca)))
 ```
 
 ## Connecting
 
-You can generate a connection to the main DATRAS tables by:
+Although the DATRAS data can not be considered big data, we can pretend that it is and use techniques developed for big data. So instead of importing the full dataset one can generate a connection to the main DATRAS tables by:
 
 ```{r}
 hh <- dr_con("HH")
@@ -67,12 +75,17 @@ hl <- dr_con("HL")
 ca <- dr_con("CA")
 ```
 
-## A little peek
+What we now have is:
 
 ```{r}
 #| warning: false
 #| message: false
-hh
-hl
-ca
+hh |> glimpse()
+hl |> glimpse()
+ca |> glimpse()
 ```
+
+## Small print
+
+The data ...
+
