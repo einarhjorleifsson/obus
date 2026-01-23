@@ -29,7 +29,7 @@ You can generate a connection to the main DATRAS tables by:
 
 ``` r
 library(obus)
-hh <- dr_con("HH")
+hh <- dr_con("HH", quiet = FALSE)
 hl <- dr_con("HL")
 ca <- dr_con("CA")
 ```
@@ -38,7 +38,7 @@ ca <- dr_con("CA")
 
 ``` r
 hh
-#> # Source:   table<bfcsclvbtjitoqz> [?? x 74]
+#> # Source:   table<xkyucrqrkywiooh> [?? x 74]
 #> # Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
 #>    RecordHeader Survey Quarter Country Platform Gear  SweepLength GearExceptions
 #>    <chr>        <chr>    <int> <chr>   <chr>    <chr>       <int> <chr>         
@@ -76,24 +76,19 @@ hl
 #> 10 BITS:1991:1:DE:06S1:… Clup…      21   <NA>       <NA>              23.5    47
 #> # ℹ more rows
 ca
-#> # Source:   SQL [?? x 18]
+#> # Source:   SQL [?? x 5]
 #> # Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
-#>    .id             latin length_cm IndividualSex IndividualMaturity AgePlusGroup
-#>    <chr>           <chr>     <dbl> <chr>         <chr>              <chr>       
-#>  1 BITS:1991:1:SE… Gadu…        34 M             2                  <NA>        
-#>  2 BITS:1991:1:SE… Gadu…        36 F             1                  <NA>        
-#>  3 BITS:1991:1:SE… Gadu…        39 F             2                  <NA>        
-#>  4 BITS:1991:1:SE… Gadu…        40 F             1                  <NA>        
-#>  5 BITS:1991:1:SE… Gadu…        43 F             2                  <NA>        
-#>  6 BITS:1991:1:SE… Gadu…        45 F             2                  <NA>        
-#>  7 BITS:1991:1:SE… Gadu…        30 M             1                  <NA>        
-#>  8 BITS:1991:1:SE… Gadu…        31 M             1                  <NA>        
-#>  9 BITS:1991:1:SE… Gadu…        34 M             1                  <NA>        
-#> 10 BITS:1991:1:SE… Gadu…        35 M             1                  <NA>        
+#>    .id                          latin        length_cm IndividualSex LiverWeight
+#>    <chr>                        <chr>            <dbl> <chr>               <dbl>
+#>  1 BITS:1991:1:SE:77AR:GOV:71:6 Gadus morhua        34 M                      NA
+#>  2 BITS:1991:1:SE:77AR:GOV:71:6 Gadus morhua        36 F                      NA
+#>  3 BITS:1991:1:SE:77AR:GOV:71:6 Gadus morhua        39 F                      NA
+#>  4 BITS:1991:1:SE:77AR:GOV:71:6 Gadus morhua        40 F                      NA
+#>  5 BITS:1991:1:SE:77AR:GOV:71:6 Gadus morhua        43 F                      NA
+#>  6 BITS:1991:1:SE:77AR:GOV:71:6 Gadus morhua        45 F                      NA
+#>  7 BITS:1991:1:SE:77AR:GOV:70:5 Gadus morhua        30 M                      NA
+#>  8 BITS:1991:1:SE:77AR:GOV:70:5 Gadus morhua        31 M                      NA
+#>  9 BITS:1991:1:SE:77AR:GOV:70:5 Gadus morhua        34 M                      NA
+#> 10 BITS:1991:1:SE:77AR:GOV:70:5 Gadus morhua        35 M                      NA
 #> # ℹ more rows
-#> # ℹ 12 more variables: IndividualAge <int>, CANoAtLngt <dbl>,
-#> #   IndividualWeight <dbl>, FishID <chr>, GeneticSamplingFlag <chr>,
-#> #   StomachSamplingFlag <chr>, AgeSource <chr>, AgePreparationMethod <chr>,
-#> #   OtolithGrading <chr>, ParasiteSamplingFlag <chr>, MaturityScale <chr>,
-#> #   LiverWeight <dbl>
 ```

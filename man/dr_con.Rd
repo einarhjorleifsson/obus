@@ -7,44 +7,57 @@
 dr_con(
   type = NULL,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras_latin"
+  url = "https://heima.hafro.is/~einarhj/datras_latin",
+  quiet = TRUE
 )
 }
 \arguments{
-\item{type}{A character string specifying the type of dataset. Must be \code{"HH"}, \code{"HL"}, or \code{"CA"}.
-This parameter maps to specific files in the provided data source.}
+\item{type}{A character string specifying the type of dataset. Must be \code{"HH"}, \code{"HL"}, \code{"CA"}, or \code{"species"}.
+This parameter maps to specific files in the provided data source (\code{url}).}
 
 \item{trim}{A boolean flag (default \code{TRUE}). If \code{TRUE} and the \code{type} is \code{"HL"} or \code{"CA"},
-the dataset is trimmed to ignore station-level fields.}
+the dataset is trimmed to ignore station-level fields. Ignored for other dataset types.}
 
-\item{url}{The http path to the DATRAS parquet files}
+\item{url}{The http path to the DATRAS parquet files. Defaults to \verb{https://heima.hafro.is/~einarhj/datras_latin}.}
+
+\item{quiet}{Boolean (default TRUE)}
 }
 \value{
 A DuckDB dataset object.
 }
 \description{
-This function establishes a DuckDB connection to a DATRAS dataset based on the specified \code{type} ("HH", "HL" or "CA").
+This function establishes a DuckDB connection to a DATRAS dataset based on the specified \code{type} ("HH", "HL", "CA", or "species").
 The dataset is accessed via a URL and opened using the \code{duckdbfs::open_dataset} function.
 The function operates on experimental tables that include Latin names in the "HL" and "CA" files.
 }
-\section{Datapath Explanation}{
-The function constructs a URL for the dataset based on the following pattern:
-"https://heima.hafro.is/~einarhj/datras/\code{{type}}.parquet".
-The \code{type} parameter determines the specific file to connect to, where:
+\section{Overview}{
+
+This function connects to one of the following dataset types:
 \itemize{
-\item \code{"HH"} refers to haul-level data.
-\item \code{"HL"} refers to catch-at-length data.
-\item \code{"CA"} refers to age-based biological sampling data.
+\item \code{"HH"}: Haul-level data.
+\item \code{"HL"}: Catch-at-length data.
+\item \code{"CA"}: Age-based biological sampling data.
+\item \code{"species"}: Species dataset derived from the ICES vocabulary code list 'SpecWoRMS'.
 }
 
-Optionally, for the "HL" and "CA" types, setting \code{trim = TRUE} (the default) excludes station-level variables.
-This allows a narrower view (read: fewer variables) of these observations, station-level variables can be retrieved
-by a join to the haul table (HH) using the \code{.id} column.
+Optionally, for the \code{"HL"} and \code{"CA"} types, setting \code{trim = TRUE} (the default) excludes station-level variables.
+The \code{"species"} dataset is based on the SpecWoRMS code list and contains columns like \code{Valid_Aphia} and \code{latin}.
+}
+
+\section{Datapath Explanation}{
+
+\itemize{
+\item The function constructs a URL for the dataset based on the following pattern:
+\code{"{url}/{type}.parquet"}.
+\item Users may provide a custom \code{url} parameter, which must include valid file paths that match the dataset type.
+}
 }
 
 \examples{
 \dontrun{
   dr_con("HH")              # Connect to haul-level data.
-  dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
+  dr_con("HL", trim = FALSE)  # Get all fields for catch-at-length data.
+  species <- dr_con("species")  # Connect to the species dataset.
+  dplyr::glimpse(species)       # Peek at the species dataset.
 }
 }

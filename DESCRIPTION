@@ -1,6 +1,6 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey data
-Version: 2026.01.19
+Version: 2026.01.22
 Authors@R: c(person("Einar", "Hjorleifsson", role=c("cre"), email="einar.hjorleifsson@gmail.com"),
              person("Martin", "Pastoors"   , role=c("aut"), email="martin.pastoors@gmail.com"),
              person("Vaishav", "Soni"   , role=c("aut"), email="Vaishav@ices.dk"))
@@ -24,10 +24,13 @@ Imports:
     dplyr,
     duckdbfs,
     ggplot2,
+    httr,
     icesDatras,
     lubridate,
+    purrr,
     rlang,
-    tibble
+    tibble,
+    tidyr
 Config/Needs/website: rmarkdown
 URL: https://einarhjorleifsson.github.io/obus/
 VignetteBuilder: knitr
