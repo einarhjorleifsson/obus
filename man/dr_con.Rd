@@ -7,7 +7,7 @@
 dr_con(
   type = NULL,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras_latin",
+  url = "https://heima.hafro.is/~einarhj/data/datras",
   quiet = TRUE
 )
 }
@@ -22,7 +22,7 @@ dr_con(
 
 \item{trim}{Logical. For \code{"HL"} or \code{"CA"}, if \code{TRUE} (default), non-essential fields are excluded. Ignored for other datasets.}
 
-\item{url}{URL to the Parquet file directory, defaulting to \code{"https://heima.hafro.is/~einarhj/datras_latin"}.}
+\item{url}{URL to the Parquet file directory, defaulting to \code{"https://heima.hafro.is/~einarhj/data/datras"}.}
 
 \item{quiet}{Logical. If \code{TRUE} (default), suppresses connection warnings and messages.}
 }

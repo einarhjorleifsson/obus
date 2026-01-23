@@ -20,7 +20,12 @@ knitr::opts_chunk$set(
 [![CRAN status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
-{obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of this may be taken up in a more official package.
+The aim of {obus} to provide users with tidy tables with non-ambiguous variables.
+
+That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package ({icesDatras}???). Or possibly not.
+
+For purist, one regrets to inform that this package has quite some number of dependencies (see [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION). If that is not your cup of tea, rewrite.
+
 
 ## Installation
 
@@ -30,7 +35,7 @@ You can install the development version of {obus} from [GitHub](https://github.c
 remotes::install_github("einarhjorleifsson/obus")
 ```
 
-Because in some explorations {obus} has wrapper functions over {icesDatras}-functions and because some modification has been done to the latter (issues pending) for now you need to install it via:
+In some cases {obus} uses wrapper functions depending on {icesDatras} features that have, as of yet, not been taken up in the official ICES version (issues pending) install that package via:
 
 ``` r
 remotes::install_github("einarhjorleifsson/icesDatras")
@@ -44,48 +49,82 @@ library(obus)
 
 ## Importing
 
-The fastest way to import the full DATRAS dataset into R is:
+The fastest way to **import** the full DATRAS data into R is:
 
 ```{r}
-tictoc::tic()
 system.time({
   hh <- dr_get("HH", from = "parquet")
   hl <- dr_get("HL", from = "parquet")
   ca <- dr_get("CA", from = "parquet")
 })
-tictoc::toc()
 ```
 
-So we are talking about less than 5 seconds if you on an optic fiber, if you are connected via wifi this may take closer to 60 seconds. Whatever the case one can assume that nobody will complain given that the dimenstion just imported are as follows:
+So we are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via wifi this may take closer to 60 seconds. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:
 
-```{r}
+```{r, echo = FALSE}
 library(tidyverse)
 tibble(type = c("HL", "HH", "CA"),
        rows = c(nrow(hh), nrow(hl), nrow(ca)),
-       cols = c(ncol(hh), ncol(hl), ncol(ca)))
+       cols = c(ncol(hh), ncol(hl), ncol(ca))) |> 
+  knitr::kable(caption = "Number of records and variables")
 ```
 
 ## Connecting
 
 Although the DATRAS data can not be considered big data, we can pretend that it is and use techniques developed for big data. So instead of importing the full dataset one can generate a connection to the main DATRAS tables by:
 
+### HH data
+
 ```{r}
 hh <- dr_con("HH")
-hl <- dr_con("HL")
-ca <- dr_con("CA")
+hh |> glimpse()
 ```
 
-What we now have is:
+### HL data
 
 ```{r}
-#| warning: false
-#| message: false
-hh |> glimpse()
+hl <- dr_con("HL")
 hl |> glimpse()
+```
+
+### CA data
+
+```{r}
+ca <- dr_con("CA")
 ca |> glimpse()
 ```
 
 ## Small print
 
-The data ...
+The parquet data source is as of now **not** mirror of the data residing at ICES, it is just a copy that may be some weeks old. If you want an up-to-date mirror you are better off for now using a slower route, doing:
+
+```{r, eval = FALSE}
+system.time({
+  hh <- dr_get("HH", from = "new")
+  hl <- dr_get("HL", from = "new")
+  ca <- dr_get("CA", from = "new")
+})
+```
+
+The above is just a wrapper around the latest kid on the block: 'icesDatras::get_datras_unaggregated_data'.
+
+So the latest record, as of the generation of this document is:
+
+```{r}
+library(tidyverse)
+hh |> 
+  mutate(date = make_date(Year, Month, Day)) |> 
+  filter(date == max(date)) |> 
+  glimpse()
+```
+
+## Warning
+
+The package has still has some hangover functions that need to be removed.
+
+## What was used
+
+```{r, echo = FALSE}
+devtools::session_info()
+```
 

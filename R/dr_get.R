@@ -47,7 +47,7 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
   }
 
   if(from == "parquet") {
-    url <- paste0("https://heima.hafro.is/~einarhj/datras_latin/", recordtype, ".parquet")
+    url <- paste0("https://heima.hafro.is/~einarhj/data/datras/", recordtype, ".parquet")
     data <- arrow::read_parquet(url)
     return(data)
   }
