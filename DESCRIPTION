@@ -7,8 +7,7 @@ Authors@R: c(person("Einar", "Hjorleifsson", role=c("cre"), email="einar.hjorlei
 Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
 Description: What the package does (one paragraph). Here is a second sentance.
 License: CC BY 4.0
-Suggests: 
-    knitr,
+Suggests:
     rmarkdown,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
@@ -20,7 +19,6 @@ Depends:
 LazyData: true
 Imports:
     arrow,
-    data.table,
     dplyr,
     duckdbfs,
     ggplot2,
@@ -33,4 +31,3 @@ Imports:
     tidyr
 Config/Needs/website: rmarkdown
 URL: https://einarhjorleifsson.github.io/obus/
-VignetteBuilder: knitr

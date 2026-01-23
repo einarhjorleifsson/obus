@@ -14,6 +14,11 @@
 #' Optionally, for the `"HL"` and `"CA"` types, setting `trim = TRUE` (the default) excludes station-level variables.
 #' The `"species"` dataset is based on the SpecWoRMS code list and contains columns like `Valid_Aphia` and `latin`.
 #'
+#' @section .id Variable:
+#' For `"HH"`, `"HL"`, and `"CA"` datasets, a unique haul variable (`.id`) is generated to identify hauls within the datasets.
+#' The variable is constructed by concatenating fields: `Survey`, `Year`, `Quarter`, `Country`, `Platform`,
+#' `Gear`, `StationName`, and `HaulNumber` using ':' as the separator.
+#'
 #' @section Datapath Explanation:
 #' - The function constructs a URL for the dataset based on the following pattern:
 #'   `"{url}/{type}.parquet"`.
