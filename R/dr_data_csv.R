@@ -1,3 +1,7 @@
+# Prompts
+
+
+
 #' Download, extract, and import DATRAS Data
 #'
 #' This function automates the process of downloading, unzipping, and importing DATRAS
@@ -6,63 +10,79 @@
 #' Temporary files are automatically cleaned up.
 #'
 #' @param recordtype A character string indicating the record type ("HH", "HL", or "CA").
-#' @param survey A single character string specifying the survey name.
-#' @param year A single text string specifying the range of years as `"start:end"` (e.g., `"2020:2025"`).
-#' @param quarter A single text string specifying the range of quarters as `"start:end"` (e.g., `"1:4"`).
+#' @param surveys A character string specifying the survey names.
+#' @param years An integer vector specifying year range
+#' @param quarters An integer vector (e.g., `"1:4"`).
 #' @param quiet A logical value; if `FALSE`, progress messages are displayed.
-#' @param how Text string, any of "parquet", "arrow" or "data.table"
+#' @param from A text string any of "old", "new", "parquet".
 #'
 #' @return A data frame containing the requested DATRAS data for the specified year and quarter ranges.
 #' @export
 #'
-dr_get <- function(recordtype, survey, year = 1965:2030, quarter = 1:4, quiet = TRUE, how = "data.table") {
+dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4, from = "parquet", quiet = TRUE) {
 
-  if(how == "parquet") {
+  # input checks
+  # add years checks - just check that it is at minimum any values (year) between 1965 and current year
+  #  only warning/stop if it outside the range 1965 and current year
+  # add quarter checks - check that it is any of 1, 2, 3, 4
+
+  if(is.null(surveys)) {
+    surveys <- icesDatras::getSurveyList()
+    surveys <- surveys[surveys != "Test-DATRAS"]
+  }
+
+  if(from == "parquet") {
     data <-
       dr_con(type = recordtype, trim = FALSE) |>
-      dplyr::filter(Year %in% year,
-                    Quarter %in% quarter) |>
+      dplyr::filter(Survey %in% surveys,
+                    Year %in% years,
+                    Quarter %in% quarters) |>
       dplyr::collect()
     return(data)
   }
 
-  year <- paste0(min(year), ":", max(year))
-  quarter <- paste0(min(quarter), ":", max(quarter))
-
-  # Validate inputs
-  if (!is.character(year) || length(year) != 1) {
-    stop("The argument 'year' must be a single text string specifying a range, e.g., '2020:2025'.")
-  }
-  if (!is.character(quarter) || length(quarter) != 1) {
-    stop("The argument 'quarter' must be a single text string specifying a range, e.g., '1:4'.")
-  }
-
-  if (!quiet) {
-    message("Downloading DATRAS data for years: ", year, " and quarters: ", quarter)
+  if(from == "old") {
+    data <- purrr::map(recordtype,
+                       dr_get_datras,
+                       surveys[1],
+                       years,
+                       quarters, )
+    # file issue at icesDatras
+    # i <- purrr::map_chr(data, class) == "data.frame"
+    data <- dplyr::bind_rows(data)
+    return(data)
   }
 
-  # Temporary file paths
-  temp_zip <- tempfile(fileext = ".zip")
-  temp_dir <- tempfile()
+  if(from == "new") {
 
-  # Ensure cleanup occurs even if an error happens
-  on.exit(unlink(temp_zip, recursive = TRUE), add = TRUE)
-  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+    if(length(surveys) > 1) {
+      stop("For now only one survey at a time")
+    }
 
-  # Download the zip file
-  zip_file <- .dr_download_datras_zip(recordtype, survey, year, quarter, destfile = temp_zip, quiet = quiet)
+    years <- paste0(min(years), ":", max(years))
+    quarter <- paste0(min(quarters), ":", max(quarters))
 
-  # Unzip the file
-  extracted_dir <- .dr_unzip_datras_file(zip_file, destdir = temp_dir, quiet = quiet)
+    # Temporary file paths
+    temp_zip <- tempfile(fileext = ".zip")
+    temp_dir <- tempfile()
 
-  # Read the data
-  #data <- .dr_read_datras_csv(recordtype, extracted_dir, quiet = quiet)
-  if(how == "data.table") data <- .dr_read_datras_csv(recordtype, extracted_dir, quiet = quiet)
-  if(how == "arrow")    data <- .dr_read_datras_csv_arrow(recordtype, extracted_dir, quiet = quiet)
+    # Ensure cleanup occurs even if an error happens
+    on.exit(unlink(temp_zip, recursive = TRUE), add = TRUE)
+    on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
 
+    # Download the zip file
+    zip_file <- .dr_download_datras_zip(recordtype, surveys, years, quarters, destfile = temp_zip, quiet = quiet)
 
-  # Return the data frame
-  data
+    # Unzip the file
+    extracted_dir <- .dr_unzip_datras_file(zip_file, destdir = temp_dir, quiet = quiet)
+
+    # Read the data
+    #data <- .dr_read_datras_csv(recordtype, extracted_dir, quiet = quiet)
+    data <- .dr_read_datras_csv(recordtype, extracted_dir, quiet = quiet)
+
+    # Return the data frame
+    return(data)
+  }
 }
 
 # Internal function to download the zip file
@@ -171,6 +191,7 @@ dr_get <- function(recordtype, survey, year = 1965:2030, quarter = 1:4, quiet = 
 
   return(data)
 }
+
 #datadir <- extracted_dir
 # Internal function to read the CSV file using arrow::read_csv_arrow
 .dr_read_datras_csv_arrow <- function(recordtype, datadir, quiet = TRUE) {

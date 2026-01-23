@@ -6,25 +6,25 @@
 \usage{
 dr_get(
   recordtype,
-  survey,
-  year = 1965:2030,
-  quarter = 1:4,
-  quiet = TRUE,
-  how = "data.table"
+  surveys = NULL,
+  years = 1965:2030,
+  quarters = 1:4,
+  from = "parquet",
+  quiet = TRUE
 )
 }
 \arguments{
 \item{recordtype}{A character string indicating the record type ("HH", "HL", or "CA").}
 
-\item{survey}{A single character string specifying the survey name.}
+\item{surveys}{A character string specifying the survey names.}
 
-\item{year}{A single text string specifying the range of years as \code{"start:end"} (e.g., \code{"2020:2025"}).}
+\item{years}{An integer vector specifying year range}
 
-\item{quarter}{A single text string specifying the range of quarters as \code{"start:end"} (e.g., \code{"1:4"}).}
+\item{quarters}{An integer vector (e.g., \code{"1:4"}).}
+
+\item{from}{A text string any of "old", "new", "parquet".}
 
 \item{quiet}{A logical value; if \code{FALSE}, progress messages are displayed.}
-
-\item{how}{Text string, any of "parquet", "arrow" or "data.table"}
 }
 \value{
 A data frame containing the requested DATRAS data for the specified year and quarter ranges.

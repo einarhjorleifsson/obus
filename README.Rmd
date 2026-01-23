@@ -36,7 +36,7 @@ You can generate a connection to the main DATRAS tables by:
 
 ```{r}
 library(obus)
-hh <- dr_con("HH")
+hh <- dr_con("HH", quiet = FALSE)
 hl <- dr_con("HL")
 ca <- dr_con("CA")
 ```
