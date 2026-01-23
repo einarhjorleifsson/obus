@@ -16,7 +16,8 @@ utils::globalVariables(
     "Valid_Aphia",
     "Country", "Gear", "HaulNo", "Ship", "StNo", "b",
     "HaulNumber", "Platform", "StationName",
-    "DevelopmentStage", "IndividualSex", "LiverWeight", "SpeciesSex", "length_cm"
+    "DevelopmentStage", "IndividualSex", "LiverWeight", "SpeciesSex", "length_cm",
+    "RecordHeader", "Species", "AphiaID"
   )
 )
 

@@ -1,5 +1,7 @@
-# Prompts
-
+# Currently there are three ways to read DATRAS data into memory
+#  1. icesDatras::getDATRAS - the old faithful
+#  2. icesDatras::get_datras_unaggregated_data - new API, faster
+#  3. read a parquet file, all data
 
 
 #' Download, extract, and import DATRAS Data
@@ -19,7 +21,7 @@
 #' @return A data frame containing the requested DATRAS data for the specified year and quarter ranges.
 #' @export
 #'
-dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4, from = "parquet", quiet = TRUE) {
+dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4, from = "new", quiet = TRUE) {
 
   # input checks
   # add years checks - just check that it is at minimum any values (year) between 1965 and current year
@@ -32,59 +34,62 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
   }
 
   if(from == "parquet") {
-    data <-
-      dr_con(type = recordtype, trim = FALSE) |>
-      dplyr::filter(Survey %in% surveys,
-                    Year %in% years,
-                    Quarter %in% quarters) |>
-      dplyr::collect()
+    url <- paste0("https://heima.hafro.is/~einarhj/datras_latin/", recordtype, ".parquet")
+    data <- arrow::read_parquet(url)
     return(data)
   }
 
   if(from == "old") {
-    data <- purrr::map(recordtype,
-                       dr_get_datras,
-                       surveys[1],
-                       years,
-                       quarters, )
-    # file issue at icesDatras
-    # i <- purrr::map_chr(data, class) == "data.frame"
-    data <- dplyr::bind_rows(data)
+    if(quiet == TRUE) {
+      data <- purrr::map2(recordtype,
+                          surveys,
+                          # this does not work
+                          suppressMessages(icesDatras::getDATRAS),
+                          years,
+                          quarters)
+    } else {
+      data <- purrr::map2(recordtype,
+                          surveys,
+                          icesDatras::getDATRAS,
+                          years,
+                          quarters)
+    }
+    i <- purrr::map_chr(data, class) == "data.frame"
+    data <- data[i]
+    data <- purrr::map(data, dr_settypes)
+    data <- data |> dplyr::bind_rows()
     return(data)
   }
 
   if(from == "new") {
 
-    if(length(surveys) > 1) {
-      stop("For now only one survey at a time")
+    years_c <- paste0(min(years), ":", max(years))
+    quarters_c <- paste0(min(quarters), ":", max(quarters))
+
+    data <- purrr::map2(recordtype,
+                        surveys,
+                        icesDatras::get_datras_unaggregated_data,
+                        years_c,
+                        quarters_c)
+    i <- purrr::map_int(data, nrow) > 0
+    data <- dplyr::bind_rows(data[i]) |> as.data.frame()
+    # data[data == -9] <- NA
+    data <- data |> dplyr::filter(RecordHeader != "")
+
+    if(recordtype == "CA") {
+      data <-
+        data |>
+        dplyr::rename(ScientificName_WoRMS = Species,
+                      ValidAphiaID = AphiaID)
     }
-
-    years <- paste0(min(years), ":", max(years))
-    quarter <- paste0(min(quarters), ":", max(quarters))
-
-    # Temporary file paths
-    temp_zip <- tempfile(fileext = ".zip")
-    temp_dir <- tempfile()
-
-    # Ensure cleanup occurs even if an error happens
-    on.exit(unlink(temp_zip, recursive = TRUE), add = TRUE)
-    on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
-
-    # Download the zip file
-    zip_file <- .dr_download_datras_zip(recordtype, surveys, years, quarters, destfile = temp_zip, quiet = quiet)
-
-    # Unzip the file
-    extracted_dir <- .dr_unzip_datras_file(zip_file, destdir = temp_dir, quiet = quiet)
-
-    # Read the data
-    #data <- .dr_read_datras_csv(recordtype, extracted_dir, quiet = quiet)
-    data <- .dr_read_datras_csv(recordtype, extracted_dir, quiet = quiet)
 
     # Return the data frame
     return(data)
   }
+
 }
 
+# Below is not really in use ---------------------------------------------------
 # Internal function to download the zip file
 .dr_download_datras_zip <- function(recordtype, survey, year, quarter, destfile = tempfile(fileext = ".zip"), quiet = TRUE) {
   base_url <- "https://datras.ices.dk/Data_products/Download/DATRASDownloadAPI.aspx"
@@ -108,89 +113,13 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
   destdir
 }
 
-# Internal function to read the CSV file
-.dr_read_datras_csv <- function(recordtype, datadir, quiet = TRUE) {
 
-  # Column classes definition
-  col_classes <- list(
-    HH =
-      list(
-        character = c("RecordHeader", "Country", "Platform", "Gear", "GearExceptions", "DoorType",
-                      "StationName", "StartTime", "DepthStratum", "StatisticalRectangle",
-                      "HydrographicStationID", "StandardSpeciesCode", "BycatchSpeciesCode", "Rigging",
-                      "DayNight", "ThermoCline", "PelagicSamplingType", "Survey", "DateofCalculation",
-                      "HaulValidity", "DataType", "ReasonHaulDisruption", "SurveyIndexArea"),
-        integer = c("Quarter", "SweepLength", "HaulNumber", "Year",  "Month", "Day", "HaulDuration", "WarpLength",
-                    "WarpDiameter", "WarpDensity", "DoorWeight", "Buoyancy", "TowDirection",
-                    "SurfaceCurrentDirection", "BottomCurrentDirection", "WindDirection", "WindSpeed",
-                    "SwellDirection", "ThermoClineDepth", "TidePhase", "MinTrawlDepth", "MaxTrawlDepth",
-                    "BottomDepth", "CodendMesh", "Tickler", "EDOM"),
-        numeric = c("ShootLatitude", "ShootLongitude", "HaulLatitude", "HaulLongitude", "NetOpening", "Distance",
-                    "DoorSurface", "DoorSpread", "WingSpread", "KiteArea", "GroundRopeWeight",
-                    "SpeedGround", "SpeedWater", "SurfaceCurrentSpeed", "BottomCurrentSpeed",
-                    "SwellHeight", "SurfaceTemperature", "BottomTemperature", "SurfaceSalinity",
-                    "BottomSalinity", "SecchiDepth", "Turbidity", "TideSpeed" # , "SurveyIndexArea")
-        )
-      ),
-    HL =
-      list(
-        character = c("RecordHeader","Country","Platform","Gear","GearExceptions","DoorType","StationName","SpeciesCodeType","SpeciesCode","SpeciesValidity",
-                      "SpeciesSex","LengthCode","DevelopmentStage","LengthType","Survey","ScientificName_WoRMS","DateofCalculation"),
-        integer = c("Year", "Quarter", "SweepLength","HaulNumber","SpeciesCategory","SubsampledNumber","SubsampleWeight","SpeciesCategoryWeight","LengthClass","ValidAphiaID"),
-        numeric = c("TotalNumber","SubsamplingFactor","NumberAtLength")
-      ),
-    CA =
-      list(
-        character = c("RecordHeader","Country","Platform","Gear","GearExceptions","DoorType","StationName","SpeciesCodeType","SpeciesCode","AreaType","AreaCode",
-                      "LengthCode","IndividualSex","IndividualMaturity","AgePlusGroup","MaturityScale","FishID","GeneticSamplingFlag","StomachSamplingFlag","AgeSource",
-                      "AgePreparationMethod","OtolithGrading","ParasiteSamplingFlag","Survey","DateofCalculation",
-                      "Species"),
-        integer = c("Year","Quarter","SweepLength","HaulNumber","LengthClass","IndividualAge"),
-        numeric = c("IndividualWeight","LiverWeight",
-                    "CANoAtLngt", "AphiaID")
-      )
-  )
-
-  # Ensure the provided recordtype exists in the col_classes definition
-  if (!recordtype %in% names(col_classes)) {
-    stop("Unknown recordtype: ", recordtype)
-  }
-
-  # File search: Ensure the CSV file exists in the specified directory
-  csv_file <- list.files(datadir, pattern = "DATRASDataTable\\.csv$", full.names = TRUE)
-  if (length(csv_file) == 0) stop("CSV file not found in the specified directory.")
-
-  if (!quiet) message("Reading CSV data...")
-  # Read data
-  data <- data.table::fread(
-    csv_file,
-    colClasses = col_classes[[recordtype]],
-    fill = TRUE,
-    showProgress = !quiet
-  ) |>
-    as.data.frame()
-
-  # Replace -9 values with NA
-  data[data == -9] <- NA
-
-  # Conduct variable consistency checks
-  all_varnames <- colnames(data)
-  defined_varnames <- unlist(col_classes[[recordtype]])
-
-  # Variables in the CSV but not in col_classes
-  extra_vars <- setdiff(all_varnames, defined_varnames)
-  if (length(extra_vars) > 0) {
-    warning("The following variables are present in the CSV file but not specified in col_classes for recordtype '", recordtype, "': ", paste(extra_vars, collapse = ", "))
-  }
-
-  # Variables in col_classes but not in the CSV
-  missing_vars <- setdiff(defined_varnames, all_varnames)
-  if (length(missing_vars) > 0) {
-    warning("The following variables are specified in col_classes for recordtype '", recordtype, "' but are not present in the CSV file: ", paste(missing_vars, collapse = ", "))
-  }
-
-  return(data)
-}
+# Create a mapping of conversion functions for each type
+.conversion_funcs <- list(
+  character = as.character,
+  integer = as.integer,
+  numeric = as.numeric
+)
 
 #datadir <- extracted_dir
 # Internal function to read the CSV file using arrow::read_csv_arrow

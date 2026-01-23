@@ -24,19 +24,45 @@ knitr::opts_chunk$set(
 
 ## Installation
 
-You can install the development version of imbus from [GitHub](https://github.com/einarhjorleifsson/obus) with:
+You can install the development version of {obus} from [GitHub](https://github.com/einarhjorleifsson/obus) with:
 
 ``` r
-devtools::install_github("einarhjorleifsson/obus")
+remotes::install_github("einarhjorleifsson/obus")
 ```
 
-## Table connections
+Because in some explorations {obus} has wrapper functions over {icesDatras}-functions and because some modification has been done to the latter (issues pending) for now you need to install it via:
+
+``` r
+remotes::install_github("einarhjorleifsson/icesDatras")
+```
+
+There are two ways to connect to the DATRAS data, either by importing the whole datasets into R or by making a in-process DuckDB connection.
+
+```{r}
+library(tidyverse)
+library(obus)
+library(icesDatras)
+```
+
+## Importing
+
+The fastest way to import a the DATRAS tables into R is:
+
+```{r}
+system.time({
+  hh <- dr_get("HH", from = "parquet")
+  hl <- dr_get("HL", from = "parquet")
+  ca <- dr_get("CA", from = "parquet")
+})
+hl |> glimpse()
+```
+
+## Connecting
 
 You can generate a connection to the main DATRAS tables by:
 
 ```{r}
-library(obus)
-hh <- dr_con("HH", quiet = FALSE)
+hh <- dr_con("HH")
 hl <- dr_con("HL")
 ca <- dr_con("CA")
 ```
