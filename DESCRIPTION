@@ -1,15 +1,16 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey data
 Version: 2026.01.22
-Authors@R: c(person("Einar", "Hjorleifsson", role=c("cre"), email="einar.hjorleifsson@gmail.com"),
+Authors@R: c(person("Einar", "Hjorleifsson", role=c("aut", "cre"), email="einar.hjorleifsson@gmail.com"),
              person("Martin", "Pastoors"   , role=c("aut"), email="martin.pastoors@gmail.com"),
              person("Vaishav", "Soni"   , role=c("aut"), email="Vaishav@ices.dk"))
 Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
-Description: What the package does (one paragraph). Here is a second sentance.
+Description: Fast access to the full up-to-date DATRAS data. Eliminates the tedious and often error-prone task of maintaining local copies of DATRAS data tables. Aim is to provide tidy non-ambigous variables and tables. You will never look back.
 License: CC BY 4.0
 Suggests:
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    tictoc
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
