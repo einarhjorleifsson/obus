@@ -31,14 +31,14 @@ For purist, one regrets to inform that this package has quite some number of dep
 
 You can install the development version of {obus} from [GitHub](https://github.com/einarhjorleifsson/obus) with:
 
-``` r
-remotes::install_github("einarhjorleifsson/obus")
+```{r}
+remotes::install_github("einarhjorleifsson/obus", force = TRUE)
 ```
 
 In some cases {obus} uses wrapper functions depending on {icesDatras} features that have, as of yet, not been taken up in the official ICES version (issues pending) install that package via:
 
-``` r
-remotes::install_github("einarhjorleifsson/icesDatras")
+```{r}
+remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
 ```
 
 There are two ways to connect to the DATRAS data, either by importing the whole datasets into R or by making an in-process DuckDB database connection.
