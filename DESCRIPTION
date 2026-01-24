@@ -28,7 +28,6 @@ Imports:
     lubridate,
     purrr,
     rlang,
-    tibble,
     tidyr
 Config/Needs/website: rmarkdown
 URL: https://einarhjorleifsson.github.io/obus/
