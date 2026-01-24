@@ -22,22 +22,22 @@ knitr::opts_chunk$set(
 
 The aim of {obus} to provide users with tidy tables with non-ambiguous variables.
 
-That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package ({icesDatras}???). Or possibly not.
+That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package. Or possibly not.
 
-For purist, one regrets to inform that this package has quite some number of dependencies (see [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION). If that is not your cup of tea, rewrite.
+For purist, one regrets to inform that this package has quite some number of dependencies (see [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). It should however be possible to trim down that fat.
 
 
 ## Installation
 
-You can install the development version of {obus} from [GitHub](https://github.com/einarhjorleifsson/obus) with:
+You can install the development version of {obus} from [GitHub](https://github.com/einarhjorleifsson/obus) running:
 
-```{r}
+```{r, eval = FALSE}
 remotes::install_github("einarhjorleifsson/obus", force = TRUE)
 ```
 
 In some cases {obus} uses wrapper functions depending on {icesDatras} features that have, as of yet, not been taken up in the official ICES version (issues pending) install that package via:
 
-```{r}
+```{r, eval = FALSE}
 remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
 ```
 
@@ -69,9 +69,17 @@ tibble(type = c("HL", "HH", "CA"),
   knitr::kable(caption = "Number of records and variables")
 ```
 
+The above fast access is achieved by importing from parquet files that are hosted on a conventional http-server. The parquet data source is as of now **not** a mirror of the data residing at ICES, but a recent copy. ICES datacenter is currently exploring ways to serve a mirror of the DATRAS data via parquet files hosted on a cloud service.
+
+If one wants an up-to-date mirror one could use a slower route using a new API from the ICES datacenter. In R one can use the icesDatras::get_datras_unaggregated_data function. That function has been wrapped into dr_get so one can get data from many surveys with one command. E.g. all surveys from 2025 can be obtained by:
+
+```{r}
+hh <- obus::dr_get("HH", years = 2025, from = "new")
+```
+
 ## Connecting
 
-Although the DATRAS data can not be considered big data, we can pretend that it is and use techniques developed for big data. So instead of importing the full dataset one can generate a connection to the main DATRAS tables by:
+Although the DATRAS data can not be considered big data, one can pretend that it is and use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the parquet files (remember, these are not fully up-to-date) using in-process DuckDB database.
 
 ### HH data
 
@@ -94,33 +102,31 @@ ca <- dr_con("CA")
 ca |> glimpse()
 ```
 
-## Small print
+### Data processing using a connection
 
-The parquet data source is as of now **not** a mirror of the data residing at ICES, it is just a copy that may be some weeks old. If you want an up-to-date mirror you are better off for now using a slower route, doing:
-
-```{r, eval = TRUE}
-system.time({
-  hh <- dr_get("HH", from = "new")
-  hl <- dr_get("HL", from = "new")
-  ca <- dr_get("CA", from = "new")
-})
-```
-
-The above is just a wrapper around the latest kid on the block: 'icesDatras::get_datras_unaggregated_data'.
-
-So the latest record, as of the generation of this document is:
+For those familiar with using dplyr-verbs to process data most of those function as well as many base-R functions can be used to process the data. E.g. one can get all survey stations for the third quarter in 2025 and add to that the number of cod observed using the following script:
 
 ```{r}
-library(tidyverse)
-hh |> 
-  mutate(date = make_date(Year, Month, Day)) |> 
-  filter(date == max(date)) |> 
-  glimpse()
+data <-
+  # Process the data in DuckDB
+  hh |> 
+  filter(Year == 2025,
+         Quarter == 3) |> 
+  left_join(hl |> 
+              filter(latin == "Gadus morhua") |> 
+              group_by(.id) |> 
+              summarise(n = sum(n, na.rm = TRUE)),
+            by = join_by(.id)) |> 
+  # Import the data into R
+  collect() |> 
+  mutate(n = replace_na(n, 0))
 ```
 
-## Warning
+Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually imported into R.
 
-The package has still has some hangover functions that need to be removed.
+## Small print
+
+This stuff is in development, thus bugs, snags and errors are expected. {obus} still has some experimental hangover functions that need to be pruned or removed.
 
 ## How did I get here?
 

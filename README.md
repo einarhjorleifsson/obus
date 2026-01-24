@@ -15,29 +15,20 @@ variables.
 That said, {obus} is a temporary experimental package used to explore
 various DATRAS data connections and wrapper functions to make life a
 little easier for everyday user. Some of that may be taken up in a more
-official package ({icesDatras}???). Or possibly not.
+official package. Or possibly not.
 
 For purist, one regrets to inform that this package has quite some
 number of dependencies (see
-[DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION).
-If that is not your cup of tea, rewrite.
+[DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)).
+It should however be possible to trim down that fat.
 
 ## Installation
 
 You can install the development version of {obus} from
-[GitHub](https://github.com/einarhjorleifsson/obus) with:
+[GitHub](https://github.com/einarhjorleifsson/obus) running:
 
 ``` r
 remotes::install_github("einarhjorleifsson/obus", force = TRUE)
-#> 
-#> ── R CMD build ─────────────────────────────────────────────────────────────────
-#> * checking for file ‘/tmp/RtmpWkKsLj/remotes1b5c367d2137f1/einarhjorleifsson-obus-bbfb946/DESCRIPTION’ ... OK
-#> * preparing ‘obus’:
-#> * checking DESCRIPTION meta-information ... OK
-#> * checking for LF line-endings in source and make files and shell scripts
-#> * checking for empty or unneeded directories
-#> Removed empty directory ‘obus/vignettes’
-#> * building ‘obus_2026.01.22.tar.gz’
 ```
 
 In some cases {obus} uses wrapper functions depending on {icesDatras}
@@ -46,14 +37,6 @@ version (issues pending) install that package via:
 
 ``` r
 remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
-#> 
-#> ── R CMD build ─────────────────────────────────────────────────────────────────
-#> * checking for file ‘/tmp/RtmpWkKsLj/remotes1b5c365f03b755/einarhjorleifsson-icesDatras-221fcc9/DESCRIPTION’ ... OK
-#> * preparing ‘icesDatras’:
-#> * checking DESCRIPTION meta-information ... OK
-#> * checking for LF line-endings in source and make files and shell scripts
-#> * checking for empty or unneeded directories
-#> * building ‘icesDatras_1.5.1.tar.gz’
 ```
 
 There are two ways to connect to the DATRAS data, either by importing
@@ -75,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  22.199   3.602   4.182
+#>  22.047   3.854   4.167
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -91,12 +74,29 @@ the dimension just imported are as follows:
 
 Number of records and variables
 
+The above fast access is achieved by importing from parquet files that
+are hosted on a conventional http-server. The parquet data source is as
+of now **not** a mirror of the data residing at ICES, but a recent copy.
+ICES datacenter is currently exploring ways to serve a mirror of the
+DATRAS data via parquet files hosted on a cloud service.
+
+If one wants an up-to-date mirror one could use a slower route using a
+new API from the ICES datacenter. In R one can use the
+icesDatras::get_datras_unaggregated_data function. That function has
+been wrapped into dr_get so one can get data from many surveys with one
+command. E.g. all surveys from 2025 can be obtained by:
+
+``` r
+hh <- obus::dr_get("HH", years = 2025, from = "new")
+```
+
 ## Connecting
 
-Although the DATRAS data can not be considered big data, we can pretend
-that it is and use techniques developed for big data. So instead of
-importing the full dataset one can generate a connection to the main
-DATRAS tables by:
+Although the DATRAS data can not be considered big data, one can pretend
+that it is and use techniques developed for such datasets. So instead of
+importing the full dataset into R one can generate a connection to the
+parquet files (remember, these are not fully up-to-date) using
+in-process DuckDB database.
 
 ### HH data
 
@@ -214,118 +214,40 @@ ca |> glimpse()
 #> $ LiverWeight   <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
 ```
 
+### Data processing using a connection
+
+For those familiar with using dplyr-verbs to process data most of those
+function as well as many base-R functions can be used to process the
+data. E.g. one can get all survey stations for the third quarter in 2025
+and add to that the number of cod observed using the following script:
+
+``` r
+data <-
+  # Process the data in DuckDB
+  hh |> 
+  filter(Year == 2025,
+         Quarter == 3) |> 
+  left_join(hl |> 
+              filter(latin == "Gadus morhua") |> 
+              group_by(.id) |> 
+              summarise(n = sum(n, na.rm = TRUE)),
+            by = join_by(.id)) |> 
+  # Import the data into R
+  collect() |> 
+  mutate(n = replace_na(n, 0))
+```
+
+Here all the code steps prior to the collect command are automatically
+translated to SQL and passed to the in-process DuckDB. It is only at
+collect step that the data is actually imported into R.
+
 ## Small print
 
-The parquet data source is as of now **not** mirror of the data residing
-at ICES, it is just a copy that may be some weeks old. If you want an
-up-to-date mirror you are better off for now using a slower route,
-doing:
+This stuff is in development, thus bugs, snags and errors are expected.
+{obus} still has some experimental hangover functions that need to be
+pruned or removed.
 
-``` r
-system.time({
-  hh <- dr_get("HH", from = "new")
-  hl <- dr_get("HL", from = "new")
-  ca <- dr_get("CA", from = "new")
-})
-```
-
-The above is just a wrapper around the latest kid on the block:
-‘icesDatras::get_datras_unaggregated_data’.
-
-So the latest record, as of the generation of this document is:
-
-``` r
-library(tidyverse)
-hh |> 
-  mutate(date = make_date(Year, Month, Day)) |> 
-  filter(date == max(date)) |> 
-  glimpse()
-#> Rows: ??
-#> Columns: 75
-#> Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
-#> $ RecordHeader            <chr> "HH", "HH", "HH", "HH", "HH", "HH", "HH"
-#> $ Survey                  <chr> "NL-BSAS", "NL-BSAS", "NL-BSAS", "NL-BSAS", "N…
-#> $ Quarter                 <int> 4, 4, 4, 4, 4, 4, 4
-#> $ Country                 <chr> "NL", "NL", "NL", "NL", "NL", "NL", "NL"
-#> $ Platform                <chr> "64LB", "64LB", "64LB", "64LB", "64LB", "64LB"…
-#> $ Gear                    <chr> "BT12", "BT12", "BT12", "BT12", "BT12", "BT12"…
-#> $ SweepLength             <int> NA, NA, NA, NA, NA, NA, NA
-#> $ GearExceptions          <chr> "DB", "DB", "DB", "DB", "DB", "DB", "DB"
-#> $ DoorType                <chr> NA, NA, NA, NA, NA, NA, NA
-#> $ StationName             <chr> "19_21", "20_17", "21_15", "22_13", "24_16", "…
-#> $ HaulNumber              <int> 266, 267, 268, 269, 270, 271, 272
-#> $ Year                    <int> 2025, 2025, 2025, 2025, 2025, 2025, 2025
-#> $ Month                   <int> 10, 10, 10, 10, 10, 10, 10
-#> $ Day                     <int> 22, 22, 22, 22, 22, 22, 22
-#> $ StartTime               <chr> "0122", "0301", "0627", "0817", "1238", "1439"…
-#> $ DepthStratum            <chr> NA, NA, NA, NA, NA, NA, NA
-#> $ HaulDuration            <int> 69, 120, 100, 131, 110, 119, 83
-#> $ DayNight                <chr> "N", "N", "D", "D", "D", "D", "N"
-#> $ ShootLatitude           <dbl> 53.3166, 53.2000, 53.0833, 52.9833, 53.1500, 5…
-#> $ ShootLongitude          <dbl> 3.3166, 3.3000, 3.5166, 3.3333, 2.8166, 2.7500…
-#> $ HaulLatitude            <dbl> 53.2166, 53.0666, 52.9833, 53.1000, 53.2333, 5…
-#> $ HaulLongitude           <dbl> 3.3000, 3.4833, 3.3333, 3.1333, 2.7500, 2.7333…
-#> $ StatisticalRectangle    <chr> "35F3", "35F3", "35F3", "34F3", "35F2", "35F2"…
-#> $ BottomDepth             <int> 28, 27, 30, 30, 29, 28, 35
-#> $ HaulValidity            <chr> "V", "V", "V", "V", "V", "V", "V"
-#> $ HydrographicStationID   <chr> "19_21", "20_17", "21_15", "22_13", "24_16", "…
-#> $ StandardSpeciesCode     <chr> "1", "1", "1", "1", "1", "1", "1"
-#> $ BycatchSpeciesCode      <chr> "0", "0", "0", "0", "0", "0", "0"
-#> $ DataType                <chr> "R", "R", "R", "R", "R", "R", "R"
-#> $ NetOpening              <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ Rigging                 <chr> "T", "T", "T", "T", "T", "T", "T"
-#> $ Tickler                 <int> NA, NA, NA, NA, NA, NA, NA
-#> $ Distance                <dbl> 11927, 22224, 18829, 23857, 21730, 23508, 16140
-#> $ WarpLength              <int> NA, NA, NA, NA, NA, NA, NA
-#> $ WarpDiameter            <int> NA, NA, NA, NA, NA, NA, NA
-#> $ WarpDensity             <int> NA, NA, NA, NA, NA, NA, NA
-#> $ DoorSurface             <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ DoorWeight              <int> NA, NA, NA, NA, NA, NA, NA
-#> $ DoorSpread              <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ WingSpread              <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ Buoyancy                <int> NA, NA, NA, NA, NA, NA, NA
-#> $ KiteArea                <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ GroundRopeWeight        <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ TowDirection            <int> NA, NA, NA, NA, NA, NA, NA
-#> $ SpeedGround             <dbl> 6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.5
-#> $ SpeedWater              <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ SurfaceCurrentDirection <int> NA, NA, NA, NA, NA, NA, NA
-#> $ SurfaceCurrentSpeed     <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ BottomCurrentDirection  <int> NA, NA, NA, NA, NA, NA, NA
-#> $ BottomCurrentSpeed      <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ WindDirection           <int> 90, 90, 90, 0, 45, 45, 0
-#> $ WindSpeed               <int> 9, 9, 9, 7, 7, 7, 4
-#> $ SwellDirection          <int> NA, NA, NA, NA, NA, NA, NA
-#> $ SwellHeight             <dbl> 1.8, 1.9, 1.7, 1.5, 1.4, 1.2, 1.0
-#> $ SurfaceTemperature      <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ BottomTemperature       <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ SurfaceSalinity         <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ BottomSalinity          <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ ThermoCline             <chr> NA, NA, NA, NA, NA, NA, NA
-#> $ ThermoClineDepth        <int> NA, NA, NA, NA, NA, NA, NA
-#> $ CodendMesh              <int> 80, 80, 80, 80, 80, 80, 80
-#> $ SecchiDepth             <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ Turbidity               <dbl> NA, NA, NA, NA, NA, NA, NA
-#> $ TidePhase               <int> NA, NA, NA, NA, NA, NA, NA
-#> $ TideSpeed               <dbl> 1, 1, 1, 1, 0, 0, 0
-#> $ PelagicSamplingType     <chr> NA, NA, NA, NA, NA, NA, NA
-#> $ MinTrawlDepth           <int> NA, NA, NA, NA, NA, NA, NA
-#> $ MaxTrawlDepth           <int> NA, NA, NA, NA, NA, NA, NA
-#> $ SurveyIndexArea         <chr> NA, NA, NA, NA, NA, NA, NA
-#> $ EDOM                    <int> 20251218, 20251218, 20251218, 20251218, 202512…
-#> $ ReasonHaulDisruption    <lgl> NA, NA, NA, NA, NA, NA, NA
-#> $ DateofCalculation       <chr> "", "", "", "", "", "", ""
-#> $ .id                     <chr> "NL-BSAS:2025:4:NL:64LB:BT12:19_21:266", "NL-B…
-#> $ time                    <dttm> 2025-10-22 01:22:00, 2025-10-22 03:01:00, 2025…
-#> $ date                    <date> 2025-10-22, 2025-10-22, 2025-10-22, 2025-10-22…
-```
-
-## Warning
-
-The package has still has some hangover functions that need to be
-removed.
-
-## What was used
+## How did I get here?
 
     #> ─ Session info ───────────────────────────────────────────────────────────────
     #>  setting  value
@@ -337,7 +259,7 @@ removed.
     #>  collate  is_IS.UTF-8
     #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-01-23
+    #>  date     2026-01-24
     #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
     #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
@@ -349,13 +271,11 @@ removed.
     #>  bit64          4.6.0-1    2025-01-16 [2] CRAN (R 4.4.1)
     #>  blob           1.3.0      2026-01-14 [2] CRAN (R 4.4.1)
     #>  cachem         1.1.0      2024-05-16 [2] CRAN (R 4.4.1)
-    #>  callr          3.7.6      2024-03-25 [2] CRAN (R 4.4.1)
     #>  cli            3.6.5      2025-04-23 [2] CRAN (R 4.4.1)
     #>  curl           7.0.0      2025-08-19 [2] CRAN (R 4.4.1)
     #>  data.table     1.18.0     2025-12-24 [2] CRAN (R 4.4.1)
     #>  DBI            1.2.3      2024-06-02 [2] CRAN (R 4.4.1)
     #>  dbplyr         2.5.1      2025-09-10 [2] CRAN (R 4.4.1)
-    #>  desc           1.4.3      2023-12-10 [2] CRAN (R 4.4.1)
     #>  devtools       2.4.6      2025-10-03 [2] CRAN (R 4.4.1)
     #>  dichromat      2.0-0.1    2022-05-02 [2] CRAN (R 4.4.1)
     #>  digest         0.6.39     2025-11-19 [2] CRAN (R 4.4.1)
@@ -375,20 +295,18 @@ removed.
     #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.4.1)
     #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.4.1)
     #>  httr           1.4.7      2023-08-15 [2] CRAN (R 4.4.1)
-    #>  icesDatras     1.5.1      2026-01-23 [1] Github (einarhjorleifsson/icesDatras@221fcc9)
+    #>  icesDatras     1.5.1      2026-01-23 [2] Github (einarhjorleifsson/icesDatras@221fcc9)
     #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.4.1)
     #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.4.1)
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.22 2026-01-23 [1] Github (einarhjorleifsson/obus@bbfb946)
+    #>  obus         * 2026.01.22 2026-01-24 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
     #>  pkgconfig      2.0.3      2019-09-22 [2] CRAN (R 4.4.1)
     #>  pkgload        1.4.1      2025-09-23 [2] CRAN (R 4.4.1)
-    #>  processx       3.8.6      2025-02-21 [2] CRAN (R 4.4.1)
-    #>  ps             1.9.1      2025-04-12 [2] CRAN (R 4.4.1)
     #>  purrr        * 1.2.1      2026-01-09 [2] CRAN (R 4.4.1)
     #>  R6             2.6.1      2025-02-15 [2] CRAN (R 4.4.1)
     #>  RColorBrewer   1.1-3      2022-04-03 [2] CRAN (R 4.4.1)
@@ -414,7 +332,7 @@ removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpeCxbBA/temp_libpath1a29c73536764d
+    #>  [1] /tmp/RtmpLy7hD2/temp_libpath1c2d5072ccaf66
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library
