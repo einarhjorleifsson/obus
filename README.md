@@ -28,7 +28,16 @@ You can install the development version of {obus} from
 [GitHub](https://github.com/einarhjorleifsson/obus) with:
 
 ``` r
-remotes::install_github("einarhjorleifsson/obus")
+remotes::install_github("einarhjorleifsson/obus", force = TRUE)
+#> 
+#> ── R CMD build ─────────────────────────────────────────────────────────────────
+#> * checking for file ‘/tmp/RtmpWkKsLj/remotes1b5c367d2137f1/einarhjorleifsson-obus-bbfb946/DESCRIPTION’ ... OK
+#> * preparing ‘obus’:
+#> * checking DESCRIPTION meta-information ... OK
+#> * checking for LF line-endings in source and make files and shell scripts
+#> * checking for empty or unneeded directories
+#> Removed empty directory ‘obus/vignettes’
+#> * building ‘obus_2026.01.22.tar.gz’
 ```
 
 In some cases {obus} uses wrapper functions depending on {icesDatras}
@@ -36,7 +45,15 @@ features that have, as of yet, not been taken up in the official ICES
 version (issues pending) install that package via:
 
 ``` r
-remotes::install_github("einarhjorleifsson/icesDatras")
+remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
+#> 
+#> ── R CMD build ─────────────────────────────────────────────────────────────────
+#> * checking for file ‘/tmp/RtmpWkKsLj/remotes1b5c365f03b755/einarhjorleifsson-icesDatras-221fcc9/DESCRIPTION’ ... OK
+#> * preparing ‘icesDatras’:
+#> * checking DESCRIPTION meta-information ... OK
+#> * checking for LF line-endings in source and make files and shell scripts
+#> * checking for empty or unneeded directories
+#> * building ‘icesDatras_1.5.1.tar.gz’
 ```
 
 There are two ways to connect to the DATRAS data, either by importing
@@ -58,7 +75,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  22.770   3.416   4.167
+#>  22.199   3.602   4.182
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -332,11 +349,13 @@ removed.
     #>  bit64          4.6.0-1    2025-01-16 [2] CRAN (R 4.4.1)
     #>  blob           1.3.0      2026-01-14 [2] CRAN (R 4.4.1)
     #>  cachem         1.1.0      2024-05-16 [2] CRAN (R 4.4.1)
+    #>  callr          3.7.6      2024-03-25 [2] CRAN (R 4.4.1)
     #>  cli            3.6.5      2025-04-23 [2] CRAN (R 4.4.1)
     #>  curl           7.0.0      2025-08-19 [2] CRAN (R 4.4.1)
     #>  data.table     1.18.0     2025-12-24 [2] CRAN (R 4.4.1)
     #>  DBI            1.2.3      2024-06-02 [2] CRAN (R 4.4.1)
     #>  dbplyr         2.5.1      2025-09-10 [2] CRAN (R 4.4.1)
+    #>  desc           1.4.3      2023-12-10 [2] CRAN (R 4.4.1)
     #>  devtools       2.4.6      2025-10-03 [2] CRAN (R 4.4.1)
     #>  dichromat      2.0-0.1    2022-05-02 [2] CRAN (R 4.4.1)
     #>  digest         0.6.39     2025-11-19 [2] CRAN (R 4.4.1)
@@ -356,18 +375,20 @@ removed.
     #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.4.1)
     #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.4.1)
     #>  httr           1.4.7      2023-08-15 [2] CRAN (R 4.4.1)
-    #>  icesDatras     1.5.1      2026-01-23 [2] Github (einarhjorleifsson/icesDatras@221fcc9)
+    #>  icesDatras     1.5.1      2026-01-23 [1] Github (einarhjorleifsson/icesDatras@221fcc9)
     #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.4.1)
     #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.4.1)
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.22 2026-01-23 [1] local
+    #>  obus         * 2026.01.22 2026-01-23 [1] Github (einarhjorleifsson/obus@bbfb946)
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
     #>  pkgconfig      2.0.3      2019-09-22 [2] CRAN (R 4.4.1)
     #>  pkgload        1.4.1      2025-09-23 [2] CRAN (R 4.4.1)
+    #>  processx       3.8.6      2025-02-21 [2] CRAN (R 4.4.1)
+    #>  ps             1.9.1      2025-04-12 [2] CRAN (R 4.4.1)
     #>  purrr        * 1.2.1      2026-01-09 [2] CRAN (R 4.4.1)
     #>  R6             2.6.1      2025-02-15 [2] CRAN (R 4.4.1)
     #>  RColorBrewer   1.1-3      2022-04-03 [2] CRAN (R 4.4.1)
@@ -393,7 +414,7 @@ removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpeCxbBA/temp_libpath1a29c7255893af
+    #>  [1] /tmp/RtmpeCxbBA/temp_libpath1a29c73536764d
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library
