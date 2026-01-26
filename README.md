@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  19.006   3.406   3.970
+#>  21.921   3.608   4.097
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -259,7 +259,7 @@ pruned or removed.
     #>  collate  is_IS.UTF-8
     #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-01-24
+    #>  date     2026-01-26
     #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
     #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
@@ -301,7 +301,7 @@ pruned or removed.
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.22 2026-01-24 [1] local
+    #>  obus         * 2026.01.22 2026-01-26 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
@@ -327,12 +327,12 @@ pruned or removed.
     #>  timechange     0.3.0      2024-01-18 [2] CRAN (R 4.4.1)
     #>  tzdb           0.5.0      2025-03-15 [2] CRAN (R 4.4.1)
     #>  usethis        3.2.1      2025-09-06 [2] CRAN (R 4.4.1)
-    #>  vctrs          0.7.0      2026-01-16 [2] CRAN (R 4.4.1)
+    #>  vctrs          0.7.1      2026-01-23 [2] CRAN (R 4.4.1)
     #>  withr          3.0.2      2024-10-28 [2] CRAN (R 4.4.1)
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpTSDb4v/temp_libpath1c92e621d4ec69
+    #>  [1] /tmp/RtmpM6Zp2g/temp_libpath22b395679a3710
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library

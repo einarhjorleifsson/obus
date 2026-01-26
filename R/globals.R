@@ -17,7 +17,9 @@ utils::globalVariables(
     "Country", "Gear", "HaulNo", "Ship", "StNo", "b",
     "HaulNumber", "Platform", "StationName",
     "DevelopmentStage", "IndividualSex", "LiverWeight", "SpeciesSex", "length_cm",
-    "RecordHeader", "Species", "AphiaID"
+    "RecordHeader", "Species", "AphiaID",
+    "HaulDuration", "SpeciesCategory", "SpeciesCategoryWeight", "TotalNumber",
+    "n_haul", "w_haul"
   )
 )
 
