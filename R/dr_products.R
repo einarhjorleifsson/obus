@@ -1,78 +1,67 @@
-#' Get catch weights
+#' Get numbers and weights summary of species by haul
 #'
-#' Calculate the total reported catch numbers and weight by species and haul.
+#' This function calculates and summarizes the total numbers and weights of species reported in a survey.
+#' By processing fishing haul-level (HH) and catch-level (HL) data, it generates the aggregate number (`n_haul`) and
+#' weight (`w_haul`) of species caught per haul, alongside estimates standardized to a 1-hour haul duration (`n_hour`, `w_hour`).
 #'
-#' The functions is supposed to give the same results as icesDatras::getCatchWgt,
-#' here the name of the variable returned is "b" instead of "CatchWgt". In addition
-#' as standardized catch per unit effort ("cpue") is return, the effort being 60
-#' minute haul duration.
+#' The final output is a grouped summary by haul identifiers and species, enabling an overview of catch numbers
+#' and weights. Additionally, the function aims to provide similar weight calculations as `icesDatras::getCatchWgt`,
+#' making its results comparable to external references.
 #'
-#' If argument "not_numbers" is set to FALSE this may though not hold true.
+#' @return
+#' A summarized `data.frame` with the following columns:
+#' - `.id`: Unique haul identifier.
+#' - `DataType`: Type of data collected, e.g., raised to 1 hour or raw.
+#' - `latin`: Latin species name, identifying the species.
+#' - `TotalNumber`: Total number of individuals of the species caught - nonstandardized.
+#' - `SpeciesCategoryWeight`: Total weight (kg) of the species caught - nonstandardized.
+#' - `n_haul`: Actual number of individuals per haul.
+#' - `w_haul`: Actual weight (kg) per haul.
+#' - `n_hour`: Number of individuals raised to a 1-hour haul.
+#' - `w_hour`: Weight (kg) raised to a 1-hour haul.
 #'
-#' @param latin Latin species name
-#' @param not_numbers A boolean (default TRUE), indicating if total abundance
-#' (TotalNo) should also be calculated
+#' @note
+#' This function assumes the following:
+#' - `HH` and `HL` are loaded as DuckDB views or data.frames in memory.
+#' - `.id` is a unique haul identifier that is present in both `HH` and `HL` tables for joining.
+#' - `HaulDuration` is recorded in minutes.
 #'
-#' @return A DuckDB view
+#' If the DataType in `Hh` is "C", the total number and weight in the haul are scaled by haul duration (in minutes)
+#' to enable sensible comparisons across hauls of different durations.
+#'
+#' @seealso
+#' \code{icesDatras::getCatchWgt} for an alternative approach to computing total catch weight by species and haul.
+#'
+#' \code{\link{dr_con}} for information about connecting to DuckDB tables.
 #'
 #' @export
 
-dr_catch_weight <- function(latin, not_numbers = TRUE) {
+dr_get_by_haul <- function() {
 
-  if(not_numbers == TRUE) {
-    q <-
-      dr_con("HH", trim = FALSE) |>
-      dplyr::mutate(latin = local(latin)) |>
-      dplyr::select(Survey, Year, Quarter, .id, latin, DataType, HaulDur) |>
-      dplyr::left_join(dr_con("HL", trim = FALSE) |>
-                         dplyr::select(.id, CatIdentifier,
-                                       CatCatchWgt, latin) |>
-                         dplyr::distinct() |>
-                         dplyr::group_by(.id, latin) |>
-                         # Missing values are always removed in SQL aggregation functions
-                         #  ... hence:
-                         dplyr::summarise(
-                           b = dplyr::case_when(
-                             n() != sum(!is.na(CatCatchWgt), na.rm = TRUE) ~ -9,
-                             TRUE ~ sum(CatCatchWgt, na.rm = TRUE)),
-                           .groups = "drop"),
-                       by = dplyr::join_by(.id, latin)) |>
-      dplyr::mutate(
-        b = dplyr::coalesce(b, 0),
-        b = ifelse(b == -9, NA, b),
-        cpue = dplyr::case_when(DataType == "C" ~ b,
-                                .default = b / HaulDur * 60)) |>
-      dplyr::select(-c(DataType, HaulDur))
-  } else {
-    q <-
-      dr_con("HH", trim = FALSE) |>
-      dplyr::mutate(latin = local(latin)) |>
-      dplyr::select(Survey, Year, Quarter, .id, latin, DataType, HaulDur) |>
-      dplyr::left_join(obus::dr_con("HL", trim = FALSE) |>
-                         dplyr::select(.id, CatIdentifier,
-                                       TotalNo,
-                                       CatCatchWgt, latin) |>
-                         dplyr::distinct() |>
-                         dplyr::group_by(.id, latin) |>
-                         # Missing values are always removed in SQL aggregation functions
-                         dplyr::summarise(
-                           n = dplyr::case_when(
-                             n() != sum(!is.na(TotalNo), na.rm = TRUE) ~ -9,  # Return NA if any value is missing
-                             TRUE ~ sum(TotalNo, na.rm = TRUE)),              # Otherwise calculate the sum
-                           b = dplyr::case_when(
-                             n() != sum(!is.na(CatCatchWgt), na.rm = TRUE) ~ -9,
-                             TRUE ~ sum(CatCatchWgt, na.rm = TRUE)),
-                           .groups = "drop"),
-                       by = dplyr::join_by(.id, latin)) |>
-      dplyr::mutate(n = dplyr::coalesce(n, 0),
-                    b = dplyr::coalesce(b, 0),
-                    n = ifelse(n == -9, NA, n),
-                    b = ifelse(b == -9, NA, b),
-                    cpue = dplyr::case_when(DataType == "C" ~ b,
-                                            .default = b / HaulDur * 60),
-                    npue = dplyr::case_when(DataType == "C" ~ n,
-                                            .default = n / HaulDur * 60)) |>
-      dplyr::select(-c(DataType, HaulDur))
-  }
+  # make checks: hh and hl have both to be NULL or data.frames
+
+  q <-
+    dr_con("HH", trim = FALSE) |>
+    dplyr::select(.id, Survey, Year, Quarter, .id, DataType, HaulDuration) |>
+    dplyr::left_join(dr_con("HL", trim = FALSE) |>
+                       dplyr::select(.id, latin, SpeciesSex, DevelopmentStage, TotalNumber, SpeciesCategoryWeight,
+                                     SpeciesCategory),
+                     by = dplyr::join_by(.id)) |>
+    dplyr::distinct() |>
+    dplyr::mutate(n_haul = dplyr::case_when(DataType == "C" ~ TotalNumber / 60 * HaulDuration,
+                                            .default = TotalNumber),
+                  w_haul = dplyr::case_when(DataType == "C" ~ SpeciesCategoryWeight / 60 * HaulDuration,
+                                            .default = SpeciesCategoryWeight)) |>
+    # DataType here returned as an extra information variable
+    dplyr::group_by(.id, DataType, HaulDuration, latin) |>
+    dplyr::summarise(TotalNumber = sum(TotalNumber, na.rm = TRUE),
+                     SpeciesCategoryWeight = sum(SpeciesCategoryWeight, na.rm = TRUE),
+                     n_haul = sum(n_haul, na.rm = TRUE),
+                     w_haul = sum(w_haul, na.rm = TRUE),
+                     n_hour = sum(n_haul / HaulDuration * 60, na.rm = TRUE),
+                     w_hour = sum(w_haul / HaulDuration * 60, na.rm = TRUE),
+                     .groups = "drop")
   return(q)
 }
+
+
