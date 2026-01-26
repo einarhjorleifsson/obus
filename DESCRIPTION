@@ -20,6 +20,7 @@ Depends:
 LazyData: true
 Imports:
     arrow,
+    data.table,
     dplyr,
     duckdbfs,
     ggplot2,
