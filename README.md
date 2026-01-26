@@ -9,8 +9,8 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
-The aim of {obus} to provide users with tidy tables with non-ambiguous
-variables.
+The aim of {obus} to provide users with tidy DATRAS tables with
+non-ambiguous variables.
 
 That said, {obus} is a temporary experimental package used to explore
 various DATRAS data connections and wrapper functions to make life a
@@ -28,7 +28,7 @@ You can install the development version of {obus} from
 [GitHub](https://github.com/einarhjorleifsson/obus) running:
 
 ``` r
-remotes::install_github("einarhjorleifsson/obus", force = TRUE)
+remotes::install_github("einarhjorleifsson/obus")
 ```
 
 In some cases {obus} uses wrapper functions depending on {icesDatras}
@@ -36,7 +36,7 @@ features that have, as of yet, not been taken up in the official ICES
 version (issues pending) install that package via:
 
 ``` r
-remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
+remotes::install_github("einarhjorleifsson/icesDatras")
 ```
 
 There are two ways to connect to the DATRAS data, either by importing
@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  22.047   3.854   4.167
+#>  19.006   3.406   3.970
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -332,7 +332,7 @@ pruned or removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpLy7hD2/temp_libpath1c2d5072ccaf66
+    #>  [1] /tmp/RtmpTSDb4v/temp_libpath1c92e621d4ec69
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library

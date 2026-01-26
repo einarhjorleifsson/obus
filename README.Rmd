@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 [![CRAN status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
-The aim of {obus} to provide users with tidy tables with non-ambiguous variables.
+The aim of {obus} to provide users with tidy DATRAS tables with non-ambiguous variables.
 
 That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package. Or possibly not.
 
@@ -32,13 +32,13 @@ For purist, one regrets to inform that this package has quite some number of dep
 You can install the development version of {obus} from [GitHub](https://github.com/einarhjorleifsson/obus) running:
 
 ```{r, eval = FALSE}
-remotes::install_github("einarhjorleifsson/obus", force = TRUE)
+remotes::install_github("einarhjorleifsson/obus")
 ```
 
 In some cases {obus} uses wrapper functions depending on {icesDatras} features that have, as of yet, not been taken up in the official ICES version (issues pending) install that package via:
 
 ```{r, eval = FALSE}
-remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
+remotes::install_github("einarhjorleifsson/icesDatras")
 ```
 
 There are two ways to connect to the DATRAS data, either by importing the whole datasets into R or by making an in-process DuckDB database connection.

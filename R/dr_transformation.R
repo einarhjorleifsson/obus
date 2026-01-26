@@ -248,13 +248,13 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
     d |>
     dplyr::mutate(
       n = dplyr::case_when(
-        DataType == "R" ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                # Data by haul
-        DataType == "C" ~ {{ NumberAtLength }} * {{ HaulDuration }} / 60 * {{ SubsamplingFactor }}, # Data as CPUE
-        DataType == "P" ~ NA,                                          # Pseudocategory sampling
-        DataType == "S" ~ NA,                                          # Subsampled data
-        DataType == "-9" ~ NA,                                         # Invalid hauls
-        is.na(DataType) ~ NA,                                          # Same as -9
-        TRUE ~ NA                                                      # Unexpected DataType
+        DataType == "C"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }} * {{ HaulDuration }} / 60, # Data as CPUE
+        DataType == "R"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Data by haul
+        DataType == "P"  ~ NA,                                             # Pseudocategory sampling
+        DataType == "S"  ~ NA,                                             # Subsampled data
+        DataType == "-9" ~ NA,                                             # Invalid hauls
+        is.na(DataType)  ~ NA,                                             # Same as -9
+        TRUE ~ NA                                                          # Unexpected DataType
       )
     ) |>
     dplyr::mutate(
