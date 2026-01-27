@@ -9,6 +9,7 @@ Description: Fast access to the full up-to-date DATRAS data. Eliminates the tedi
 License: CC BY 4.0
 Suggests:
     rmarkdown,
+    santoku,
     testthat (>= 3.0.0),
     tictoc
 Config/testthat/edition: 3
@@ -25,10 +26,13 @@ Imports:
     duckdbfs,
     ggplot2,
     httr,
+    httr2,
     icesDatras,
     lubridate,
     purrr,
     rlang,
-    tidyr
+    stringr,
+    tidyr,
+    xml2
 Config/Needs/website: rmarkdown
 URL: https://einarhjorleifsson.github.io/obus/

@@ -45,7 +45,7 @@
 dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/data/datras", quiet = TRUE) {
 
   # Validate `type` parameter
-  valid_types <- c("HH", "HL", "CA", "species", "dictionary", "fields", "haul")
+  valid_types <- c("HH", "HL", "CA", "species", "haul", "dictionary", "vocabulary")
   if (!type %in% valid_types) {
     stop(sprintf(
       "Invalid type '%s'. Valid types are: %s",

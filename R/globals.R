@@ -19,7 +19,8 @@ utils::globalVariables(
     "DevelopmentStage", "IndividualSex", "LiverWeight", "SpeciesSex", "length_cm",
     "RecordHeader", "Species", "AphiaID",
     "HaulDuration", "SpeciesCategory", "SpeciesCategoryWeight", "TotalNumber",
-    "n_haul", "w_haul"
+    "n_haul", "w_haul",
+    "DataFormat", "Description"
   )
 )
 

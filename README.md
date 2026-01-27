@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  21.921   3.608   4.097
+#>  21.851   3.451   4.078
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -259,7 +259,7 @@ pruned or removed.
     #>  collate  is_IS.UTF-8
     #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-01-26
+    #>  date     2026-01-27
     #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
     #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
@@ -301,7 +301,7 @@ pruned or removed.
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.22 2026-01-26 [1] local
+    #>  obus         * 2026.01.22 2026-01-27 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
@@ -332,7 +332,7 @@ pruned or removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpM6Zp2g/temp_libpath22b395679a3710
+    #>  [1] /tmp/RtmpfvTpGm/temp_libpath26b1ab17b88376
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library
