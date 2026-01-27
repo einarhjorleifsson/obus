@@ -63,30 +63,29 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
   # Initialize dataset path
   dataset_path <- paste0(url, type, ".parquet")
 
-  # Check for internet connection
-  # test_internet_connection <- function() {
+  # # Check accessibility of dataset URL
+  # check_url <- function(url) {
   #   tryCatch(
   #     {
-  #       utils::download.file("http://www.google.com", destfile = tempfile(), quiet = quiet)
+  #       httr::HEAD(url)  # Use a HEAD request to ensure the file is accessible without downloading it
   #       TRUE
   #     },
   #     error = function(e) FALSE
   #   )
   # }
 
-  # internet_available <- test_internet_connection()
-  # if (!internet_available) {
-  #   stop("It seems there is no internet connection. Please check your network settings and try again.")
-  # }
 
-  # Check accessibility of dataset URL
+  # httr2 version of the above
   check_url <- function(url) {
     tryCatch(
       {
-        httr::HEAD(url)  # Use a HEAD request to ensure the file is accessible without downloading it
-        TRUE
+        # Create a HEAD request and perform it
+        httr2::request(url) |>
+          httr2::req_method("HEAD") |>  # Use a HEAD request
+          httr2::req_perform()          # Perform the request
+        TRUE  # Return TRUE if successful
       },
-      error = function(e) FALSE
+      error = function(e) FALSE  # Return FALSE if there is an error
     )
   }
 

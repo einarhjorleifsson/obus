@@ -1,11 +1,11 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey data
-Version: 2026.01.22
+Version: 2026.01.27
 Authors@R: c(person("Einar", "Hjorleifsson", role=c("aut", "cre"), email="einar.hjorleifsson@gmail.com"),
-             person("Martin", "Pastoors"   , role=c("aut"), email="martin.pastoors@gmail.com"),
+             person("Martin", "Pastoors"   , role=c("aut"), email="martinpastoors@mpff.nl"),
              person("Vaishav", "Soni"   , role=c("aut"), email="Vaishav@ices.dk"))
 Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
-Description: Fast access to the full up-to-date DATRAS data. Eliminates the tedious and often error-prone task of maintaining local copies of DATRAS data tables. Aim is to provide tidy non-ambigous variables and tables. You will never look back.
+Description: Fast access to the full up-to-date DATRAS data. Eliminates the tedious and often error-prone task of maintaining local copies of DATRAS data tables. Aim is to provide tidy non-ambigous variables and tables. Never look back.
 License: CC BY 4.0
 Suggests:
     devtools,
@@ -27,7 +27,6 @@ Imports:
     dplyr,
     duckdbfs,
     ggplot2,
-    httr,
     httr2,
     icesDatras,
     lubridate,
