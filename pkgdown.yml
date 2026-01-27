@@ -2,9 +2,8 @@ pandoc: 3.1.11
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
-  articles/on_meanings: on_meanings.html
-  articles/overview: overview.html
-last_built: 2026-01-18T20:29Z
-urls:
-  reference: https://einarhjorleifsson.github.io/obus/reference
-  article: https://einarhjorleifsson.github.io/obus/articles
+  articles/access: access.html
+  articles/auxiliaries: auxiliaries.html
+  articles/cases: cases.html
+  articles/sanity: sanity.html
+last_built: 2026-01-27T19:51Z
