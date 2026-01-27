@@ -1,43 +1,38 @@
 library(tidyverse)
-library(obus)
-cn_hh <- dr_con("HH", trim = FALSE) |> colnames() |> as_tibble()
-cn_hl <- dr_con("HL", trim = FALSE) |> colnames() |> as_tibble()
-cn_ca <- dr_con("CA", trim = FALSE) |> colnames() |> as_tibble()
-cn <-
-  bind_rows(cn_hh |> mutate(table = "HH"),
-            cn_hl |> mutate(table = "HL"),
-            cn_ca |> mutate(table = "CA")) |>
-  rename(cn = value)
-
-library(tidyverse)
 library(icesVocab)
+devtools::load_all()
 
-type_list <-
+# use dictionary to filter out DATRAS variables and to add new variable name to
+#  vocabulary
+dictionary <-
+  dr_con("dictionary") |>
+  collect() |>
+  distinct(old, .keep_all = TRUE) |>
+  drop_na(old)
+
+type <-
   icesVocab::getCodeTypeList() |>
   as_tibble() |>
-  select(type = Key, type_desc = Description) |>
-  filter(str_starts(type, "TS_"))
-
-d <-
-  map(type_list$type, icesVocab::getCodeList)
-names(d) <- type_list$type
-ices_code_list <-
-  bind_rows(d, .id = "type") |>
+  select(type = Key, type_desc = Description)
+d <- map(type$type, icesVocab::getCodeList)
+names(d) <- type$type
+vocabulary <-
+  d |>
+  bind_rows(.id = "type") |>
   as_tibble() |>
-  select(type, Key, Description, LongDescription) |>
-  left_join(type_list) |>
-  select(type, type_desc, everything())
-ices_vocabulary <-
-  cn |>
-  mutate(type = paste0("TS_", cn)) |>
-  left_join(ices_code_list)
-colnames(ices_vocabulary) <- tolower(colnames(ices_vocabulary))
-
-ices_vocabulary |>
-  filter(cn == "DataType") |>
-  select(key, description) |>
-  knitr::kable()
-ices_vocabulary |>
-  filter(cn == "SpecVal") |>
-  select(key, description) |>
-  knitr::kable()
+  select(type, key = Key, description = Description) |>
+  left_join(type) |>
+  select(type, type_desc, everything()) |>
+  mutate(variable = type,
+         variable =
+           case_when(str_starts(variable, "TS_") ~ str_remove(variable, "TS_"),
+                     str_starts(variable, "AC_") ~ str_remove(variable, "AC_"),
+                     .default = variable))
+vocabulary |>
+  select(variable, key, description, type, type_desc) |>
+  filter(variable %in% dictionary$old) |>
+  filter(!variable %in% c("Month", "Quarter", "Year")) |>
+  rename(old = variable) |>
+  left_join(dictionary |> select(old, new)) |>
+  select(old, new, key, everything()) |>
+  arrow::write_parquet("/home/hafri/einarhj/public_html/data/datras/vocabulary.parquet")

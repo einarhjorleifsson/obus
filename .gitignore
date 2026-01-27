@@ -8,3 +8,4 @@ docs/
 garbage/
 docs
 inst/doc
+*.xlsx
