@@ -8,6 +8,7 @@ Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
 Description: Fast access to the full up-to-date DATRAS data. Eliminates the tedious and often error-prone task of maintaining local copies of DATRAS data tables. Aim is to provide tidy non-ambigous variables and tables. You will never look back.
 License: CC BY 4.0
 Suggests:
+    devtools,
     rmarkdown,
     santoku,
     testthat (>= 3.0.0),
