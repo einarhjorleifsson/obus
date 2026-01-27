@@ -79,7 +79,7 @@ hh <- obus::dr_get("HH", years = 2025, from = "new")
 
 ## Connecting
 
-Although the DATRAS data can not be considered big data, one can pretend that it is and use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the parquet files (remember, these are not fully up-to-date) using in-process DuckDB database.
+Although the DATRAS data can not be considered big data, one can pretend that it is and use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files (remember, these are not fully up-to-date) using in-process DuckDB database.
 
 ### HH data
 
@@ -122,7 +122,7 @@ data <-
   mutate(n = replace_na(n, 0))
 ```
 
-Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually imported into R.
+Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually downloaded and imported into R. More importantly, only the variables Year, Quarter, latin, .id and n are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those that "fall within the range" of the values in the variables are passed over the web.
 
 ## Small print
 

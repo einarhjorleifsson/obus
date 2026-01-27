@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  21.851   3.451   4.078
+#>  20.595   3.689   4.065
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -95,8 +95,8 @@ hh <- obus::dr_get("HH", years = 2025, from = "new")
 Although the DATRAS data can not be considered big data, one can pretend
 that it is and use techniques developed for such datasets. So instead of
 importing the full dataset into R one can generate a connection to the
-parquet files (remember, these are not fully up-to-date) using
-in-process DuckDB database.
+url-hosted parquet files (remember, these are not fully up-to-date)
+using in-process DuckDB database.
 
 ### HH data
 
@@ -239,7 +239,11 @@ data <-
 
 Here all the code steps prior to the collect command are automatically
 translated to SQL and passed to the in-process DuckDB. It is only at
-collect step that the data is actually imported into R.
+collect step that the data is actually downloaded and imported into R.
+More importantly, only the variables Year, Quarter, latin, .id and n are
+ever passed over the web. In addition only certain chunks of the parquet
+files (read: rows), those that “fall within the range” of the values in
+the variables are passed over the web.
 
 ## Small print
 
@@ -294,14 +298,14 @@ pruned or removed.
     #>  gtable         0.3.6      2024-10-25 [2] CRAN (R 4.4.1)
     #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.4.1)
     #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.4.1)
-    #>  httr           1.4.7      2023-08-15 [2] CRAN (R 4.4.1)
+    #>  httr2          1.2.2      2025-12-08 [2] CRAN (R 4.4.1)
     #>  icesDatras     1.5.1      2026-01-23 [2] Github (einarhjorleifsson/icesDatras@221fcc9)
     #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.4.1)
     #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.4.1)
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.22 2026-01-27 [1] local
+    #>  obus         * 2026.01.27 2026-01-27 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
@@ -309,6 +313,7 @@ pruned or removed.
     #>  pkgload        1.4.1      2025-09-23 [2] CRAN (R 4.4.1)
     #>  purrr        * 1.2.1      2026-01-09 [2] CRAN (R 4.4.1)
     #>  R6             2.6.1      2025-02-15 [2] CRAN (R 4.4.1)
+    #>  rappdirs       0.3.4      2026-01-17 [2] CRAN (R 4.4.1)
     #>  RColorBrewer   1.1-3      2022-04-03 [2] CRAN (R 4.4.1)
     #>  readr        * 2.1.6      2025-11-14 [2] CRAN (R 4.4.1)
     #>  remotes        2.5.0      2024-03-17 [2] CRAN (R 4.4.1)
@@ -332,7 +337,7 @@ pruned or removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpfvTpGm/temp_libpath26b1ab17b88376
+    #>  [1] /tmp/RtmprMnMqG/temp_libpath2c74ed1990f841
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library
