@@ -25,7 +25,7 @@ Defaults to \code{HaulDuration}.}
 Defaults to \code{SubsamplingFactor}.}
 }
 \value{
-The input table with additional columns \code{n} and \code{cpue}.
+The input table with additional columns \code{n_haul} and \code{n_hour}.
 }
 \description{
 This function generates two new columns: \code{n} (numbers caught) and
