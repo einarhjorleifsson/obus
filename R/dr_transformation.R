@@ -205,6 +205,46 @@ dr_add_length_cm <- function(d, LengthCode = LengthCode, LengthClass = LengthCla
   return(d)
 }
 
+#' Add a standardized `length_mm` column to the input table
+#'
+#' This function adds a new column `length_mm` to the input table (`d`),
+#' computed based on `LengthCode` and `LengthClass` (or their alternative names).
+#'
+#' @param d A dataframe or DuckDB table containing at least two columns:
+#'          a column for `LengthCode` and a column for `LengthClass`.
+#' @param LengthCode The column specifying the length code (unquoted).
+#'        Defaults to `LengthCode`.
+#' @param LengthClass The column specifying the length class (unquoted).
+#'        Defaults to `LengthClass`.
+#'
+#' @return The input table with an additional column `length_mm`.
+#'
+#' @export
+dr_add_length_mm <- function(d, LengthCode = LengthCode, LengthClass = LengthClass) {
+
+  # Validate that required columns exist
+  required_vars <- c(rlang::as_name(rlang::enquo(LengthCode)), rlang::as_name(rlang::enquo(LengthClass)))
+  missing_vars <- setdiff(required_vars, colnames(d))
+  if (length(missing_vars) > 0) {
+    stop(paste("The required variables are missing from the table:",
+               paste(missing_vars, collapse = ", ")))
+  }
+
+  # Add `length_cm` column
+  d <- d |>
+    dplyr::mutate(
+      length_mm =
+        dplyr::case_when(
+          {{ LengthCode }} == "-9" ~ NA_real_,          # Invalid length codes marked as NA
+          {{ LengthCode }} %in% c(".", "0") ~ {{ LengthClass }},            # Direct mapping
+          {{ LengthCode }} %in% c("1", "2", "5") ~ {{ LengthClass }} * 10,  # Multiply by 10
+          TRUE ~ NA_real_                              # Any other case is NA
+        )
+    )
+
+  return(d)
+}
+
 # icesVocab - DataType
 #   |key |description                               |
 #   |:---|:-----------------------------------------|
@@ -228,7 +268,7 @@ dr_add_length_cm <- function(d, LengthCode = LengthCode, LengthClass = LengthCla
 #' @param SubsamplingFactor The column specifying the subsampling factor (unquoted).
 #'        Defaults to `SubsamplingFactor`.
 #'
-#' @return The input table with additional columns `n` and `cpue`.
+#' @return The input table with additional columns `n_haul` and `n_hour`.
 #'
 #' @export
 dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration = HaulDuration, SubsamplingFactor = SubsamplingFactor) {
@@ -247,18 +287,19 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
   d <-
     d |>
     dplyr::mutate(
-      n = dplyr::case_when(
+      n_haul = dplyr::case_when(
         DataType == "C"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }} * {{ HaulDuration }} / 60, # Data as CPUE
+        # Could lump stuff below:
         DataType == "R"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Data by haul
-        DataType == "P"  ~ NA,                                             # Pseudocategory sampling
-        DataType == "S"  ~ NA,                                             # Subsampled data
+        DataType == "P"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Pseudocategory sampling
+        DataType == "S"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Subsampled data
         DataType == "-9" ~ NA,                                             # Invalid hauls
         is.na(DataType)  ~ NA,                                             # Same as -9
         TRUE ~ NA                                                          # Unexpected DataType
       )
     ) |>
     dplyr::mutate(
-      cpue = n / {{ HaulDuration }} * 60
+      n_hour = n_haul / {{ HaulDuration }} * 60
     )
 
   return(d)
