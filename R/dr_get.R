@@ -9,7 +9,7 @@
 #' This function streamlines the retrieval of DATRAS trawl survey data from
 #' various sources, offering distinct methods for fetching and loading the data:
 #' - `"old"`: Retrieves data using the legacy `icesDatras::getDATRAS` function.
-#' - `"new"`: Uses the `icesDatras::get_datras_unaggregated_data` function.
+#' - `"new"`:
 #' - `"parquet"`: Reads directly from Parquet files via URL. survey, year, and
 #' quarter filter not applied.
 #'
@@ -81,7 +81,7 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
 
     data <- purrr::map2(recordtype,
                         surveys,
-                        icesDatras::get_datras_unaggregated_data,
+                        get_datras_unaggregated_data,
                         years_c,
                         quarters_c)
     i <- purrr::map_int(data, nrow) > 0

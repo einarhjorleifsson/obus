@@ -35,7 +35,7 @@ This function streamlines the retrieval of DATRAS trawl survey data from
 various sources, offering distinct methods for fetching and loading the data:
 \itemize{
 \item \code{"old"}: Retrieves data using the legacy \code{icesDatras::getDATRAS} function.
-\item \code{"new"}: Uses the \code{icesDatras::get_datras_unaggregated_data} function.
+\item \code{"new"}:
 \item \code{"parquet"}: Reads directly from Parquet files via URL. survey, year, and
 quarter filter not applied.
 }
