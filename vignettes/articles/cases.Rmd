@@ -43,7 +43,7 @@ hh |>
                           Quarter == 3 ~ Year + 0.75)) |> 
   left_join(hl |> 
               filter(latin == "Gadus morhua") |> 
-              mutate(b = cpue * 0.00001 * length_cm^3) |> 
+              mutate(b = n_hour * 0.00001 * length_cm^3) |> 
               group_by(.id) |> 
               summarise(b = sum(b, na.rm = TRUE)),
             by = join_by(.id)) |>
@@ -107,7 +107,7 @@ hh |>
   inner_join(hl |> 
                filter(!is.na(length_cm)) |> 
                group_by(.id, latin) |> 
-               summarise(n = sum(cpue, na.rm = TRUE))) |> 
+               summarise(n_hour = sum(n_hour, na.rm = TRUE))) |> 
   group_by(latin) |> 
   summarise(min = min(ShootLatitude, na.rm = TRUE),
             med = median(ShootLatitude, na.rm = TRUE),

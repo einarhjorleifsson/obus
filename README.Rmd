@@ -115,11 +115,11 @@ data <-
   left_join(hl |> 
               filter(latin == "Gadus morhua") |> 
               group_by(.id) |> 
-              summarise(n = sum(n, na.rm = TRUE)),
+              summarise(n_haul = sum(n_haul, na.rm = TRUE)),
             by = join_by(.id)) |> 
   # Import the data into R
   collect() |> 
-  mutate(n = replace_na(n, 0))
+  mutate(n_haul = replace_na(n_haul, 0))
 ```
 
 Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually downloaded and imported into R. More importantly, only the variables Year, Quarter, latin, .id and n are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those that "fall within the range" of the values in the variables are passed over the web.

@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  20.595   3.689   4.065
+#>  20.473   3.490   4.178
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -69,8 +69,8 @@ the dimension just imported are as follows:
 | type |     rows | cols |
 |:-----|---------:|-----:|
 | HL   |   146944 |   74 |
-| HH   | 14092724 |   36 |
-| CA   |  5800702 |   38 |
+| HH   | 14092724 |   35 |
+| CA   |  5800702 |   39 |
 
 Number of records and variables
 
@@ -195,8 +195,8 @@ hl |> glimpse()
 #> $ length_cm        <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5,…
 #> $ SpeciesSex       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
 #> $ DevelopmentStage <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
-#> $ n                <dbl> 1.0, 2.0, 1.0, 4.5, 4.5, 14.0, 28.5, 9.5, 9.5, 23.5, …
-#> $ cpue             <dbl> 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, 9, 9, 376, 376…
+#> $ n_haul           <dbl> 1.0, 2.0, 1.0, 4.5, 4.5, 14.0, 28.5, 9.5, 9.5, 23.5, …
+#> $ n_hour           <dbl> 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, 9, 9, 376, 376…
 ```
 
 ### CA data
@@ -230,11 +230,11 @@ data <-
   left_join(hl |> 
               filter(latin == "Gadus morhua") |> 
               group_by(.id) |> 
-              summarise(n = sum(n, na.rm = TRUE)),
+              summarise(n_haul = sum(n_haul, na.rm = TRUE)),
             by = join_by(.id)) |> 
   # Import the data into R
   collect() |> 
-  mutate(n = replace_na(n, 0))
+  mutate(n_haul = replace_na(n_haul, 0))
 ```
 
 Here all the code steps prior to the collect command are automatically
@@ -263,7 +263,7 @@ pruned or removed.
     #>  collate  is_IS.UTF-8
     #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-01-27
+    #>  date     2026-01-29
     #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
     #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
@@ -277,7 +277,7 @@ pruned or removed.
     #>  cachem         1.1.0      2024-05-16 [2] CRAN (R 4.4.1)
     #>  cli            3.6.5      2025-04-23 [2] CRAN (R 4.4.1)
     #>  curl           7.0.0      2025-08-19 [2] CRAN (R 4.4.1)
-    #>  data.table     1.18.0     2025-12-24 [2] CRAN (R 4.4.1)
+    #>  data.table     1.18.2.1   2026-01-27 [2] CRAN (R 4.4.1)
     #>  DBI            1.2.3      2024-06-02 [2] CRAN (R 4.4.1)
     #>  dbplyr         2.5.1      2025-09-10 [2] CRAN (R 4.4.1)
     #>  devtools       2.4.6      2025-10-03 [2] CRAN (R 4.4.1)
@@ -299,13 +299,13 @@ pruned or removed.
     #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.4.1)
     #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.4.1)
     #>  httr2          1.2.2      2025-12-08 [2] CRAN (R 4.4.1)
-    #>  icesDatras     1.5.1      2026-01-23 [2] Github (einarhjorleifsson/icesDatras@221fcc9)
+    #>  icesDatras     1.5.1      2026-01-29 [2] Github (ices-tools-prod/icesDatras@590b296)
     #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.4.1)
     #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.4.1)
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.27 2026-01-27 [1] local
+    #>  obus         * 2026.01.27 2026-01-29 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
@@ -337,7 +337,7 @@ pruned or removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmprMnMqG/temp_libpath2c74ed1990f841
+    #>  [1] /tmp/Rtmp5Pcom7/temp_libpath4869e3de2abf9
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library

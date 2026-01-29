@@ -107,7 +107,7 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 
   # Handle `type`-specific logic
   if (type == "HL" && trim) {
-    q <- trim_data(q, c("latin", "length_cm", "SpeciesSex", "DevelopmentStage", "n", "cpue"))
+    q <- trim_data(q, c("latin", "length_cm", "SpeciesSex", "DevelopmentStage", "n_haul", "n_hour"))
   }
 
   if (type == "CA" && trim) {
