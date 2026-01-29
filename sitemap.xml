@@ -11,6 +11,7 @@
 <url><loc>/reference/dr_add_date.html</loc></url>
 <url><loc>/reference/dr_add_id.html</loc></url>
 <url><loc>/reference/dr_add_length_cm.html</loc></url>
+<url><loc>/reference/dr_add_length_mm.html</loc></url>
 <url><loc>/reference/dr_add_n_and_cpue.html</loc></url>
 <url><loc>/reference/dr_add_starttime.html</loc></url>
 <url><loc>/reference/dr_coastline.html</loc></url>
@@ -22,6 +23,9 @@
 <url><loc>/reference/dr_latin_aphia.html</loc></url>
 <url><loc>/reference/dr_settypes.html</loc></url>
 <url><loc>/reference/dr_translate.html</loc></url>
+<url><loc>/reference/getIndicesAllYears.html</loc></url>
+<url><loc>/reference/getIndicesAllYears2.html</loc></url>
+<url><loc>/reference/get_datras_unaggregated_data.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
 </urlset>
 
