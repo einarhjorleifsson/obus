@@ -4,30 +4,29 @@
 #' By processing fishing haul-level (HH) and catch-level (HL) data, it generates the aggregate number (`n_haul`) and
 #' weight (`w_haul`) of species caught per haul, alongside estimates standardized to a 1-hour haul duration (`n_hour`, `w_hour`).
 #'
-#' The final output is a grouped summary by haul identifiers and species, enabling an overview of catch numbers
+#' The final output is a summary by haul identifiers and species, enabling an overview of catch numbers
 #' and weights. Additionally, the function aims to provide similar weight calculations as `icesDatras::getCatchWgt`,
 #' making its results comparable to external references.
 #'
+#' @param trim Boolean (default TRUE), controls if additional non-essential variables are returned or not.
 #' @return
 #' A summarized `data.frame` with the following columns:
 #' - `.id`: Unique haul identifier.
-#' - `DataType`: Type of data collected, e.g., raised to 1 hour or raw.
 #' - `latin`: Latin species name, identifying the species.
-#' - `TotalNumber`: Total number of individuals of the species caught - nonstandardized.
-#' - `SpeciesCategoryWeight`: Total weight (kg) of the species caught - nonstandardized.
 #' - `n_haul`: Actual number of individuals per haul.
 #' - `w_haul`: Actual weight (kg) per haul.
 #' - `n_hour`: Number of individuals raised to a 1-hour haul.
 #' - `w_hour`: Weight (kg) raised to a 1-hour haul.
 #'
-#' @note
-#' This function assumes the following:
-#' - `HH` and `HL` are loaded as DuckDB views or data.frames in memory.
-#' - `.id` is a unique haul identifier that is present in both `HH` and `HL` tables for joining.
-#' - `HaulDuration` is recorded in minutes.
+#' If trim is FALSE then additional variables return
+#' - `TotalNumber`: Total number of individuals of the species caught - nonstandardized.
+#' - `SpeciesCategoryWeight`: Total weight (kg) of the species caught - nonstandardized.
+#' - `DataType`: Type of data recording, if value is "C", SpeciesCategoryWeight is in unit per 60 minute hauling, otherwise unit is in reported haul ducation.
+#' - `HaulDuration`: Type of data collected, e.g., raised to 1 hour or raw.
 #'
-#' If the DataType in `Hh` is "C", the total number and weight in the haul are scaled by haul duration (in minutes)
-#' to enable sensible comparisons across hauls of different durations.
+#' @note
+#'
+#' ".id" are variables Survey, Year, Quarter, Country, Platform, Gear, StationName and HaulNumber catenated, separated by ":".
 #'
 #' @seealso
 #' \code{icesDatras::getCatchWgt} for an alternative approach to computing total catch weight by species and haul.
@@ -36,13 +35,11 @@
 #'
 #' @export
 
-dr_get_by_haul <- function() {
-
-  # make checks: hh and hl have both to be NULL or data.frames
+dr_con_by_haul <- function(trim = TRUE) {
 
   q <-
     dr_con("HH", trim = FALSE) |>
-    dplyr::select(.id, Survey, Year, Quarter, .id, DataType, HaulDuration) |>
+    dplyr::select(.id, Survey, Year, Quarter, DataType, HaulDuration) |>
     dplyr::left_join(dr_con("HL", trim = FALSE) |>
                        dplyr::select(.id, latin, SpeciesSex, DevelopmentStage, TotalNumber, SpeciesCategoryWeight,
                                      SpeciesCategory),
@@ -61,6 +58,22 @@ dr_get_by_haul <- function() {
                      n_hour = sum(n_haul / HaulDuration * 60, na.rm = TRUE),
                      w_hour = sum(w_haul / HaulDuration * 60, na.rm = TRUE),
                      .groups = "drop")
+
+  if(trim == TRUE) {
+    q <-
+      q |>
+      dplyr::select(.id, latin, n_haul, w_haul, n_hour, w_hour)
+  } else {
+    q <-
+      q |>
+      dplyr::select(.id, latin, n_haul, w_haul, n_hour, w_hour, SpeciesCategoryWeight,
+                    DataType, HaulDuration)
+  }
+
+  # q <-
+  #   q |>
+  #   dplyr::compute()
+
   return(q)
 }
 
