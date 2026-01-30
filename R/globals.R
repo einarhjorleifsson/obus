@@ -20,6 +20,7 @@ utils::globalVariables(
     "RecordHeader", "Species", "AphiaID",
     "HaulDuration", "SpeciesCategory", "SpeciesCategoryWeight", "TotalNumber",
     "n_haul", "w_haul",
+    "n_hour", "w_hour",
     "DataFormat", "Description"
   )
 )

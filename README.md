@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  20.473   3.490   4.178
+#>  20.369   3.757   4.351
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -105,7 +105,7 @@ hh <- dr_con("HH")
 hh |> glimpse()
 #> Rows: ??
 #> Columns: 74
-#> Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#> Database: DuckDB 1.4.4 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
 #> $ RecordHeader            <chr> "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
 #> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…
 #> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
@@ -189,7 +189,7 @@ hl <- dr_con("HL")
 hl |> glimpse()
 #> Rows: ??
 #> Columns: 7
-#> Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#> Database: DuckDB 1.4.4 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
 #> $ .id              <chr> "BITS:1991:1:DE:06S1:H20:48:43", "BITS:1991:1:DE:06S1…
 #> $ latin            <chr> "Pleuronectes platessa", "Pleuronectes platessa", "Po…
 #> $ length_cm        <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5,…
@@ -206,7 +206,7 @@ ca <- dr_con("CA")
 ca |> glimpse()
 #> Rows: ??
 #> Columns: 5
-#> Database: DuckDB 1.4.3 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#> Database: DuckDB 1.4.4 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
 #> $ .id           <chr> "BITS:1991:1:SE:77AR:GOV:71:6", "BITS:1991:1:SE:77AR:GOV…
 #> $ latin         <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus m…
 #> $ length_cm     <dbl> 34, 36, 39, 40, 43, 45, 30, 31, 34, 35, 38, 43, 44, 45, …
@@ -263,7 +263,7 @@ pruned or removed.
     #>  collate  is_IS.UTF-8
     #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-01-29
+    #>  date     2026-01-30
     #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
     #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
@@ -284,7 +284,7 @@ pruned or removed.
     #>  dichromat      2.0-0.1    2022-05-02 [2] CRAN (R 4.4.1)
     #>  digest         0.6.39     2025-11-19 [2] CRAN (R 4.4.1)
     #>  dplyr        * 1.1.4      2023-11-17 [2] CRAN (R 4.4.1)
-    #>  duckdb         1.4.3      2025-12-10 [2] CRAN (R 4.4.1)
+    #>  duckdb         1.4.4      2026-01-28 [2] CRAN (R 4.4.1)
     #>  duckdbfs       0.1.2      2025-10-12 [2] CRAN (R 4.4.1)
     #>  ellipsis       0.3.2      2021-04-29 [2] CRAN (R 4.4.1)
     #>  evaluate       1.0.5      2025-08-27 [2] CRAN (R 4.4.1)
@@ -299,13 +299,13 @@ pruned or removed.
     #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.4.1)
     #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.4.1)
     #>  httr2          1.2.2      2025-12-08 [2] CRAN (R 4.4.1)
-    #>  icesDatras     1.5.1      2026-01-29 [2] Github (ices-tools-prod/icesDatras@590b296)
+    #>  icesDatras     1.4.1      2023-05-08 [2] CRAN (R 4.4.1)
     #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.4.1)
     #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.4.1)
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.27 2026-01-29 [1] local
+    #>  obus         * 2026.01.30 2026-01-30 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
@@ -337,7 +337,7 @@ pruned or removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/Rtmp5Pcom7/temp_libpath4869e3de2abf9
+    #>  [1] /tmp/RtmpnYgCA6/temp_libpath1e03a022aee380
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library
