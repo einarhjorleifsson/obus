@@ -18,7 +18,7 @@ and returns the field specifications as a data frame."><!-- mathjax --><script s
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">obus</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2026.01.27</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2026.01.30</span>
       </span>
     </div>
 
@@ -93,18 +93,11 @@ following columns:</p><ul><li><p><code>RecordHeader</code>: A character string i
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Fetch the default DATRAS field specifications:</span></span></span>
 <span class="r-in"><span><span class="va">specs</span> <span class="op">&lt;-</span> <span class="fu">dr_get_specs</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in httr2::req_perform(httr2::request(url)):</span> HTTP 404 Not Found.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># View the first few rows:</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">specs</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   RecordHeader FieldName    FieldNameOld DataFormat Description                 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> CA           RecordHeader RecordType   char       Definition of the data type…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> CA           Quarter      Quarter      int        Cruise quarter. Hauls outsi…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> CA           Country      Country      char       ISO 3166 country codes and …</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> CA           Platform     Ship         char       SeaDataNet Ship and Platfor…</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> CA           Gear         Gear         char       Gear type code              </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> CA           SweepLength  SweepLngt    int        Length of sweep in metres. …</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'specs' not found</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
