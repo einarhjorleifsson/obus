@@ -4,6 +4,7 @@
 <url><loc>/articles/access.html</loc></url>
 <url><loc>/articles/auxiliaries.html</loc></url>
 <url><loc>/articles/cases.html</loc></url>
+<url><loc>/articles/hl-record-types.html</loc></url>
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/articles/sanity.html</loc></url>
 <url><loc>/authors.html</loc></url>
@@ -14,6 +15,7 @@
 <url><loc>/reference/dr_add_length_cm.html</loc></url>
 <url><loc>/reference/dr_add_length_mm.html</loc></url>
 <url><loc>/reference/dr_add_n_and_cpue.html</loc></url>
+<url><loc>/reference/dr_add_record_type.html</loc></url>
 <url><loc>/reference/dr_add_starttime.html</loc></url>
 <url><loc>/reference/dr_coastline.html</loc></url>
 <url><loc>/reference/dr_coltypes.html</loc></url>
@@ -27,6 +29,7 @@
 <url><loc>/reference/getIndicesAllYears.html</loc></url>
 <url><loc>/reference/getIndicesAllYears2.html</loc></url>
 <url><loc>/reference/get_datras_unaggregated_data.html</loc></url>
+<url><loc>/reference/hl_record_type_lookup.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
 </urlset>
 
