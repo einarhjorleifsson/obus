@@ -1,0 +1,292 @@
+---
+title: "HL record types"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  warning  = FALSE,
+  message  = FALSE,
+  comment  = "#>"
+)
+```
+
+## Overview
+
+The DATRAS length table (HL) is not a uniform table of length-frequency
+observations. A substantial minority of records carry no `LengthClass` at all,
+and even within the length-bearing records there are structural differences
+driven by the haul-level `DataType` field and the presence of sex or
+development-stage annotations. Treating all rows the same leads to silent
+errors in abundance or CPUE calculations.
+
+`dr_add_record_type()` classifies every row of a processed HL table into one
+of ten mutually exclusive integer types. The companion object
+`hl_record_type_lookup` is the lookup table that maps those integers to labels
+and descriptions.
+
+### The classification function
+
+The function requires that `dr_add_n_and_cpue()` has already been called (so
+`n_haul` is present). It uses `n_haul` as a validity proxy: if `n_haul` is
+`NA` for a length-bearing record the haul is invalid (`DataType` of `-9` or
+`NA` in the HH table).
+
+```{r eval = FALSE}
+library(tidyverse)
+library(obus)
+
+# Typical pipeline: load → join HaulDuration → compute n_haul → classify
+hh <- dr_hl(survey = "NS-IBTS")   # haul header
+hl <- dr_hl(survey = "NS-IBTS")   # length table (illustrative; use actual loaders)
+
+hl_typed <- hl |>
+  left_join(hh |> select(.id, DataType, HaulDuration), by = ".id") |>
+  dr_add_n_and_cpue() |>
+  dr_add_record_type()
+```
+
+For this article the full multi-survey dataset (HL joined with HH) was used,
+covering all surveys available in the DATRAS parquet store.
+
+### Record type lookup
+
+```{r}
+library(obus)
+hl_record_type_lookup
+```
+
+## Distribution across all surveys
+
+```{r eval = FALSE}
+hl_typed |>
+  count(record_type, sort = TRUE) |>
+  left_join(hl_record_type_lookup |> select(record_type, label),
+            by = "record_type") |>
+  mutate(pct = round(100 * n / sum(n), 2)) |>
+  select(record_type, label, n, pct)
+```
+
+| record_type | label | n | % |
+|---|---|---:|---:|
+| 1 | Length-frequency, standard | 7,450,315 | 52.9 |
+| 2 | Length-frequency, sex-disaggregated | 6,226,236 | 44.2 |
+| 3 | Length-frequency, with development stage | 24,705 | 0.17 |
+| 4 | Length-frequency, invalid haul | 24,298 | 0.17 |
+| 10 | Zero/null catch | 65,049 | 0.46 |
+| 11 | Weight-only summary | 21,097 | 0.15 |
+| 12 | Count (+/- weight) summary, no subsampling | 36,834 | 0.26 |
+| 13 | Subsampled summary, no sex | 97,716 | 0.69 |
+| 14 | Subsampled summary, sex-disaggregated | 146,374 | 1.04 |
+| 15 | Sex-coded null record | 100 | <0.01 |
+
+The great majority of records (97.3 %) carry a `LengthClass` and a
+computable `n_haul`. Of those, roughly 46 % are additionally annotated by sex
+(type 2) and a small fraction by development/maturity stage (type 3). The
+remaining 2.7 % are summary or null records discussed in detail below.
+
+---
+
+## Records with `LengthClass` (types 1–4) {#sec-lc-present}
+
+These are the rows that drive length-frequency and abundance analyses.
+`n_haul` is calculated from `NumberAtLength`, `SubsamplingFactor`, and
+(for `DataType == "C"`) `HaulDuration`:
+
+| `DataType` | `n_haul` formula |
+|---|---|
+| `C` — CPUE | `NumberAtLength × SubsamplingFactor × HaulDuration / 60` |
+| `R` — by haul | `NumberAtLength × SubsamplingFactor` |
+| `P` — pseudocategory | `NumberAtLength × SubsamplingFactor` |
+| `S` — subsampled | `NumberAtLength × SubsamplingFactor` |
+| `-9` or `NA` | `NA` (invalid haul, type 4) |
+
+**Type 3 note:** `DevelopmentStage` takes priority in the classification. A
+record with both `DevelopmentStage` and `SpeciesSex` present is assigned
+type 3 (~24 600 such records exist, mostly *Sepia officinalis* in BTS).
+
+### Filtering for standard abundance analysis
+
+```{r eval = FALSE}
+hl_lf <- hl_typed |>
+  filter(record_type %in% 1:3)   # drops invalid hauls (type 4)
+```
+
+To restrict further to unsexed/aggregated data (e.g., when sexed and unsexed
+rows for the same length class would double-count):
+
+```{r eval = FALSE}
+hl_lf_standard <- hl_typed |>
+  filter(record_type == 1)
+```
+
+---
+
+## Records without `LengthClass` (types 10–15) {#sec-lc-absent}
+
+All records in this group have `LengthClass`, `LengthCode`, and
+`NumberAtLength` equal to `NA`, so `n_haul` is always `NA`. They should be
+**excluded from length-frequency and abundance analyses**.
+
+### Type 10 — Zero/null catch {#sec-type10}
+
+These 65 049 records represent species that were explicitly recorded as absent
+from a haul. Two findings support this interpretation:
+
+1. `SpeciesValidity` is `5` ("species not found") in 93.8 % of cases and `0`
+   in the remaining 6.2 %.
+2. In 97 % of hauls that contain a type-10 record, at least one other species
+   was measured and assigned a length-frequency record — confirming the haul
+   was valid and the species was simply not caught.
+
+```{r eval = FALSE}
+# Confirm: hauls with type-10 records mostly also have length data for other species
+hauls_with_zero <- hl_typed |>
+  filter(record_type == 10L) |>
+  distinct(.id)
+
+hl_typed |>
+  semi_join(hauls_with_zero, by = ".id") |>
+  filter(record_type %in% 1:3) |>
+  summarise(hauls_also_with_length = n_distinct(.id))
+# 7 080 out of 7 267 (97 %)
+```
+
+Type-10 records are concentrated in BTS and NS-IBTS:
+
+| Survey | Records | Hauls | Species |
+|---|---:|---:|---:|
+| BTS | 43,388 | 4,679 | 106 |
+| NS-IBTS | 20,486 | 1,690 | 80 |
+| DYFS | 784 | 652 | 22 |
+| BITS | 155 | 54 | 16 |
+| SNS | 228 | 184 | 6 |
+
+These are standard-species-list absences — exactly the explicit zero-catch
+entries needed when computing indices that require hauls with zero catch to be
+included. They should **not** be confused with hauls that simply don't mention
+a species (implicit zeros).
+
+### Type 11 — Weight-only summary {#sec-type11}
+
+These 21 097 records carry only `SpeciesCategoryWeight`; `TotalNumber`,
+`SubsampledNumber`, and `SubsamplingFactor` are all `NA`. Two distinct
+sub-populations exist.
+
+**Sub-population A — Bulk bycatch (non-fish taxa):** The dominant pattern
+(20 819 of 20 836 distinct haul × species combinations). Species are
+invertebrates, algae, and other organisms for which individual length
+measurement is not practical: sponges (*Alcyonium*, *Porifera*, *Suberites*),
+hydroids, nemerteans, algae (*Fucus*, *Ulva*), tunicates, etc. These records
+appear primarily in BTS (17 452 records) with smaller contributions from DYFS,
+NS-IBTS, BITS, PT-IBTS, SNS, and SE-SOUND. For these entries the
+`SpeciesCategoryWeight` is the total wet weight of the bulk material and is
+the only meaningful quantity.
+
+**Sub-population B — Companion weight records (*Sepia officinalis*, BTS;
+*Mnemiopsis leidyi*, DYFS):** Only 17 haul × species combinations mix type-11
+with length-frequency records. Inspection of those hauls reveals a consistent
+four-record-type pattern per haul:
+
+```{r eval = FALSE}
+# Typical structure for one Sepia haul
+hl_typed |>
+  filter(.id == "BTS:2021:3:BE:45CE:BT4A:36:60", ValidAphiaID == 141444L) |>
+  distinct(record_type, SpeciesCategory, TotalNumber, SubsampledNumber,
+           SubsamplingFactor, SpeciesCategoryWeight) |>
+  arrange(record_type)
+```
+
+| record_type | SpeciesCategory | TotalNumber | SubsampledNumber | SubsamplingFactor | SpeciesCategoryWeight |
+|---|---|---:|---:|---:|---:|
+| 1 | 1 | 2 | 2 | 1 | 538 |
+| 3 | 1 | NA | NA | 1 | 28 |
+| 11 | 1 | NA | NA | 1 | 28 |
+| 13 | 1 | 2 | 2 | 1 | 538 |
+
+The type-3 (development-stage length-frequency) and type-11 records carry
+**identical** `SpeciesCategoryWeight` values within each haul. The type-11
+entry is a companion weight record that reports the total weight for the
+development-stage category — it is not a standalone bulk weight. The type-1
+(standard length-frequency) and type-13 (subsampled summary) records carry the
+overall haul weight. For *Sepia officinalis* this pattern reflects the Belgian
+BTS protocol of recording both individual maturity-at-length data and a
+companion total weight for that maturity group.
+
+**Practical consequence:** For bulk bycatch (Sub-population A) the weight in
+type-11 records is the only information available and can be used in bycatch
+weight reporting. For *Sepia* in BTS (Sub-population B) the weight is already
+captured in the co-occurring type-3 records; the type-11 record is redundant
+and should be ignored to avoid double-counting.
+
+```{r eval = FALSE}
+# Bycatch weight per haul for bulk taxa (excluding Sepia companion records)
+bycatch_weights <- hl_typed |>
+  filter(record_type == 11L) |>
+  anti_join(
+    hl_typed |>
+      filter(record_type %in% 1:3) |>
+      distinct(.id, ValidAphiaID),
+    by = c(".id", "ValidAphiaID")
+  ) |>
+  group_by(.id, ValidAphiaID, latin) |>
+  summarise(total_weight_g = sum(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop")
+```
+
+### Types 12–14 — Summary records without length
+
+These records summarise catch totals at the haul × species level but carry no
+length distribution. They appear when a species was caught but either not
+subsampled for length measurement (type 12) or subsampled with a factor but
+without individual length classes being recorded (types 13–14).
+
+| Type | Key variables present | Typical use |
+|---|---|---|
+| 12 | `TotalNumber`, optionally `SpeciesCategoryWeight` | Whole-catch totals; no subsampling |
+| 13 | `TotalNumber`, `SubsamplingFactor` (± weight) | Subsampled catch aggregate, no sex |
+| 14 | `TotalNumber`, `SubsamplingFactor`, `SpeciesSex` (± weight) | Sex-disaggregated catch aggregate |
+
+These records can supply total catch numbers and weights when length
+information is not needed, but they **must not be used to derive length
+frequencies**. Types 13 and 14 are the no-length counterparts of the
+sex-disaggregated type-10 records found in surveys such as NS-IBTS and BTS.
+
+### Type 15 — Sex-coded null record
+
+One hundred records with `SpeciesSex` present but all other measurement fields
+absent. These are effectively sex-coded zero-catch entries. They can safely be
+treated as type-10 equivalents for most purposes.
+
+---
+
+## Summary: recommended filters by use case
+
+```{r eval = FALSE}
+# Length-frequency and abundance / CPUE analysis
+hl_for_lf <- hl_typed |>
+  filter(record_type %in% 1:3)
+
+# Unsexed only (avoid double-counting in surveys with mixed sex/unsexed rows)
+hl_unsexed <- hl_typed |>
+  filter(record_type == 1)
+
+# Explicit zero-catch entries (for index calculations needing true zeros)
+hl_zeros <- hl_typed |>
+  filter(record_type == 10L)
+
+# Bulk bycatch weights (non-fish taxa, excluding Sepia companion records)
+hl_bycatch_wt <- hl_typed |>
+  filter(record_type == 11L) |>
+  anti_join(
+    hl_typed |> filter(record_type %in% 1:3) |> distinct(.id, ValidAphiaID),
+    by = c(".id", "ValidAphiaID")
+  )
+```
+
+::: {.callout-warning}
+Records of types 10–15 all have `n_haul = NA`. Any pipeline that passes these
+rows to functions expecting valid abundance values will silently propagate
+`NA`s or, worse, drop rows that should be explicit zeros. Filter to types 1–3
+before computing length frequencies or indices.
+:::

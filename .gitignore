@@ -9,3 +9,4 @@ garbage/
 docs
 inst/doc
 *.xlsx
+.positai
