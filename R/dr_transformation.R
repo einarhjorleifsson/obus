@@ -258,6 +258,136 @@ dr_add_length_mm <- function(d, LengthCode = LengthCode, LengthClass = LengthCla
 #   |R   |Data by haul                              |
 #   |S   |Sub sampled data                          |
 
+#' Lookup table for HL record types
+#'
+#' A tibble describing the integer codes assigned by \code{\link{dr_add_record_type}}.
+#' Each row defines one record type with a short label and a description of
+#' the variable pattern that defines it.
+#'
+#' @format A tibble with columns:
+#' \describe{
+#'   \item{record_type}{Integer code.}
+#'   \item{lc_present}{Logical; whether \code{LengthClass} is present for this type.}
+#'   \item{label}{Short human-readable label.}
+#'   \item{description}{Full description of the variable pattern.}
+#' }
+#' @export
+hl_record_type_lookup <- tibble::tribble(
+  ~record_type, ~lc_present, ~label,                              ~description,
+  # --- Records WITH LengthClass ---
+  1L,  TRUE,  "Length-frequency, standard",
+    "LengthClass and n_haul present; no SpeciesSex or DevelopmentStage annotation",
+  2L,  TRUE,  "Length-frequency, sex-disaggregated",
+    "LengthClass and n_haul present, SpeciesSex present, no DevelopmentStage",
+  3L,  TRUE,  "Length-frequency, with development stage",
+    "LengthClass and n_haul present, DevelopmentStage present; ~99% also carry SpeciesSex. Seen mainly in cephalopod/maturity protocols (e.g. Sepia officinalis in BTS)",
+  4L,  TRUE,  "Length-frequency, invalid haul",
+    "LengthClass present but n_haul is NA: DataType = -9 or NA in the haul header (HH table)",
+  # --- Records WITHOUT LengthClass ---
+  10L, FALSE, "Explicit zero catch",
+    "All measurement vars absent (TotalNumber, SpeciesCategoryWeight, SubsamplingFactor, SpeciesSex all NA). SpeciesValidity = 5 ('not found') in ~94% of cases. These are standard-species-list absences recorded for hauls where the species was looked for but not caught; distinct from implicit zeros (hauls that simply omit the species). Concentrated in BTS and NS-IBTS.",
+  11L, FALSE, "Bulk bycatch weight",
+    "LengthClass absent; SpeciesCategoryWeight present, TotalNumber absent; no type-3 record for the same .id + ValidAphiaID. Represents organisms weighed as bulk material without individual counting or length measurement: sponges, hydroids, algae, tunicates, etc. Primarily BTS.",
+  12L, FALSE, "Counted catch, no subsampling",
+    "LengthClass absent; TotalNumber present, SubsamplingFactor absent. Species was counted (and possibly weighed) but no length measurements were taken and no subsampling structure was recorded.",
+  13L, FALSE, "Subsampled catch summary, no sex",
+    "LengthClass absent; SubsamplingFactor present, SpeciesSex absent. In ~99.8% of cases standalone: species was counted with a subsampling factor but not individually measured. In the rare remaining cases (~0.2%) acts as a companion header row that duplicates the totals from co-occurring type-1 length-frequency records for the same .id + ValidAphiaID + SpeciesCategory.",
+  14L, FALSE, "Subsampled catch summary, sex-disaggregated",
+    "LengthClass absent; SubsamplingFactor and SpeciesSex present. Analogous to type 13 but with sex annotation. Standalone in ~99.4% of cases; in ~0.6% acts as a companion header to co-occurring type-2 length-frequency records.",
+  15L, FALSE, "Sex-coded null record",
+    "LengthClass absent; SpeciesSex present but TotalNumber, SpeciesCategoryWeight, and SubsamplingFactor all absent. Functionally equivalent to type 10 (explicit zero) with a sex code attached. Only ~100 records in the full dataset.",
+  16L, FALSE, "Companion weight to length-frequency record",
+    "LengthClass absent; SpeciesCategoryWeight present, TotalNumber absent; a length-frequency record (type 1, 2, or 3) exists for the same .id + ValidAphiaID. The weight duplicates the SpeciesCategoryWeight already carried by the co-occurring length records and should be excluded to avoid double-counting. Seen for Sepia officinalis (BTS, alongside type-3 development-stage records) and Mnemiopsis leidyi (DYFS, alongside type-2 sex-disaggregated records).",
+  99L, FALSE, "Other / unclassified",
+    "LengthClass absent; does not fit any of types 10-16"
+)
+
+#' Classify HL records by measurement type
+#'
+#' Adds a \code{record_type} integer column to the HL table classifying each
+#' row by the combination of variables that are present or absent.
+#' See \code{\link{hl_record_type_lookup}} for the full definition of each code.
+#'
+#' The function requires that \code{\link{dr_add_n_and_cpue}} has already been
+#' run so that \code{n_haul} is present; it uses \code{n_haul} as a proxy for
+#' haul validity (types 1–3 vs type 4) rather than reading \code{DataType}
+#' directly.
+#'
+#' Classification uses two passes. The first pass assigns types row-by-row
+#' using variable presence/absence. The second pass requires haul-level
+#' context: weight-only records (initially type 11) are reclassified as
+#' type 16 when a development-stage length-frequency record (type 3) exists
+#' for the same \code{.id} and \code{ValidAphiaID}, identifying them as
+#' companion weight entries rather than standalone bulk bycatch.
+#'
+#' @param d DATRAS length table (HL) containing at least the columns
+#'   \code{.id}, \code{ValidAphiaID}, \code{LengthClass}, \code{n_haul},
+#'   \code{SpeciesSex}, \code{DevelopmentStage}, \code{TotalNumber},
+#'   \code{SpeciesCategoryWeight}, and \code{SubsamplingFactor}.
+#'
+#' @return \code{d} with an additional integer column \code{record_type}.
+#' @seealso \code{\link{hl_record_type_lookup}}
+#' @export
+dr_add_record_type <- function(d) {
+
+  required_vars <- c(".id", "ValidAphiaID", "LengthClass", "n_haul",
+                     "SpeciesSex", "DevelopmentStage",
+                     "TotalNumber", "SpeciesCategoryWeight", "SubsamplingFactor")
+  missing_vars <- setdiff(required_vars, colnames(d))
+  if (length(missing_vars) > 0) {
+    stop("The following required columns are missing: ",
+         paste(missing_vars, collapse = ", "))
+  }
+
+  # --- Pass 1: row-wise classification by variable presence/absence ----------
+  d <- d |>
+    dplyr::mutate(
+      record_type = dplyr::case_when(
+        # Records WITH LengthClass (types 1-4)
+        # DevelopmentStage takes priority over sex-only within valid records
+        !is.na(LengthClass) & !is.na(n_haul) & !is.na(DevelopmentStage) ~ 3L,
+        !is.na(LengthClass) & !is.na(n_haul) & !is.na(SpeciesSex)       ~ 2L,
+        !is.na(LengthClass) & !is.na(n_haul)                             ~ 1L,
+        !is.na(LengthClass) &  is.na(n_haul)                             ~ 4L,
+
+        # Records WITHOUT LengthClass (types 10-15, 99)
+        is.na(LengthClass) &
+          is.na(TotalNumber) & is.na(SpeciesCategoryWeight) &
+          is.na(SubsamplingFactor) & is.na(SpeciesSex)                   ~ 10L,
+        is.na(LengthClass) &
+          is.na(TotalNumber) & !is.na(SpeciesCategoryWeight)             ~ 11L,  # provisional; see pass 2
+        is.na(LengthClass) &
+          !is.na(TotalNumber) & is.na(SubsamplingFactor)                 ~ 12L,
+        is.na(LengthClass) &
+          !is.na(SubsamplingFactor) & !is.na(SpeciesSex)                 ~ 14L,
+        is.na(LengthClass) &
+          !is.na(SubsamplingFactor) & is.na(SpeciesSex)                  ~ 13L,
+        is.na(LengthClass) & !is.na(SpeciesSex)                         ~ 15L,
+
+        TRUE ~ 99L
+      )
+    )
+
+  # --- Pass 2: reclassify weight-only records that accompany length records ---
+  # A type-11 record sharing .id + ValidAphiaID with any length-frequency record
+  # (types 1-3) is a companion weight entry (type 16), not standalone bulk bycatch.
+  hauls_with_ds <- d |>
+    dplyr::filter(record_type %in% 1L:3L) |>
+    dplyr::distinct(.id, ValidAphiaID) |>
+    dplyr::mutate(.has_ds = TRUE)
+
+  d |>
+    dplyr::left_join(hauls_with_ds, by = c(".id", "ValidAphiaID")) |>
+    dplyr::mutate(
+      record_type = dplyr::if_else(
+        record_type == 11L & !is.na(.has_ds),
+        16L,
+        record_type
+      )
+    ) |>
+    dplyr::select(-.has_ds)
+}
+
 #' Numbers caught and the CPUE in each length class
 #'
 #' This function generates two new columns: `n` (numbers caught) and
