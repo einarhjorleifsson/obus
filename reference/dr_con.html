@@ -80,7 +80,7 @@ dataset type determines which data is loaded from the remote source.</p>
 
 
 <dl><dt id="arg-type">type<a class="anchor" aria-label="anchor" href="#arg-type"></a></dt>
-<dd><p>A character string specifying the dataset type. Possible values:</p><ul><li><p><code>"HH"</code>: Haul-level data.</p></li>
+<dd><p>A character string specifying the dataset type. Available values (tables):</p><ul><li><p><code>"HH"</code>: Haul-level data.</p></li>
 <li><p><code>"HL"</code>: Catch-at-length data (filterable via the <code>trim</code> option).</p></li>
 <li><p><code>"CA"</code>: Catch-at-age data (filterable via the <code>trim</code> option).</p></li>
 <li><p><code>"species"</code>: Species dataset derived from ICES SpecWoRMS.</p></li>
@@ -92,7 +92,7 @@ dataset type determines which data is loaded from the remote source.</p>
 
 
 <dt id="arg-url">url<a class="anchor" aria-label="anchor" href="#arg-url"></a></dt>
-<dd><p>URL to the Parquet file directory, defaulting to <code>"https://heima.hafro.is/~einarhj/data/datras"</code>.</p></dd>
+<dd><p>URL to the Parquet file directory, currently defaulting to <code>"https://heima.hafro.is/~einarhj/data/datras"</code>.</p></dd>
 
 
 <dt id="arg-quiet">quiet<a class="anchor" aria-label="anchor" href="#arg-quiet"></a></dt>
@@ -101,7 +101,7 @@ dataset type determines which data is loaded from the remote source.</p>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A DuckDB dataset object, representing the selected DATRAS dataset type.</p>
+    <p>A DuckDB dataset table.</p>
     </div>
     <div id="dataset-types">
     <h2>Dataset Types</h2>
@@ -125,8 +125,8 @@ location. The file names are inferred from the provided <code>type</code> parame
 
 
 <p>For dataset types <code>"HH"</code>, <code>"HL"</code>, and <code>"CA"</code>, a unique identifier column (<code>.id</code>)
-is generated to represent combinations of haul-related fields (e.g., Survey,
-Year, Country, Station Name).</p>
+represent catenation of fields Survey, Year, Quarter, Country,
+Platform, Gear, StationName and HaulNumber seperated by ":" (see <code><a href="dr_add_id.html">dr_add_id</a></code>).</p>
     </div>
 
     <div id="ref-examples">

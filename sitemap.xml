@@ -8,6 +8,7 @@
 <url><loc>/articles/sanity.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
+<url><loc>/reference/dot-dr_row_classifier.html</loc></url>
 <url><loc>/reference/dr_add_date.html</loc></url>
 <url><loc>/reference/dr_add_id.html</loc></url>
 <url><loc>/reference/dr_add_length_cm.html</loc></url>
@@ -19,7 +20,7 @@
 <url><loc>/reference/dr_con.html</loc></url>
 <url><loc>/reference/dr_con_by_haul.html</loc></url>
 <url><loc>/reference/dr_get.html</loc></url>
-<url><loc>/reference/dr_get_specs.html</loc></url>
+<url><loc>/reference/dr_get_fields.html</loc></url>
 <url><loc>/reference/dr_latin_aphia.html</loc></url>
 <url><loc>/reference/dr_settypes.html</loc></url>
 <url><loc>/reference/dr_translate.html</loc></url>
