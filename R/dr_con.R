@@ -18,18 +18,19 @@
 #'
 #' @section Unique Identifier (.id):
 #' For dataset types `"HH"`, `"HL"`, and `"CA"`, a unique identifier column (`.id`)
-#' is generated to represent combinations of haul-related fields (e.g., Survey,
-#' Year, Country, Station Name).
+#' represent catenation of fields Survey, Year, Quarter, Country,
+#' Platform, Gear, StationName and HaulNumber seperated by ":" (see \code{\link{dr_add_id}}).
 #'
-#' @param type A character string specifying the dataset type. Possible values:
+#' @param type A character string specifying the dataset type. Available values (tables):
 #'   - `"HH"`: Haul-level data.
 #'   - `"HL"`: Catch-at-length data (filterable via the `trim` option).
 #'   - `"CA"`: Catch-at-age data (filterable via the `trim` option).
 #'   - `"species"`: Species dataset derived from ICES SpecWoRMS.
 #' @param trim Logical. For `"HL"` or `"CA"`, if `TRUE` (default), non-essential fields are excluded. Ignored for other datasets.
-#' @param url URL to the Parquet file directory, defaulting to `"https://heima.hafro.is/~einarhj/data/datras"`.
+#' @param url URL to the Parquet file directory, currently defaulting to `"https://heima.hafro.is/~einarhj/data/datras"`.
 #' @param quiet Logical. If `TRUE` (default), suppresses connection warnings and messages.
-#' @return A DuckDB dataset object, representing the selected DATRAS dataset type.
+#'
+#' @return A DuckDB dataset table.
 #'
 #' @examples
 #' \dontrun{

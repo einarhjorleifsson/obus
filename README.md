@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  20.369   3.757   4.351
+#>  21.069   3.420   4.277
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -263,7 +263,7 @@ pruned or removed.
     #>  collate  is_IS.UTF-8
     #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-01-30
+    #>  date     2026-02-04
     #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
     #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
@@ -305,7 +305,7 @@ pruned or removed.
     #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
     #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
     #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.30 2026-01-30 [1] local
+    #>  obus         * 2026.01.30 2026-02-04 [1] local
     #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
     #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
     #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
@@ -329,7 +329,7 @@ pruned or removed.
     #>  tidyr        * 1.3.2      2025-12-19 [2] CRAN (R 4.4.1)
     #>  tidyselect     1.2.1      2024-03-11 [2] CRAN (R 4.4.1)
     #>  tidyverse    * 2.0.0      2023-02-22 [2] CRAN (R 4.4.1)
-    #>  timechange     0.3.0      2024-01-18 [2] CRAN (R 4.4.1)
+    #>  timechange     0.4.0      2026-01-29 [2] CRAN (R 4.4.1)
     #>  tzdb           0.5.0      2025-03-15 [2] CRAN (R 4.4.1)
     #>  usethis        3.2.1      2025-09-06 [2] CRAN (R 4.4.1)
     #>  vctrs          0.7.1      2026-01-23 [2] CRAN (R 4.4.1)
@@ -337,7 +337,7 @@ pruned or removed.
     #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
     #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
     #> 
-    #>  [1] /tmp/RtmpnYgCA6/temp_libpath1e03a022aee380
+    #>  [1] /tmp/RtmpqyzRai/temp_libpath2ce3df60733f0a
     #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
     #>  [3] /usr/local/lib/R/site-library
     #>  [4] /usr/lib/R/site-library

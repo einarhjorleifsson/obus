@@ -7,6 +7,7 @@
 #' If any of these columns are missing, an error will be raised.
 #'
 #' @param d A DATRAS table, one of HH, HL, or CA.
+#' @param base Vector, either "new" (default) or "old"
 #'
 #' @return A table (\code{d}) with an additional variable `.id`
 #' @export
@@ -24,30 +25,33 @@
 #'   HaulNumber = 123
 #' )
 #' example_data |> dr_add_id()
-dr_add_id <- function(d) {
-  # Required columns
-  required_vars <- c("Survey", "Year", "Quarter", "Country", "Platform",
-                     "Gear", "StationName", "HaulNumber")
+dr_add_id <- function(d, base = "new") {
 
-  # Check if all required variables exist in the input
-  missing_vars <- setdiff(required_vars, colnames(d))
-  if (length(missing_vars) > 0) {
-    stop("The following required columns are missing from the input table: ",
-         paste(missing_vars, collapse = ", "))
+  if(base == "new") {
+    # Required columns
+    required_vars <- c("Survey", "Year", "Quarter", "Country", "Platform",
+                       "Gear", "StationName", "HaulNumber")
+
+    # Check if all required variables exist in the input
+    missing_vars <- setdiff(required_vars, colnames(d))
+    if (length(missing_vars) > 0) {
+      stop("The following required columns are missing from the input table: ",
+           paste(missing_vars, collapse = ", "))
+    }
+    d <-
+      d |>
+      dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Platform, Gear,
+                                StationName, HaulNumber, sep = ":"))
+  } else {
+    d <-
+      d |>
+      dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Ship, Gear,
+                                StNo, HaulNo, sep = ":"))
   }
 
-  d |>
-    dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Platform, Gear,
-                              StationName, HaulNumber, sep = ":"))
-}
+  return(d)
 
-# Old version retained for reference but can be updated similarly if needed
-dr_add_id_old <- function(d) {
-  d |>
-    dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Ship, Gear,
-                              StNo, HaulNo, sep = ":"))
 }
-
 
 #' Calculate date based on `Year`, `Month`, and `Day`.
 #'

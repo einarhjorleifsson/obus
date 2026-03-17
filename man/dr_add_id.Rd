@@ -4,10 +4,12 @@
 \alias{dr_add_id}
 \title{Generate a unique haul id}
 \usage{
-dr_add_id(d)
+dr_add_id(d, base = "new")
 }
 \arguments{
 \item{d}{A DATRAS table, one of HH, HL, or CA.}
+
+\item{base}{Vector, either "new" (default) or "old"}
 }
 \value{
 A table (\code{d}) with an additional variable \code{.id}
