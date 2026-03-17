@@ -93,14 +93,14 @@ get_datras_unaggregated_data <- function(recordtype, survey, year, quarter) {
     HH = list(
       character = c(
         "RecordHeader","Country","Platform","Gear","GearExceptions",
-        "DoorType","StationName","Year","StartTime","DepthStratum",
+        "DoorType","StationName","StartTime","DepthStratum",
         "StatisticalRectangle","HydrographicStationID",
         "StandardSpeciesCode","BycatchSpeciesCode","Rigging",
         "DayNight","ThermoCline","PelagicSamplingType",
-        "Survey","DateofCalculation"
+        "Survey","DateofCalculation", "SurveyIndexArea"
       ),
       integer = c(
-        "Quarter","SweepLength","HaulNumber","Month","Day",
+        "Quarter","SweepLength","HaulNumber","Year", "Month","Day",
         "HaulDuration","WarpLength","WarpDiameter","WarpDensity",
         "DoorWeight","Buoyancy","TowDirection",
         "SurfaceCurrentDirection","BottomCurrentDirection",
@@ -115,7 +115,7 @@ get_datras_unaggregated_data <- function(recordtype, survey, year, quarter) {
         "SpeedGround","SpeedWater","SurfaceCurrentSpeed",
         "BottomCurrentSpeed","SwellHeight","SurfaceTemperature",
         "BottomTemperature","SurfaceSalinity","BottomSalinity",
-        "SecchiDepth","Turbidity","TideSpeed","SurveyIndexArea"
+        "SecchiDepth","Turbidity","TideSpeed"
       )
     ),
 
@@ -140,7 +140,7 @@ get_datras_unaggregated_data <- function(recordtype, survey, year, quarter) {
     CA = list(
       character = c(
         "RecordHeader","Country","Platform","Gear","GearExceptions",
-        "DoorType","StationName","Year","SpeciesCodeType",
+        "DoorType","StationName","SpeciesCodeType",
         "SpeciesCode","AreaType","AreaCode","LengthCode",
         "IndividualSex","IndividualMaturity","AgePlusGroup",
         "MaturityScale","FishID","GeneticSamplingFlag",
@@ -150,7 +150,7 @@ get_datras_unaggregated_data <- function(recordtype, survey, year, quarter) {
         "ScientificName_WoRMS","DateofCalculation"
       ),
       integer = c(
-        "Quarter","SweepLength","HaulNumber","LengthClass",
+        "Year", "Quarter","SweepLength","HaulNumber","LengthClass",
         "IndividualAge","NumberAtLength","ValidAphiaID"
       ),
       numeric = c(
