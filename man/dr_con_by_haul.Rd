@@ -4,10 +4,18 @@
 \alias{dr_con_by_haul}
 \title{Get numbers and weights summary of species by haul}
 \usage{
-dr_con_by_haul(trim = TRUE)
+dr_con_by_haul(
+  latin = "Melanogrammus aeglefinus",
+  trim = TRUE,
+  method = "ices"
+)
 }
 \arguments{
+\item{latin}{xxxx}
+
 \item{trim}{Boolean (default TRUE), controls if additional non-essential variables are returned or not.}
+
+\item{method}{xxx}
 }
 \value{
 A summarized \code{data.frame} with the following columns:

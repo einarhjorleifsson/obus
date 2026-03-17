@@ -18,13 +18,13 @@
 #'
 #' @examples
 #' # Fetch the default DATRAS field specifications:
-#' specs <- dr_get_specs()
+#' specs <- dr_get_fields()
 #'
 #' # View the first few rows:
 #' head(specs)
 #'
 #' @export
-dr_get_specs <- function(url = "https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList") {
+dr_get_fields <- function(url = "https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList") {
 
   # Send the HTTP request using httr2
   response <- httr2::request(url) |>
@@ -58,3 +58,5 @@ dr_get_specs <- function(url = "https://datras.ices.dk/WebServices/DATRASWebServ
     stop("Failed to fetch data. Status code: ", httr2::resp_status(response))
   }
 }
+
+

@@ -12,7 +12,7 @@ dr_con(
 )
 }
 \arguments{
-\item{type}{A character string specifying the dataset type. Possible values:
+\item{type}{A character string specifying the dataset type. Available values (tables):
 \itemize{
 \item \code{"HH"}: Haul-level data.
 \item \code{"HL"}: Catch-at-length data (filterable via the \code{trim} option).
@@ -22,12 +22,12 @@ dr_con(
 
 \item{trim}{Logical. For \code{"HL"} or \code{"CA"}, if \code{TRUE} (default), non-essential fields are excluded. Ignored for other datasets.}
 
-\item{url}{URL to the Parquet file directory, defaulting to \code{"https://heima.hafro.is/~einarhj/data/datras"}.}
+\item{url}{URL to the Parquet file directory, currently defaulting to \code{"https://heima.hafro.is/~einarhj/data/datras"}.}
 
 \item{quiet}{Logical. If \code{TRUE} (default), suppresses connection warnings and messages.}
 }
 \value{
-A DuckDB dataset object, representing the selected DATRAS dataset type.
+A DuckDB dataset table.
 }
 \description{
 This function creates a DuckDB connection to a specified DATRAS dataset type,
@@ -55,8 +55,8 @@ location. The file names are inferred from the provided \code{type} parameter
 \section{Unique Identifier (.id)}{
 
 For dataset types \code{"HH"}, \code{"HL"}, and \code{"CA"}, a unique identifier column (\code{.id})
-is generated to represent combinations of haul-related fields (e.g., Survey,
-Year, Country, Station Name).
+represent catenation of fields Survey, Year, Quarter, Country,
+Platform, Gear, StationName and HaulNumber seperated by ":" (see \code{\link{dr_add_id}}).
 }
 
 \examples{
