@@ -1,14 +1,17 @@
 ---
 title: "HL record types"
+format:
+  html:
+    footnotes-hover: true
+execute:
+  warning: false
+  message: false
 ---
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  warning  = FALSE,
-  message  = FALSE,
-  comment  = "#>"
-)
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ## Overview
@@ -32,7 +35,8 @@ The function requires that `dr_add_n_and_cpue()` has already been called (so
 `NA` for a length-bearing record the haul is invalid (`DataType` of `-9` or
 `NA` in the HH table).
 
-```{r eval = FALSE}
+```{r}
+#| eval: false
 library(tidyverse)
 library(obus)
 
@@ -58,7 +62,8 @@ hl_record_type_lookup
 
 ## Distribution across all surveys
 
-```{r eval = FALSE}
+```{r}
+#| eval: false
 hl_typed |>
   count(record_type, sort = TRUE) |>
   left_join(hl_record_type_lookup |> select(record_type, label),
@@ -73,12 +78,13 @@ hl_typed |>
 | 2 | Length-frequency, sex-disaggregated | 6,226,236 | 44.2 |
 | 3 | Length-frequency, with development stage | 24,705 | 0.17 |
 | 4 | Length-frequency, invalid haul | 24,298 | 0.17 |
-| 10 | Zero/null catch | 65,049 | 0.46 |
-| 11 | Weight-only summary | 21,097 | 0.15 |
-| 12 | Count (+/- weight) summary, no subsampling | 36,834 | 0.26 |
-| 13 | Subsampled summary, no sex | 97,716 | 0.69 |
-| 14 | Subsampled summary, sex-disaggregated | 146,374 | 1.04 |
+| 10 | Explicit zero catch | 65,049 | 0.46 |
+| 11 | Bulk bycatch weight | 21,085 | 0.15 |
+| 12 | Counted catch, no subsampling | 36,834 | 0.26 |
+| 13 | Subsampled catch summary, no sex | 97,716 | 0.69 |
+| 14 | Subsampled catch summary, sex-disaggregated | 146,374 | 1.04 |
 | 15 | Sex-coded null record | 100 | <0.01 |
+| 16 | Companion weight to length-frequency record | 22 | <0.01 |
 
 The great majority of records (97.3 %) carry a `LengthClass` and a
 computable `n_haul`. Of those, roughly 46 % are additionally annotated by sex
@@ -107,7 +113,8 @@ type 3 (~24 600 such records exist, mostly *Sepia officinalis* in BTS).
 
 ### Filtering for standard abundance analysis
 
-```{r eval = FALSE}
+```{r}
+#| eval: false
 hl_lf <- hl_typed |>
   filter(record_type %in% 1:3)   # drops invalid hauls (type 4)
 ```
@@ -115,20 +122,21 @@ hl_lf <- hl_typed |>
 To restrict further to unsexed/aggregated data (e.g., when sexed and unsexed
 rows for the same length class would double-count):
 
-```{r eval = FALSE}
+```{r}
+#| eval: false
 hl_lf_standard <- hl_typed |>
   filter(record_type == 1)
 ```
 
 ---
 
-## Records without `LengthClass` (types 10–15) {#sec-lc-absent}
+## Records without `LengthClass` (types 10–16) {#sec-lc-absent}
 
 All records in this group have `LengthClass`, `LengthCode`, and
 `NumberAtLength` equal to `NA`, so `n_haul` is always `NA`. They should be
 **excluded from length-frequency and abundance analyses**.
 
-### Type 10 — Zero/null catch {#sec-type10}
+### Type 10 — Explicit zero catch {#sec-type10}
 
 These 65 049 records represent species that were explicitly recorded as absent
 from a haul. Two findings support this interpretation:
@@ -139,7 +147,8 @@ from a haul. Two findings support this interpretation:
    was measured and assigned a length-frequency record — confirming the haul
    was valid and the species was simply not caught.
 
-```{r eval = FALSE}
+```{r}
+#| eval: false
 # Confirm: hauls with type-10 records mostly also have length data for other species
 hauls_with_zero <- hl_typed |>
   filter(record_type == 10L) |>
@@ -167,29 +176,39 @@ entries needed when computing indices that require hauls with zero catch to be
 included. They should **not** be confused with hauls that simply don't mention
 a species (implicit zeros).
 
-### Type 11 — Weight-only summary {#sec-type11}
+### Type 11 — Bulk bycatch weight {#sec-type11}
 
-These 21 097 records carry only `SpeciesCategoryWeight`; `TotalNumber`,
-`SubsampledNumber`, and `SubsamplingFactor` are all `NA`. Two distinct
-sub-populations exist.
-
-**Sub-population A — Bulk bycatch (non-fish taxa):** The dominant pattern
-(20 819 of 20 836 distinct haul × species combinations). Species are
-invertebrates, algae, and other organisms for which individual length
+These records carry only `SpeciesCategoryWeight`; `TotalNumber`,
+`SubsampledNumber`, and `SubsamplingFactor` are all `NA`. The species involved
+are invertebrates, algae, and other organisms for which individual length
 measurement is not practical: sponges (*Alcyonium*, *Porifera*, *Suberites*),
 hydroids, nemerteans, algae (*Fucus*, *Ulva*), tunicates, etc. These records
-appear primarily in BTS (17 452 records) with smaller contributions from DYFS,
-NS-IBTS, BITS, PT-IBTS, SNS, and SE-SOUND. For these entries the
-`SpeciesCategoryWeight` is the total wet weight of the bulk material and is
-the only meaningful quantity.
+appear primarily in BTS with smaller contributions from DYFS, NS-IBTS, BITS,
+PT-IBTS, SNS, and SE-SOUND. For these entries the `SpeciesCategoryWeight` is
+the total wet weight of the bulk material and is the only meaningful quantity.
 
-**Sub-population B — Companion weight records (*Sepia officinalis*, BTS;
-*Mnemiopsis leidyi*, DYFS):** Only 17 haul × species combinations mix type-11
-with length-frequency records. Inspection of those hauls reveals a consistent
-four-record-type pattern per haul:
+```{r}
+#| eval: false
+# Bycatch weight per haul for bulk taxa
+bycatch_weights <- hl_typed |>
+  filter(record_type == 11L) |>
+  group_by(.id, ValidAphiaID, latin) |>
+  summarise(total_weight_g = sum(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop")
+```
 
-```{r eval = FALSE}
-# Typical structure for one Sepia haul
+### Type 16 — Companion weight to length-frequency record {#sec-type16}
+
+These 22 records share `.id` and `ValidAphiaID` with a length-frequency record
+(type 1, 2, or 3). The `SpeciesCategoryWeight` they carry duplicates the
+weight already in the co-occurring length records and must be excluded from
+weight summaries to avoid double-counting.
+
+Inspection of a *Sepia officinalis* haul (BTS) illustrates the pattern — each
+haul shows four record types for the same species:
+
+```{r}
+#| eval: false
 hl_typed |>
   filter(.id == "BTS:2021:3:BE:45CE:BT4A:36:60", ValidAphiaID == 141444L) |>
   distinct(record_type, SpeciesCategory, TotalNumber, SubsampledNumber,
@@ -201,38 +220,12 @@ hl_typed |>
 |---|---|---:|---:|---:|---:|
 | 1 | 1 | 2 | 2 | 1 | 538 |
 | 3 | 1 | NA | NA | 1 | 28 |
-| 11 | 1 | NA | NA | 1 | 28 |
 | 13 | 1 | 2 | 2 | 1 | 538 |
+| 16 | 1 | NA | NA | 1 | 28 |
 
-The type-3 (development-stage length-frequency) and type-11 records carry
-**identical** `SpeciesCategoryWeight` values within each haul. The type-11
-entry is a companion weight record that reports the total weight for the
-development-stage category — it is not a standalone bulk weight. The type-1
-(standard length-frequency) and type-13 (subsampled summary) records carry the
-overall haul weight. For *Sepia officinalis* this pattern reflects the Belgian
-BTS protocol of recording both individual maturity-at-length data and a
-companion total weight for that maturity group.
-
-**Practical consequence:** For bulk bycatch (Sub-population A) the weight in
-type-11 records is the only information available and can be used in bycatch
-weight reporting. For *Sepia* in BTS (Sub-population B) the weight is already
-captured in the co-occurring type-3 records; the type-11 record is redundant
-and should be ignored to avoid double-counting.
-
-```{r eval = FALSE}
-# Bycatch weight per haul for bulk taxa (excluding Sepia companion records)
-bycatch_weights <- hl_typed |>
-  filter(record_type == 11L) |>
-  anti_join(
-    hl_typed |>
-      filter(record_type %in% 1:3) |>
-      distinct(.id, ValidAphiaID),
-    by = c(".id", "ValidAphiaID")
-  ) |>
-  group_by(.id, ValidAphiaID, latin) |>
-  summarise(total_weight_g = sum(SpeciesCategoryWeight, na.rm = TRUE),
-            .groups = "drop")
-```
+The type-16 and type-3 records carry **identical** `SpeciesCategoryWeight`
+values. Type 16 is present for *Sepia officinalis* in BTS (Belgian maturity
+protocol) and *Mnemiopsis leidyi* in DYFS.
 
 ### Types 12–14 — Summary records without length
 
@@ -249,20 +242,23 @@ without individual length classes being recorded (types 13–14).
 
 These records can supply total catch numbers and weights when length
 information is not needed, but they **must not be used to derive length
-frequencies**. Types 13 and 14 are the no-length counterparts of the
-sex-disaggregated type-10 records found in surveys such as NS-IBTS and BTS.
+frequencies**. In a small fraction of cases (~0.2–0.6 %) types 13 and 14
+act as companion header rows that duplicate the totals from co-occurring
+type-1/2 length-frequency records for the same `.id`, `ValidAphiaID`, and
+`SpeciesCategory`.
 
 ### Type 15 — Sex-coded null record
 
 One hundred records with `SpeciesSex` present but all other measurement fields
-absent. These are effectively sex-coded zero-catch entries. They can safely be
+absent. These are effectively sex-coded zero-catch entries and can safely be
 treated as type-10 equivalents for most purposes.
 
 ---
 
 ## Summary: recommended filters by use case
 
-```{r eval = FALSE}
+```{r}
+#| eval: false
 # Length-frequency and abundance / CPUE analysis
 hl_for_lf <- hl_typed |>
   filter(record_type %in% 1:3)
@@ -275,17 +271,13 @@ hl_unsexed <- hl_typed |>
 hl_zeros <- hl_typed |>
   filter(record_type == 10L)
 
-# Bulk bycatch weights (non-fish taxa, excluding Sepia companion records)
+# Bulk bycatch weights (standalone non-fish taxa only)
 hl_bycatch_wt <- hl_typed |>
-  filter(record_type == 11L) |>
-  anti_join(
-    hl_typed |> filter(record_type %in% 1:3) |> distinct(.id, ValidAphiaID),
-    by = c(".id", "ValidAphiaID")
-  )
+  filter(record_type == 11L)
 ```
 
 ::: {.callout-warning}
-Records of types 10–15 all have `n_haul = NA`. Any pipeline that passes these
+Records of types 10–16 all have `n_haul = NA`. Any pipeline that passes these
 rows to functions expecting valid abundance values will silently propagate
 `NA`s or, worse, drop rows that should be explicit zeros. Filter to types 1–3
 before computing length frequencies or indices.
