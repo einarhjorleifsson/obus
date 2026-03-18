@@ -35,5 +35,5 @@ Imports:
     stringr,
     tidyr,
     xml2
-Config/Needs/website: rmarkdown
+Config/Needs/website: rmarkdown, quarto
 URL: https://einarhjorleifsson.github.io/obus/
