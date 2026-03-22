@@ -1,0 +1,102 @@
+---
+title: "Downloading DATRAS data locally"
+format:
+  html:
+    footnotes-hover: true
+execute:
+  warning: false
+  message: false
+  eval: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+library(obus)
+library(dplyr)
+```
+
+The processed DATRAS parquet files are hosted on a web server and can be
+accessed directly without a local copy — see the
+[Accessing DATRAS data](access.html) article for that workflow. This article
+covers how to download a local copy and access it.
+
+## Downloading with `dr_download()`
+
+`dr_download()` fetches all three record types from the DATRAS API, applies
+standard tidying, and writes the results as parquet files to a directory of
+your choice:
+
+```{r}
+dr_download("/path/to/local/datras")
+```
+
+This writes `HH.parquet`, `HL.parquet`, and `CA.parquet` to the given
+directory. By default, only the processed files are saved. To also retain the
+unprocessed raw download in a `raw/` subdirectory, use `save_raw = TRUE`:
+
+```{r}
+dr_download("/path/to/local/datras", save_raw = TRUE)
+```
+
+## Connecting to locally stored files
+
+Once files are stored locally, you have two options depending on whether you
+want lazy or eager loading.
+
+### Lazy access via `duckdbfs` (recommended for large tables)
+
+`duckdbfs::open_dataset()` returns a lazy DuckDB-backed table. No data is read
+until you call `collect()`, so you can filter before loading:
+
+```{r}
+path <- "/path/to/local/datras"
+
+hh <- duckdbfs::open_dataset(file.path(path, "HH.parquet"))
+hl <- duckdbfs::open_dataset(file.path(path, "HL.parquet"))
+ca <- duckdbfs::open_dataset(file.path(path, "CA.parquet"))
+
+# Only the filtered rows are loaded into R
+hh |>
+  filter(Survey == "NS-IBTS", Year >= 2020) |>
+  collect()
+```
+
+### Eager loading via `nanoparquet`
+
+`nanoparquet::read_parquet()` reads the entire file into memory as a plain
+data frame. This is convenient for HH (which is relatively small), but may be
+slow for the full HL or CA tables:
+
+```{r}
+hh <- nanoparquet::read_parquet(file.path(path, "HH.parquet"))
+hl <- nanoparquet::read_parquet(file.path(path, "HL.parquet"))
+ca <- nanoparquet::read_parquet(file.path(path, "CA.parquet"))
+```
+
+---
+
+## Background: how the web-based parquet files were created
+
+This section documents the process used to produce the parquet files on the
+web server. Most users can ignore it.
+
+`dr_download()` was used with `save_raw = TRUE` to also keep the unprocessed
+data:
+
+```{r}
+dr_download(
+  path     = "/home/hafri/einarhj/public_html/datras",
+  save_raw = TRUE
+)
+```
+
+After writing, files were made world-readable so they can be served over HTTP:
+
+```{r}
+system("chmod -R a+r /home/hafri/einarhj/public_html/datras")
+```
