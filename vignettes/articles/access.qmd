@@ -6,6 +6,9 @@ format:
 execute:
   warning: false
   message: false
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r}
@@ -15,98 +18,111 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r}
+library(duckdb)
+library(duckdbfs)
 library(obus)
-library(dplyr)
+library(tidyverse)
 ```
 
 ## Background
 
-Working with DATRAS^[**Background to expand:** DATRAS is the pan-European trawl survey database maintained by ICES, covering [N surveys] from [year range], with three main record types: haul header (HH), catch-at-length (HL), and catch-at-age (CA). Consider linking to the [DATRAS website](https://datras.ices.dk).] data presents a practical challenge: the full dataset is
-large (the HL table alone runs to ~14 million rows across all surveys), and
-the traditional access route — the ICES web API — forces you to download one
-survey at a time in a format that is slow to parse. The {obus} package offers
-two complementary approaches that improve on this, described below.
+Working with DATRAS data presents a practical challenge: the full
+dataset is large (the HL table alone runs to \~14 million rows across
+all surveys), and the traditional access route — ICES web API —
+is limited to accessing and downloading data with filtering on **predefined**
+variables (Survey, Year, Quarter, Aphia) in a format that is large and hence 
+slow to download, requires good downstream datafile bookkeeping and coding to build
+up a complete dataset. Complementary approach that improve on this
+are described below.
 
----
 
 ## 1. API-based access
 
-Both API methods return data as an ordinary R data frame and apply filters
-(survey, year, quarter) before downloading. They are appropriate when you need
-a specific slice of the data and the full dataset is not required.
+Both ICES DATRRAS API methods return data as an ordinary R data frame working on one
+survey at a time.
 
-### 1.1 The legacy ICES Web Services
+### The legacy DATRAS Web Services
 
-The [DATRAS Web Services](https://datras.ices.dk/WebServices/DATRASWebService.asmx)
-have been available for many years and underpin the {icesDatras} package:
+The [DATRAS Web
+Services](https://datras.ices.dk/WebServices/DATRASWebService.asmx) have
+been available for many years and underpins the {icesDatras} package:
 
-```{r}
-#| eval: false
-icesDatras::getDATRAS(record = "HH", survey = "NS-IBTS",
-                      years = 2025, quarters = 1)
+```{r eval = FALSE}
+icesDatras::getDATRAS(record = "HL", survey = "NS-IBTS",
+                      years = 2020:2025, quarters = 1:4)
 ```
 
-The process is slow^[**To expand:** The main drawbacks are XML parsing overhead, one survey per call meaning looping is needed for multi-survey work, and column types being returned inconsistently (often all character).] — in particular due to parsing XML responses — and retrieves one survey at a time.
+The process is reasonably fast if one is only interested one Survey,
+but very slow if one wants the full DATRAS dataset, even for a single survey.
+The main reason is because xml-tags are wrapped around each 
+field value resulting in large uncompressed file size being transferred over the 
+web. This gets compounded by the API request actually being limited to one survey x year x quarter at a time.
 
-### 1.2 The DATRAS Download API
+### The DATRAS Download API
 
-ICES also provides a
-[Download API](https://datras.ices.dk/Data_products/Download/DATRASDownloadAPI.aspx)
-that delivers a zipped CSV instead of XML. {obus} wraps this endpoint:
+ICES has recently provided a [Download
+API](https://datras.ices.dk/Data_products/Download/DATRASDownloadAPI.aspx)
+that delivers a zipped CSV instead of XML. {icesDatras} wraps this
+endpoint:
 
 ```{r}
 #| eval: false
 # One survey, one year range, one quarter range
-get_datras_unaggregated_data(recordtype = "HH",
+icesDatras::get_datras_unaggregated_data(recordtype = "HL",
                               survey     = "NS-IBTS",
                               year       = "2000:2025",
-                              quarter    = "1")
+                              quarter    = "1:4")
 ```
 
-Compared to the legacy Web Services, this is faster and returns correct column
-types out of the box. The limitation is the same: one survey per call, so
-fetching all surveys still requires looping.^[**To confirm:** Whether the Download API has been stabilised or is still experimental, and whether rate limits or authentication requirements apply.]
+Compared to the legacy Web Services, this is much faster: the response is a **zipped CSV** rather than raw xml, which means less data travels over the network and no XML parsing overhead on the downstream side. The limitation remains the same: filtering is restricted to the predefined variables (Survey, Year, Quarter).
 
----
+------------------------------------------------------------------------
 
-## 2. Parquet-based access (recommended for full-dataset work)
+## 2. Parquet-based access
 
-All surveys across all years are compiled into a small set of parquet files^[**To add:** 1–2 sentences on what Parquet is for unfamiliar readers — a columnar binary format that is compact, typed, and readable by Arrow and DuckDB without loading the whole file into memory.]
-and hosted on a web server.^[**To confirm:** How often `get_datras.R` is run to refresh these files and how far behind the live DATRAS database they typically are.] The base URL is:
+Parquet is a binary, columnar file format. It has built-in compression per column. Because a column holds values of the same type — often with low cardinality (e.g. Survey is the same string repeated thousands of times) — compression ratios are high. The file size on disk and over the network is normally a fraction of the equivalent CSV^[The full HL table is ~100 MB as csv, while only ~20 MB as parquet].
+
+All surveys across all years have been compiled into a set of parquet files and hosted temporarily on a web server. The base URL is:
 
 ```{r}
-base_url <- "https://heima.hafro.is/~einarhj/data/datras/"
+base_url <- "https://heima.hafro.is/~einarhj/datras"
 ```
 
-Four tables are available:
+### Reading fully into R (`arrow::read_parquet`)
 
-| File | Content |
-|---|---|
-| `HH.parquet` | Haul header — station metadata, gear, position, timing |
-| `HL.parquet` | Catch at length — length-frequency records by species and haul |
-| `CA.parquet` | Catch at age — individual biological samples |
-| `species_worms.parquet` | Species list — AphiaID, latin name, common name (from WoRMS) |
-
-There are two ways to work with these files.
-
-### 2.1 Reading fully into R (`arrow::read_parquet`)
-
-The simplest approach: download the entire table into an R data frame.
+The simplest approach is to read the entire dataset directly into R by:
 
 ```{r}
 #| eval: false
-hh <- arrow::read_parquet(paste0(base_url, "HH.parquet"))
-hl <- arrow::read_parquet(paste0(base_url, "HL.parquet"))
+hh <- arrow::read_parquet(file.path(base_url, "HH.parquet"))
+hl <- arrow::read_parquet(file.path(base_url, "HL.parquet"))
+ca <- arrow::read_parquet(file.path(base_url, "CA.parquet"))
 ```
 
-This is convenient for HH (haul header), which is small enough to hold
-comfortably in memory. For HL and CA the full tables are larger; if you only
-need a subset it is more efficient to use the connection approach below.
+This is convenient for haul data (HH), which is relatively small. For HL and CA the full tables are larger; if you
+only need a subset it is more efficient to use the connection approach below.
 
-### 2.2 Connecting via DuckDB (`dr_con`) — the preferred approach
+The ICES datacenter is separately experimenting with hosting DATRAS data
+as parquet files on an S3-compatible cloud store (Azure Blob). At the
+time of writing this is limited to NS-IBTS only, and the files follow
+the raw DATRAS exchange format to the letter (including -9 for NA-values).
 
-`dr_con()` opens a lazy connection to the parquet file through an in-process
-DuckDB instance. No data is downloaded until you explicitly request it:
+```{r}
+url_ices <- "https://stdatrastest001.blob.core.windows.net/datras/ns-ibts/HL.parquet"
+hl <- arrow::read_parquet(url_ices)
+```
+
+### Connecting via DuckDB (`dr_con`)
+
+In addition to the compressed columnar format parquet stores each column contiguously, so reading only the columns you need means only those bytes are touched. For a table with 35 columns where you need 5, you skip roughly 85% of the file.
+
+Within each column, parquet further divides the data into row groups — horizontal sections of the data.^[Typically 100,000–1,000,000 rows each. The file metadata stores the minimum value, maximum value, and null count for every column in every row group.] A query engine reads the metadata statistics first: row groups that do not contain matching values are skipped entirely, without reading a single data byte. This means targeted byte-range requests for only the relevant sections of the file.
+
+The combination matters especially for remote access: a query engine like DuckDB can read a parquet file over HTTPS and apply "predicate pushdown" — filtering rows and selecting columns before transferring data to R. For a table like HL with ~14 million rows and 35 columns, a well-filtered query may only pull a few thousand values across the network, regardless of the upstream file size.
+
+`dr_con()` opens a lazy connection to the parquet file through an
+in-process DuckDB instance. No data is downloaded until you explicitly
+request it:
 
 ```{r}
 hh <- dr_con("HH")
@@ -114,32 +130,30 @@ hl <- dr_con("HL")
 ca <- dr_con("CA")
 ```
 
-The object returned is a `tbl_duckdb_connection` — it behaves like a data
-frame in `dplyr` pipelines but the computation happens inside DuckDB, not R.
-Rows are only transferred to R when you call `collect()`.
+The object returned is a `tbl_duckdb_connection` — it behaves like a
+data frame in `dplyr` pipelines but the computation happens inside
+DuckDB, not R. Rows are only transferred to R when you call `collect()`.
 
 ```{r}
 # Peek at structure — no data transferred yet
 hl |> glimpse()
 ```
 
-Note `Rows: ??` in the output: DuckDB has not scanned the file to count rows.
-This is intentional — the point is to push filtering down to DuckDB so that
-only the rows you actually need cross the network.
+Note `Rows: ??` in the output: DuckDB has not scanned the file to count
+rows, we just get a wiff of the actual dataset.
 
----
 
-## 3. The lazy evaluation workflow
+#### Lazy evaluation workflow
 
 The typical pattern with `dr_con()` is:
 
-```
-connect → filter/mutate/join → collect()
+```         
+connect → filter/select/mutate/join/summarise → collect()
 ```
 
-Everything before `collect()` is translated to SQL and executed by DuckDB
-against the parquet file. Only the result lands in R. For example, to get
-North Sea IBTS haul positions for 2020–2025:
+Everything before `collect()` is translated to SQL and executed by
+DuckDB against the parquet file. Only the result lands in R. For
+example, to get North Sea IBTS haul positions for 2020–2025:
 
 ```{r}
 #| eval: false
@@ -149,89 +163,39 @@ hh_ns <- hh |>
   collect()
 ```
 
-Joins across tables also work before collection:
+For those familiar with using dplyr-verbs to process data most of those function as well as many base-R functions have an equalent sql-backend. E.g. one can get all survey stations for the third quarter in 2025 and add to that the number of cod observed using the following script:
 
 ```{r}
-#| eval: false
-# Cod catches in NS-IBTS, with haul metadata
-cod <- hh |>
-  filter(Survey == "NS-IBTS") |>
-  select(.id, Year, Quarter, HaulDuration) |>
-  left_join(
-    hl |> filter(latin == "Gadus morhua"),
-    by = ".id"
-  ) |>
-  collect()
+data <-
+  # Process the data in DuckDB
+  hh |> 
+  filter(Year == 2025,
+         Quarter == 3) |> 
+  left_join(hl |> 
+              filter(latin == "Gadus morhua") |> 
+              group_by(.id) |> 
+              summarise(n_haul = sum(n_haul, na.rm = TRUE)),
+            by = join_by(.id)) |> 
+  # Import the data into R
+  collect() |> 
+  mutate(n_haul = replace_na(n_haul, 0))
 ```
 
-The join is executed inside DuckDB: only the matching rows from the HL
-file are read, not the full 14-million-row table.
+Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually downloaded and imported into R. More importantly, only the variables Year, Quarter, latin, .id and n are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those that "fall within the range" of the values in the variables are equivalently passed, the rest being ignored.
 
-::: {.callout-note}
-DuckDB can read parquet files directly over HTTPS. The connection in `dr_con()`
-points at the remote URL; there is no local copy of the data.
-:::
+### Working with a local copy
 
----
+One can easily download the full DATRAS paruet data and work from a local copy. Here the HH, HL and CA paquet files are downloaded and stored in the default "data"-directory.
 
-## 4. Pre-computed variables in the parquet files
-
-The production pipeline (`get_datras.R`) applies several transformations
-before writing the parquet files, so these derived variables are already
-present when you connect:
-
-| Variable | Table | Description |
-|---|---|---|
-| `.id` | HH, HL, CA | Haul identifier: `Survey:Year:Quarter:Country:Platform:Gear:StationName:HaulNumber` |
-| `date` | HH | Shoot date (`lubridate::make_date(Year, Month, Day)`) |
-| `time` | HH | Shoot timestamp (from `StartTime` in HHMM format) |
-| `latin` | HL, CA | Scientific name from WoRMS, joined on `ValidAphiaID` |
-| `length_cm` | HL, CA | Standardised length in cm, accounting for `LengthCode` |
-| `n_haul` | HL | Numbers caught per haul, corrected for `DataType` and `SubsamplingFactor` |
-| `n_hour` | HL | `n_haul` raised to a 60-minute standard effort |
-
-The `.id` key is the linking field between HH, HL, and CA — all joins across
-tables should be made on `.id`.
-
-The `n_haul` and `n_hour` columns account for the haul-level `DataType`:
-
-| `DataType` | Meaning | `n_haul` formula |
-|---|---|---|
-| `C` | Data recorded as CPUE (per hour) | `NumberAtLength × SubsamplingFactor × HaulDuration / 60` |
-| `R` | Data recorded by haul | `NumberAtLength × SubsamplingFactor` |
-| `P` | Pseudocategory sampling | `NumberAtLength × SubsamplingFactor` |
-| `S` | Subsampled data | `NumberAtLength × SubsamplingFactor` |
-| `-9` / `NA` | Invalid haul | `NA` |
-
-### HL trimming
-
-When `trim = TRUE` (the default), `dr_con("HL")` returns a reduced column set
-focused on the variables needed for length-frequency analysis:
-
-```{r}
-hl |> glimpse()
+```{r eval = FALSE}
+obus::dr_download()
 ```
 
-Pass `trim = FALSE` to retrieve all columns, including `TotalNumber`,
-`SpeciesCategoryWeight`, `SpeciesCategory`, and the full set of HL exchange
-variables.
+Now user can choose to either read in the whole datasets into R via read_parquet or create a duckdb-connection via:
 
----
-
-## 5. The ICES datacenter parquet store
-
-The ICES datacenter is separately exploring hosting DATRAS data as parquet
-files on a cloud (Azure Blob) server. At the time of writing this is
-experimental^[**To confirm:** Whether this store is still limited to NS-IBTS or has expanded to other surveys, its current stability status, and who to contact at ICES for access details.] and covers NS-IBTS only:
-
-```{r}
-url_ices <- "https://stdatrastest001.blob.core.windows.net/datras/ns-ibts/HH.parquet"
-arrow::read_parquet(url_ices) |> glimpse()
+```{r eval = FALSE}
+hh <- open_dataset("data/HH.parquet")
+hl <- open_dataset("data/HL.parquet")
+ca <- open_dataset("data/CA.parquet")
 ```
 
-The column names and types in this store follow the raw DATRAS exchange format
-and differ from the {obus} parquet files — the derived variables (`.id`,
-`latin`, `n_haul`, etc.) are not present. It is anticipated that this store
-will eventually cover all surveys and become the authoritative source,
-at which point `https://heima.hafro.is/~einarhj/data/datras/` will be
-retired.

@@ -1,0 +1,111 @@
+---
+title: "On counts and length measures"
+format:
+  html:
+    footnotes-hover: true
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+```{r}
+library(obus)
+library(tidyverse)
+hh <- dr_con("HH", trim = FALSE)
+hl <- 
+  dr_con("HL", trim = FALSE) |> 
+  left_join(hh |> select(.id, DataType, HaulDuration)) |> 
+  obus::dr_add_record_type() |> 
+  obus::dr_add_n_and_cpue()
+```
+
+## Background
+
+During a survey one may get quite a big haul, possibly dominated by a single species with ...
+
+
+## Case example 1
+
+```{r}
+# Merlangius merlangus
+d <-
+  hl |> 
+  filter(.id == "IE-IGFS:2011:4:IE:45CE:GOV:FG177:63",
+         latin == "Merlangius merlangus") |> 
+  collect()
+d |>   glimpse()
+d |> 
+  ggplot() +
+  theme_bw() +
+  geom_col(aes(length_cm, n_haul), fill = "grey") +
+  geom_linerange(aes(length_cm, ymin = 0, ymax = NumberAtLength, colour = as.factor(SpeciesCategory)),
+                 linewidth = 2) +
+  labs(x = "Length [cm]", y = "Number",
+       colour = "Species\nCategory",
+       caption = "Station id: NS-IBTS:2025:3:GB-SCT:748S:GOV:234:234") +
+  scale_colour_brewer(palette = "Set1")
+subsampling <- 
+  d |> 
+  select(SpeciesCategory, SubsampledNumber, SubsamplingFactor, SpeciesCategoryWeight) |> 
+  distinct()
+subsampling
+```
+
+One could think to have a 
+
+```{r}
+hl |>
+  distinct(.id, DataType, latin, SpeciesCategory, SubsampledNumber, SubsamplingFactor, SpeciesCategoryWeight) |> 
+  collect() |> 
+  group_by(.id, DataType, latin) |> 
+  mutate(n = n()) |> 
+  ungroup() |> 
+  filter(n == 2) |> 
+  collect() ->
+  d2
+d2 |> 
+  arrange(.id, latin) |> 
+  filter(DataType != "R") |> 
+  filter(is.na(SpeciesCategoryWeight))
+```
+
+
+## Case example X
+
+```{r}
+# Note: This is example if on of the rate DataType "P" - seems to be the Scots
+d <-
+  hl |> 
+  filter(.id == "NS-IBTS:2025:3:GB-SCT:748S:GOV:234:234",
+         latin == "Melanogrammus aeglefinus") |> 
+  collect()
+d |>   glimpse()
+d |> 
+  ggplot() +
+  theme_bw() +
+  geom_col(aes(length_cm, n_haul), fill = "grey") +
+  geom_linerange(aes(length_cm, ymin = 0, ymax = NumberAtLength, colour = as.factor(SpeciesCategory)),
+                 linewidth = 2) +
+  labs(x = "Length [cm]", y = "Number",
+       colour = "Species\nCategory",
+       caption = "Station id: NS-IBTS:2025:3:GB-SCT:748S:GOV:234:234") +
+  scale_colour_brewer(palette = "Set1")
+```
+
+```{r}
+d |> 
+  janitor::remove_constant()
+
+lenghts <- 
+  d |> 
+  select(length_cm, n_meas = NumberAtLength, SpeciesCategory)
+
+```
+

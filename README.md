@@ -58,7 +58,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  21.069   3.420   4.277
+#>   8.219   5.105  76.879
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -105,7 +105,7 @@ hh <- dr_con("HH")
 hh |> glimpse()
 #> Rows: ??
 #> Columns: 74
-#> Database: DuckDB 1.4.4 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#> Database: DuckDB 1.4.4 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ RecordHeader            <chr> "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
 #> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…
 #> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
@@ -189,7 +189,7 @@ hl <- dr_con("HL")
 hl |> glimpse()
 #> Rows: ??
 #> Columns: 7
-#> Database: DuckDB 1.4.4 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#> Database: DuckDB 1.4.4 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ .id              <chr> "BITS:1991:1:DE:06S1:H20:48:43", "BITS:1991:1:DE:06S1…
 #> $ latin            <chr> "Pleuronectes platessa", "Pleuronectes platessa", "Po…
 #> $ length_cm        <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5,…
@@ -206,7 +206,7 @@ ca <- dr_con("CA")
 ca |> glimpse()
 #> Rows: ??
 #> Columns: 5
-#> Database: DuckDB 1.4.4 [unknown@Linux 5.10.0-33-amd64:R 4.4.1/:memory:]
+#> Database: DuckDB 1.4.4 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ .id           <chr> "BITS:1991:1:SE:77AR:GOV:71:6", "BITS:1991:1:SE:77AR:GOV…
 #> $ latin         <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus m…
 #> $ length_cm     <dbl> 34, 36, 39, 40, 43, 45, 30, 31, 34, 35, 38, 43, 44, 45, …
@@ -255,93 +255,89 @@ pruned or removed.
 
     #> ─ Session info ───────────────────────────────────────────────────────────────
     #>  setting  value
-    #>  version  R version 4.4.1 (2024-06-14)
-    #>  os       Debian GNU/Linux 11 (bullseye)
-    #>  system   x86_64, linux-gnu
+    #>  version  R version 4.5.2 (2025-10-31)
+    #>  os       macOS Tahoe 26.3.1
+    #>  system   aarch64, darwin20
     #>  ui       X11
     #>  language (EN)
-    #>  collate  is_IS.UTF-8
-    #>  ctype    is_IS.UTF-8
+    #>  collate  en_US.UTF-8
+    #>  ctype    en_US.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-02-04
-    #>  pandoc   3.2 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
-    #>  quarto   1.5.57 @ /usr/local/bin/quarto
+    #>  date     2026-03-22
+    #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
+    #>  quarto   1.8.26 @ /usr/local/bin/quarto
     #> 
     #> ─ Packages ───────────────────────────────────────────────────────────────────
     #>  package      * version    date (UTC) lib source
-    #>  arrow          22.0.0.1   2025-12-23 [2] CRAN (R 4.4.1)
-    #>  assertthat     0.2.1      2019-03-21 [2] CRAN (R 4.4.1)
-    #>  bit            4.6.0      2025-03-06 [2] CRAN (R 4.4.1)
-    #>  bit64          4.6.0-1    2025-01-16 [2] CRAN (R 4.4.1)
-    #>  blob           1.3.0      2026-01-14 [2] CRAN (R 4.4.1)
-    #>  cachem         1.1.0      2024-05-16 [2] CRAN (R 4.4.1)
-    #>  cli            3.6.5      2025-04-23 [2] CRAN (R 4.4.1)
-    #>  curl           7.0.0      2025-08-19 [2] CRAN (R 4.4.1)
-    #>  data.table     1.18.2.1   2026-01-27 [2] CRAN (R 4.4.1)
-    #>  DBI            1.2.3      2024-06-02 [2] CRAN (R 4.4.1)
-    #>  dbplyr         2.5.1      2025-09-10 [2] CRAN (R 4.4.1)
-    #>  devtools       2.4.6      2025-10-03 [2] CRAN (R 4.4.1)
-    #>  dichromat      2.0-0.1    2022-05-02 [2] CRAN (R 4.4.1)
-    #>  digest         0.6.39     2025-11-19 [2] CRAN (R 4.4.1)
-    #>  dplyr        * 1.1.4      2023-11-17 [2] CRAN (R 4.4.1)
-    #>  duckdb         1.4.4      2026-01-28 [2] CRAN (R 4.4.1)
-    #>  duckdbfs       0.1.2      2025-10-12 [2] CRAN (R 4.4.1)
-    #>  ellipsis       0.3.2      2021-04-29 [2] CRAN (R 4.4.1)
-    #>  evaluate       1.0.5      2025-08-27 [2] CRAN (R 4.4.1)
-    #>  farver         2.1.2      2024-05-13 [2] CRAN (R 4.4.1)
-    #>  fastmap        1.2.0      2024-05-15 [2] CRAN (R 4.4.1)
-    #>  forcats      * 1.0.1      2025-09-25 [2] CRAN (R 4.4.1)
-    #>  fs             1.6.6      2025-04-12 [2] CRAN (R 4.4.1)
-    #>  generics       0.1.4      2025-05-09 [2] CRAN (R 4.4.1)
-    #>  ggplot2      * 4.0.1      2025-11-14 [2] CRAN (R 4.4.1)
-    #>  glue           1.8.0      2024-09-30 [2] CRAN (R 4.4.1)
-    #>  gtable         0.3.6      2024-10-25 [2] CRAN (R 4.4.1)
-    #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.4.1)
-    #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.4.1)
-    #>  httr2          1.2.2      2025-12-08 [2] CRAN (R 4.4.1)
-    #>  icesDatras     1.4.1      2023-05-08 [2] CRAN (R 4.4.1)
-    #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.4.1)
-    #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.4.1)
-    #>  lubridate    * 1.9.4      2024-12-08 [2] CRAN (R 4.4.1)
-    #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.4.1)
-    #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.4.1)
-    #>  obus         * 2026.01.30 2026-02-04 [1] local
-    #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.4.1)
-    #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.4.1)
-    #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.4.1)
-    #>  pkgconfig      2.0.3      2019-09-22 [2] CRAN (R 4.4.1)
-    #>  pkgload        1.4.1      2025-09-23 [2] CRAN (R 4.4.1)
-    #>  purrr        * 1.2.1      2026-01-09 [2] CRAN (R 4.4.1)
-    #>  R6             2.6.1      2025-02-15 [2] CRAN (R 4.4.1)
-    #>  rappdirs       0.3.4      2026-01-17 [2] CRAN (R 4.4.1)
-    #>  RColorBrewer   1.1-3      2022-04-03 [2] CRAN (R 4.4.1)
-    #>  readr        * 2.1.6      2025-11-14 [2] CRAN (R 4.4.1)
-    #>  remotes        2.5.0      2024-03-17 [2] CRAN (R 4.4.1)
-    #>  rlang          1.1.7      2026-01-09 [2] CRAN (R 4.4.1)
-    #>  rmarkdown      2.30       2025-09-28 [2] CRAN (R 4.4.1)
-    #>  rstudioapi     0.18.0     2026-01-16 [2] CRAN (R 4.4.1)
-    #>  S7             0.2.1      2025-11-14 [2] CRAN (R 4.4.1)
-    #>  scales         1.4.0      2025-04-24 [2] CRAN (R 4.4.1)
-    #>  sessioninfo    1.2.3      2025-02-05 [2] CRAN (R 4.4.1)
-    #>  stringi        1.8.7      2025-03-27 [2] CRAN (R 4.4.1)
-    #>  stringr      * 1.6.0      2025-11-04 [2] CRAN (R 4.4.1)
-    #>  tibble       * 3.3.1      2026-01-11 [2] CRAN (R 4.4.1)
-    #>  tidyr        * 1.3.2      2025-12-19 [2] CRAN (R 4.4.1)
-    #>  tidyselect     1.2.1      2024-03-11 [2] CRAN (R 4.4.1)
-    #>  tidyverse    * 2.0.0      2023-02-22 [2] CRAN (R 4.4.1)
-    #>  timechange     0.4.0      2026-01-29 [2] CRAN (R 4.4.1)
-    #>  tzdb           0.5.0      2025-03-15 [2] CRAN (R 4.4.1)
-    #>  usethis        3.2.1      2025-09-06 [2] CRAN (R 4.4.1)
-    #>  vctrs          0.7.1      2026-01-23 [2] CRAN (R 4.4.1)
-    #>  withr          3.0.2      2024-10-28 [2] CRAN (R 4.4.1)
-    #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.4.1)
-    #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.4.1)
+    #>  arrow          23.0.1.1   2026-02-24 [2] CRAN (R 4.5.2)
+    #>  assertthat     0.2.1      2019-03-21 [2] CRAN (R 4.5.0)
+    #>  bit            4.6.0      2025-03-06 [2] CRAN (R 4.5.0)
+    #>  bit64          4.6.0-1    2025-01-16 [2] CRAN (R 4.5.0)
+    #>  blob           1.3.0      2026-01-14 [2] CRAN (R 4.5.2)
+    #>  cachem         1.1.0      2024-05-16 [2] CRAN (R 4.5.0)
+    #>  cli            3.6.5      2025-04-23 [2] CRAN (R 4.5.0)
+    #>  curl           7.0.0      2025-08-19 [2] CRAN (R 4.5.0)
+    #>  data.table     1.18.2.1   2026-01-27 [2] CRAN (R 4.5.2)
+    #>  DBI            1.3.0      2026-02-25 [2] CRAN (R 4.5.2)
+    #>  dbplyr         2.5.2      2026-02-13 [2] CRAN (R 4.5.2)
+    #>  devtools       2.4.6      2025-10-03 [2] CRAN (R 4.5.0)
+    #>  digest         0.6.39     2025-11-19 [2] CRAN (R 4.5.2)
+    #>  dplyr        * 1.2.0      2026-02-03 [2] CRAN (R 4.5.2)
+    #>  duckdb         1.4.4      2026-01-28 [2] CRAN (R 4.5.2)
+    #>  duckdbfs       0.1.2      2025-10-12 [2] CRAN (R 4.5.0)
+    #>  ellipsis       0.3.2      2021-04-29 [2] CRAN (R 4.5.0)
+    #>  evaluate       1.0.5      2025-08-27 [2] CRAN (R 4.5.0)
+    #>  farver         2.1.2      2024-05-13 [2] CRAN (R 4.5.0)
+    #>  fastmap        1.2.0      2024-05-15 [2] CRAN (R 4.5.0)
+    #>  forcats      * 1.0.1      2025-09-25 [2] CRAN (R 4.5.0)
+    #>  fs             1.6.7      2026-03-06 [2] CRAN (R 4.5.2)
+    #>  generics       0.1.4      2025-05-09 [2] CRAN (R 4.5.0)
+    #>  ggplot2      * 4.0.2      2026-02-03 [2] CRAN (R 4.5.2)
+    #>  glue           1.8.0      2024-09-30 [2] CRAN (R 4.5.0)
+    #>  gtable         0.3.6      2024-10-25 [2] CRAN (R 4.5.0)
+    #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.5.0)
+    #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.5.2)
+    #>  httr2          1.2.2      2025-12-08 [2] CRAN (R 4.5.2)
+    #>  icesDatras     1.5.1      2026-01-24 [2] Github (einarhjorleifsson/icesDatras@221fcc9)
+    #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.5.2)
+    #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
+    #>  lubridate    * 1.9.5      2026-02-04 [2] CRAN (R 4.5.2)
+    #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.5.0)
+    #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
+    #>  obus         * 2026.01.30 2026-03-22 [1] local
+    #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
+    #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
+    #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
+    #>  pkgconfig      2.0.3      2019-09-22 [2] CRAN (R 4.5.0)
+    #>  pkgload        1.5.0      2026-02-03 [2] CRAN (R 4.5.2)
+    #>  purrr        * 1.2.1      2026-01-09 [2] CRAN (R 4.5.2)
+    #>  R6             2.6.1      2025-02-15 [2] CRAN (R 4.5.0)
+    #>  rappdirs       0.3.4      2026-01-17 [2] CRAN (R 4.5.2)
+    #>  RColorBrewer   1.1-3      2022-04-03 [2] CRAN (R 4.5.0)
+    #>  readr        * 2.2.0      2026-02-19 [2] CRAN (R 4.5.2)
+    #>  remotes        2.5.0      2024-03-17 [2] CRAN (R 4.5.0)
+    #>  rlang          1.1.7      2026-01-09 [2] CRAN (R 4.5.2)
+    #>  rmarkdown      2.30       2025-09-28 [2] CRAN (R 4.5.0)
+    #>  rstudioapi     0.18.0     2026-01-16 [2] CRAN (R 4.5.2)
+    #>  S7             0.2.1      2025-11-14 [2] CRAN (R 4.5.2)
+    #>  scales         1.4.0      2025-04-24 [2] CRAN (R 4.5.0)
+    #>  sessioninfo    1.2.3      2025-02-05 [2] CRAN (R 4.5.0)
+    #>  stringi        1.8.7      2025-03-27 [2] CRAN (R 4.5.0)
+    #>  stringr      * 1.6.0      2025-11-04 [2] CRAN (R 4.5.0)
+    #>  tibble       * 3.3.1      2026-01-11 [2] CRAN (R 4.5.2)
+    #>  tidyr        * 1.3.2      2025-12-19 [2] CRAN (R 4.5.2)
+    #>  tidyselect     1.2.1      2024-03-11 [2] CRAN (R 4.5.0)
+    #>  tidyverse    * 2.0.0      2023-02-22 [2] CRAN (R 4.5.0)
+    #>  timechange     0.4.0      2026-01-29 [2] CRAN (R 4.5.2)
+    #>  tzdb           0.5.0      2025-03-15 [2] CRAN (R 4.5.0)
+    #>  usethis        3.2.1      2025-09-06 [2] CRAN (R 4.5.0)
+    #>  vctrs          0.7.1      2026-01-23 [2] CRAN (R 4.5.2)
+    #>  withr          3.0.2      2024-10-28 [2] CRAN (R 4.5.0)
+    #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.5.2)
+    #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /tmp/RtmpqyzRai/temp_libpath2ce3df60733f0a
-    #>  [2] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.4
-    #>  [3] /usr/local/lib/R/site-library
-    #>  [4] /usr/lib/R/site-library
-    #>  [5] /usr/lib/R/library
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpSHgStU/temp_libpatha178183439e1
+    #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
     #> ──────────────────────────────────────────────────────────────────────────────

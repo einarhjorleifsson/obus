@@ -1,9 +1,14 @@
 ---
-title: "Sanity testing"
+title: "Sanity"
 format:
   html:
-    message: false
-    warning: false
+    footnotes-hover: true
+execute:
+  warning: false
+  message: false
+editor: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r, include = FALSE}
