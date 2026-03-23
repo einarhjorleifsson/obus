@@ -22,11 +22,11 @@ knitr::opts_chunk$set(
 
 The aim of {obus} to provide users with tidy DATRAS tables with non-ambiguous variables.
 
-That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package. Or possibly not.
+That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.
 
 For purist, one regrets to inform that this package has quite some number of dependencies (see [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). It should however be possible to trim down that fat.
 
-For more information, check the [README.md](https://github.com/einarhjorleifsson/obus)
+For more information, check the [README.md](https://github.com/einarhjorleifsson/obus).
 
 ## Installation
 
