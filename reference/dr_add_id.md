@@ -9,7 +9,7 @@ If any of these columns are missing, an error will be raised.
 ## Usage
 
 ``` r
-dr_add_id(d)
+dr_add_id(d, base = "new")
 ```
 
 ## Arguments
@@ -17,6 +17,10 @@ dr_add_id(d)
 - d:
 
   A DATRAS table, one of HH, HL, or CA.
+
+- base:
+
+  Vector, either "new" (default) or "old"
 
 ## Value
 

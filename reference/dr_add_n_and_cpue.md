@@ -39,4 +39,4 @@ dr_add_n_and_cpue(
 
 ## Value
 
-The input table with additional columns `n` and `cpue`.
+The input table with additional columns `n_haul` and `n_hour`.

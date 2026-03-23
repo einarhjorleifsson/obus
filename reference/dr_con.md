@@ -1,11 +1,8 @@
-# Create a DuckDB connection to a DATRAS tables
+# Establish a DuckDB Connection to DATRAS Datasets
 
-This function establishes a DuckDB connection to a DATRAS dataset based
-on the specified `type` ("HH", "HL" or "CA"). The dataset is accessed
-via a URL and opened using the
-[`duckdbfs::open_dataset`](https://cboettig.github.io/duckdbfs/reference/open_dataset.html)
-function. The function operates on experimental tables that include
-Latin names in the "HL" and "CA" files.
+This function creates a DuckDB connection to a specified DATRAS dataset
+type, facilitating access to trawl survey data stored in Parquet format.
+The dataset type determines which data is loaded from the remote source.
 
 ## Usage
 
@@ -13,7 +10,8 @@ Latin names in the "HL" and "CA" files.
 dr_con(
   type = NULL,
   trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras_latin"
+  url = "https://heima.hafro.is/~einarhj/datras",
+  quiet = TRUE
 )
 ```
 
@@ -21,46 +19,76 @@ dr_con(
 
 - type:
 
-  A character string specifying the type of dataset. Must be `"HH"`,
-  `"HL"`, or `"CA"`. This parameter maps to specific files in the
-  provided data source.
+  A character string specifying the dataset type. Available values
+  (tables):
+
+  - `"HH"`: Haul-level data.
+
+  - `"HL"`: Catch-at-length data (filterable via the `trim` option).
+
+  - `"CA"`: Catch-at-age data (filterable via the `trim` option).
+
+  - `"species"`: Species dataset derived from ICES SpecWoRMS.
 
 - trim:
 
-  A boolean flag (default `TRUE`). If `TRUE` and the `type` is `"HL"` or
-  `"CA"`, the dataset is trimmed to ignore station-level fields.
+  Logical. For `"HL"` or `"CA"`, if `TRUE` (default), non-essential
+  fields are excluded. Ignored for other datasets.
 
 - url:
 
-  The http path to the DATRAS parquet files
+  URL to the Parquet file directory, currently defaulting to
+  `"https://heima.hafro.is/~einarhj/datras"`.
+
+- quiet:
+
+  Logical. If `TRUE` (default), suppresses connection warnings and
+  messages.
 
 ## Value
 
-A DuckDB dataset object.
+A DuckDB dataset table.
 
-## Datapath Explanation
+## Dataset Types
 
-The function constructs a URL for the dataset based on the following
-pattern: "https://heima.hafro.is/~einarhj/datras/`{type}`.parquet". The
-`type` parameter determines the specific file to connect to, where:
+This function operates on the following dataset types:
 
-- `"HH"` refers to haul-level data.
+- **"HH" (Haul-Level Data)**: Contains information related to individual
+  haul events.
 
-- `"HL"` refers to catch-at-length data.
+- **"HL" (Catch-at-Length Data)**: Records catches categorized by length
+  class.
 
-- `"CA"` refers to age-based biological sampling data.
+- **"CA" (Catch-at-Age Data)**: Includes age-based biological data
+  (e.g., liver weight, length).
 
-Optionally, for the "HL" and "CA" types, setting `trim = TRUE` (the
-default) excludes station-level variables. This allows a narrower view
-(read: fewer variables) of these observations, station-level variables
-can be retrieved by a join to the haul table (HH) using the `.id`
-column.
+- **"species" (Species List)**: Derived from the ICES vocabulary
+  'SpecWoRMS' and includes species names and related metadata.
+
+## Dataset Paths
+
+The dataset is accessed via HTTP/HTTPS paths at a user-defined or
+default URL location. The file names are inferred from the provided
+`type` parameter (e.g., a Parquet file named `"HH.parquet"` for `"HH"`
+type data).
+
+## Unique Identifier (.id)
+
+For dataset types `"HH"`, `"HL"`, and `"CA"`, a unique identifier column
+(`.id`) represent catenation of fields Survey, Year, Quarter, Country,
+Platform, Gear, StationName and HaulNumber seperated by ":" (see
+[`dr_add_id`](dr_add_id.md)).
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-  dr_con("HH")              # Connect to haul-level data.
-  dr_con("HL", trim=FALSE)  # Get all fields for catch-at-length data.
+  # Establish connections
+  dr_con("HH")                   # Connect to haul-level data.
+  dr_con("HL", trim = FALSE)     # Include all fields for catch-at-length data.
+  species_data <- dr_con("species")
+
+  # Inspect species data
+  dplyr::glimpse(species_data)
 } # }
 ```

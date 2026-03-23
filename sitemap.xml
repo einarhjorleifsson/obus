@@ -1,14 +1,9 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>/404.html</loc></url>
 <url><loc>/LICENSE.html</loc></url>
-<url><loc>/articles/access.html</loc></url>
-<url><loc>/articles/auxiliaries.html</loc></url>
-<url><loc>/articles/cases.html</loc></url>
-<url><loc>/articles/hl-record-types.html</loc></url>
-<url><loc>/articles/index.html</loc></url>
-<url><loc>/articles/sanity.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
+<url><loc>/reference/dot-dr_download.html</loc></url>
 <url><loc>/reference/dot-dr_row_classifier.html</loc></url>
 <url><loc>/reference/dr_add_date.html</loc></url>
 <url><loc>/reference/dr_add_id.html</loc></url>
@@ -21,6 +16,7 @@
 <url><loc>/reference/dr_coltypes.html</loc></url>
 <url><loc>/reference/dr_con.html</loc></url>
 <url><loc>/reference/dr_con_by_haul.html</loc></url>
+<url><loc>/reference/dr_download.html</loc></url>
 <url><loc>/reference/dr_get.html</loc></url>
 <url><loc>/reference/dr_get_fields.html</loc></url>
 <url><loc>/reference/dr_latin_aphia.html</loc></url>
