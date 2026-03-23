@@ -22,6 +22,9 @@ number of dependencies (see
 [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)).
 It should however be possible to trim down that fat.
 
+For more information, check the
+[README.md](https://github.com/einarhjorleifsson/obus)
+
 ## Installation
 
 You can install the development version of {obus} from
@@ -58,13 +61,13 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>  28.229   4.232   4.450
+#>   5.657   1.537   3.790
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
-fiber. If you are connected via wifi this may take closer to 70 seconds.
-Whatever the case one can assume that nobody will complain given that
-the dimension just imported are as follows:
+fiber. If you are connected via poor wifi this may take more than a
+minute. Whatever the case one can assume that nobody will complain given
+that the dimension just imported are as follows:
 
 | type |     rows | cols |
 |:-----|---------:|-----:|
@@ -87,16 +90,17 @@ been wrapped into dr_get so one can get data from many surveys with one
 command. E.g. all surveys from 2025 can be obtained by:
 
 ``` r
-hh <- obus::dr_get("HH", years = 2025, from = "new")
+# Not run
+hh <- obus::dr_get("HH", years = 2025, from = "new", quiet = TRUE)
 ```
 
 ## Connecting
 
-Although the DATRAS data can not be considered big data, one can pretend
-that it is and use techniques developed for such datasets. So instead of
-importing the full dataset into R one can generate a connection to the
-url-hosted parquet files (remember, these are not fully up-to-date)
-using in-process DuckDB database.
+Although the DATRAS data can not be considered big data, one can use
+techniques developed for such datasets. So instead of importing the full
+dataset into R one can generate a connection to the url-hosted parquet
+files (remember, these are not fully up-to-date) using in-process DuckDB
+database.
 
 ### HH data
 
@@ -104,8 +108,8 @@ using in-process DuckDB database.
 hh <- dr_con("HH")
 hh |> dplyr::glimpse()
 #> Rows: ??
-#> Columns: 74
-#> Database: DuckDB 1.5.0 [unknown@Linux 6.1.0-43-amd64:R 4.5.2/:memory:]
+#> Columns: 76
+#> Database: DuckDB 1.5.0 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ RecordHeader            <chr> "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
 #> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…
 #> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
@@ -179,39 +183,109 @@ hh |> dplyr::glimpse()
 #> $ ReasonHaulDisruption    <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
 #> $ DateofCalculation       <chr> "", "", "", "", "", "", "", "", "", "", "", ""…
 #> $ .id                     <chr> "BITS:1991:1:DK:26D4:CAM:150:67", "BITS:1991:1…
+#> $ sur                     <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-…
+#> $ date                    <date> 1991-03-20, 1991-03-20, 1991-03-20, 1991-03-1…
 #> $ time                    <dttm> 1991-03-20 05:14:00, 1991-03-20 06:44:00, 199…
 ```
 
 ### HL data
 
 ``` r
-hl <- dr_con("HL")
+hl <- dr_con("HL", trim = FALSE)
 hl |> dplyr::glimpse()
 #> Rows: ??
-#> Columns: 7
-#> Database: DuckDB 1.5.0 [unknown@Linux 6.1.0-43-amd64:R 4.5.2/:memory:]
-#> $ .id              <chr> "BITS:1991:1:DE:06S1:H20:48:43", "BITS:1991:1:DE:06S1…
-#> $ latin            <chr> "Pleuronectes platessa", "Pleuronectes platessa", "Po…
-#> $ length_cm        <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5,…
-#> $ SpeciesSex       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
-#> $ DevelopmentStage <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
-#> $ n_haul           <dbl> 1.0, 2.0, 1.0, 4.5, 4.5, 14.0, 28.5, 9.5, 9.5, 23.5, …
-#> $ n_hour           <dbl> 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, 9, 9, 376, 376…
+#> Columns: 39
+#> Database: DuckDB 1.5.0 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> $ RecordHeader          <chr> "﻿HL", "HL", "HL", "HL", "HL", "HL", "HL", "HL",…
+#> $ Survey                <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS", …
+#> $ Quarter               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ Country               <chr> "DE", "DE", "DE", "DE", "DE", "DE", "DE", "DE", …
+#> $ Platform              <chr> "06S1", "06S1", "06S1", "06S1", "06S1", "06S1", …
+#> $ Gear                  <chr> "H20", "H20", "H20", "H20", "H20", "H20", "H20",…
+#> $ SweepLength           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ GearExceptions        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ DoorType              <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ StationName           <chr> "48", "48", "48", "491", "491", "491", "491", "4…
+#> $ HaulNumber            <int> 43, 43, 43, 42, 42, 42, 42, 42, 42, 42, 42, 42, …
+#> $ Year                  <chr> "1991", "1991", "1991", "1991", "1991", "1991", …
+#> $ SpeciesCodeType       <chr> "W", "W", "W", "W", "W", "W", "W", "W", "W", "W"…
+#> $ SpeciesCode           <chr> "127143", "127143", "126440", "126417", "126417"…
+#> $ SpeciesValidity       <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
+#> $ SpeciesSex            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ TotalNumber           <dbl> 6, 6, 2, 596, 596, 596, 596, 596, 596, 596, 596,…
+#> $ SpeciesCategory       <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ SubsampledNumber      <int> 3, 3, 1, 63, 63, 63, 63, 63, 63, 63, 63, 63, 63,…
+#> $ SubsamplingFactor     <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ SubsampleWeight       <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ SpeciesCategoryWeight <int> 9, 9, 2, 240, 240, 240, 240, 240, 240, 240, 240,…
+#> $ LengthCode            <chr> "1", "1", "1", "0", "0", "0", "0", "0", "0", "0"…
+#> $ LengthClass           <int> 24, 25, 24, 150, 155, 160, 165, 170, 175, 210, 2…
+#> $ NumberAtLength        <dbl> 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, 9, 9, 376…
+#> $ DevelopmentStage      <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ LengthType            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ ValidAphiaID          <int> 127143, 127143, 126440, 126417, 126417, 126417, …
+#> $ ScientificName_WoRMS  <chr> "Pleuronectes platessa", "Pleuronectes platessa"…
+#> $ DateofCalculation     <chr> "20250401", "20250401", "20250401", "20250401", …
+#> $ .id                   <chr> "BITS:1991:1:DE:06S1:H20:48:43", "BITS:1991:1:DE…
+#> $ DataType              <chr> "C", "C", "C", "C", "C", "C", "C", "C", "C", "C"…
+#> $ HaulDuration          <int> 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, …
+#> $ sur                   <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1"…
+#> $ length_cm             <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, …
+#> $ n_haul                <dbl> 1.0, 2.0, 1.0, 4.5, 4.5, 14.0, 28.5, 9.5, 9.5, 2…
+#> $ n_hour                <dbl> 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, 9, 9, 376…
+#> $ latin                 <chr> "Pleuronectes platessa", "Pleuronectes platessa"…
+#> $ species               <chr> "European plaice", "European plaice", "green pol…
 ```
 
 ### CA data
 
 ``` r
-ca <- dr_con("CA")
+ca <- dr_con("CA", trim = FALSE)
 ca |> dplyr::glimpse()
 #> Rows: ??
-#> Columns: 5
-#> Database: DuckDB 1.5.0 [unknown@Linux 6.1.0-43-amd64:R 4.5.2/:memory:]
-#> $ .id           <chr> "BITS:1991:1:SE:77AR:GOV:71:6", "BITS:1991:1:SE:77AR:GOV…
-#> $ latin         <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus m…
-#> $ length_cm     <dbl> 34, 36, 39, 40, 43, 45, 30, 31, 34, 35, 38, 43, 44, 45, …
-#> $ IndividualSex <chr> "M", "F", "F", "F", "F", "F", "M", "M", "M", "M", "M", "…
-#> $ LiverWeight   <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> Columns: 41
+#> Database: DuckDB 1.5.0 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> $ RecordHeader         <chr> "﻿CA", "CA", "CA", "CA", "CA", "CA", "CA", "CA", …
+#> $ Survey               <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS", "…
+#> $ Quarter              <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+#> $ Country              <chr> "SE", "SE", "SE", "SE", "SE", "SE", "SE", "SE", "…
+#> $ Platform             <chr> "77AR", "77AR", "77AR", "77AR", "77AR", "77AR", "…
+#> $ Gear                 <chr> "GOV", "GOV", "GOV", "GOV", "GOV", "GOV", "GOV", …
+#> $ SweepLength          <int> 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 5…
+#> $ GearExceptions       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ DoorType             <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ StationName          <chr> "71", "71", "71", "71", "71", "71", "71", "70", "…
+#> $ HaulNumber           <int> 6, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5…
+#> $ Year                 <chr> "1991", "1991", "1991", "1991", "1991", "1991", "…
+#> $ SpeciesCodeType      <chr> "W", "W", "W", "W", "W", "W", "W", "W", "W", "W",…
+#> $ SpeciesCode          <chr> "126436", "126436", "126436", "126436", "126436",…
+#> $ AreaType             <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ AreaCode             <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ LengthCode           <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",…
+#> $ LengthClass          <int> 32, 34, 36, 39, 40, 43, 45, 30, 31, 34, 35, 38, 4…
+#> $ IndividualSex        <chr> "M", "M", "F", "F", "F", "F", "F", "M", "M", "M",…
+#> $ IndividualMaturity   <chr> "2", "2", "1", "2", "1", "2", "2", "1", "1", "1",…
+#> $ AgePlusGroup         <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ IndividualAge        <int> 2, 2, 2, 3, 3, 4, 4, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4…
+#> $ CANoAtLngt           <int> 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+#> $ IndividualWeight     <dbl> 350, 410, 470, 640, 680, 770, 1100, 250, 280, 400…
+#> $ FishID               <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ GeneticSamplingFlag  <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ StomachSamplingFlag  <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ AgeSource            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ AgePreparationMethod <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ OtolithGrading       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ ParasiteSamplingFlag <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ MaturityScale        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ LiverWeight          <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N…
+#> $ ValidAphiaID         <int> 126436, 126436, 126436, 126436, 126436, 126436, 1…
+#> $ ScientificName_WoRMS <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "…
+#> $ DateofCalculation    <chr> "20250401", "20250401", "20250401", "20250401", "…
+#> $ .id                  <chr> "BITS:1991:1:SE:77AR:GOV:71:6", "BITS:1991:1:SE:7…
+#> $ sur                  <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1",…
+#> $ length_cm            <dbl> 32, 34, 36, 39, 40, 43, 45, 30, 31, 34, 35, 38, 4…
+#> $ latin                <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "…
+#> $ species              <chr> "Atlantic cod", "Atlantic cod", "Atlantic cod", "…
 ```
 
 ### Data processing using a connection
@@ -222,28 +296,41 @@ data. E.g. one can get all survey stations for the third quarter in 2025
 and add to that the number of cod observed using the following script:
 
 ``` r
-data <-
-  # Process the data in DuckDB
-  hh |> 
-  dplyr::filter(Year == 2025,
-         Quarter == 3) |> 
-  dplyr::left_join(hl |> 
-              dplyr::filter(latin == "Gadus morhua") |> 
-              dplyr::group_by(.id) |> 
-              dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
-            by = dplyr::join_by(.id)) |> 
-  # Import the data into R
-  dplyr::collect() |> 
-  dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
+system.time({
+  data <-
+    # Process the data in DuckDB
+    dr_con("HH") |> 
+    dplyr::filter(Year == 2024,
+                  Quarter %in% 1:4) |> 
+    dplyr::select(.id, sur, lon = ShootLongitude, lat = ShootLatitude) |> 
+    dplyr::left_join(dr_con("HL", trim = TRUE) |> 
+                       dplyr::filter(latin == "Gadus morhua") |> 
+                       dplyr::group_by(.id) |> 
+                       dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
+                     by = dplyr::join_by(.id)) |> 
+    # Import the data into R
+    dplyr::collect() |> 
+    dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
+})
+#>    user  system elapsed 
+#>   0.444   0.121   0.795
+data |> dplyr::glimpse()
+#> Rows: 4,185
+#> Columns: 5
+#> $ .id    <chr> "BITS:2024:1:DK:26D4:TVL:132:45", "BITS:2024:1:DE:06SL:TVS:2421…
+#> $ sur    <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BI…
+#> $ lon    <dbl> 16.2888, 13.3378, 12.6462, 12.8895, 13.7245, 21.5733, 16.8667, …
+#> $ lat    <dbl> 55.2916, 55.0237, 55.9641, 55.0881, 54.7253, 57.9217, 55.4050, …
+#> $ n_haul <dbl> 740.000, 942.084, 656.397, 96.000, 330.000, 1.000, 278.000, 75.…
 ```
 
 Here all the code steps prior to the collect command are automatically
 translated to SQL and passed to the in-process DuckDB. It is only at
 collect step that the data is actually downloaded and imported into R.
-More importantly, only the variables Year, Quarter, latin, .id and n are
-ever passed over the web. In addition only certain chunks of the parquet
-files (read: rows), those that “fall within the range” of the values in
-the variables are passed over the web.
+More importantly, only the variables .id (unique station id), sur, lon,
+lat, latin, and n_haul are ever passed over the web. In addition only
+certain chunks of the parquet files (read: rows), those that “fall
+within the range” of the filtered values are passed over the web.
 
 ## Small print
 
@@ -251,32 +338,49 @@ This stuff is in development, thus bugs, snags and errors are expected.
 {obus} still has some experimental hangover functions that need to be
 pruned or removed.
 
-## How did I get here?
+Actually, as of now {obus} does not do very much, the initial focus has
+been on experimenting with fast access to DATRAS data. For all practical
+purposes one can totally live without it. Importing the full HH, HL and
+CA data into R can be achieved by (anticipated that ICES datacenter with
+maintain an official path):
+
+    hh <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/HH.parquet")
+    hl <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/HL.parquet")
+    ca <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/CA.parquet")
+
+And a duckdb connection can be achieved by (here we have slightly
+augmented dataframes, using some simple obus wrapper functions):
+
+    hh <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+    hl <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL.parquet")
+    ca <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CA.parquet")
+
+## Specs
 
     #> ─ Session info ───────────────────────────────────────────────────────────────
     #>  setting  value
     #>  version  R version 4.5.2 (2025-10-31)
-    #>  os       Debian GNU/Linux 12 (bookworm)
-    #>  system   x86_64, linux-gnu
+    #>  os       macOS Tahoe 26.3.1
+    #>  system   aarch64, darwin20
     #>  ui       X11
     #>  language (EN)
-    #>  collate  is_IS.UTF-8
-    #>  ctype    is_IS.UTF-8
+    #>  collate  en_US.UTF-8
+    #>  ctype    en_US.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-03-22
-    #>  pandoc   3.6.3 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
-    #>  quarto   1.5.57 @ /usr/local/bin/quarto
+    #>  date     2026-03-23
+    #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
+    #>  quarto   1.8.26 @ /usr/local/bin/quarto
     #> 
     #> ─ Packages ───────────────────────────────────────────────────────────────────
     #>  package     * version    date (UTC) lib source
     #>  arrow         23.0.1.1   2026-02-24 [1] CRAN (R 4.5.2)
-    #>  assertthat    0.2.1      2019-03-21 [1] CRAN (R 4.5.2)
-    #>  bit           4.6.0      2025-03-06 [1] CRAN (R 4.5.2)
-    #>  bit64         4.6.0-1    2025-01-16 [1] CRAN (R 4.5.2)
+    #>  assertthat    0.2.1      2019-03-21 [1] CRAN (R 4.5.0)
+    #>  bit           4.6.0      2025-03-06 [1] CRAN (R 4.5.0)
+    #>  bit64         4.6.0-1    2025-01-16 [1] CRAN (R 4.5.0)
     #>  blob          1.3.0      2026-01-14 [1] CRAN (R 4.5.2)
-    #>  cachem        1.1.0      2024-05-16 [1] CRAN (R 4.5.2)
-    #>  cli           3.6.5      2025-04-23 [1] CRAN (R 4.5.2)
-    #>  curl          7.0.0      2025-08-19 [1] CRAN (R 4.5.2)
+    #>  cachem        1.1.0      2024-05-16 [1] CRAN (R 4.5.0)
+    #>  cli           3.6.5      2025-04-23 [1] CRAN (R 4.5.0)
+    #>  curl          7.0.0      2025-08-19 [1] CRAN (R 4.5.0)
     #>  data.table    1.18.2.1   2026-01-27 [1] CRAN (R 4.5.2)
     #>  DBI           1.3.0      2026-02-25 [1] CRAN (R 4.5.2)
     #>  dbplyr        2.5.2      2026-02-13 [1] CRAN (R 4.5.2)
@@ -284,46 +388,43 @@ pruned or removed.
     #>  digest        0.6.39     2025-11-19 [1] CRAN (R 4.5.2)
     #>  dplyr         1.2.0      2026-02-03 [1] CRAN (R 4.5.2)
     #>  duckdb        1.5.0      2026-03-14 [1] CRAN (R 4.5.2)
-    #>  duckdbfs      0.1.2      2025-10-12 [1] CRAN (R 4.5.2)
-    #>  ellipsis      0.3.2      2021-04-29 [1] CRAN (R 4.5.2)
-    #>  evaluate      1.0.5      2025-08-27 [1] CRAN (R 4.5.2)
-    #>  fastmap       1.2.0      2024-05-15 [1] CRAN (R 4.5.2)
+    #>  duckdbfs      0.1.2      2025-10-12 [1] CRAN (R 4.5.0)
+    #>  ellipsis      0.3.2      2021-04-29 [1] CRAN (R 4.5.0)
+    #>  evaluate      1.0.5      2025-08-27 [1] CRAN (R 4.5.0)
+    #>  fastmap       1.2.0      2024-05-15 [1] CRAN (R 4.5.0)
     #>  fs            1.6.7      2026-03-06 [1] CRAN (R 4.5.2)
-    #>  generics      0.1.4      2025-05-09 [1] CRAN (R 4.5.2)
-    #>  glue          1.8.0      2024-09-30 [1] CRAN (R 4.5.2)
+    #>  generics      0.1.4      2025-05-09 [1] CRAN (R 4.5.0)
+    #>  glue          1.8.0      2024-09-30 [1] CRAN (R 4.5.0)
     #>  htmltools     0.5.9      2025-12-04 [1] CRAN (R 4.5.2)
     #>  httr2         1.2.2      2025-12-08 [1] CRAN (R 4.5.2)
-    #>  icesDatras    1.5.1      2026-03-18 [1] Github (einarhjorleifsson/icesDatras@221fcc9)
+    #>  icesDatras    1.5.1      2026-01-24 [1] Github (einarhjorleifsson/icesDatras@221fcc9)
     #>  knitr         1.51       2025-12-20 [1] CRAN (R 4.5.2)
     #>  lifecycle     1.0.5      2026-01-08 [1] CRAN (R 4.5.2)
-    #>  magrittr      2.0.4      2025-09-12 [1] CRAN (R 4.5.2)
-    #>  memoise       2.0.1      2021-11-26 [1] CRAN (R 4.5.2)
-    #>  obus        * 2026.01.30 2026-03-22 [1] local
-    #>  otel          0.2.0      2025-08-29 [1] CRAN (R 4.5.2)
-    #>  pillar        1.11.1     2025-09-17 [1] CRAN (R 4.5.2)
-    #>  pkgbuild      1.4.8      2025-05-26 [1] CRAN (R 4.5.2)
-    #>  pkgconfig     2.0.3      2019-09-22 [1] CRAN (R 4.5.2)
+    #>  magrittr      2.0.4      2025-09-12 [1] CRAN (R 4.5.0)
+    #>  memoise       2.0.1      2021-11-26 [1] CRAN (R 4.5.0)
+    #>  obus        * 2026.01.30 2026-03-23 [1] local
+    #>  otel          0.2.0      2025-08-29 [1] CRAN (R 4.5.0)
+    #>  pillar        1.11.1     2025-09-17 [1] CRAN (R 4.5.0)
+    #>  pkgbuild      1.4.8      2025-05-26 [1] CRAN (R 4.5.0)
+    #>  pkgconfig     2.0.3      2019-09-22 [1] CRAN (R 4.5.0)
     #>  pkgload       1.5.0      2026-02-03 [1] CRAN (R 4.5.2)
     #>  purrr         1.2.1      2026-01-09 [1] CRAN (R 4.5.2)
-    #>  R6            2.6.1      2025-02-15 [1] CRAN (R 4.5.2)
+    #>  R6            2.6.1      2025-02-15 [1] CRAN (R 4.5.0)
     #>  rappdirs      0.3.4      2026-01-17 [1] CRAN (R 4.5.2)
     #>  rlang         1.1.7      2026-01-09 [1] CRAN (R 4.5.2)
-    #>  rmarkdown     2.30       2025-09-28 [1] CRAN (R 4.5.2)
+    #>  rmarkdown     2.30       2025-09-28 [1] CRAN (R 4.5.0)
     #>  rstudioapi    0.18.0     2026-01-16 [1] CRAN (R 4.5.2)
-    #>  sessioninfo   1.2.3      2025-02-05 [1] CRAN (R 4.5.2)
+    #>  sessioninfo   1.2.3      2025-02-05 [1] CRAN (R 4.5.0)
     #>  tibble        3.3.1      2026-01-11 [1] CRAN (R 4.5.2)
     #>  tidyr         1.3.2      2025-12-19 [1] CRAN (R 4.5.2)
-    #>  tidyselect    1.2.1      2024-03-11 [1] CRAN (R 4.5.2)
-    #>  usethis       3.2.1      2025-09-06 [1] CRAN (R 4.5.2)
-    #>  vctrs         0.7.1      2026-01-23 [1] CRAN (R 4.5.2)
-    #>  withr         3.0.2      2024-10-28 [1] CRAN (R 4.5.2)
+    #>  tidyselect    1.2.1      2024-03-11 [1] CRAN (R 4.5.0)
+    #>  usethis       3.2.1      2025-09-06 [1] CRAN (R 4.5.0)
+    #>  vctrs         0.7.2      2026-03-21 [1] CRAN (R 4.5.2)
+    #>  withr         3.0.2      2024-10-28 [1] CRAN (R 4.5.0)
     #>  xfun          0.57       2026-03-20 [1] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [1] CRAN (R 4.5.2)
     #> 
-    #>  [1] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.5
-    #>  [2] /usr/local/lib/R/site-library
-    #>  [3] /usr/lib/R/site-library
-    #>  [4] /usr/lib/R/library
+    #>  [1] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
     #> ──────────────────────────────────────────────────────────────────────────────
