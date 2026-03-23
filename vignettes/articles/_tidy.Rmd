@@ -1,0 +1,341 @@
+---
+title: "On tidy datastructure"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Preamble
+
+Why is DataType a variable in the HL table when it is, once one digs deep:
+
+* It is meaningless for any other variables in the HL table
+* It only affects unit measures in the HL-table
+
+
+```{r}
+print("hello")
+```
+
+
+```{r setup, eval = FALSE}
+library(tidyverse)
+library(obus)
+# The ICES cpue by length does not have the variables to create a unique id, hence
+lh_cpue_id <- function(d, remove = TRUE) {
+  d |> 
+    as_tibble() |> 
+    unite(Survey, Year, Quarter, Ship, Gear, HaulNo, col = ".id2", sep = ":", remove = remove)
+}
+```
+
+## Emulating CPUE by length
+
+### Using old HH & HL
+
+```{r, eval = FALSE}
+latin <- dr_con("species") |> collect() |> select(aphia, latin) 
+cpue_dk <- 
+  dr_con("cpuelength") |> 
+  select(-`HaulDur xsi:nil="true"`) |> 
+  filter(Survey == "NS-IBTS", Year == 2025, Quarter == 1) |> 
+  collect() |> 
+  mutate(DateTime = dmy_hms(DateTime),
+         DateTime = as.character(DateTime)) |> 
+  lh_cpue_id() |> 
+  select(.id2, DateTime, latin = Species, length_mm = LngtClas, Sex, n_hour_dk = CPUE_number_per_hour)
+hh <- 
+  icesDatras::getDATRAS("HH", "NS-IBTS", 2025, 1) |> 
+  # Needed because needed when joining with CPUE
+  obus::dr_add_starttime() |> 
+  rename(DateTime = time) |> 
+  mutate(DateTime = as.character(DateTime)) |> 
+  lh_cpue_id(remove = FALSE)
+hl <- 
+  icesDatras::getDATRAS("HL", "NS-IBTS", 2025, 1) |>
+  lh_cpue_id(remove = FALSE) |> 
+  left_join(latin, by = join_by(SpecCode == aphia)) |> 
+  dr_add_length_mm(LngtCode, LngtClass)
+# for diagnostics
+hl_hh <- 
+  hl |> 
+  left_join(hh |> select(-c(RecordType, DateofCalculation)))
+cpue_me <- 
+  hl |> 
+  left_join(hh |> select(-c(RecordType, DateofCalculation))) |>  
+  select(.id2, DateTime, DataType, HaulDur, latin, Sex, length_mm, SubFactor, HLNoAtLngt) |> 
+  mutate(n_haul = case_when(DataType == "C" ~ HLNoAtLngt * SubFactor * HaulDur / 60,
+                       .default = HLNoAtLngt * SubFactor),
+         n_hour = round(n_haul / HaulDur * 60, 4)) |> 
+  group_by(.id2, DateTime, latin, Sex, length_mm) |> 
+  summarise(n_haul = sum(n_haul),
+            n_hour = sum(n_hour),
+            .groups = "drop")
+```
+
+```{r, eval = FALSE}
+d <-
+  cpue_dk |> 
+  full_join(cpue_me) |> 
+  mutate(dk_me = case_when(is.na(n_hour_dk) & is.na(n_hour) ~ "NA_NA",
+                           n_hour_dk == 0 & is.na(n_hour) ~ "0_NA",
+                           is.na(n_hour_dk) & !is.na(n_hour) ~ "NA_V",
+                           !is.na(n_hour_dk) & is.na(n_hour) ~ "V_NA",
+                           near(n_hour_dk, n_hour) ~ "near",
+                           .default = "something else"))
+d |> count(dk_me) |> mutate(p = round(n / sum(n) * 100, 2))
+
+d |> filter(dk_me == "something else")
+d |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> arrange(length_mm) |> glimpse()
+cpue_dk |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> arrange(length_mm) |> glimpse()
+cpue_me |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> arrange(length_mm) |> glimpse()
+hl_hh |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> glimpse()
+
+
+d |> filter(dk_me == "V_NA")
+d |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> arrange(length_mm) |> glimpse()
+# check if we get the length bins 160, 170, 180, 190, 200, 210, 220, 230 in the HL data
+hl_hh |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> arrange(length_mm) |> glimpse()
+
+d |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus", DateTime == "2025-02-08 07:28:00") |> arrange(length_mm) |> glimpse()
+hl |> filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1", latin == "Scomber scombrus") |> arrange(length_mm) |> glimpse()
+d |> filter(check == "hl missing") |> count(latin)
+
+hl |> 
+  left_join(latin, by = join_by(Valid_Aphia == aphia)) |> 
+  filter(.id2 == "NS-IBTS:2025:1:26D4:GOV:1") |> 
+  filter(latin == "Scomber scombrus") |> 
+  glimpse()
+```
+
+
+```{r, eval = FALSE}
+cod <-
+  cpue |> 
+  filter(Species == "Gadus morhua") |> 
+  select(.id2,
+         DateTime, Species:Sex,
+         length_mm = LngtClas,
+         n_hour = CPUE_number_per_hour)
+cod2 <- 
+  d |> 
+  filter(latin == "Gadus morhua") 
+joined <- 
+  cod |> 
+  full_join(cod2 |> rename(LngtClass = length_mm))
+
+joined |> 
+  mutate(n_hour = round(n_hour, 4)) |> 
+  mutate(check = case_when(is.na(cpue) & is.na(n_hour) ~ "both missing",
+                           cpue == 0 & is.na(n_hour) ~ "zero stations",
+                           is.na(cpue) & !is.na(n_hour) ~ "cpue missing",
+                           !is.na(cpue) & is.na(n_hour) ~ "hl missing",
+                           near(cpue, n_hour) ~ "near",
+                           .default = "something else")) |> 
+  count(check)
+#### cpue stations not in HL
+cod |> filter(!.id2 %in% cod2$.id2) |> count(cpue)
+```
+
+### Using new HH & HL
+
+```{r, eval = FALSE}
+dr_con("HL") |> 
+  left_join(dr_con("HH") |> 
+              mutate(.id2 = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |> 
+              select(.id, .id2, DateTime = time)) |> 
+  mutate(length_mm = length_cm * 10) |> 
+  group_by(.id, .id2, DateTime, latin, length_mm) |> 
+  summarise(n_haul = sum(n_haul),
+            n_hour = sum(n_hour),
+            .groups = "drop")
+```
+
+... older below
+
+
+
+```{r, eval = FALSE}
+# So different number of stations for different species
+cpue |> distinct(.id, Species) |> count(Species) |> count(n)
+cpue |> distinct(.id, Species) |> 
+  group_by(Species) |> 
+  mutate(n = n()) |> 
+  ungroup() |> 
+  filter(n == 287) |> 
+  glimpse()
+pandalus <- 
+  cpue |> 
+  filter(Species == "Pandalus borealis")
+cod <-
+  cpue |> 
+  filter(Species == "Gadus morhua")
+cod |> distinct(.id) |> count()
+# Which hauls are not in the cod cpue
+hh |> 
+  mutate(cod = ifelse(.id %in% pandalus$.id, "yes", "no")) |> 
+  ggplot(aes(ShootLong, ShootLat)) +
+  geom_point(size = 0.4) +
+  facet_grid(cod ~ HaulVal)
+hh |> 
+  mutate(presence = ifelse(.id %in% pandalus$.id, "yes", "no")) |> 
+  filter(HaulVal == "V") |> 
+  ggplot(aes(ShootLong, ShootLat, colour = presence)) +
+  geom_point(size = 0.4)
+
+hh |> count(HaulVal)
+hl |> 
+  filter(!.id %in% cpue$.id)
+```
+
+
+
+## Preamble
+
+... hadleys concept
+
+... does one in the downstream coding process have to worry about missingness in values?
+
+### The DataType variable and ...
+
+For a novice user of the DATRAS data, what causes the greatest consternation is:
+
+1. Variable DataType in the haul data (HH) "controls" the value of some variables reported in the length data (HL).
+2. The non-tidy HL data - pure length measurements and then the subfactor bookkeeping (this does not fit under the current header).
+
+In [DATRAS Guidelines Document - DATRAS FAQs](https://www.ices.dk/data/Documents/DATRAS/DATRAS_FAQs.pdf) it is stated: "Data Type in **HH** record defines the aggregation level of data fields reported in **HL**-record." The DataType variable can take up the following values:
+
+```{r, eval = FALSE, echo = FALSE}
+dr_con("HH") |> 
+  count(DataType, name = "n_obs") |> 
+  left_join(dr_con("vocabulary") |> 
+              filter(new == "DataType") |> 
+              select(DataType = key, description)) |> 
+  collect() |> 
+  arrange(DataType) |> 
+  knitr::kable(caption = "Data types in haul table (HH)")
+```
+
+The variables TotalNumber, SpeciesCategoryWeight and NumberAtLength in the length table (HL) that are affected by value in the DataType. Basically if the DataType value is C then the value in these 3 HL variables is standardized to 1 hour haul, otherwise the value is as reported in the haul. To spell things out in detail:
+
+* TotalNumber (TotalNo): Refers to the total number of fish of one species, sex, and length(?) category
+  * DataType R and S: The unit value is actual numbers in **the haul**.
+  * DataType C: The unit value is numbers  **per 1 hour hauling**
+  * DataType P or NA: ?????
+* SpeciesCategoryWeight (CatCatchWgt). Refers to the catch weight of fish per species, sex, and length(?) category
+  * DataType R and S: The unit value is actual weight in **the haul**.
+  * DataType C: The unit value is weight **per 1 hour hauling**
+  * DataType P or NA: ?????
+* NumberAtLength (HLNoAtLngt)
+  * DataType R and S: The unit value is actual numbers in **the haul**.
+  * DataType C: The unit value is numbers  **per 1 hour hauling**
+  * DataType P or NA: ?????
+
+```{r, eval = FALSE}
+dr_con("HH") |> filter(Survey == "NS-IBTS") |> count(Year, Quarter, DataType) |> collect() |> arrange(Year,Quarter) |> knitr::kable()
+dr_con("HL", trim = FALSE) |> 
+  filter(Survey == "NS-IBTS",
+         Year == 2025,
+         Quarter == 1) |> 
+  select(.id, latin, l = length_cm, eex = SpeciesSex, n = NumberAtLength, total = TotalNumber, 
+         cat_s = SpeciesCategory,
+         cat_w = SpeciesCategoryWeight,
+         sub_n = SubsampledNumber, 
+         sub_w = SubsampleWeight,
+         sub_f = SubsamplingFactor, DataType) |> 
+  #mutate(.id = str_remove(.id, "NS-IBTS:2025:3:")) |> 
+  filter(latin == "Merlangius merlangus") |> 
+  select(-latin) |> 
+  filter(DataType == "P") |> 
+  collect() |> 
+  group_by(.id) |> 
+  mutate(rows = n()) |> 
+  ungroup() |> 
+  arrange(.id, l)
+
+ids <- c("GB:74E9:GOV:32:74", "GB-SCT:748S:GOV:203:203", "")
+```
+
+## The HL data
+
+```{r, eval = FALSE}
+dr_con("HL", trim = FALSE)
+```
+
+
+## The HH data
+
+### Unique haul id
+
+```{r, eval = FALSE}
+n_hh <- dr_con("HH") |> count() |> pull(n)
+n_id <- dr_con("HH") |> summarise(n = n_distinct(.id)) |> pull(n)
+n_hh == n_id
+```
+
+Ergo, the .id variable is distinct. Check though functions, think distinct is used there.
+
+### DataType
+
+The HH data contains a variable name DataType. Here is a test that checks for if any haul has more than one DataType:
+
+```{r, eval = FALSE}
+dr_get("HH") |> 
+  select(.id, DataType) |> 
+  group_by(.id) |> 
+  summarise(n_distinct_datatype = n_distinct(DataType)) |> 
+  filter(n_distinct_datatype > 1)
+```
+
+According to the above there is one unique DataType value for any single tow. The DataType values are:
+
+```{r, eval = FALSE}
+dr_get("HH") |> 
+  count(DataType)
+```
+
+Firstly of interest are hauls that have NA as DataType. Let's look at those records:
+
+```{r, eval = FALSE}
+dr_get("HH") |> 
+  filter(is.na(DataType)) |> 
+  count(Survey, Year, Quarter, HaulValidity) |> 
+  knitr::kable(caption = "List of Surveys and years where value in the DataType is missing (NA).")
+```
+
+Now, all these hauls are invalid. Begs the question ...:
+
+```{r, eval = FALSE}
+dr_get("HH") |> 
+  count(DataType, HaulValidity) |> 
+  spread(HaulValidity, n, fill = 0) |> 
+  knitr::kable(caption = "Count of haul validity (columns) by datatype (rows).")
+```
+
+All missing DataType are invalids, but ... 
+
+Is DataType a mandatory field or is missingness allowed?
+
+
+Secondly, the value in the Datatype variable matters when it comes to interpretation of the units in the HL variables:
+
+* NumberAtLength
+* SubsampleWeight ???
+* TotalNumber ???
+
+
+
+
+## The HL data
+
+There are xx issues with the HL data
+
+1. ...
+2. ...
+
+
+

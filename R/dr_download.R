@@ -53,7 +53,7 @@ dr_download <- function(recordtype = c("HH", "HL", "CA"),
   hh[hh == "-9"] <- NA
   hh <-
     hh |>
-    filter_out(StationName == "999" & HaulNumber == 999) |>
+    dplyr::filter_out(StationName == "999" & HaulNumber == 999) |>
     dr_add_id() |>
     dplyr::mutate(sur = paste0(Survey, "-", Quarter)) |>
     dr_add_date() |>
@@ -65,7 +65,7 @@ dr_download <- function(recordtype = c("HH", "HL", "CA"),
   hl[hl == "-9"] <- NA
   hl <-
     hl |>
-    filter_out(StationName == "999" & HaulNumber == 999) |>
+    dplyr::filter_out(StationName == "999" & HaulNumber == 999) |>
     dr_add_id() |>
     dplyr::left_join(hh |> dplyr::select(.id, DataType, HaulDuration)) |>
     dplyr::mutate(sur = paste0(Survey, "-", Quarter)) |>
@@ -80,7 +80,7 @@ dr_download <- function(recordtype = c("HH", "HL", "CA"),
   ca[ca == "-9"] <- NA
   ca <-
     ca |>
-    filter_out(StationName == "999" & HaulNumber == 999) |>
+    dplyr::filter_out(StationName == "999" & HaulNumber == 999) |>
     dr_add_id() |>
     dplyr::mutate(sur = paste0(Survey, "-", Quarter)) |>
     dr_add_length_cm() |>

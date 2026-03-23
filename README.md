@@ -36,7 +36,7 @@ features that have, as of yet, not been taken up in the official ICES
 version (issues pending) install that package via:
 
 ``` r
-remotes::install_github("einarhjorleifsson/icesDatras")
+remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
 ```
 
 There are two ways to connect to the DATRAS data, either by importing
@@ -58,24 +58,24 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>   8.219   5.105  76.879
+#>  28.229   4.232   4.450
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
-fiber. If you are connected via wifi this may take closer to 60 seconds.
+fiber. If you are connected via wifi this may take closer to 70 seconds.
 Whatever the case one can assume that nobody will complain given that
 the dimension just imported are as follows:
 
 | type |     rows | cols |
 |:-----|---------:|-----:|
-| HL   |   146944 |   74 |
-| HH   | 14092724 |   35 |
-| CA   |  5800702 |   39 |
+| HH   |   146957 |   76 |
+| HL   | 14092714 |   39 |
+| CA   |  5800888 |   41 |
 
 Number of records and variables
 
 The above fast access is achieved by importing from parquet files that
-are hosted on a conventional http-server. The parquet data source is as
+are hosted on a conventional https-server. The parquet data source is as
 of now **not** a mirror of the data residing at ICES, but a recent copy.
 ICES datacenter is currently exploring ways to serve a mirror of the
 DATRAS data via parquet files hosted on a cloud service.
@@ -102,10 +102,10 @@ using in-process DuckDB database.
 
 ``` r
 hh <- dr_con("HH")
-hh |> glimpse()
+hh |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 74
-#> Database: DuckDB 1.4.4 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> Database: DuckDB 1.5.0 [unknown@Linux 6.1.0-43-amd64:R 4.5.2/:memory:]
 #> $ RecordHeader            <chr> "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
 #> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…
 #> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
@@ -186,10 +186,10 @@ hh |> glimpse()
 
 ``` r
 hl <- dr_con("HL")
-hl |> glimpse()
+hl |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 7
-#> Database: DuckDB 1.4.4 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> Database: DuckDB 1.5.0 [unknown@Linux 6.1.0-43-amd64:R 4.5.2/:memory:]
 #> $ .id              <chr> "BITS:1991:1:DE:06S1:H20:48:43", "BITS:1991:1:DE:06S1…
 #> $ latin            <chr> "Pleuronectes platessa", "Pleuronectes platessa", "Po…
 #> $ length_cm        <dbl> 24.0, 25.0, 24.0, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5,…
@@ -203,10 +203,10 @@ hl |> glimpse()
 
 ``` r
 ca <- dr_con("CA")
-ca |> glimpse()
+ca |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 5
-#> Database: DuckDB 1.4.4 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> Database: DuckDB 1.5.0 [unknown@Linux 6.1.0-43-amd64:R 4.5.2/:memory:]
 #> $ .id           <chr> "BITS:1991:1:SE:77AR:GOV:71:6", "BITS:1991:1:SE:77AR:GOV…
 #> $ latin         <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus m…
 #> $ length_cm     <dbl> 34, 36, 39, 40, 43, 45, 30, 31, 34, 35, 38, 43, 44, 45, …
@@ -225,16 +225,16 @@ and add to that the number of cod observed using the following script:
 data <-
   # Process the data in DuckDB
   hh |> 
-  filter(Year == 2025,
+  dplyr::filter(Year == 2025,
          Quarter == 3) |> 
-  left_join(hl |> 
-              filter(latin == "Gadus morhua") |> 
-              group_by(.id) |> 
-              summarise(n_haul = sum(n_haul, na.rm = TRUE)),
-            by = join_by(.id)) |> 
+  dplyr::left_join(hl |> 
+              dplyr::filter(latin == "Gadus morhua") |> 
+              dplyr::group_by(.id) |> 
+              dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
+            by = dplyr::join_by(.id)) |> 
   # Import the data into R
-  collect() |> 
-  mutate(n_haul = replace_na(n_haul, 0))
+  dplyr::collect() |> 
+  dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
 ```
 
 Here all the code steps prior to the collect command are automatically
@@ -256,88 +256,74 @@ pruned or removed.
     #> ─ Session info ───────────────────────────────────────────────────────────────
     #>  setting  value
     #>  version  R version 4.5.2 (2025-10-31)
-    #>  os       macOS Tahoe 26.3.1
-    #>  system   aarch64, darwin20
+    #>  os       Debian GNU/Linux 12 (bookworm)
+    #>  system   x86_64, linux-gnu
     #>  ui       X11
     #>  language (EN)
-    #>  collate  en_US.UTF-8
-    #>  ctype    en_US.UTF-8
+    #>  collate  is_IS.UTF-8
+    #>  ctype    is_IS.UTF-8
     #>  tz       Atlantic/Reykjavik
     #>  date     2026-03-22
-    #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
-    #>  quarto   1.8.26 @ /usr/local/bin/quarto
+    #>  pandoc   3.6.3 @ /usr/lib/rstudio-server/bin/quarto/bin/tools/x86_64/ (via rmarkdown)
+    #>  quarto   1.5.57 @ /usr/local/bin/quarto
     #> 
     #> ─ Packages ───────────────────────────────────────────────────────────────────
-    #>  package      * version    date (UTC) lib source
-    #>  arrow          23.0.1.1   2026-02-24 [2] CRAN (R 4.5.2)
-    #>  assertthat     0.2.1      2019-03-21 [2] CRAN (R 4.5.0)
-    #>  bit            4.6.0      2025-03-06 [2] CRAN (R 4.5.0)
-    #>  bit64          4.6.0-1    2025-01-16 [2] CRAN (R 4.5.0)
-    #>  blob           1.3.0      2026-01-14 [2] CRAN (R 4.5.2)
-    #>  cachem         1.1.0      2024-05-16 [2] CRAN (R 4.5.0)
-    #>  cli            3.6.5      2025-04-23 [2] CRAN (R 4.5.0)
-    #>  curl           7.0.0      2025-08-19 [2] CRAN (R 4.5.0)
-    #>  data.table     1.18.2.1   2026-01-27 [2] CRAN (R 4.5.2)
-    #>  DBI            1.3.0      2026-02-25 [2] CRAN (R 4.5.2)
-    #>  dbplyr         2.5.2      2026-02-13 [2] CRAN (R 4.5.2)
-    #>  devtools       2.4.6      2025-10-03 [2] CRAN (R 4.5.0)
-    #>  digest         0.6.39     2025-11-19 [2] CRAN (R 4.5.2)
-    #>  dplyr        * 1.2.0      2026-02-03 [2] CRAN (R 4.5.2)
-    #>  duckdb         1.4.4      2026-01-28 [2] CRAN (R 4.5.2)
-    #>  duckdbfs       0.1.2      2025-10-12 [2] CRAN (R 4.5.0)
-    #>  ellipsis       0.3.2      2021-04-29 [2] CRAN (R 4.5.0)
-    #>  evaluate       1.0.5      2025-08-27 [2] CRAN (R 4.5.0)
-    #>  farver         2.1.2      2024-05-13 [2] CRAN (R 4.5.0)
-    #>  fastmap        1.2.0      2024-05-15 [2] CRAN (R 4.5.0)
-    #>  forcats      * 1.0.1      2025-09-25 [2] CRAN (R 4.5.0)
-    #>  fs             1.6.7      2026-03-06 [2] CRAN (R 4.5.2)
-    #>  generics       0.1.4      2025-05-09 [2] CRAN (R 4.5.0)
-    #>  ggplot2      * 4.0.2      2026-02-03 [2] CRAN (R 4.5.2)
-    #>  glue           1.8.0      2024-09-30 [2] CRAN (R 4.5.0)
-    #>  gtable         0.3.6      2024-10-25 [2] CRAN (R 4.5.0)
-    #>  hms            1.1.4      2025-10-17 [2] CRAN (R 4.5.0)
-    #>  htmltools      0.5.9      2025-12-04 [2] CRAN (R 4.5.2)
-    #>  httr2          1.2.2      2025-12-08 [2] CRAN (R 4.5.2)
-    #>  icesDatras     1.5.1      2026-01-24 [2] Github (einarhjorleifsson/icesDatras@221fcc9)
-    #>  knitr          1.51       2025-12-20 [2] CRAN (R 4.5.2)
-    #>  lifecycle      1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
-    #>  lubridate    * 1.9.5      2026-02-04 [2] CRAN (R 4.5.2)
-    #>  magrittr       2.0.4      2025-09-12 [2] CRAN (R 4.5.0)
-    #>  memoise        2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
-    #>  obus         * 2026.01.30 2026-03-22 [1] local
-    #>  otel           0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
-    #>  pillar         1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
-    #>  pkgbuild       1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
-    #>  pkgconfig      2.0.3      2019-09-22 [2] CRAN (R 4.5.0)
-    #>  pkgload        1.5.0      2026-02-03 [2] CRAN (R 4.5.2)
-    #>  purrr        * 1.2.1      2026-01-09 [2] CRAN (R 4.5.2)
-    #>  R6             2.6.1      2025-02-15 [2] CRAN (R 4.5.0)
-    #>  rappdirs       0.3.4      2026-01-17 [2] CRAN (R 4.5.2)
-    #>  RColorBrewer   1.1-3      2022-04-03 [2] CRAN (R 4.5.0)
-    #>  readr        * 2.2.0      2026-02-19 [2] CRAN (R 4.5.2)
-    #>  remotes        2.5.0      2024-03-17 [2] CRAN (R 4.5.0)
-    #>  rlang          1.1.7      2026-01-09 [2] CRAN (R 4.5.2)
-    #>  rmarkdown      2.30       2025-09-28 [2] CRAN (R 4.5.0)
-    #>  rstudioapi     0.18.0     2026-01-16 [2] CRAN (R 4.5.2)
-    #>  S7             0.2.1      2025-11-14 [2] CRAN (R 4.5.2)
-    #>  scales         1.4.0      2025-04-24 [2] CRAN (R 4.5.0)
-    #>  sessioninfo    1.2.3      2025-02-05 [2] CRAN (R 4.5.0)
-    #>  stringi        1.8.7      2025-03-27 [2] CRAN (R 4.5.0)
-    #>  stringr      * 1.6.0      2025-11-04 [2] CRAN (R 4.5.0)
-    #>  tibble       * 3.3.1      2026-01-11 [2] CRAN (R 4.5.2)
-    #>  tidyr        * 1.3.2      2025-12-19 [2] CRAN (R 4.5.2)
-    #>  tidyselect     1.2.1      2024-03-11 [2] CRAN (R 4.5.0)
-    #>  tidyverse    * 2.0.0      2023-02-22 [2] CRAN (R 4.5.0)
-    #>  timechange     0.4.0      2026-01-29 [2] CRAN (R 4.5.2)
-    #>  tzdb           0.5.0      2025-03-15 [2] CRAN (R 4.5.0)
-    #>  usethis        3.2.1      2025-09-06 [2] CRAN (R 4.5.0)
-    #>  vctrs          0.7.1      2026-01-23 [2] CRAN (R 4.5.2)
-    #>  withr          3.0.2      2024-10-28 [2] CRAN (R 4.5.0)
-    #>  xfun           0.56       2026-01-18 [2] CRAN (R 4.5.2)
-    #>  yaml           2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
+    #>  package     * version    date (UTC) lib source
+    #>  arrow         23.0.1.1   2026-02-24 [1] CRAN (R 4.5.2)
+    #>  assertthat    0.2.1      2019-03-21 [1] CRAN (R 4.5.2)
+    #>  bit           4.6.0      2025-03-06 [1] CRAN (R 4.5.2)
+    #>  bit64         4.6.0-1    2025-01-16 [1] CRAN (R 4.5.2)
+    #>  blob          1.3.0      2026-01-14 [1] CRAN (R 4.5.2)
+    #>  cachem        1.1.0      2024-05-16 [1] CRAN (R 4.5.2)
+    #>  cli           3.6.5      2025-04-23 [1] CRAN (R 4.5.2)
+    #>  curl          7.0.0      2025-08-19 [1] CRAN (R 4.5.2)
+    #>  data.table    1.18.2.1   2026-01-27 [1] CRAN (R 4.5.2)
+    #>  DBI           1.3.0      2026-02-25 [1] CRAN (R 4.5.2)
+    #>  dbplyr        2.5.2      2026-02-13 [1] CRAN (R 4.5.2)
+    #>  devtools      2.5.0      2026-03-14 [1] CRAN (R 4.5.2)
+    #>  digest        0.6.39     2025-11-19 [1] CRAN (R 4.5.2)
+    #>  dplyr         1.2.0      2026-02-03 [1] CRAN (R 4.5.2)
+    #>  duckdb        1.5.0      2026-03-14 [1] CRAN (R 4.5.2)
+    #>  duckdbfs      0.1.2      2025-10-12 [1] CRAN (R 4.5.2)
+    #>  ellipsis      0.3.2      2021-04-29 [1] CRAN (R 4.5.2)
+    #>  evaluate      1.0.5      2025-08-27 [1] CRAN (R 4.5.2)
+    #>  fastmap       1.2.0      2024-05-15 [1] CRAN (R 4.5.2)
+    #>  fs            1.6.7      2026-03-06 [1] CRAN (R 4.5.2)
+    #>  generics      0.1.4      2025-05-09 [1] CRAN (R 4.5.2)
+    #>  glue          1.8.0      2024-09-30 [1] CRAN (R 4.5.2)
+    #>  htmltools     0.5.9      2025-12-04 [1] CRAN (R 4.5.2)
+    #>  httr2         1.2.2      2025-12-08 [1] CRAN (R 4.5.2)
+    #>  icesDatras    1.5.1      2026-03-18 [1] Github (einarhjorleifsson/icesDatras@221fcc9)
+    #>  knitr         1.51       2025-12-20 [1] CRAN (R 4.5.2)
+    #>  lifecycle     1.0.5      2026-01-08 [1] CRAN (R 4.5.2)
+    #>  magrittr      2.0.4      2025-09-12 [1] CRAN (R 4.5.2)
+    #>  memoise       2.0.1      2021-11-26 [1] CRAN (R 4.5.2)
+    #>  obus        * 2026.01.30 2026-03-22 [1] local
+    #>  otel          0.2.0      2025-08-29 [1] CRAN (R 4.5.2)
+    #>  pillar        1.11.1     2025-09-17 [1] CRAN (R 4.5.2)
+    #>  pkgbuild      1.4.8      2025-05-26 [1] CRAN (R 4.5.2)
+    #>  pkgconfig     2.0.3      2019-09-22 [1] CRAN (R 4.5.2)
+    #>  pkgload       1.5.0      2026-02-03 [1] CRAN (R 4.5.2)
+    #>  purrr         1.2.1      2026-01-09 [1] CRAN (R 4.5.2)
+    #>  R6            2.6.1      2025-02-15 [1] CRAN (R 4.5.2)
+    #>  rappdirs      0.3.4      2026-01-17 [1] CRAN (R 4.5.2)
+    #>  rlang         1.1.7      2026-01-09 [1] CRAN (R 4.5.2)
+    #>  rmarkdown     2.30       2025-09-28 [1] CRAN (R 4.5.2)
+    #>  rstudioapi    0.18.0     2026-01-16 [1] CRAN (R 4.5.2)
+    #>  sessioninfo   1.2.3      2025-02-05 [1] CRAN (R 4.5.2)
+    #>  tibble        3.3.1      2026-01-11 [1] CRAN (R 4.5.2)
+    #>  tidyr         1.3.2      2025-12-19 [1] CRAN (R 4.5.2)
+    #>  tidyselect    1.2.1      2024-03-11 [1] CRAN (R 4.5.2)
+    #>  usethis       3.2.1      2025-09-06 [1] CRAN (R 4.5.2)
+    #>  vctrs         0.7.1      2026-01-23 [1] CRAN (R 4.5.2)
+    #>  withr         3.0.2      2024-10-28 [1] CRAN (R 4.5.2)
+    #>  xfun          0.57       2026-03-20 [1] CRAN (R 4.5.2)
+    #>  yaml          2.3.12     2025-12-10 [1] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpSHgStU/temp_libpatha178183439e1
-    #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
+    #>  [1] /heima/einarhj/R/x86_64-pc-linux-gnu-library/4.5
+    #>  [2] /usr/local/lib/R/site-library
+    #>  [3] /usr/lib/R/site-library
+    #>  [4] /usr/lib/R/library
     #>  * ── Packages attached to the search path.
     #> 
     #> ──────────────────────────────────────────────────────────────────────────────
