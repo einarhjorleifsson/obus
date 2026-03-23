@@ -15,7 +15,8 @@ non-ambiguous variables.
 That said, {obus} is a temporary experimental package used to explore
 various DATRAS data connections and wrapper functions to make life a
 little easier for everyday user. Some of that may be taken up in a more
-official package. Or possibly not.
+official package. Or possibly not. So far {obus} does actually very
+little.
 
 For purist, one regrets to inform that this package has quite some
 number of dependencies (see
@@ -23,7 +24,7 @@ number of dependencies (see
 It should however be possible to trim down that fat.
 
 For more information, check the
-[README.md](https://github.com/einarhjorleifsson/obus)
+[README.md](https://github.com/einarhjorleifsson/obus).
 
 ## Installation
 
@@ -61,7 +62,7 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>   5.657   1.537   3.790
+#>   5.520   1.490   5.777
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
@@ -313,15 +314,15 @@ system.time({
     dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
 })
 #>    user  system elapsed 
-#>   0.444   0.121   0.795
+#>   0.385   0.118   1.087
 data |> dplyr::glimpse()
 #> Rows: 4,185
 #> Columns: 5
-#> $ .id    <chr> "BITS:2024:1:DK:26D4:TVL:132:45", "BITS:2024:1:DE:06SL:TVS:2421…
-#> $ sur    <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BI…
-#> $ lon    <dbl> 16.2888, 13.3378, 12.6462, 12.8895, 13.7245, 21.5733, 16.8667, …
-#> $ lat    <dbl> 55.2916, 55.0237, 55.9641, 55.0881, 54.7253, 57.9217, 55.4050, …
-#> $ n_haul <dbl> 740.000, 942.084, 656.397, 96.000, 330.000, 1.000, 278.000, 75.…
+#> $ .id    <chr> "BITS:2024:4:DK:26D4:TVL:97:21", "BITS:2024:4:DK:26D4:TVL:77:17…
+#> $ sur    <chr> "BITS-4", "BITS-4", "BITS-4", "BITS-4", "BITS-4", "BITS-4", "BI…
+#> $ lon    <dbl> 16.2580, 16.3018, 17.9585, 19.0617, 14.6079, 19.2450, 17.4817, …
+#> $ lat    <dbl> 55.7969, 55.5288, 57.0215, 57.3341, 55.4832, 54.3817, 54.8517, …
+#> $ n_haul <dbl> 919.0000, 6.0000, 1.0000, 12.0000, 551.5667, 86.0000, 328.0000,…
 ```
 
 Here all the code steps prior to the collect command are automatically
@@ -378,53 +379,54 @@ augmented dataframes, using some simple obus wrapper functions):
     #>  bit           4.6.0      2025-03-06 [1] CRAN (R 4.5.0)
     #>  bit64         4.6.0-1    2025-01-16 [1] CRAN (R 4.5.0)
     #>  blob          1.3.0      2026-01-14 [1] CRAN (R 4.5.2)
-    #>  cachem        1.1.0      2024-05-16 [1] CRAN (R 4.5.0)
+    #>  cachem        1.1.0      2024-05-16 [2] CRAN (R 4.5.0)
     #>  cli           3.6.5      2025-04-23 [1] CRAN (R 4.5.0)
     #>  curl          7.0.0      2025-08-19 [1] CRAN (R 4.5.0)
     #>  data.table    1.18.2.1   2026-01-27 [1] CRAN (R 4.5.2)
     #>  DBI           1.3.0      2026-02-25 [1] CRAN (R 4.5.2)
     #>  dbplyr        2.5.2      2026-02-13 [1] CRAN (R 4.5.2)
-    #>  devtools      2.5.0      2026-03-14 [1] CRAN (R 4.5.2)
-    #>  digest        0.6.39     2025-11-19 [1] CRAN (R 4.5.2)
+    #>  devtools      2.5.0      2026-03-14 [2] CRAN (R 4.5.2)
+    #>  digest        0.6.39     2025-11-19 [2] CRAN (R 4.5.2)
     #>  dplyr         1.2.0      2026-02-03 [1] CRAN (R 4.5.2)
     #>  duckdb        1.5.0      2026-03-14 [1] CRAN (R 4.5.2)
     #>  duckdbfs      0.1.2      2025-10-12 [1] CRAN (R 4.5.0)
-    #>  ellipsis      0.3.2      2021-04-29 [1] CRAN (R 4.5.0)
-    #>  evaluate      1.0.5      2025-08-27 [1] CRAN (R 4.5.0)
-    #>  fastmap       1.2.0      2024-05-15 [1] CRAN (R 4.5.0)
+    #>  ellipsis      0.3.2      2021-04-29 [2] CRAN (R 4.5.0)
+    #>  evaluate      1.0.5      2025-08-27 [2] CRAN (R 4.5.0)
+    #>  fastmap       1.2.0      2024-05-15 [2] CRAN (R 4.5.0)
     #>  fs            1.6.7      2026-03-06 [1] CRAN (R 4.5.2)
     #>  generics      0.1.4      2025-05-09 [1] CRAN (R 4.5.0)
     #>  glue          1.8.0      2024-09-30 [1] CRAN (R 4.5.0)
-    #>  htmltools     0.5.9      2025-12-04 [1] CRAN (R 4.5.2)
+    #>  htmltools     0.5.9      2025-12-04 [2] CRAN (R 4.5.2)
     #>  httr2         1.2.2      2025-12-08 [1] CRAN (R 4.5.2)
-    #>  icesDatras    1.5.1      2026-01-24 [1] Github (einarhjorleifsson/icesDatras@221fcc9)
-    #>  knitr         1.51       2025-12-20 [1] CRAN (R 4.5.2)
+    #>  icesDatras    1.4.1      2023-05-08 [1] CRAN (R 4.5.0)
+    #>  knitr         1.51       2025-12-20 [2] CRAN (R 4.5.2)
     #>  lifecycle     1.0.5      2026-01-08 [1] CRAN (R 4.5.2)
     #>  magrittr      2.0.4      2025-09-12 [1] CRAN (R 4.5.0)
-    #>  memoise       2.0.1      2021-11-26 [1] CRAN (R 4.5.0)
+    #>  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
     #>  obus        * 2026.01.30 2026-03-23 [1] local
-    #>  otel          0.2.0      2025-08-29 [1] CRAN (R 4.5.0)
+    #>  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
     #>  pillar        1.11.1     2025-09-17 [1] CRAN (R 4.5.0)
-    #>  pkgbuild      1.4.8      2025-05-26 [1] CRAN (R 4.5.0)
+    #>  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
     #>  pkgconfig     2.0.3      2019-09-22 [1] CRAN (R 4.5.0)
-    #>  pkgload       1.5.0      2026-02-03 [1] CRAN (R 4.5.2)
+    #>  pkgload       1.5.0      2026-02-03 [2] CRAN (R 4.5.2)
     #>  purrr         1.2.1      2026-01-09 [1] CRAN (R 4.5.2)
     #>  R6            2.6.1      2025-02-15 [1] CRAN (R 4.5.0)
     #>  rappdirs      0.3.4      2026-01-17 [1] CRAN (R 4.5.2)
     #>  rlang         1.1.7      2026-01-09 [1] CRAN (R 4.5.2)
-    #>  rmarkdown     2.30       2025-09-28 [1] CRAN (R 4.5.0)
-    #>  rstudioapi    0.18.0     2026-01-16 [1] CRAN (R 4.5.2)
-    #>  sessioninfo   1.2.3      2025-02-05 [1] CRAN (R 4.5.0)
+    #>  rmarkdown     2.30       2025-09-28 [2] CRAN (R 4.5.0)
+    #>  rstudioapi    0.18.0     2026-01-16 [2] CRAN (R 4.5.2)
+    #>  sessioninfo   1.2.3      2025-02-05 [2] CRAN (R 4.5.0)
     #>  tibble        3.3.1      2026-01-11 [1] CRAN (R 4.5.2)
     #>  tidyr         1.3.2      2025-12-19 [1] CRAN (R 4.5.2)
     #>  tidyselect    1.2.1      2024-03-11 [1] CRAN (R 4.5.0)
-    #>  usethis       3.2.1      2025-09-06 [1] CRAN (R 4.5.0)
+    #>  usethis       3.2.1      2025-09-06 [2] CRAN (R 4.5.0)
     #>  vctrs         0.7.2      2026-03-21 [1] CRAN (R 4.5.2)
     #>  withr         3.0.2      2024-10-28 [1] CRAN (R 4.5.0)
-    #>  xfun          0.57       2026-03-20 [1] CRAN (R 4.5.2)
-    #>  yaml          2.3.12     2025-12-10 [1] CRAN (R 4.5.2)
+    #>  xfun          0.57       2026-03-20 [2] CRAN (R 4.5.2)
+    #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmpm2bHHp/temp_libpath1154747dbcbea
+    #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
     #> ──────────────────────────────────────────────────────────────────────────────
