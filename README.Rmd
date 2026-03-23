@@ -26,6 +26,7 @@ That said, {obus} is a temporary experimental package used to explore various DA
 
 For purist, one regrets to inform that this package has quite some number of dependencies (see [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). It should however be possible to trim down that fat.
 
+For more information, check the [README.md](https://github.com/einarhjorleifsson/obus)
 
 ## Installation
 
@@ -59,7 +60,7 @@ system.time({
 })
 ```
 
-So we are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via wifi this may take closer to 70 seconds. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:
+So we are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via poor wifi this may take more than a minute. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:
 
 ```{r, echo = FALSE}
 tibble::tibble(type = c("HH", "HL", "CA"),
@@ -72,13 +73,14 @@ The above fast access is achieved by importing from parquet files that are hoste
 
 If one wants an up-to-date mirror one could use a slower route using a new API from the ICES datacenter. In R one can use the icesDatras::get_datras_unaggregated_data function. That function has been wrapped into dr_get so one can get data from many surveys with one command. E.g. all surveys from 2025 can be obtained by:
 
-```{r}
-hh <- obus::dr_get("HH", years = 2025, from = "new")
+```{r, eval = FALSE}
+# Not run
+hh <- obus::dr_get("HH", years = 2025, from = "new", quiet = TRUE)
 ```
 
 ## Connecting
 
-Although the DATRAS data can not be considered big data, one can pretend that it is and use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files (remember, these are not fully up-to-date) using in-process DuckDB database.
+Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files (remember, these are not fully up-to-date) using in-process DuckDB database.
 
 ### HH data
 
@@ -90,14 +92,14 @@ hh |> dplyr::glimpse()
 ### HL data
 
 ```{r}
-hl <- dr_con("HL")
+hl <- dr_con("HL", trim = FALSE)
 hl |> dplyr::glimpse()
 ```
 
 ### CA data
 
 ```{r}
-ca <- dr_con("CA")
+ca <- dr_con("CA", trim = FALSE)
 ca |> dplyr::glimpse()
 ```
 
@@ -106,28 +108,48 @@ ca |> dplyr::glimpse()
 For those familiar with using dplyr-verbs to process data most of those function as well as many base-R functions can be used to process the data. E.g. one can get all survey stations for the third quarter in 2025 and add to that the number of cod observed using the following script:
 
 ```{r}
-data <-
-  # Process the data in DuckDB
-  hh |> 
-  dplyr::filter(Year == 2025,
-         Quarter == 3) |> 
-  dplyr::left_join(hl |> 
-              dplyr::filter(latin == "Gadus morhua") |> 
-              dplyr::group_by(.id) |> 
-              dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
-            by = dplyr::join_by(.id)) |> 
-  # Import the data into R
-  dplyr::collect() |> 
-  dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
+system.time({
+  data <-
+    # Process the data in DuckDB
+    dr_con("HH") |> 
+    dplyr::filter(Year == 2024,
+                  Quarter %in% 1:4) |> 
+    dplyr::select(.id, sur, lon = ShootLongitude, lat = ShootLatitude) |> 
+    dplyr::left_join(dr_con("HL", trim = TRUE) |> 
+                       dplyr::filter(latin == "Gadus morhua") |> 
+                       dplyr::group_by(.id) |> 
+                       dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
+                     by = dplyr::join_by(.id)) |> 
+    # Import the data into R
+    dplyr::collect() |> 
+    dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
+})
+data |> dplyr::glimpse()
 ```
 
-Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually downloaded and imported into R. More importantly, only the variables Year, Quarter, latin, .id and n are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those that "fall within the range" of the values in the variables are passed over the web.
+Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually downloaded and imported into R. More importantly, only the variables .id (unique station id), sur, lon, lat, latin, and n_haul are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those that "fall within the range" of the filtered values are passed over the web.
 
 ## Small print
 
 This stuff is in development, thus bugs, snags and errors are expected. {obus} still has some experimental hangover functions that need to be pruned or removed.
 
-## How did I get here?
+Actually, as of now {obus} does not do very much, the initial focus has been on experimenting with fast access to DATRAS data. For all practical purposes one can totally live without it. Importing the full HH, HL and CA data into R can be achieved by (anticipated that ICES datacenter with maintain an official path):
+
+```
+hh <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/HH.parquet")
+hl <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/HL.parquet")
+ca <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/CA.parquet")
+```
+
+And a duckdb connection can be achieved by (here we have slightly augmented dataframes, using some simple obus wrapper functions):
+
+```
+hh <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+hl <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL.parquet")
+ca <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CA.parquet")
+```
+
+## Specs
 
 ```{r, echo = FALSE}
 devtools::session_info()
