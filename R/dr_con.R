@@ -27,7 +27,7 @@
 #'   - `"CA"`: Catch-at-age data (filterable via the `trim` option).
 #'   - `"species"`: Species dataset derived from ICES SpecWoRMS.
 #' @param trim Logical. For `"HL"` or `"CA"`, if `TRUE` (default), non-essential fields are excluded. Ignored for other datasets.
-#' @param url URL to the Parquet file directory, currently defaulting to `"https://heima.hafro.is/~einarhj/data/datras"`.
+#' @param url URL to the Parquet file directory, currently defaulting to `"https://heima.hafro.is/~einarhj/datras"`.
 #' @param quiet Logical. If `TRUE` (default), suppresses connection warnings and messages.
 #'
 #' @return A DuckDB dataset table.
@@ -43,7 +43,7 @@
 #'   dplyr::glimpse(species_data)
 #' }
 #' @export
-dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/data/datras", quiet = TRUE) {
+dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE) {
 
   # Validate `type` parameter
   valid_types <- c("HH", "HL", "CA", "species", "haul", "dictionary", "vocabulary", "cpuelength")

@@ -2,7 +2,7 @@ library(tidyverse)
 library(sf)
 
 bb <-
-  duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/data/datras/HH.parquet") |>
+  duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HH.parquet") |>
   filter(ShootLong > -20) |>
   summarise(xmin = min(ShootLong),
             ymin = min(ShootLat),
