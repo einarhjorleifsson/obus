@@ -1,0 +1,143 @@
+---
+title: "xml"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(obus)
+```
+
+```{r eval = FALSE}
+.get_datras_construct_url <- function(record = "HH", survey, years, quarters, species = NULL) {
+  if (is.null(species) || record == "HH") {
+    url <- sprintf("https://datras.ices.dk/WebServices/DATRASWebService.asmx/get%sdata?survey=%s&year=%i&quarter=%i",
+                   record, survey, years, quarters)
+  }
+  else {
+    url <- sprintf("https://datras.ices.dk/WebServices/DATRASWebService.asmx/get%sdataSp?survey=%s&year=%i&quarter=%i&species=%i",
+                   record, survey, years, quarters, species)
+  }
+  return(url)
+}
+
+get_datras <- function(record = "HH", survey, years, quarters, species = NULL) {
+  response <- httr2::request(url) |> httr2::req_perform()
+  if(httr2::resp_status(response) == 200) {
+  xml_data <- httr2::resp_body_string(response)
+  parsed_xml <- suppressWarnings(xml2::read_xml(xml_data))
+  ns <- c(d = "ices.dk.local/DATRAS")  # Bind the namespace to the prefix "d"
+  xml_nodsets <-
+    parsed_xml |>
+    xml2::xml_find_all("//d:Cls_DatrasExchange_HH", ns = ns)
+  #xml_nodsets |>
+  #  xml2::xml_children()
+  #xml_nodsets |>
+  #  xml2::xml_children()
+  #first_node <- xml2::xml_children(xml_nodsets[[1]])
+  #print(first_node)
+  # Get all field names from all nodes
+  all_fields <- xml_nodsets |>
+    purrr::map(~ xml2::xml_children(.x) |>
+                 purrr::map_chr(xml2::xml_name)
+    ) |>
+    unlist() |>
+    unique()
+  
+  data <- 
+    xml_nodsets |>
+    purrr::map_df(function(node) {
+      # Extract all direct children of the node
+      children <- xml2::xml_children(node)
+      
+      # Create a name-value pair for each child
+      values <- purrr::map_dfc(children, ~ {
+        name <- xml2::xml_name(.x)  # Element name (e.g., "RecordType", "Survey")
+        value <- xml2::xml_text(.x)  # Element value (e.g., "HH", "NS-IBTS")
+        tibble::tibble(!!name := value)  # Dynamically create a column
+      })
+      
+      return(values)
+    })
+  
+  return(data)
+  
+  } else {
+    stop("Failed to fetch data. Status code: ", httr2::resp_status(response))
+  }
+}
+
+
+get_datras("HH", "NS-IBTS", 2020, 1)
+icesDatras::getDATRAS("HH", "NS-IBTS", 2020, 1)
+```
+
+```{r, eval = FALSE}
+# Emulate icesDatras::getDATRAS using httr2 and xml2
+#  The problem with ICES DATRAS API's is that there is no schema
+#  Hence field names have decipheredd from the API string
+#  Here we explore using a dynamic approach, getting first the field names .
+#  Ultimate aim is to generate an agnostic function that can read any ICES API
+#  Bonus: Would be nice if this results in faster speed
+
+# NOTE: Some part of the code does not work, the last approach should do
+#       Review thus code carefully
+
+.get_datras_construct_url <- function(record = "HH", survey, years, quarters, species = NULL) {
+  if (is.null(species) || record == "HH") {
+    url <- sprintf("https://datras.ices.dk/WebServices/DATRASWebService.asmx/get%sdata?survey=%s&year=%i&quarter=%i",
+                   record, survey, years, quarters)
+  }
+  else {
+    url <- sprintf("https://datras.ices.dk/WebServices/DATRASWebService.asmx/get%sdataSp?survey=%s&year=%i&quarter=%i&species=%i",
+                   record, survey, years, quarters, species)
+  }
+  return(url)
+}
+
+url <- .get_datras_construct_url("HH", "NS-IBTS", 2025, 1)
+
+response <- httr2::request(url) |> httr2::req_perform()
+xml_data <- httr2::resp_body_string(response)
+parsed_xml <- suppressWarnings(xml2::read_xml(xml_data))
+ns <- c(d = "ices.dk.local/DATRAS")  # Bind the namespace to the prefix "d"
+xml_nodsets <-
+  parsed_xml |>
+  xml2::xml_find_all("//d:Cls_DatrasExchange_HH", ns = ns)
+#xml_nodsets |>
+#  xml2::xml_children()
+#xml_nodsets |>
+#  xml2::xml_children()
+#first_node <- xml2::xml_children(xml_nodsets[[1]])
+#print(first_node)
+# Get all field names from all nodes
+all_fields <- xml_nodsets |>
+  purrr::map(~ xml2::xml_children(.x) |>
+               purrr::map_chr(xml2::xml_name)
+  ) |>
+  unlist() |>
+  unique()
+
+data <- xml_nodsets |>
+  purrr::map_df(function(node) {
+    # Extract all direct children of the node
+    children <- xml2::xml_children(node)
+    
+    # Create a name-value pair for each child
+    values <- purrr::map_dfc(children, ~ {
+      name <- xml2::xml_name(.x)  # Element name (e.g., "RecordType", "Survey")
+      value <- xml2::xml_text(.x)  # Element value (e.g., "HH", "NS-IBTS")
+      tibble::tibble(!!name := value)  # Dynamically create a column
+    })
+    
+    return(values)
+  })
+
+
+```
+

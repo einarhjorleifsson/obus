@@ -23,7 +23,8 @@ utils::globalVariables(
     "n_hour", "w_hour",
     "DataFormat", "Description",
     ".id2", "DateTime", "time",
-    "LngtClas"
+    "LngtClas",
+    ".has_ds", "CPUE_number_per_hour", "ValidAphiaID", "dr_latin_aphia", "record_type"
   )
 )
 

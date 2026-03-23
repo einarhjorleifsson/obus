@@ -1,0 +1,411 @@
+---
+title: "variables"
+---
+
+```{r}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  echo = TRUE,
+  message = FALSE.
+  warnings = FALSE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(tidyverse)
+library(obus)
+```
+
+```{r}
+hl <-
+  dr_con("HH") |> 
+  select(.id, Survey, Quarter, Year, DataType, HaulDuration) |> 
+  left_join(dr_con("HL", trim = FALSE))
+hl2 <-
+  hl |> 
+  select(.id, SpeciesValidity:ValidAphiaID)
+dictionary <- dr_con("dictionary")
+vocab <- dr_con("vocabulary")
+```
+
+## HL row type
+
+One of the key variable in the HL table is "SpeciesValidity". In hindsight the variable name itself is very cryptic and is e.g. easily confused by the novice with "ValidAphiaID". I like like to think of this variable as ...
+
+```{r, echo = FALSE}
+hl |> 
+  count(SpeciesValidity, name = "rows") |> 
+  full_join(vocab |> filter(new == "SpeciesValidity") |> 
+              #mutate(key = ifelse(key == "-9", NA, key)) |> 
+              select(SpeciesValidity = key, description)) |> 
+  mutate(SpeciesValidity = as.integer(SpeciesValidity),
+         "%" = round(rows / sum(rows, na.rm = FALSE) * 100, 2),
+         .after = rows) |> 
+  arrange(SpeciesValidity) |>
+  knitr::kable(caption = "SpeciesValidity (SpecVal), number of rows in HL table and description.")
+```
+
+When thinking about the HL construct one can classify the variables into two groups (those affected by HH-DataType and HH-HaulDuration are marked with ^*):
+
+* Control variables
+  * SpeciesValidity
+  * SpeciesCategory
+  * LengthCode
+  * LengthType
+* Value variables
+  * ValidAphiaId
+  * SpeciesSex
+  * DevelopmentStage
+  * LengthClass
+  * NumberAtLength^*
+  * SpeciesCategoryWeight^*
+  * SubsamplingFactor
+  * SubsampledNumber^*
+  * SubsampleWeight^*
+  * TotalNumber
+  * SpeciesCategoryWeight
+  
+
+```{r}
+d <- 
+  hl2 |> 
+  #filter(SpeciesValidity == "4") |> 
+  mutate(TotalN = ifelse(is.na(TotalNumber), 0L, 1L),
+         SubsampledN = ifelse(is.na(SubsampledNumber), 0L, 1L),
+         SubsampleW = ifelse(is.na(SubsampleWeight), 0L, 1L),
+         SpeciesCategoryW = ifelse(is.na(SpeciesCategoryWeight), 0L, 1L),
+         LengthClass = ifelse(is.na(LengthClass), 0L, 1L),
+         NumberAtLength = ifelse(is.na(NumberAtLength), 0L, 1L)) |> 
+  count(SpeciesValidity, TotalN, SubsampledN, SubsampleW, 
+        SpeciesCategoryW, LengthClass, NumberAtLength) |> 
+  mutate(SpeciesValidity = as.integer(SpeciesValidity)) |> 
+  group_by(SpeciesValidity) |> 
+  mutate("%" = n / sum(n, na.rm = FALSE) * 100) |> 
+  ungroup() |> 
+  collect() |> 
+  arrange(SpeciesValidity, desc(n)) 
+d |> 
+  knitr::kable(digits = 2, caption = "Overview: Binary classification of value variables indication presence (1) or missing values (0).")
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 0) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 0, Invalid information. Use in data products: no.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 1) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 1, Representative length information (length measurements, numbers and category catch weights). Use in data products: yes.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 2) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 2, Representative length information only for commercial/assessed species. Full set of species to be completed next year after a two-years ban to allow national data use. Use in data products: yes, only for commercial/assessed species.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 4) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 4, Total number only. No length measurements or category catch weight. Use in data products: yes.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 5) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 5, Presence/absence only. No length measurements, numbers or category catch weights. Use in DATRAS products: yes.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 6) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 6, Category catch weight only. No length measurements or numbers. Use in DATRAS products: yes.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 7) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 7, Numbers and category catch weights only. No length measurements. Use in DATRAS products: yes.",
+               digits = 2)
+```
+
+```{r}
+d |> 
+  filter(SpeciesValidity == 10) |> 
+  select(-SpeciesValidity) |> 
+  knitr::kable(caption = "SpeciesValidity == 10, Length measurements and numbers only. No category catch weights. Use in data products: yes.",
+               digits = 2)
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+```{r}
+hl |> count(SpeciesValidity) |> mutate(SpeciesValidity = as.integer(SpeciesValidity)) |> 
+  arrange(SpeciesValidity)
+```
+
+
+# Variables values that depend on DataType and HaulDuration
+
+* NumberAtLength
+* 
+
+
+# Standardize everthing to the haul
+
+```{r}
+hl |> 
+  select(.id, Survey, Quarter, Year, latin, SpeciesSex, DevelopmentStage, SpeciesCategory, TotalNumber, SubsampledNumber, SubsampleWeight, SubsamplingFactor, DataType, HaulDuration) |> 
+  distinct() |> 
+  filter(SubsamplingFactor > 1)
+
+hl |> 
+  select(.id, Survey, Quarter, Year, latin, SpeciesSex, DevelopmentStage, SpeciesCategory, TotalNumber, SubsampledNumber, SubsampleWeight, SubsamplingFactor, DataType, HaulDuration, NumberAtLength) |> 
+  group_by(.id, Survey, Quarter, Year, latin, SpeciesSex, DevelopmentStage, SpeciesCategory) |>
+  # Why do I have to use na.rm, ie what are NA values here
+  mutate(total_n = sum(NumberAtLength, na.rm = TRUE)) |> 
+  ungroup() |> 
+  select(-NumberAtLength) |> 
+  distinct() |> 
+  filter(SubsamplingFactor > 1)
+
+
+
+
+```
+
+### Lingo
+
+In order for me to make some sense of things, my vocabulary:
+
+For each subfactor?, species, sex and developmental stage we have:
+
+* n_meas: This is the number **measured** in a haul per species, sex and developmental stage
+* n_haul: This is the number in a haul
+* n_hour: This is the standardized number fish per 1 hour towing
+
+Subfactor bookkeeping is of interest in:
+
+* QC
+* Some statistics?
+
+
+
+### TotalNumber (TotalNo)
+
+* From vocabulary: "Total number of specimens per category (unique combination of cruise haul, species, sex, devstage and subsampling category identifier). For data type C, values should be standardised to 60 minutes."
+
+
+```{r}
+hl |> 
+  mutate(n_meas_cat = case_when(DataType == "C" ~ TotalNumber / 60 * HaulDuration,
+                                  .default = TotalNumber))
+```
+
+
+
+### SpeciesCategory (CatIdentifier)
+
+From [FAQ](https://www.ices.dk/data/Documents/DATRAS/DATRAS_FAQs.pdf):
+
+* "The CatIdentifier is the ID number given to a particular length- or weight-based subsampling of species with the same sex code in the same haul."
+* "There can be reported up to **5** categories per species in one haul."
+
+```{r}
+hl |> collect() |> count(SpeciesCategory) |> collect() |> 
+  ggplot(aes(factor(SpeciesCategory), n)) + geom_col() + scale_y_log10() +
+  labs(x = "Species category", y = "Number of HL records")
+```
+
+```{r}
+hl |> 
+  select(Survey, SpeciesCategory) |> 
+  collect() |> 
+  group_by(Survey) |> 
+  summarise(max = max(SpeciesCategory, na.rm = TRUE)) |> 
+  ggplot(aes(max, reorder(Survey, max))) +
+  geom_point() +
+  scale_x_continuous(breaks = seq(0, 30, by = 2)) +
+  labs(x = "Maximum SpeciesCategory", y = "Survey")
+```
+
+```{r}
+dr_con("HH") |> 
+  select(.id, Year) |> 
+  left_join(hl) |> 
+  select(Survey, Year, SpeciesCategory) |> 
+  group_by(Survey, Year) |> 
+  summarise(max = max(SpeciesCategory, na.rm = TRUE)) |> 
+  ggplot(aes(Year, Survey, fill = factor(max))) +
+  geom_tile() +
+  scale_fill_viridis_d(direction = -1) +
+  #scale_x_continuous(breaks = seq(0, 30, by = 2)) +
+  labs(x = "Year", y = "Survey", fill = "Max/nSpeciesCategory")
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+library(tidyverse)
+devtools::load_all()
+vc <- dr_con("vocabulary")
+vc |> filter(new == "SpeciesCategory")
+hl <- dr_con("HL", trim = FALSE)
+hl |> glimpse()
+
+
+
+hl |> glimpse()
+hl |> filter(is.na(LengthClass)) |> glimpse()
+
+hl |> 
+  filter(.id == "BITS:1991:1:LV:90MX:LBT:3:20",
+         latin == "Enchelyopus cimbrius") |> 
+  glimpse()
+# If length class is missing, expect no count
+hl |> 
+  filter(is.na(LengthClass)) |> 
+  filter(!is.na(NumberAtLength))
+# If no length class, expect only one species record per station
+hl |> 
+  filter(is.na(LengthClass)) |> 
+  count(.id, latin) |> 
+  arrange(desc(n)) |> 
+  collect() |> 
+  slice(1:50) |> 
+  knitr::kable()
+# May have to take into account Sex
+hl |> 
+  filter(is.na(LengthClass)) |> 
+  count(.id, latin, SpeciesSex) |> 
+  arrange(desc(n)) |> 
+  collect() |> 
+  slice(1:50) |> 
+  knitr::kable()
+hl |> 
+  filter(.id == "BTS:2023:3:NL:64T2:BT8:41F334:34",
+         latin == "Amblyraja radiata") |> 
+  #filter(is.na(LengthClass)) |> 
+  collect() |> 
+  janitor::remove_constant() |> 
+  view()
+
+hl |> 
+  filter(.id == "BTS:2017:3:NL:64T2:BT8:40F043:43",
+         latin == "Echinus") |> 
+  #filter(is.na(LengthClass)) |> 
+  collect() |> 
+  janitor::remove_constant() |> 
+  view()
+
+# classify measurement type:
+hl |> 
+  mutate(sample = case_when(!is.na(LengthClass) ~ "length measurment",
+                            .default = "rest")) |> 
+  count(sample) |> 
+  mutate(p = round(n / sum(n) * 100, 1))
+lh <- function(x) {
+  ifelse(!is.na(x), "yes", "no")
+}
+hl |> glimpse()
+d <- 
+  hl |> 
+  mutate(.TotalNumber = ifelse(!is.na(TotalNumber), "yes", "no"),
+         .SubsampledNumber = ifelse(!is.na(SubsampledNumber), "yes", "no"),
+         .SubsampleWeight = ifelse(!is.na(SubsampleWeight), "yes", "no"),
+         .SpeciesCategoryWeight = ifelse(!is.na(SpeciesCategoryWeight), "yes", "no"),
+         .LengthClass = ifelse(!is.na(LengthClass), "yes", "no")) |> 
+  collect() |> 
+  unite(.TotalNumber:.LengthClass, col = "TN_SN_SW_SCW_LC", sep = "_")
+
+
+
+d |> 
+  count(TN_SN_SW_SCW_LC) |> 
+  mutate(p = round( n / sum(n) * 100, 1)) |> 
+  arrange(-n) |> 
+  filter(str_ends(TN_SN_SW_SCW_LC, "_yes")) |> 
+  knitr::kable()
+d |> 
+  filter(TN_SN_SW_SCW_LC == "no_no_no_no_yes") |> 
+  glimpse()
+d |> 
+  filter(TN_SN_SW_SCW_LC == "no_yes_no_no_yes") |> 
+  glimpse()
+
+hl |> 
+  filter(is.na(TotalNumber), is.na(SubsampledNumber), is.na(SubsampleWeight),
+         is.na(SpeciesCategoryWeight), is.na(LengthClass)) |> 
+  glimpse()
+         
+         
+
+
+```
