@@ -35,4 +35,4 @@ vocabulary |>
   rename(old = variable) |>
   left_join(dictionary |> select(old, new)) |>
   select(old, new, key, everything()) |>
-  arrow::write_parquet("/home/hafri/einarhj/public_html/data/datras/vocabulary.parquet")
+  arrow::write_parquet("/home/hafri/einarhj/public_html/datras/vocabulary.parquet")

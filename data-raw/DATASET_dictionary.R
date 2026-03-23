@@ -83,4 +83,4 @@ dictionary <-
                           .default = type))
 
 dictionary |>
-  nanoparquet::write_parquet("/home/hafri/einarhj/public_html/data/datras/dictionary.parquet")
+  nanoparquet::write_parquet("/home/hafri/einarhj/public_html/datras/dictionary.parquet")
