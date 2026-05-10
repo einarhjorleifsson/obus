@@ -92,3 +92,30 @@ dr_download <- function(recordtype = c("HH", "HL", "CA"),
   invisible(NULL)
 
 }
+
+
+# Internal function to download the zip file
+.dr_download_datras_zip <- function(recordtype, survey, year, quarter, destfile = tempfile(fileext = ".zip"), quiet = TRUE) {
+  base_url <- "https://datras.ices.dk/Data_products/Download/DATRASDownloadAPI.aspx"
+  full_url <- paste0(
+    base_url, "?recordtype=", recordtype,
+    "&survey=", survey, "&year=", year, "&quarter=", quarter
+  )
+
+  if (!quiet) message("Downloading data...")
+  utils::download.file(full_url, destfile, mode = "wb", quiet = quiet)
+
+  destfile
+}
+
+# Internal function to unzip the downloaded file
+.dr_unzip_datras_file <- function(zipfile, destdir = tempfile(), quiet = TRUE) {
+  if (!quiet) message("Extracting files...")
+  dir.create(destdir, showWarnings = FALSE)
+  utils::unzip(zipfile, exdir = destdir)
+
+  destdir
+}
+
+
+

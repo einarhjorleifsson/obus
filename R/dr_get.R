@@ -1,6 +1,6 @@
 # Currently there are three ways to read DATRAS data into memory
 #  1. icesDatras::getDATRAS - the old faithful
-#  2. icesDatras::get_datras_unaggregated_data - new API, faster
+#  2. icesDatras:::getDatrasUnaggregated - new API, faster
 #  3. read a parquet file, all data
 
 
@@ -9,7 +9,7 @@
 #' This function streamlines the retrieval of DATRAS trawl survey data from
 #' various sources, offering distinct methods for fetching and loading the data:
 #' - `"old"`: Retrieves data using the legacy `icesDatras::getDATRAS` function.
-#' - `"new"`:
+#' - `"new"`: Retrieves data using `icesDatras:::getDatrasUnaggregated` function.
 #' - `"parquet"`: Reads directly from Parquet files via URL. survey, year, and
 #' quarter filter not applied.
 #'
@@ -79,21 +79,25 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
     years_c <- paste0(min(years), ":", max(years))
     quarters_c <- paste0(min(quarters), ":", max(quarters))
 
-    data <- purrr::map2(recordtype,
-                        surveys,
-                        get_datras_unaggregated_data,
-                        years_c,
-                        quarters_c)
+    data <- suppressMessages(purrr::map2(recordtype,
+                                         surveys,
+                                         icesDatras::get_datras_unaggregated_data,
+                                         years_c,
+                                         quarters_c))
     i <- purrr::map_int(data, nrow) > 0
     data <- dplyr::bind_rows(data[i]) |> as.data.frame()
-    # data[data == -9] <- NA
-    data <- data |> dplyr::filter(RecordHeader != "")
+    data[data == -9] <- NA
 
-    if(recordtype == "CA") {
-      data <-
-        data |>
-        dplyr::rename(ScientificName_WoRMS = Species,
-                      ValidAphiaID = AphiaID)
+    if(nrow(data) > 0) {
+
+      data <- data |> dplyr::filter(RecordHeader != "")
+
+      if(recordtype == "CA") {
+        data <-
+          data |>
+          dplyr::rename(ScientificName_WoRMS = Species,
+                        ValidAphiaID = AphiaID)
+      }
     }
 
     # Return the data frame
@@ -103,37 +107,6 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
 }
 
 # Below is not really in use ---------------------------------------------------
-# Internal function to download the zip file
-.dr_download_datras_zip <- function(recordtype, survey, year, quarter, destfile = tempfile(fileext = ".zip"), quiet = TRUE) {
-  base_url <- "https://datras.ices.dk/Data_products/Download/DATRASDownloadAPI.aspx"
-  full_url <- paste0(
-    base_url, "?recordtype=", recordtype,
-    "&survey=", survey, "&year=", year, "&quarter=", quarter
-  )
-
-  if (!quiet) message("Downloading data...")
-  utils::download.file(full_url, destfile, mode = "wb", quiet = quiet)
-
-  destfile
-}
-
-# Internal function to unzip the downloaded file
-.dr_unzip_datras_file <- function(zipfile, destdir = tempfile(), quiet = TRUE) {
-  if (!quiet) message("Extracting files...")
-  dir.create(destdir, showWarnings = FALSE)
-  utils::unzip(zipfile, exdir = destdir)
-
-  destdir
-}
-
-
-# Create a mapping of conversion functions for each type
-.conversion_funcs <- list(
-  character = as.character,
-  integer = as.integer,
-  numeric = as.numeric
-)
-
 #datadir <- extracted_dir
 # Internal function to read the CSV file using arrow::read_csv_arrow
 .dr_read_datras_csv_arrow <- function(recordtype, datadir, quiet = TRUE) {
