@@ -11,12 +11,13 @@
 
 dr_settypes <- function(d) {
 
-  key_int <- dr_coltypes |> dplyr::filter(type == "int") |> dplyr::pull(field) |> unique()
-  key_dbl <- dr_coltypes |> dplyr::filter(type == "dbl") |> dplyr::pull(field) |> unique()
+  key_chr <- dr_fields |> dplyr::filter(DataFormat == "char") |> dplyr::pull(FieldName) |> unique()
+  key_int <- dr_fields |> dplyr::filter(DataFormat == "int") |> dplyr::pull(FieldName) |> unique()
+  key_dbl <- dr_fields |> dplyr::filter(DataFormat == "decimal") |> dplyr::pull(FieldName) |> unique()
 
   d <-
     d |>
-    dplyr::mutate(dplyr::across(dplyr::everything(),    as.character))  |>
+    dplyr::mutate(dplyr::across(dplyr::any_of(key_chr), as.character))  |>
     dplyr::mutate(dplyr::across(dplyr::any_of(key_int), as.integer))  |>
     dplyr::mutate(dplyr::across(dplyr::any_of(key_dbl), as.numeric))
 

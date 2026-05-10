@@ -60,7 +60,7 @@ system.time({
 })
 ```
 
-So we are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via poor wifi this may take more than a minute. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:
+So we are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via poor wifi this may take closer to a minute. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:
 
 ```{r, echo = FALSE}
 tibble::tibble(type = c("HH", "HL", "CA"),
@@ -71,16 +71,38 @@ tibble::tibble(type = c("HH", "HL", "CA"),
 
 The above fast access is achieved by importing from parquet files that are hosted on a conventional https-server. The parquet data source is as of now **not** a mirror of the data residing at ICES, but a recent copy. ICES datacenter is currently exploring ways to serve a mirror of the DATRAS data via parquet files hosted on a cloud service.
 
-If one wants an up-to-date mirror one could use a slower route using a new API from the ICES datacenter. In R one can use the icesDatras::get_datras_unaggregated_data function. That function has been wrapped into dr_get so one can get data from many surveys with one command. E.g. all surveys from 2025 can be obtained by:
+The old faithful (icesDatras::getDATRAS) is wrapped within the above function, with the addition that variable type is set and -9 are turned to NA. Here we only dare to call one year of HL-data:
 
-```{r, eval = FALSE}
-# Not run
-hh <- obus::dr_get("HH", years = 2025, from = "new", quiet = TRUE)
+```{r}
+system.time({
+  hl_old <- dr_get(recordtype = "HL", years = 2026, from = "old", quiet = TRUE)
+})
 ```
+
+In store we now have:
+
+```{r}
+hl_old |> dplyr::count(Survey)
+```
+
+A little faster approach is also in experimental phase (icesDatras::get_datras_unaggregated_data) but it is not yet a mirror of the most up to date data (hence here year 2025 is used)
+
+```{r}
+system.time({
+  hl_new <- dr_get("HL", years = 2025, from = "new", quiet = TRUE)
+})
+```
+
+In store we now have:
+
+```{r}
+hl_new |> dplyr::count(Survey)
+```
+
 
 ## Connecting
 
-Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files (remember, these are not fully up-to-date) using in-process DuckDB database.
+Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files (these are not fully up-to-date data as of yet) using in-process DuckDB database.
 
 ### HH data
 
@@ -105,11 +127,12 @@ ca |> dplyr::glimpse()
 
 ### Data processing using a connection
 
-For those familiar with using dplyr-verbs to process data most of those function as well as many base-R functions can be used to process the data. E.g. one can get all survey stations for the third quarter in 2025 and add to that the number of cod observed using the following script:
+For those familiar with using dplyr-verbs to process data most of those function as well as many base-R functions can be used to process the data. E.g. one can get all survey stations in 2024 and add to that the number of cod observed using the following script:
 
 ```{r}
 system.time({
-  data <-
+  q <-
+    data <-
     # Process the data in DuckDB
     dr_con("HH") |> 
     dplyr::filter(Year == 2024,
@@ -120,14 +143,31 @@ system.time({
                        dplyr::group_by(.id) |> 
                        dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
                      by = dplyr::join_by(.id)) |> 
-    # Import the data into R
-    dplyr::collect() |> 
-    dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
+    dplyr::mutate(n_haul = coalesce(n_haul, 0))
 })
-data |> dplyr::glimpse()
+q |> dplyr::glimpse()
 ```
 
-Here all the code steps prior to the collect command are automatically translated to SQL and passed to the in-process DuckDB. It is only at collect step that the data is actually downloaded and imported into R. More importantly, only the variables .id (unique station id), sur, lon, lat, latin, and n_haul are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those that "fall within the range" of the filtered values are passed over the web.
+Here all the code steps are automatically translated to SQL and passed to the in-process DuckDB. We can view the sql via:
+
+```{r}
+q |> dplyr::show_query()
+```
+
+The data is not yet in R, it only at the "collect"-step that this happens:
+
+```{r}
+system.time({
+  d <- q |> dplyr::collect()
+})
+d |> dplyr::glimpse()
+```
+
+More importantly, only the variables .id (unique station id), sur, lon, lat, latin, and n_haul are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those chunks that "fall within the range" of the filtered values are passed over the web.
+
+### What is it good for?
+
+If the approach illustrated above is adopted as the primary DATRAS datasource, gone are all the tedious maintenance of up-to-date local copies because the instantaneous access makes that redundant. Only case where one may want a full local copy is in cases when internet access is unstable/slow or non-existent. But those days are all but behind us.
 
 ## Small print
 

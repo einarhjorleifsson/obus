@@ -62,11 +62,11 @@ system.time({
   ca <- dr_get("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>   5.520   1.490   5.777
+#>   9.615   5.359  31.843
 ```
 
 So we are talking about less than 5 seconds if you sitting on the optic
-fiber. If you are connected via poor wifi this may take more than a
+fiber. If you are connected via poor wifi this may take closer to a
 minute. Whatever the case one can assume that nobody will complain given
 that the dimension just imported are as follows:
 
@@ -84,15 +84,53 @@ of now **not** a mirror of the data residing at ICES, but a recent copy.
 ICES datacenter is currently exploring ways to serve a mirror of the
 DATRAS data via parquet files hosted on a cloud service.
 
-If one wants an up-to-date mirror one could use a slower route using a
-new API from the ICES datacenter. In R one can use the
-icesDatras::get_datras_unaggregated_data function. That function has
-been wrapped into dr_get so one can get data from many surveys with one
-command. E.g. all surveys from 2025 can be obtained by:
+The old faithful (icesDatras::getDATRAS) is wrapped within the above
+function, with the addition that variable type is set and -9 are turned
+to NA. Here we only dare to call one year of HL-data:
 
 ``` r
-# Not run
-hh <- obus::dr_get("HH", years = 2025, from = "new", quiet = TRUE)
+system.time({
+  hl_old <- dr_get(recordtype = "HL", years = 2026, from = "old", quiet = TRUE)
+})
+#>    user  system elapsed 
+#>   8.873   4.156  55.653
+```
+
+In store we now have:
+
+``` r
+hl_old |> dplyr::count(Survey)
+#>     Survey     n
+#> 1     BITS 25115
+#> 2  NS-IBTS 48070
+#> 3 SCOWCGFS 12307
+```
+
+A little faster approach is also in experimental phase
+(icesDatras::get_datras_unaggregated_data) but it is not yet a mirror of
+the most up to date data (hence here year 2025 is used)
+
+``` r
+system.time({
+  hl_new <- dr_get("HL", years = 2025, from = "new", quiet = TRUE)
+})
+#>    user  system elapsed 
+#>   1.085   0.416   9.298
+```
+
+In store we now have:
+
+``` r
+hl_new |> dplyr::count(Survey)
+#>     Survey     n
+#> 1     BITS 27084
+#> 2      BTS 49393
+#> 3     DYFS  4967
+#> 4  NL-BSAS  1359
+#> 5  NS-IBTS 85341
+#> 6   SCOROC  5175
+#> 7 SCOWCGFS 10223
+#> 8      SNS  2597
 ```
 
 ## Connecting
@@ -100,8 +138,8 @@ hh <- obus::dr_get("HH", years = 2025, from = "new", quiet = TRUE)
 Although the DATRAS data can not be considered big data, one can use
 techniques developed for such datasets. So instead of importing the full
 dataset into R one can generate a connection to the url-hosted parquet
-files (remember, these are not fully up-to-date) using in-process DuckDB
-database.
+files (these are not fully up-to-date data as of yet) using in-process
+DuckDB database.
 
 ### HH data
 
@@ -110,7 +148,7 @@ hh <- dr_con("HH")
 hh |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 76
-#> Database: DuckDB 1.5.0 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ RecordHeader            <chr> "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
 #> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…
 #> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
@@ -196,7 +234,7 @@ hl <- dr_con("HL", trim = FALSE)
 hl |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 39
-#> Database: DuckDB 1.5.0 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ RecordHeader          <chr> "﻿HL", "HL", "HL", "HL", "HL", "HL", "HL", "HL",…
 #> $ Survey                <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS", …
 #> $ Quarter               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
@@ -245,7 +283,7 @@ ca <- dr_con("CA", trim = FALSE)
 ca |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 41
-#> Database: DuckDB 1.5.0 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]
 #> $ RecordHeader         <chr> "﻿CA", "CA", "CA", "CA", "CA", "CA", "CA", "CA", …
 #> $ Survey               <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS", "…
 #> $ Quarter              <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
@@ -293,12 +331,13 @@ ca |> dplyr::glimpse()
 
 For those familiar with using dplyr-verbs to process data most of those
 function as well as many base-R functions can be used to process the
-data. E.g. one can get all survey stations for the third quarter in 2025
-and add to that the number of cod observed using the following script:
+data. E.g. one can get all survey stations in 2024 and add to that the
+number of cod observed using the following script:
 
 ``` r
 system.time({
-  data <-
+  q <-
+    data <-
     # Process the data in DuckDB
     dr_con("HH") |> 
     dplyr::filter(Year == 2024,
@@ -309,29 +348,86 @@ system.time({
                        dplyr::group_by(.id) |> 
                        dplyr::summarise(n_haul = sum(n_haul, na.rm = TRUE)),
                      by = dplyr::join_by(.id)) |> 
-    # Import the data into R
-    dplyr::collect() |> 
-    dplyr::mutate(n_haul = tidyr::replace_na(n_haul, 0))
+    dplyr::mutate(n_haul = coalesce(n_haul, 0))
 })
 #>    user  system elapsed 
-#>   0.385   0.118   1.087
-data |> dplyr::glimpse()
-#> Rows: 4,185
+#>   0.093   0.010   0.220
+q |> dplyr::glimpse()
+#> Rows: ??
 #> Columns: 5
-#> $ .id    <chr> "BITS:2024:4:DK:26D4:TVL:97:21", "BITS:2024:4:DK:26D4:TVL:77:17…
-#> $ sur    <chr> "BITS-4", "BITS-4", "BITS-4", "BITS-4", "BITS-4", "BITS-4", "BI…
-#> $ lon    <dbl> 16.2580, 16.3018, 17.9585, 19.0617, 14.6079, 19.2450, 17.4817, …
-#> $ lat    <dbl> 55.7969, 55.5288, 57.0215, 57.3341, 55.4832, 54.3817, 54.8517, …
-#> $ n_haul <dbl> 919.0000, 6.0000, 1.0000, 12.0000, 551.5667, 86.0000, 328.0000,…
+#> Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]
+#> $ .id    <chr> "BITS:2024:1:DK:26HF:TVS:104:53", "BITS:2024:1:DK:26HF:TVS:96:4…
+#> $ sur    <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BI…
+#> $ lon    <dbl> 10.8619, 10.8261, 10.7020, 15.3746, 12.4116, 10.1898, 13.4157, …
+#> $ lat    <dbl> 55.5271, 55.3924, 56.9433, 55.3554, 56.1340, 54.7324, 55.1882, …
+#> $ n_haul <dbl> 12.000, 4.000, 1.000, 321.000, 2937.020, 4.000, 883.050, 461.00…
 ```
 
-Here all the code steps prior to the collect command are automatically
-translated to SQL and passed to the in-process DuckDB. It is only at
-collect step that the data is actually downloaded and imported into R.
+Here all the code steps are automatically translated to SQL and passed
+to the in-process DuckDB. We can view the sql via:
+
+``` r
+q |> dplyr::show_query()
+#> <SQL>
+#> SELECT ".id", sur, lon, lat, COALESCE(n_haul, 0.0) AS n_haul
+#> FROM (
+#>   SELECT LHS.*, n_haul
+#>   FROM (
+#>     SELECT ".id", sur, ShootLongitude AS lon, ShootLatitude AS lat
+#>     FROM vjipvsndtxylhfz
+#>     WHERE ("Year" = 2024.0) AND ("Quarter" IN (1, 2, 3, 4))
+#>   ) LHS
+#>   LEFT JOIN (
+#>     SELECT ".id", SUM(n_haul) AS n_haul
+#>     FROM (
+#>       SELECT
+#>         ".id",
+#>         latin,
+#>         length_cm,
+#>         SpeciesSex,
+#>         DevelopmentStage,
+#>         n_haul,
+#>         n_hour
+#>       FROM cxvkqwwkeuruqcb
+#>       WHERE (latin = 'Gadus morhua')
+#>     ) q01
+#>     GROUP BY ".id"
+#>   ) RHS
+#>     ON (LHS.".id" = RHS.".id")
+#> ) q01
+```
+
+The data is not yet in R, it only at the “collect”-step that this
+happens:
+
+``` r
+system.time({
+  d <- q |> dplyr::collect()
+})
+#>    user  system elapsed 
+#>   0.139   0.013   0.093
+d |> dplyr::glimpse()
+#> Rows: 4,185
+#> Columns: 5
+#> $ .id    <chr> "NS-IBTS:2024:3:SE:77SE:GOV:152:5", "NS-IBTS:2024:3:SE:77SE:GOV…
+#> $ sur    <chr> "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3"…
+#> $ lon    <dbl> 9.9734, 11.9705, 1.4565, -1.5410, 12.2221, -2.1130, 9.7497, 0.0…
+#> $ lat    <dbl> 58.0567, 56.3460, 58.2492, 56.7660, 56.8238, 58.1880, 57.6615, …
+#> $ n_haul <dbl> 13.000, 3.000, 2.000, 6.000, 1.000, 2.000, 2.000, 3.000, 7.000,…
+```
+
 More importantly, only the variables .id (unique station id), sur, lon,
 lat, latin, and n_haul are ever passed over the web. In addition only
-certain chunks of the parquet files (read: rows), those that “fall
-within the range” of the filtered values are passed over the web.
+certain chunks of the parquet files (read: rows), those chunks that
+“fall within the range” of the filtered values are passed over the web.
+
+### What is it good for?
+
+If the approach illustrated above is adopted as the primary DATRAS
+datasource, gone are all the tedious maintenance of up-to-date local
+copies because the instantaneous access makes that redundant. Only case
+where one may want a full local copy is in cases when internet access is
+unstable/slow or non-existent. But those days are all but behind us.
 
 ## Small print
 
@@ -368,64 +464,64 @@ augmented dataframes, using some simple obus wrapper functions):
     #>  collate  en_US.UTF-8
     #>  ctype    en_US.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-03-23
+    #>  date     2026-05-10
     #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
     #>  quarto   1.8.26 @ /usr/local/bin/quarto
     #> 
     #> ─ Packages ───────────────────────────────────────────────────────────────────
     #>  package     * version    date (UTC) lib source
-    #>  arrow         23.0.1.1   2026-02-24 [1] CRAN (R 4.5.2)
-    #>  assertthat    0.2.1      2019-03-21 [1] CRAN (R 4.5.0)
-    #>  bit           4.6.0      2025-03-06 [1] CRAN (R 4.5.0)
-    #>  bit64         4.6.0-1    2025-01-16 [1] CRAN (R 4.5.0)
-    #>  blob          1.3.0      2026-01-14 [1] CRAN (R 4.5.2)
+    #>  arrow         23.0.1.2   2026-03-25 [2] CRAN (R 4.5.2)
+    #>  assertthat    0.2.1      2019-03-21 [2] CRAN (R 4.5.0)
+    #>  bit           4.6.0      2025-03-06 [2] CRAN (R 4.5.0)
+    #>  bit64         4.8.0      2026-04-21 [2] CRAN (R 4.5.2)
+    #>  blob          1.3.0      2026-01-14 [2] CRAN (R 4.5.2)
     #>  cachem        1.1.0      2024-05-16 [2] CRAN (R 4.5.0)
-    #>  cli           3.6.5      2025-04-23 [1] CRAN (R 4.5.0)
-    #>  curl          7.0.0      2025-08-19 [1] CRAN (R 4.5.0)
-    #>  data.table    1.18.2.1   2026-01-27 [1] CRAN (R 4.5.2)
-    #>  DBI           1.3.0      2026-02-25 [1] CRAN (R 4.5.2)
-    #>  dbplyr        2.5.2      2026-02-13 [1] CRAN (R 4.5.2)
-    #>  devtools      2.5.0      2026-03-14 [2] CRAN (R 4.5.2)
+    #>  cli           3.6.6      2026-04-09 [2] CRAN (R 4.5.2)
+    #>  curl          7.1.0      2026-04-22 [2] CRAN (R 4.5.2)
+    #>  data.table    1.18.4     2026-05-06 [2] CRAN (R 4.5.2)
+    #>  DBI           1.3.0      2026-02-25 [2] CRAN (R 4.5.2)
+    #>  dbplyr        2.5.2      2026-02-13 [2] CRAN (R 4.5.2)
+    #>  devtools      2.5.1      2026-04-16 [2] CRAN (R 4.5.2)
     #>  digest        0.6.39     2025-11-19 [2] CRAN (R 4.5.2)
-    #>  dplyr         1.2.0      2026-02-03 [1] CRAN (R 4.5.2)
-    #>  duckdb        1.5.0      2026-03-14 [1] CRAN (R 4.5.2)
-    #>  duckdbfs      0.1.2      2025-10-12 [1] CRAN (R 4.5.0)
-    #>  ellipsis      0.3.2      2021-04-29 [2] CRAN (R 4.5.0)
+    #>  dplyr         1.2.1      2026-04-03 [2] CRAN (R 4.5.2)
+    #>  duckdb        1.5.2      2026-04-13 [2] CRAN (R 4.5.2)
+    #>  duckdbfs      0.1.2.99   2026-04-28 [2] Github (cboettig/duckdbfs@0b48916)
+    #>  ellipsis      0.3.3      2026-04-04 [2] CRAN (R 4.5.2)
     #>  evaluate      1.0.5      2025-08-27 [2] CRAN (R 4.5.0)
     #>  fastmap       1.2.0      2024-05-15 [2] CRAN (R 4.5.0)
-    #>  fs            1.6.7      2026-03-06 [1] CRAN (R 4.5.2)
-    #>  generics      0.1.4      2025-05-09 [1] CRAN (R 4.5.0)
-    #>  glue          1.8.0      2024-09-30 [1] CRAN (R 4.5.0)
+    #>  fs            2.1.0      2026-04-18 [2] CRAN (R 4.5.2)
+    #>  generics      0.1.4      2025-05-09 [2] CRAN (R 4.5.0)
+    #>  glue          1.8.1      2026-04-17 [2] CRAN (R 4.5.2)
     #>  htmltools     0.5.9      2025-12-04 [2] CRAN (R 4.5.2)
-    #>  httr2         1.2.2      2025-12-08 [1] CRAN (R 4.5.2)
-    #>  icesDatras    1.4.1      2023-05-08 [1] CRAN (R 4.5.0)
+    #>  httr2         1.2.2      2025-12-08 [2] CRAN (R 4.5.2)
+    #>  icesDatras    1.5.1      2026-05-10 [2] Github (einarhjorleifsson/icesDatras@870daf6)
     #>  knitr         1.51       2025-12-20 [2] CRAN (R 4.5.2)
-    #>  lifecycle     1.0.5      2026-01-08 [1] CRAN (R 4.5.2)
-    #>  magrittr      2.0.4      2025-09-12 [1] CRAN (R 4.5.0)
+    #>  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
+    #>  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)
     #>  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
-    #>  obus        * 2026.01.30 2026-03-23 [1] local
+    #>  obus        * 2026.01.30 2026-05-10 [1] local
     #>  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
-    #>  pillar        1.11.1     2025-09-17 [1] CRAN (R 4.5.0)
+    #>  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
     #>  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
-    #>  pkgconfig     2.0.3      2019-09-22 [1] CRAN (R 4.5.0)
-    #>  pkgload       1.5.0      2026-02-03 [2] CRAN (R 4.5.2)
-    #>  purrr         1.2.1      2026-01-09 [1] CRAN (R 4.5.2)
-    #>  R6            2.6.1      2025-02-15 [1] CRAN (R 4.5.0)
-    #>  rappdirs      0.3.4      2026-01-17 [1] CRAN (R 4.5.2)
-    #>  rlang         1.1.7      2026-01-09 [1] CRAN (R 4.5.2)
-    #>  rmarkdown     2.30       2025-09-28 [2] CRAN (R 4.5.0)
+    #>  pkgconfig     2.0.3      2019-09-22 [2] CRAN (R 4.5.0)
+    #>  pkgload       1.5.2      2026-04-22 [2] CRAN (R 4.5.2)
+    #>  purrr         1.2.2      2026-04-10 [2] CRAN (R 4.5.2)
+    #>  R6            2.6.1      2025-02-15 [2] CRAN (R 4.5.0)
+    #>  rappdirs      0.3.4      2026-01-17 [2] CRAN (R 4.5.2)
+    #>  rlang         1.2.0      2026-04-06 [2] CRAN (R 4.5.2)
+    #>  rmarkdown     2.31       2026-03-26 [2] CRAN (R 4.5.2)
     #>  rstudioapi    0.18.0     2026-01-16 [2] CRAN (R 4.5.2)
     #>  sessioninfo   1.2.3      2025-02-05 [2] CRAN (R 4.5.0)
-    #>  tibble        3.3.1      2026-01-11 [1] CRAN (R 4.5.2)
-    #>  tidyr         1.3.2      2025-12-19 [1] CRAN (R 4.5.2)
-    #>  tidyselect    1.2.1      2024-03-11 [1] CRAN (R 4.5.0)
+    #>  tibble        3.3.1      2026-01-11 [2] CRAN (R 4.5.2)
+    #>  tidyr         1.3.2      2025-12-19 [2] CRAN (R 4.5.2)
+    #>  tidyselect    1.2.1      2024-03-11 [2] CRAN (R 4.5.0)
     #>  usethis       3.2.1      2025-09-06 [2] CRAN (R 4.5.0)
-    #>  vctrs         0.7.2      2026-03-21 [1] CRAN (R 4.5.2)
-    #>  withr         3.0.2      2024-10-28 [1] CRAN (R 4.5.0)
+    #>  vctrs         0.7.3      2026-04-11 [2] CRAN (R 4.5.2)
+    #>  withr         3.0.2      2024-10-28 [2] CRAN (R 4.5.0)
     #>  xfun          0.57       2026-03-20 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmpm2bHHp/temp_libpath1154747dbcbea
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpyfugRB/temp_libpath3b5355d328c7
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
