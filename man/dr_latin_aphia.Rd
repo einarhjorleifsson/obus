@@ -16,7 +16,7 @@ dr_latin_aphia
 \description{
 A data frame with over 2000 rows and 3 columns:
 \describe{
-\item{Valid_Aphia}{Species id in the DATRAS exchange data}
+\item{aphia}{Species id in the DATRAS exchange data}
 \item{latin}{Species latin name}
 \item{species}{Species english name}
 }

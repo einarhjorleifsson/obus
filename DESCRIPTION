@@ -33,6 +33,7 @@ Imports:
     purrr,
     rlang,
     stringr,
+    tibble,
     tidyr,
     xml2
 Config/Needs/website: rmarkdown, quarto

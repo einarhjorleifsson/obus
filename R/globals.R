@@ -24,7 +24,8 @@ utils::globalVariables(
     "DataFormat", "Description",
     ".id2", "DateTime", "time",
     "LngtClas",
-    ".has_ds", "CPUE_number_per_hour", "ValidAphiaID", "dr_latin_aphia", "record_type"
+    ".has_ds", "CPUE_number_per_hour", "ValidAphiaID", "dr_latin_aphia", "record_type",
+    "FieldName", "FieldNameOld"
   )
 )
 

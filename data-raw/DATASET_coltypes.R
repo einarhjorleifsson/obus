@@ -1,7 +1,9 @@
 library(tidyverse)
 
+dr_fields <- dr_get_fields()
+usethis::use_data(dr_fields, overwrite = TRUE)
 
-
+if(FALSE) {
 fil <- "https://www.ices.dk/data/Documents/DATRAS/Survey_DatrasDatasetVersion_Equivalences.xlsx"
 download.file(fil, destfile = "data-raw/Survey_DatrasDatasetVersion_Equivalences.xlsx")
 fil <- "https://www.ices.dk/data/Documents/DATRAS/DATRAS_NewHeaders_Lookup_Dec2024.xlsx"
@@ -121,3 +123,4 @@ dr_coltypes <-
             fl)
 
 usethis::use_data(dr_coltypes, overwrite = TRUE)
+}

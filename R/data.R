@@ -2,21 +2,23 @@
 #'
 #' A table containing the variable (field) types of the datras data
 #'
-#' A data frame with 125 rows and 3 columns:
+#' A data frame with 208 rows and 5 columns:
 #' \describe{
-#'   \item{field}{DATRAS variable name as returned by icesDatras::getDATRAS}
-#'   \item{type}{The value type}
-#'   \item{record}{The DATRAS data type - "HH": haul data, "HL": length-based data, "CA": age-based data}
+#'   \item{RecordHeader}{The DATRAS data type - "HH": haul data, "HL": length-based data, "CA": age-based data}
+#'   \item{FieldName}{DATRAS variable name as returned by icesDatras::get_datras_unaggregated_data}
+#'   \item{FieldNameOld}{DATRAS variable name as returned by icesDatras::getDatras}
+#'   \item{DataFormat}{The value type, char (character), int (ingeger) and decimal (numeric)}
+#'   \item{Description}{Some description}
 #' }
-#' @source <https://www.ices.dk/data/Documents/DATRAS/DATRAS_Field_descriptions_and_example_file_May2022.xlsx>
-"dr_coltypes"
+#' @source <https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList> and then some
+"dr_fields"
 
 
 #' Coastline covering majority of DATRAS data
 #'
 #' A data frame with over 2000 rows and 3 columns:
 #' \describe{
-#'   \item{Valid_Aphia}{Species id in the DATRAS exchange data}
+#'   \item{aphia}{Species id in the DATRAS exchange data}
 #'   \item{latin}{Species latin name}
 #'   \item{species}{Species english name}
 #' }
