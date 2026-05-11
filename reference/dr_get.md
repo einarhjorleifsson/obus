@@ -1,18 +1,16 @@
 # Download and Import DATRAS Data
 
-This function streamlines the retrieval of DATRAS trawl survey data from
-various sources, offering distinct methods for fetching and loading the
-data:
+Retrieves DATRAS trawl survey data from various sources:
 
-- `"old"`: Retrieves data using the legacy
+- `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
+  survey/year/quarter filtering).
+
+- `"old"`: Retrieves data via the legacy
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)
   function.
 
-- `"new"`: Retrieves data using `icesDatras:::getDatrasUnaggregated`
-  function.
-
-- `"parquet"`: Reads directly from Parquet files via URL. survey, year,
-  and quarter filter not applied.
+- `"new"`: Retrieves data via
+  `icesDatras::get_datras_unaggregated_data`.
 
 ## Usage
 
@@ -31,27 +29,27 @@ dr_get(
 
 - recordtype:
 
-  A string specifying the record type ("HH", "HL", or "CA"), indicating
-  the data structure to retrieve.
+  A string specifying the record type: `"HH"`, `"HL"`, `"CA"`, `"FL"`
+  (flex file), or `"LT"` (litter assessment).
 
 - surveys:
 
-  A character vector of survey IDs. Defaults to all ICES-recognized
-  surveys, excluding "Test-DATRAS".
+  A character vector of survey IDs. Required for `"FL"` and `"LT"`. For
+  other types, defaults to all ICES-recognised surveys excluding
+  `"Test-DATRAS"`.
 
 - years:
 
-  An integer vector of years (e.g., `1965:2030`). Values outside the
-  range `[1965, current year]` are invalid.
+  An integer vector of years (e.g. `1965:2030`).
 
 - quarters:
 
-  An integer vector (e.g., `1:4`) representing quarter ranges.
+  An integer vector of quarters (e.g. `1:4`).
 
 - from:
 
-  String (default 'parquet') specifying the data source: `"old"`,
-  `"new"`, or `"parquet"`.
+  String specifying the data source for HH/HL/CA: `"parquet"` (default),
+  `"old"`, or `"new"`. Ignored when `recordtype = "FL"`.
 
 - quiet:
 
@@ -59,23 +57,21 @@ dr_get(
 
 ## Value
 
-A data frame containing DATRAS data filtered by the specified parameters
-if from is 'old' or 'new'.
+A data frame.
 
 ## Details
 
-Year and quarter ranges must be specified, and datasets are filtered
-accordingly. Surveys supported by ICES can be automatically retrieved if
-unspecified.
+For `recordtype = "FL"` (flex file),
+[`icesDatras::getFlexFile`](https://rdrr.io/pkg/icesDatras/man/getFlexFile.html)
+is called for every combination of survey, year, and quarter; the `from`
+argument is ignored.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-  # Download haul-level data (new API)
-  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, quarters = c(1, 3), from = "new")
-
-  # Read full dataset
-  dr_get("HL")
+  dr_get("HH")                                                      # full parquet
+  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, from = "new")
+  dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 } # }
 ```

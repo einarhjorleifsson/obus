@@ -33,6 +33,8 @@
   Calculate timestamp based on `Year`, `Month`, `Day`, and
   `StartTime`/`TimeShot`.
 
+- [`dr_coastline`](dr_coastline.md) : Simple shoreline for ICES area
+
 - [`dr_con()`](dr_con.md) : Establish a DuckDB Connection to DATRAS
   Datasets
 
