@@ -133,7 +133,8 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  data <- dplyr::bind_rows(data)
+  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "FieldNameOld", recordheader = "CPUEL")) |>
+    dplyr::bind_rows()
   data[data == -9] <- NA
   data
 }
@@ -155,11 +156,12 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  # Strip xsi:nil artifact and coerce Age_* per data frame BEFORE bind_rows,
-  # so that different age structures across species/surveys don't create duplicates.
+  # Strip xsi:nil artifact, coerce Age_* to numeric, then apply full type spec —
+  # all per data frame BEFORE bind_rows to avoid duplicate column name issues.
   .clean_age <- function(d) {
     names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
-    dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+    d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+    .dr_settypes(d, name_col = "FieldNameOld", recordheader = "CPUEA")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
@@ -206,10 +208,12 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  # Strip xsi:nil artifact and coerce Age_* per data frame BEFORE bind_rows.
+  # Strip xsi:nil artifact, coerce Age_* to numeric, then apply full type spec —
+  # all per data frame BEFORE bind_rows to avoid duplicate column name issues.
   .clean_age <- function(d) {
     names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
-    dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+    d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+    .dr_settypes(d, name_col = "FieldNameOld", recordheader = "IDX")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
@@ -436,9 +440,66 @@ dr_get_fields <- function(url = "https://datras.ices.dk/WebServices/DATRASWebSer
                       "LT",          NA,                      "OSPARArea",      "char",
                       "LT",          NA,                      "MSFDArea",       "char",
                       "LT",          NA,                      "EEZ",            "char",
-                      "LT",          NA,                      "NMArea",         "char"
+                      "LT",          NA,                      "NMArea",         "char",
+                      # CPUEL: icesDatras::getCPUELength() column types
+                      "CPUEL",       NA,  "Survey",               "char",
+                      "CPUEL",       NA,  "Year",                 "int",
+                      "CPUEL",       NA,  "Quarter",              "int",
+                      "CPUEL",       NA,  "Ship",                 "char",
+                      "CPUEL",       NA,  "Gear",                 "char",
+                      "CPUEL",       NA,  "HaulNo",               "int",
+                      "CPUEL",       NA,  "HaulDur",              "int",
+                      "CPUEL",       NA,  "ShootLat",             "decimal",
+                      "CPUEL",       NA,  "ShootLon",             "decimal",
+                      "CPUEL",       NA,  "DateTime",             "char",
+                      "CPUEL",       NA,  "Depth",                "int",
+                      "CPUEL",       NA,  "Area",                 "int",
+                      "CPUEL",       NA,  "SubArea",              "char",
+                      "CPUEL",       NA,  "DayNight",             "char",
+                      "CPUEL",       NA,  "AphiaID",              "int",
+                      "CPUEL",       NA,  "Species",              "char",
+                      "CPUEL",       NA,  "Sex",                  "int",
+                      "CPUEL",       NA,  "LngtClas",             "int",
+                      "CPUEL",       NA,  "CPUE_number_per_hour", "decimal",
+                      "CPUEL",       NA,  "Cal_DateID",           "int",
+                      # CPUEA: icesDatras::getCPUEAge() column types (Age_* added below)
+                      "CPUEA",       NA,  "Survey",               "char",
+                      "CPUEA",       NA,  "Year",                 "int",
+                      "CPUEA",       NA,  "Quarter",              "int",
+                      "CPUEA",       NA,  "Ship",                 "char",
+                      "CPUEA",       NA,  "Gear",                 "char",
+                      "CPUEA",       NA,  "HaulNo",               "int",
+                      "CPUEA",       NA,  "ShootLat",             "decimal",
+                      "CPUEA",       NA,  "ShootLon",             "decimal",
+                      "CPUEA",       NA,  "DateTime",             "char",
+                      "CPUEA",       NA,  "Depth",                "int",
+                      "CPUEA",       NA,  "Area",                 "int",
+                      "CPUEA",       NA,  "SubArea",              "char",
+                      "CPUEA",       NA,  "DayNight",             "char",
+                      "CPUEA",       NA,  "AphiaID",              "int",
+                      "CPUEA",       NA,  "Species",              "char",
+                      "CPUEA",       NA,  "Sex",                  "int",
+                      "CPUEA",       NA,  "Cal_DateID",           "int",
+                      # IDX: icesDatras::getIndices() column types (Age_* added below)
+                      "IDX",         NA,  "Survey",               "char",
+                      "IDX",         NA,  "Year",                 "int",
+                      "IDX",         NA,  "Quarter",              "int",
+                      "IDX",         NA,  "AphiaID",              "int",
+                      "IDX",         NA,  "Species",              "char",
+                      "IDX",         NA,  "IndexArea",            "char",
+                      "IDX",         NA,  "Sex",                  "char",
+                      "IDX",         NA,  "PlusGr",               "int",
+                      "IDX",         NA,  "DateofCalculation",    "int"
       )
-    d <- dplyr::bind_rows(d, add)
+
+    # Age_0..Age_15: decimal for both CPUEA and IDX
+    age_entries <- tidyr::expand_grid(
+      RecordHeader = c("CPUEA", "IDX"),
+      FieldNameOld = paste0("Age_", 0:15)
+    ) |>
+      dplyr::mutate(FieldName = NA_character_, DataFormat = "decimal")
+
+    d <- dplyr::bind_rows(d, add, age_entries)
 
     return(d)
   } else {
