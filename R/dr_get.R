@@ -5,10 +5,20 @@
 #  4. icesDatras::getFlexFile                  - flex file (FL record type)
 #
 # Internal helpers (.dr_fetch_*, .dr_settypes) handle each path.
-# dr_get() is a thin dispatcher; dr_get_flexfile() is a convenience wrapper.
+# dr_get() is a thin dispatcher.
 
 
 # Internal helpers -------------------------------------------------------------
+
+# All surveys from ICES, excluding test surveys.
+.dr_default_surveys <- function() {
+  surveys <- icesDatras::getSurveyList()
+  surveys[!grepl("^Test", surveys, ignore.case = TRUE)]
+}
+
+# Default species: Gadus morhua (cod), Melanogrammus aeglefinus (haddock),
+# Clupea harengus (herring).
+.dr_default_aphia <- function() c(126436L, 126437L, 126417L)
 
 # Apply column types from the dr_fields lookup table.
 #   name_col:     "FieldName" (new-style) or "FieldNameOld" (old-style names).
@@ -145,12 +155,13 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  data <- dplyr::bind_rows(data)
-  # Strip XML nil attributes that appear in column names from the ICES API
-  # e.g. `Age_6 xsi:nil="true"` -> `Age_6`
-  names(data) <- sub(' xsi:nil="true"', "", names(data), fixed = TRUE)
-  # Age columns affected by the nil artifact arrive as character; coerce to numeric
-  data <- dplyr::mutate(data, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+  # Strip xsi:nil artifact and coerce Age_* per data frame BEFORE bind_rows,
+  # so that different age structures across species/surveys don't create duplicates.
+  .clean_age <- function(d) {
+    names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
+    dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+  }
+  data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
   data
 }
@@ -174,6 +185,34 @@
   data <- dplyr::bind_rows(data)
   data[data == -9] <- NA
   data <- .dr_settypes(data, name_col = "FieldNameOld")
+  data
+}
+
+
+.dr_fetch_indices <- function(surveys, years, quarters, aphia, quiet) {
+  grid <- tidyr::expand_grid(survey = surveys, year = years, quarter = quarters,
+                             species = aphia)
+  .fetch <- function(survey, year, quarter, species) {
+    tryCatch(
+      icesDatras::getIndices(survey, year, quarter, species),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::pmap(grid, .fetch))
+  } else {
+    data <- purrr::pmap(grid, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  # Strip xsi:nil artifact and coerce Age_* per data frame BEFORE bind_rows.
+  .clean_age <- function(d) {
+    names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
+    dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+  }
+  data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
+  data[data == -9] <- NA
   data
 }
 
@@ -219,15 +258,15 @@
 #'
 #' @param recordtype A string specifying the record type: `"HH"`, `"HL"`, `"CA"`,
 #'   `"FL"` (flex file), `"LT"` (litter assessment), `"CPUEL"` (CPUE per length
-#'   per haul per hour), `"CPUEA"` (CPUE per age per haul per hour), or `"CW"`
-#'   (catch weight by species and haul).
-#' @param surveys A character vector of survey IDs. Required for `"FL"`, `"LT"`,
-#'   `"CPUEL"`, `"CPUEA"`, and `"CW"`.
-#'   For other types, defaults to all ICES-recognised surveys excluding `"Test-DATRAS"`.
+#'   per haul per hour), `"CPUEA"` (CPUE per age per haul per hour), `"CW"`
+#'   (catch weight by species and haul), or `"IDX"` (age-based survey indices).
+#' @param surveys A character vector of survey IDs. If `NULL` (default), all
+#'   ICES surveys excluding test surveys are used (via `icesDatras::getSurveyList()`).
 #' @param years An integer vector of years (e.g. `1965:2030`).
 #' @param quarters An integer vector of quarters (e.g. `1:4`).
-#' @param aphia An integer vector of WoRMS Aphia species codes. Required for
-#'   `recordtype = "CW"`. Ignored for all other record types.
+#' @param aphia An integer vector of WoRMS Aphia species codes. Used by `"CW"`
+#'   and `"IDX"`. If `NULL`, defaults to cod (126436), haddock (126437), and
+#'   herring (126417).
 #' @param from String specifying the data source for HH/HL/CA: `"parquet"`
 #'   (default), `"old"`, or `"new"`. Ignored when `recordtype = "FL"`.
 #' @param quiet Logical; suppresses progress messages if `TRUE` (default).
@@ -244,35 +283,26 @@
 dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
                    aphia = NULL, from = "parquet", quiet = TRUE) {
 
-  if (recordtype == "FL") {
-    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'FL'.")
+  if (is.null(surveys)) surveys <- .dr_default_surveys()
+
+  if (recordtype == "FL")
     return(.dr_fetch_flex(surveys, years, quarters, quiet))
-  }
 
-  if (recordtype == "LT") {
-    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'LT'.")
+  if (recordtype == "LT")
     return(.dr_fetch_lt(surveys, years, quarters, quiet))
-  }
 
-  if (recordtype == "CPUEL") {
-    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'CPUEL'.")
+  if (recordtype == "CPUEL")
     return(.dr_fetch_cpue_length(surveys, years, quarters, quiet))
-  }
 
-  if (recordtype == "CPUEA") {
-    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'CPUEA'.")
+  if (recordtype == "CPUEA")
     return(.dr_fetch_cpue_age(surveys, years, quarters, quiet))
-  }
 
-  if (recordtype == "CW") {
-    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'CW'.")
-    if (is.null(aphia))   stop("'aphia' must be specified when recordtype is 'CW'.")
-    return(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet))
-  }
-
-  if (is.null(surveys)) {
-    surveys <- icesDatras::getSurveyList()
-    surveys <- surveys[surveys != "Test-DATRAS"]
+  if (recordtype %in% c("CW", "IDX")) {
+    if (is.null(aphia)) aphia <- .dr_default_aphia()
+    if (recordtype == "CW")
+      return(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet))
+    if (recordtype == "IDX")
+      return(.dr_fetch_indices(surveys, years, quarters, aphia, quiet))
   }
 
   if (from == "parquet") return(.dr_fetch_parquet(recordtype))

@@ -12,3 +12,4 @@
 ^\.github$
 ^\.positai$
 ^\.claude$
+^AGENTS.md$

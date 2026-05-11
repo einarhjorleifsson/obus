@@ -9,20 +9,27 @@ dr_get(
   surveys = NULL,
   years = 1965:2030,
   quarters = 1:4,
+  aphia = NULL,
   from = "parquet",
   quiet = TRUE
 )
 }
 \arguments{
 \item{recordtype}{A string specifying the record type: \code{"HH"}, \code{"HL"}, \code{"CA"},
-\code{"FL"} (flex file), or \code{"LT"} (litter assessment).}
+\code{"FL"} (flex file), \code{"LT"} (litter assessment), \code{"CPUEL"} (CPUE per length
+per haul per hour), \code{"CPUEA"} (CPUE per age per haul per hour), \code{"CW"}
+(catch weight by species and haul), or \code{"IDX"} (age-based survey indices).}
 
-\item{surveys}{A character vector of survey IDs. Required for \code{"FL"} and \code{"LT"}.
-For other types, defaults to all ICES-recognised surveys excluding \code{"Test-DATRAS"}.}
+\item{surveys}{A character vector of survey IDs. If \code{NULL} (default), all
+ICES surveys excluding test surveys are used (via \code{icesDatras::getSurveyList()}).}
 
 \item{years}{An integer vector of years (e.g. \code{1965:2030}).}
 
 \item{quarters}{An integer vector of quarters (e.g. \code{1:4}).}
+
+\item{aphia}{An integer vector of WoRMS Aphia species codes. Used by \code{"CW"}
+and \code{"IDX"}. If \code{NULL}, defaults to cod (126436), haddock (126437), and
+herring (126417).}
 
 \item{from}{String specifying the data source for HH/HL/CA: \code{"parquet"}
 (default), \code{"old"}, or \code{"new"}. Ignored when \code{recordtype = "FL"}.}
