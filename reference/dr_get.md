@@ -20,6 +20,7 @@ dr_get(
   surveys = NULL,
   years = 1965:2030,
   quarters = 1:4,
+  aphia = NULL,
   from = "parquet",
   quiet = TRUE
 )
@@ -30,13 +31,16 @@ dr_get(
 - recordtype:
 
   A string specifying the record type: `"HH"`, `"HL"`, `"CA"`, `"FL"`
-  (flex file), or `"LT"` (litter assessment).
+  (flex file), `"LT"` (litter assessment), `"CPUEL"` (CPUE per length
+  per haul per hour), `"CPUEA"` (CPUE per age per haul per hour), `"CW"`
+  (catch weight by species and haul), or `"IDX"` (age-based survey
+  indices).
 
 - surveys:
 
-  A character vector of survey IDs. Required for `"FL"` and `"LT"`. For
-  other types, defaults to all ICES-recognised surveys excluding
-  `"Test-DATRAS"`.
+  A character vector of survey IDs. If `NULL` (default), all ICES
+  surveys excluding test surveys are used (via
+  [`icesDatras::getSurveyList()`](https://rdrr.io/pkg/icesDatras/man/getSurveyList.html)).
 
 - years:
 
@@ -45,6 +49,12 @@ dr_get(
 - quarters:
 
   An integer vector of quarters (e.g. `1:4`).
+
+- aphia:
+
+  An integer vector of WoRMS Aphia species codes. Used by `"CW"` and
+  `"IDX"`. If `NULL`, defaults to cod (126436), haddock (126437), and
+  herring (126417).
 
 - from:
 

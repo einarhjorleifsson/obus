@@ -57,6 +57,7 @@ survey/year/quarter filtering).</p></li>
 <span>  surveys <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">1965</span><span class="op">:</span><span class="fl">2030</span>,</span>
 <span>  quarters <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>,</span>
+<span>  aphia <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  from <span class="op">=</span> <span class="st">"parquet"</span>,</span>
 <span>  quiet <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -68,12 +69,14 @@ survey/year/quarter filtering).</p></li>
 
 <dl><dt id="arg-recordtype">recordtype<a class="anchor" aria-label="anchor" href="#arg-recordtype"></a></dt>
 <dd><p>A string specifying the record type: <code>"HH"</code>, <code>"HL"</code>, <code>"CA"</code>,
-<code>"FL"</code> (flex file), or <code>"LT"</code> (litter assessment).</p></dd>
+<code>"FL"</code> (flex file), <code>"LT"</code> (litter assessment), <code>"CPUEL"</code> (CPUE per length
+per haul per hour), <code>"CPUEA"</code> (CPUE per age per haul per hour), <code>"CW"</code>
+(catch weight by species and haul), or <code>"IDX"</code> (age-based survey indices).</p></dd>
 
 
 <dt id="arg-surveys">surveys<a class="anchor" aria-label="anchor" href="#arg-surveys"></a></dt>
-<dd><p>A character vector of survey IDs. Required for <code>"FL"</code> and <code>"LT"</code>.
-For other types, defaults to all ICES-recognised surveys excluding <code>"Test-DATRAS"</code>.</p></dd>
+<dd><p>A character vector of survey IDs. If <code>NULL</code> (default), all
+ICES surveys excluding test surveys are used (via <code><a href="https://rdrr.io/pkg/icesDatras/man/getSurveyList.html" class="external-link">icesDatras::getSurveyList()</a></code>).</p></dd>
 
 
 <dt id="arg-years">years<a class="anchor" aria-label="anchor" href="#arg-years"></a></dt>
@@ -82,6 +85,12 @@ For other types, defaults to all ICES-recognised surveys excluding <code>"Test-D
 
 <dt id="arg-quarters">quarters<a class="anchor" aria-label="anchor" href="#arg-quarters"></a></dt>
 <dd><p>An integer vector of quarters (e.g. <code>1:4</code>).</p></dd>
+
+
+<dt id="arg-aphia">aphia<a class="anchor" aria-label="anchor" href="#arg-aphia"></a></dt>
+<dd><p>An integer vector of WoRMS Aphia species codes. Used by <code>"CW"</code>
+and <code>"IDX"</code>. If <code>NULL</code>, defaults to cod (126436), haddock (126437), and
+herring (126417).</p></dd>
 
 
 <dt id="arg-from">from<a class="anchor" aria-label="anchor" href="#arg-from"></a></dt>

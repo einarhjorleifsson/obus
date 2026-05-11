@@ -60,7 +60,11 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="va">recordtype</span>, surveys <span class="op">=</span> <span class="cn">NULL</span>, years <span class="op">=</span> <span class="fl">1965</span><span class="op">:</span><span class="fl">2030</span>, quarters <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">4</span>,</span>
 <span>       aphia <span class="op">=</span> <span class="cn">NULL</span>, from <span class="op">=</span> <span class="st">"parquet"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
+<ul><li>
+<code>surveys = NULL</code> → defaults to all ICES surveys excluding test surveys (via <code>.dr_default_surveys()</code>, which calls <code><a href="https://rdrr.io/pkg/icesDatras/man/getSurveyList.html" class="external-link">icesDatras::getSurveyList()</a></code> and drops anything matching <code>^Test</code>).</li>
+<li>
+<code>aphia = NULL</code> → defaults to cod (126436), haddock (126437), herring (126417) for record types that require species codes (<code>"CW"</code>, <code>"IDX"</code>).</li>
+</ul><div class="section level3">
 <h3 id="record-types">Record Types<a class="anchor" aria-label="anchor" href="#record-types"></a></h3>
 <table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th><code>recordtype</code></th>
 <th>Underlying function</th>
@@ -76,19 +80,22 @@
 <td>Catch-at-age (~5.8M rows)</td>
 </tr><tr><td><code>"FL"</code></td>
 <td><code><a href="https://rdrr.io/pkg/icesDatras/man/getFlexFile.html" class="external-link">icesDatras::getFlexFile</a></code></td>
-<td>Flex file; <code>surveys</code> required; iterates per survey×year×quarter</td>
+<td>Flex file; iterates per survey×year×quarter</td>
 </tr><tr><td><code>"LT"</code></td>
 <td><code><a href="https://rdrr.io/pkg/icesDatras/man/getLTassessment.html" class="external-link">icesDatras::getLTassessment</a></code></td>
-<td>Litter assessment; <code>surveys</code> required; iterates per survey×year×quarter</td>
+<td>Litter assessment; iterates per survey×year×quarter</td>
 </tr><tr><td><code>"CPUEL"</code></td>
 <td><code><a href="https://rdrr.io/pkg/icesDatras/man/getCPUELength.html" class="external-link">icesDatras::getCPUELength</a></code></td>
-<td>CPUE per length per haul per hour; <code>surveys</code> required; scalar args only per call; slow (~30s/combination)</td>
+<td>CPUE per length per haul per hour; scalar args only per call; slow (~30s/combination)</td>
 </tr><tr><td><code>"CPUEA"</code></td>
 <td><code><a href="https://rdrr.io/pkg/icesDatras/man/getCPUEAge.html" class="external-link">icesDatras::getCPUEAge</a></code></td>
-<td>CPUE per age per haul per hour; <code>surveys</code> required; XML nil artifact in age column names is auto-cleaned; Age_* columns coerced to numeric</td>
+<td>CPUE per age per haul per hour; xsi:nil artifact cleaned per-df before bind</td>
 </tr><tr><td><code>"CW"</code></td>
 <td><code><a href="https://rdrr.io/pkg/icesDatras/man/getCatchWgt.html" class="external-link">icesDatras::getCatchWgt</a></code></td>
-<td>Catch weight; <code>surveys</code> and <code>aphia</code> required; years/quarters passed as vectors; NA in CatchWgt = species absent from haul</td>
+<td>Catch weight; <code>aphia</code> required (or defaults); years/quarters passed as vectors; NA in CatchWgt = species absent from haul</td>
+</tr><tr><td><code>"IDX"</code></td>
+<td><code><a href="https://rdrr.io/pkg/icesDatras/man/getIndices.html" class="external-link">icesDatras::getIndices</a></code></td>
+<td>Age-based survey indices; <code>aphia</code> required (or defaults); iterates per survey×year×quarter×species (all scalar)</td>
 </tr></tbody></table></div>
 <div class="section level3">
 <h3 id="from-argument-hhhlca-only">
@@ -105,7 +112,7 @@
 </tr><tr><td><code>"old"</code></td>
 <td><code>getDATRAS</code></td>
 <td>Legacy; per-survey tryCatch</td>
-</tr></tbody></table><p>FL, LT, CPUEL, CPUEA, CW always require explicit <code>surveys</code>; <code>from</code> is ignored.</p>
+</tr></tbody></table><p><code>from</code> is ignored for FL, LT, CPUEL, CPUEA, CW, IDX.</p>
 <hr></div>
 </div>
 <div class="section level2">
@@ -196,11 +203,18 @@
 </tr><tr><td><code>.dr_fetch_cpue_length(surveys, years, quarters, quiet)</code></td>
 <td>Same pattern; no type coercion (derived product)</td>
 </tr><tr><td><code>.dr_fetch_cpue_age(surveys, years, quarters, quiet)</code></td>
-<td>Same pattern; strips <code>xsi:nil="true"</code> from Age col names; coerces Age_* to numeric</td>
+<td>Same pattern; strips <code>xsi:nil="true"</code> and coerces Age_* <strong>per data frame before <code>bind_rows</code></strong> to avoid duplicates across species</td>
 </tr><tr><td><code>.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet)</code></td>
 <td>
 <code>map(surveys, getCatchWgt)</code>; years/quarters as vectors; applies <code>.dr_settypes(name_col = "FieldNameOld")</code>
 </td>
+</tr><tr><td><code>.dr_fetch_indices(surveys, years, quarters, aphia, quiet)</code></td>
+<td>
+<code>expand_grid</code> × <code>pmap</code> per survey×year×quarter×species (all scalar); same Age_* cleanup as CPUEA</td>
+</tr><tr><td><code>.dr_default_surveys()</code></td>
+<td>Returns <code>getSurveyList()</code> minus entries matching <code>^Test</code> (case-insensitive)</td>
+</tr><tr><td><code>.dr_default_aphia()</code></td>
+<td>Returns <code>c(126436L, 126437L, 126417L)</code> — cod, haddock, herring</td>
 </tr></tbody></table><hr></div>
 </div>
 <div class="section level2">
@@ -216,11 +230,13 @@
 <ul><li>
 <strong>LT field name mismatch:</strong> The ICES web service returns LT field specs with new-style <code>FieldNameOld</code> values (e.g. <code>Platform</code>, <code>HaulNumber</code>) that do not match actual column names from <code>getLTassessment()</code> (e.g. <code>Ship</code>, <code>HaulNo</code>). Those entries don’t fire in <code>.dr_settypes()</code>. Flagged in code comments.</li>
 <li>
-<strong>CPUEA XML nil artifact:</strong> Age columns with no data arrive with names like <code>`Age_6 xsi:nil="true"`</code>. The fetcher strips this suffix and coerces to numeric.</li>
+<strong>CPUEA / IDX XML nil artifact:</strong> Age columns with no data arrive with names like <code>`Age_6 xsi:nil="true"`</code>. The fetcher strips this suffix and coerces Age_* to numeric <strong>per data frame before <code>bind_rows</code></strong> — if done after, different age structures across species produce duplicate column names.</li>
 <li>
 <strong>CW NAs:</strong> <code>CatchWgt = NA</code> means species was absent from that haul (not missing data). ~40% NA is typical for a two-species query.</li>
 <li>
 <strong>CPUEL is slow:</strong> ~30s per survey/year/quarter API call.</li>
+<li>
+<strong>IDX returns no rows silently:</strong> If a species has no indices defined for a given survey/quarter (e.g. herring in NS-IBTS Q1), <code>tryCatch</code> drops the result silently. This is expected behaviour.</li>
 <li>
 <strong>Git LFS:</strong> <code>data/*.rda</code> tracked by LFS. After <code><a href="https://usethis.r-lib.org/reference/use_data.html" class="external-link">usethis::use_data()</a></code>, verify the file is staged as actual content, not just a pointer.</li>
 </ul><hr></div>
@@ -255,9 +271,13 @@
 <span><span class="co"># CPUE by age</span></span>
 <span><span class="va">cpuea</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CPUEA"</span>, surveys <span class="op">=</span> <span class="st">"NS-IBTS"</span>, years <span class="op">=</span> <span class="fl">2018</span>, quarters <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Catch weight (requires aphia codes)</span></span>
+<span><span class="co"># Catch weight (defaults to cod/haddock/herring if aphia omitted)</span></span>
 <span><span class="va">cw</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CW"</span>, surveys <span class="op">=</span> <span class="st">"NS-IBTS"</span>, years <span class="op">=</span> <span class="fl">2018</span>, quarters <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>             aphia <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">126436</span>, <span class="fl">126437</span><span class="op">)</span><span class="op">)</span>  <span class="co"># cod, haddock</span></span>
+<span></span>
+<span><span class="co"># Survey indices (defaults to cod/haddock/herring if aphia omitted)</span></span>
+<span><span class="va">idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"IDX"</span>, surveys <span class="op">=</span> <span class="st">"NS-IBTS"</span>, years <span class="op">=</span> <span class="fl">2018</span>, quarters <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>              aphia <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">126436</span>, <span class="fl">126437</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Lazy DuckDB query (efficient for large data)</span></span>
 <span><span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
