@@ -14,42 +14,41 @@ dr_get(
 )
 }
 \arguments{
-\item{recordtype}{A string specifying the record type ("HH", "HL", or "CA"), indicating the data structure to retrieve.}
+\item{recordtype}{A string specifying the record type: \code{"HH"}, \code{"HL"}, \code{"CA"},
+\code{"FL"} (flex file), or \code{"LT"} (litter assessment).}
 
-\item{surveys}{A character vector of survey IDs. Defaults to all ICES-recognized surveys, excluding "Test-DATRAS".}
+\item{surveys}{A character vector of survey IDs. Required for \code{"FL"} and \code{"LT"}.
+For other types, defaults to all ICES-recognised surveys excluding \code{"Test-DATRAS"}.}
 
-\item{years}{An integer vector of years (e.g., \code{1965:2030}). Values outside the range \verb{[1965, current year]} are invalid.}
+\item{years}{An integer vector of years (e.g. \code{1965:2030}).}
 
-\item{quarters}{An integer vector (e.g., \code{1:4}) representing quarter ranges.}
+\item{quarters}{An integer vector of quarters (e.g. \code{1:4}).}
 
-\item{from}{String (default 'parquet') specifying the data source: \code{"old"}, \code{"new"}, or \code{"parquet"}.}
+\item{from}{String specifying the data source for HH/HL/CA: \code{"parquet"}
+(default), \code{"old"}, or \code{"new"}. Ignored when \code{recordtype = "FL"}.}
 
 \item{quiet}{Logical; suppresses progress messages if \code{TRUE} (default).}
 }
 \value{
-A data frame containing DATRAS data filtered by the specified parameters
-if from is 'old' or 'new'.
+A data frame.
 }
 \description{
-This function streamlines the retrieval of DATRAS trawl survey data from
-various sources, offering distinct methods for fetching and loading the data:
+Retrieves DATRAS trawl survey data from various sources:
 \itemize{
-\item \code{"old"}: Retrieves data using the legacy \code{icesDatras::getDATRAS} function.
-\item \code{"new"}: Retrieves data using \code{icesDatras:::getDatrasUnaggregated} function.
-\item \code{"parquet"}: Reads directly from Parquet files via URL. survey, year, and
-quarter filter not applied.
+\item \code{"parquet"}: Reads the full dataset from URL-hosted Parquet files (no
+survey/year/quarter filtering).
+\item \code{"old"}: Retrieves data via the legacy \code{icesDatras::getDATRAS} function.
+\item \code{"new"}: Retrieves data via \code{icesDatras::get_datras_unaggregated_data}.
 }
 }
 \details{
-Year and quarter ranges must be specified, and datasets are filtered accordingly.
-Surveys supported by ICES can be automatically retrieved if unspecified.
+For \code{recordtype = "FL"} (flex file), \code{icesDatras::getFlexFile} is called for
+every combination of survey, year, and quarter; the \code{from} argument is ignored.
 }
 \examples{
 \dontrun{
-  # Download haul-level data (new API)
-  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, quarters = c(1, 3), from = "new")
-
-  # Read full dataset
-  dr_get("HL")
+  dr_get("HH")                                                      # full parquet
+  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, from = "new")
+  dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 }
 }

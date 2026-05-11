@@ -1,130 +1,193 @@
-# Currently there are three ways to read DATRAS data into memory
-#  1. icesDatras::getDATRAS - the old faithful
-#  2. icesDatras:::getDatrasUnaggregated - new API, faster
-#  3. read a parquet file, all data
+# Currently there are four ways to read DATRAS data into memory:
+#  1. icesDatras::getDATRAS                    - the old faithful
+#  2. icesDatras::get_datras_unaggregated_data - new API, faster
+#  3. read a parquet file                      - full dataset, all surveys
+#  4. icesDatras::getFlexFile                  - flex file (FL record type)
+#
+# Internal helpers (.dr_fetch_*, .dr_settypes) handle each path.
+# dr_get() is a thin dispatcher; dr_get_flexfile() is a convenience wrapper.
 
+
+# Internal helpers -------------------------------------------------------------
+
+# Apply column types from the dr_fields lookup table.
+#   name_col:     "FieldName" (new-style) or "FieldNameOld" (old-style names).
+#   recordheader: if not NULL, restrict dr_fields to this RecordHeader.
+.dr_settypes <- function(d, name_col = "FieldName", recordheader = NULL) {
+  fields <- dr_fields
+  if (!is.null(recordheader))
+    fields <- dplyr::filter(fields, RecordHeader == recordheader)
+  fields <- tidyr::drop_na(fields, dplyr::all_of(name_col))
+
+  key_chr <- fields |> dplyr::filter(DataFormat == "char")    |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
+  key_int <- fields |> dplyr::filter(DataFormat == "int")     |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
+  key_dbl <- fields |> dplyr::filter(DataFormat == "decimal") |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
+
+  d |>
+    dplyr::mutate(dplyr::across(dplyr::where(is.character), \(x) dplyr::na_if(x, "NA"))) |>
+    dplyr::mutate(dplyr::across(dplyr::any_of(key_chr), as.character)) |>
+    dplyr::mutate(dplyr::across(dplyr::any_of(key_int), as.integer))   |>
+    dplyr::mutate(dplyr::across(dplyr::any_of(key_dbl), as.numeric))
+}
+
+.dr_fetch_parquet <- function(recordtype) {
+  url <- paste0("https://heima.hafro.is/~einarhj/datras/", recordtype, ".parquet")
+  arrow::read_parquet(url)
+}
+
+.dr_fetch_old <- function(recordtype, surveys, years, quarters, quiet) {
+  .fetch <- function(survey) {
+    tryCatch(
+      icesDatras::getDATRAS(recordtype, survey, years, quarters),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::map(surveys, .fetch))
+  } else {
+    data <- purrr::map(surveys, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  data <- data |>
+    purrr::map(\(d) .dr_settypes(d, name_col = "FieldNameOld")) |>
+    dplyr::bind_rows()
+  data[data == -9] <- NA
+  data
+}
+
+.dr_fetch_new <- function(recordtype, surveys, years, quarters, quiet) {
+  years_c    <- paste0(min(years),    ":", max(years))
+  quarters_c <- paste0(min(quarters), ":", max(quarters))
+  .fetch <- function(survey) {
+    tryCatch(
+      icesDatras::get_datras_unaggregated_data(recordtype, survey, years_c, quarters_c),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::map(surveys, .fetch))
+  } else {
+    data <- purrr::map(surveys, .fetch)
+  }
+  i <- purrr::map_lgl(data, \(x) is.data.frame(x) && nrow(x) > 0)
+  data <- dplyr::bind_rows(data[i]) |> as.data.frame()
+  data[data == -9] <- NA
+  if (nrow(data) == 0) return(data)
+  data <- data |> dplyr::filter(RecordHeader != "")
+  if (recordtype == "CA") {
+    data <- data |>
+      dplyr::rename(ScientificName_WoRMS = Species, ValidAphiaID = AphiaID)
+  }
+  data
+}
+
+.dr_fetch_flex <- function(surveys, years, quarters, quiet) {
+  grid <- tidyr::expand_grid(survey = surveys, year = years, quarter = quarters)
+  .fetch <- function(survey, year, quarter) {
+    tryCatch(
+      icesDatras::getFlexFile(survey, year, quarter),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::pmap(grid, .fetch))
+  } else {
+    data <- purrr::pmap(grid, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  data <- data |>
+    purrr::map(\(d) .dr_settypes(d, name_col = "FieldNameOld", recordheader = "FL")) |>
+    dplyr::bind_rows()
+  data[data == -9] <- NA
+  data
+}
+
+
+.dr_fetch_lt <- function(surveys, years, quarters, quiet) {
+  grid <- tidyr::expand_grid(survey = surveys, year = years, quarter = quarters)
+  .fetch <- function(survey, year, quarter) {
+    tryCatch(
+      icesDatras::getLTassessment(survey, year, quarter),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::pmap(grid, .fetch))
+  } else {
+    data <- purrr::pmap(grid, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  # No recordheader filter: LT shares FieldNameOld values across record types,
+  # so borrow types from all RecordHeaders to cover columns like HaulLat/HaulLong.
+  data <- data |>
+    purrr::map(\(d) .dr_settypes(d, name_col = "FieldNameOld")) |>
+    dplyr::bind_rows()
+  data[data == -9] <- NA
+  data
+}
+
+
+# Exported functions -----------------------------------------------------------
 
 #' Download and Import DATRAS Data
 #'
-#' This function streamlines the retrieval of DATRAS trawl survey data from
-#' various sources, offering distinct methods for fetching and loading the data:
-#' - `"old"`: Retrieves data using the legacy `icesDatras::getDATRAS` function.
-#' - `"new"`: Retrieves data using `icesDatras:::getDatrasUnaggregated` function.
-#' - `"parquet"`: Reads directly from Parquet files via URL. survey, year, and
-#' quarter filter not applied.
+#' Retrieves DATRAS trawl survey data from various sources:
+#' - `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
+#'   survey/year/quarter filtering).
+#' - `"old"`: Retrieves data via the legacy `icesDatras::getDATRAS` function.
+#' - `"new"`: Retrieves data via `icesDatras::get_datras_unaggregated_data`.
 #'
-#' Year and quarter ranges must be specified, and datasets are filtered accordingly.
-#' Surveys supported by ICES can be automatically retrieved if unspecified.
+#' For `recordtype = "FL"` (flex file), `icesDatras::getFlexFile` is called for
+#' every combination of survey, year, and quarter; the `from` argument is ignored.
 #'
-#' @param recordtype A string specifying the record type ("HH", "HL", or "CA"), indicating the data structure to retrieve.
-#' @param surveys A character vector of survey IDs. Defaults to all ICES-recognized surveys, excluding "Test-DATRAS".
-#' @param years An integer vector of years (e.g., `1965:2030`). Values outside the range `[1965, current year]` are invalid.
-#' @param quarters An integer vector (e.g., `1:4`) representing quarter ranges.
+#' @param recordtype A string specifying the record type: `"HH"`, `"HL"`, `"CA"`,
+#'   `"FL"` (flex file), or `"LT"` (litter assessment).
+#' @param surveys A character vector of survey IDs. Required for `"FL"` and `"LT"`.
+#'   For other types, defaults to all ICES-recognised surveys excluding `"Test-DATRAS"`.
+#' @param years An integer vector of years (e.g. `1965:2030`).
+#' @param quarters An integer vector of quarters (e.g. `1:4`).
+#' @param from String specifying the data source for HH/HL/CA: `"parquet"`
+#'   (default), `"old"`, or `"new"`. Ignored when `recordtype = "FL"`.
 #' @param quiet Logical; suppresses progress messages if `TRUE` (default).
-#' @param from String (default 'parquet') specifying the data source: `"old"`, `"new"`, or `"parquet"`.
-#' @return A data frame containing DATRAS data filtered by the specified parameters
-#' if from is 'old' or 'new'.
+#'
+#' @return A data frame.
 #'
 #' @examples
 #' \dontrun{
-#'   # Download haul-level data (new API)
-#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, quarters = c(1, 3), from = "new")
-#'
-#'   # Read full dataset
-#'   dr_get("HL")
+#'   dr_get("HH")                                                      # full parquet
+#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, from = "new")
+#'   dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 #' }
 #' @export
-dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4, from = "parquet", quiet = TRUE) {
+dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
+                   from = "parquet", quiet = TRUE) {
 
-  # input checks
-  # add years checks - just check that it is at minimum any values (year) between 1965 and current year
-  #  only warning/stop if it outside the range 1965 and current year
-  # add quarter checks - check that it is any of 1, 2, 3, 4
+  if (recordtype == "FL") {
+    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'FL'.")
+    return(.dr_fetch_flex(surveys, years, quarters, quiet))
+  }
 
-  if(is.null(surveys)) {
+  if (recordtype == "LT") {
+    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'LT'.")
+    return(.dr_fetch_lt(surveys, years, quarters, quiet))
+  }
+
+  if (is.null(surveys)) {
     surveys <- icesDatras::getSurveyList()
     surveys <- surveys[surveys != "Test-DATRAS"]
   }
 
-  if(from == "parquet") {
-    url <- paste0("https://heima.hafro.is/~einarhj/datras/", recordtype, ".parquet")
-    data <- arrow::read_parquet(url)
-    return(data)
-  }
+  if (from == "parquet") return(.dr_fetch_parquet(recordtype))
+  if (from == "old")     return(.dr_fetch_old(recordtype, surveys, years, quarters, quiet))
+  if (from == "new")     return(.dr_fetch_new(recordtype, surveys, years, quarters, quiet))
 
-  if(from == "old") {
-    if(quiet == TRUE) {
-      data <- suppressMessages(purrr::map2(recordtype,
-                                           surveys,
-                                           icesDatras::getDATRAS,
-                                           years,
-                                           quarters))
-    } else {
-      data <- purrr::map2(recordtype,
-                          surveys,
-                          icesDatras::getDATRAS,
-                          years,
-                          quarters)
-    }
-    i <- purrr::map_chr(data, class) == "data.frame"
-    data <- data[i]
-
-    .dr_settypes <- function(d) {
-
-      key_chr <- dr_fields |> dplyr::filter(DataFormat == "char")    |> tidyr::drop_na() |> dplyr::pull(FieldNameOld) |> unique()
-      key_int <- dr_fields |> dplyr::filter(DataFormat == "int")     |> tidyr::drop_na()     |> dplyr::pull(FieldNameOld) |> unique()
-      key_dbl <- dr_fields |> dplyr::filter(DataFormat == "decimal") |> tidyr::drop_na() |> dplyr::pull(FieldNameOld) |> unique()
-
-      d <-
-        d |>
-        dplyr::mutate(dplyr::across(dplyr::any_of(key_chr), as.character))  |>
-        dplyr::mutate(dplyr::across(dplyr::any_of(key_int), as.integer))  |>
-        dplyr::mutate(dplyr::across(dplyr::any_of(key_dbl), as.numeric))
-
-      return(d)
-
-    }
-
-    data <-
-      data |>
-      purrr::map(.dr_settypes) |>
-      dplyr::bind_rows()
-
-    data[data == -9] <- NA
-
-    return(data)
-  }
-
-  if(from == "new") {
-
-    years_c <- paste0(min(years), ":", max(years))
-    quarters_c <- paste0(min(quarters), ":", max(quarters))
-
-    data <- suppressMessages(purrr::map2(recordtype,
-                                         surveys,
-                                         icesDatras::get_datras_unaggregated_data,
-                                         years_c,
-                                         quarters_c))
-    i <- purrr::map_int(data, nrow) > 0
-    data <- dplyr::bind_rows(data[i]) |> as.data.frame()
-    data[data == -9] <- NA
-
-    if(nrow(data) > 0) {
-
-      data <- data |> dplyr::filter(RecordHeader != "")
-
-      if(recordtype == "CA") {
-        data <-
-          data |>
-          dplyr::rename(ScientificName_WoRMS = Species,
-                        ValidAphiaID = AphiaID)
-      }
-    }
-
-    # Return the data frame
-    return(data)
-  }
-
+  stop("Unknown 'from' value: '", from, "'. Use 'parquet', 'old', or 'new'.")
 }
 
 
@@ -193,7 +256,12 @@ dr_get_fields <- function(url = "https://datras.ices.dk/WebServices/DATRASWebSer
                                                   FieldName == "Distance" ~ "decimal",
                                                   .default = DataFormat),
                     FieldNameOld = dplyr::case_when(FieldName == "Survey" ~ "Survey",
-                                                    .default = FieldNameOld))
+                                                    .default = FieldNameOld),
+                    # ambiguity in type accross tables
+                    DataFormat = dplyr::case_when(FieldNameOld == "Distance" ~ "decimal",
+                                                  FieldNameOld == "HaulNumber" ~ "char",
+                                                  FieldNameOld == "StationName" ~ "char",
+                                                  .default = DataFormat))
 
     add <-
       tibble::tribble(~RecordHeader, ~FieldName,             ~FieldNameOld,    ~DataFormat,
@@ -222,7 +290,7 @@ dr_get_fields <- function(url = "https://datras.ices.dk/WebServices/DATRASWebSer
                       "FL",          "WarpLength",            "Warplngt",       "int",
                       "FL",          "DoorSpread",            "DoorSpread",     "decimal",
                       "FL",          "WingSpread",            "WingSpread",     "decimal",
-                      "FL",          "Distance",              "Distance",       "int",
+                      "FL",          "Distance",              "Distance",       "decimal",
                       "FL",          NA,                      "Cal_DoorSpread", "decimal",
                       "FL",          NA,                      "DSflag",         "char",
                       "FL",          NA,                      "Cal_WingSpread", "decimal",
@@ -230,7 +298,23 @@ dr_get_fields <- function(url = "https://datras.ices.dk/WebServices/DATRASWebSer
                       "FL",          NA,                      "Cal_Distance",   "decimal",
                       "FL",          NA,                      "DistanceFlag",   "char",
                       "FL",          NA,                      "SweptAreaDSKM2", "decimal",
-                      "FL",          NA,                      "SweptAreaWSKM2", "decimal"
+                      "FL",          NA,                      "SweptAreaWSKM2", "decimal",
+                      # LT additions: columns returned by getLTassessment() not covered by the
+                      # web service response. FieldNameOld = actual column name in getLTassessment().
+                      # BottomDepth: LT uses new-style name directly (int, consistent with HH/FL).
+                      # DateofCalculation: no FieldNameOld match in dr_fields (rule -> char), but
+                      #   actual data is integer (YYYYMMDD); using int.
+                      # OSPARArea, MSFDArea, EEZ, NMArea: no match anywhere, defaulting to char.
+                      # NOTE: existing LT entries from the web service use new-style FieldNameOld
+                      #   values (Platform, StationName, HaulNumber) that do NOT match the actual
+                      #   column names returned by getLTassessment() (Ship, StNo, HaulNo). Those
+                      #   entries will therefore not fire in .dr_settypes().
+                      "LT",          "BottomDepth",           "BottomDepth",    "int",
+                      "LT",          NA,                      "DateofCalculation", "int",
+                      "LT",          NA,                      "OSPARArea",      "char",
+                      "LT",          NA,                      "MSFDArea",       "char",
+                      "LT",          NA,                      "EEZ",            "char",
+                      "LT",          NA,                      "NMArea",         "char"
       )
     d <- dplyr::bind_rows(d, add)
 

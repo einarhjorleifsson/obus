@@ -29,6 +29,6 @@ dr_latin_aphia <-
   dplyr::mutate(aphia = as.integer(aphia))
 
 # add to package ---------------------------------------------------------------
-dr_latin_aphia <- dr_latin_aphia
+# dr_latin_aphia <- dr_latin_aphia
 usethis::use_data(dr_latin_aphia, overwrite = TRUE)
 
