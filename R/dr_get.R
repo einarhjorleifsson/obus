@@ -184,9 +184,11 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  data <- dplyr::bind_rows(data)
+  # Apply types per df before bind_rows — columns like StNo can arrive as
+  # integer in some surveys and character in others, causing bind_rows to fail.
+  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "FieldNameOld")) |>
+    dplyr::bind_rows()
   data[data == -9] <- NA
-  data <- .dr_settypes(data, name_col = "FieldNameOld")
   data
 }
 
