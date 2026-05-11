@@ -27,9 +27,9 @@
 "dr_latin_aphia"
 
 
-#' A valid aphia id - latin name lookup
-#'
-#' Simple shapefile
-#' @source R-package rnaturalearth
-"dr_coastline"
+#' #' A valid aphia id - latin name lookup
+#' #'
+#' #' Simple shapefile
+#' #' @source R-package rnaturalearth
+#' "dr_coastline"
 

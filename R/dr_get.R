@@ -56,7 +56,6 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
     if(quiet == TRUE) {
       data <- suppressMessages(purrr::map2(recordtype,
                                            surveys,
-                                           # this does not work
                                            icesDatras::getDATRAS,
                                            years,
                                            quarters))

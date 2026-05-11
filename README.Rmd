@@ -173,7 +173,7 @@ If the approach illustrated above is adopted as the primary DATRAS datasource, g
 
 This stuff is in development, thus bugs, snags and errors are expected. {obus} still has some experimental hangover functions that need to be pruned or removed.
 
-Actually, as of now {obus} does not do very much, the initial focus has been on experimenting with fast access to DATRAS data. For all practical purposes one can totally live without it. Importing the full HH, HL and CA data into R can be achieved by (anticipated that ICES datacenter with maintain an official path):
+Actually, as of now {obus} does not do very much, the initial focus has been on experimenting with fast access to DATRAS data. For all practical purposes one can totally live without it. Importing the full HH, HL and CA data into R can be achieved by (anticipated that ICES datacenter may/will maintain an official path):
 
 ```
 hh <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/HH.parquet")
