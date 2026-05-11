@@ -107,6 +107,77 @@
 }
 
 
+.dr_fetch_cpue_length <- function(surveys, years, quarters, quiet) {
+  grid <- tidyr::expand_grid(survey = surveys, year = years, quarter = quarters)
+  .fetch <- function(survey, year, quarter) {
+    tryCatch(
+      icesDatras::getCPUELength(survey, year, quarter),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::pmap(grid, .fetch))
+  } else {
+    data <- purrr::pmap(grid, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  data <- dplyr::bind_rows(data)
+  data[data == -9] <- NA
+  data
+}
+
+
+.dr_fetch_cpue_age <- function(surveys, years, quarters, quiet) {
+  grid <- tidyr::expand_grid(survey = surveys, year = years, quarter = quarters)
+  .fetch <- function(survey, year, quarter) {
+    tryCatch(
+      icesDatras::getCPUEAge(survey, year, quarter),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::pmap(grid, .fetch))
+  } else {
+    data <- purrr::pmap(grid, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  data <- dplyr::bind_rows(data)
+  # Strip XML nil attributes that appear in column names from the ICES API
+  # e.g. `Age_6 xsi:nil="true"` -> `Age_6`
+  names(data) <- sub(' xsi:nil="true"', "", names(data), fixed = TRUE)
+  # Age columns affected by the nil artifact arrive as character; coerce to numeric
+  data <- dplyr::mutate(data, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+  data[data == -9] <- NA
+  data
+}
+
+
+.dr_fetch_catch_wgt <- function(surveys, years, quarters, aphia, quiet) {
+  .fetch <- function(survey) {
+    tryCatch(
+      icesDatras::getCatchWgt(survey, years, quarters, aphia),
+      error = function(e) NULL
+    )
+  }
+  if (quiet) {
+    data <- suppressMessages(purrr::map(surveys, .fetch))
+  } else {
+    data <- purrr::map(surveys, .fetch)
+  }
+  i <- purrr::map_lgl(data, is.data.frame)
+  data <- data[i]
+  if (length(data) == 0) return(data.frame())
+  data <- dplyr::bind_rows(data)
+  data[data == -9] <- NA
+  data <- .dr_settypes(data, name_col = "FieldNameOld")
+  data
+}
+
+
 .dr_fetch_lt <- function(surveys, years, quarters, quiet) {
   grid <- tidyr::expand_grid(survey = surveys, year = years, quarter = quarters)
   .fetch <- function(survey, year, quarter) {
@@ -147,11 +218,16 @@
 #' every combination of survey, year, and quarter; the `from` argument is ignored.
 #'
 #' @param recordtype A string specifying the record type: `"HH"`, `"HL"`, `"CA"`,
-#'   `"FL"` (flex file), or `"LT"` (litter assessment).
-#' @param surveys A character vector of survey IDs. Required for `"FL"` and `"LT"`.
+#'   `"FL"` (flex file), `"LT"` (litter assessment), `"CPUEL"` (CPUE per length
+#'   per haul per hour), `"CPUEA"` (CPUE per age per haul per hour), or `"CW"`
+#'   (catch weight by species and haul).
+#' @param surveys A character vector of survey IDs. Required for `"FL"`, `"LT"`,
+#'   `"CPUEL"`, `"CPUEA"`, and `"CW"`.
 #'   For other types, defaults to all ICES-recognised surveys excluding `"Test-DATRAS"`.
 #' @param years An integer vector of years (e.g. `1965:2030`).
 #' @param quarters An integer vector of quarters (e.g. `1:4`).
+#' @param aphia An integer vector of WoRMS Aphia species codes. Required for
+#'   `recordtype = "CW"`. Ignored for all other record types.
 #' @param from String specifying the data source for HH/HL/CA: `"parquet"`
 #'   (default), `"old"`, or `"new"`. Ignored when `recordtype = "FL"`.
 #' @param quiet Logical; suppresses progress messages if `TRUE` (default).
@@ -166,7 +242,7 @@
 #' }
 #' @export
 dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
-                   from = "parquet", quiet = TRUE) {
+                   aphia = NULL, from = "parquet", quiet = TRUE) {
 
   if (recordtype == "FL") {
     if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'FL'.")
@@ -176,6 +252,22 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
   if (recordtype == "LT") {
     if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'LT'.")
     return(.dr_fetch_lt(surveys, years, quarters, quiet))
+  }
+
+  if (recordtype == "CPUEL") {
+    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'CPUEL'.")
+    return(.dr_fetch_cpue_length(surveys, years, quarters, quiet))
+  }
+
+  if (recordtype == "CPUEA") {
+    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'CPUEA'.")
+    return(.dr_fetch_cpue_age(surveys, years, quarters, quiet))
+  }
+
+  if (recordtype == "CW") {
+    if (is.null(surveys)) stop("'surveys' must be specified when recordtype is 'CW'.")
+    if (is.null(aphia))   stop("'aphia' must be specified when recordtype is 'CW'.")
+    return(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet))
   }
 
   if (is.null(surveys)) {
