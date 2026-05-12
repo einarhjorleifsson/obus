@@ -41,6 +41,8 @@
 - [`dr_con_by_haul()`](dr_con_by_haul.md) : Get numbers and weights
   summary of species by haul
 
+- [`dr_con_raw()`](dr_con_raw.md) : Connect to Raw ICES DATRAS Tables
+
 - [`dr_download()`](dr_download.md) : Download DATRAS parquet files
 
 - [`dr_fields`](dr_fields.md) : Datras variable types
@@ -50,8 +52,8 @@
 - [`dr_get_fields()`](dr_get_fields.md) : Get DATRAS Field
   Specifications
 
-- [`dr_latin_aphia`](dr_latin_aphia.md) : Coastline covering majority of
-  DATRAS data
+- [`dr_lookup_species`](dr_lookup_species.md) : A table of english and
+  latin species names and aphia
 
 - [`dr_settypes()`](dr_settypes.md) : Set variable types
 
