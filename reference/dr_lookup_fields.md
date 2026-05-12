@@ -40,10 +40,10 @@ A data frame with 5 columns:
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)
   and derived products (old-style)
 
-- DataFormat:
+- format:
 
-  Type: "char", "int", or "decimal"
+  Type: "chr", "int", or "dbl"
 
-- Description:
+- description:
 
   Field description from the ICES web service

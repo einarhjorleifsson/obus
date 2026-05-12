@@ -182,8 +182,8 @@ before `bind_rows` in all fetchers.
 
 Columns: `table` (record type), `new` (new-style column name from
 `get_datras_unaggregated_data`), `old` (old-style column name from
-`getDATRAS` and derived products), `DataFormat`
-(“char”/“int”/“decimal”), `Description`.
+`getDATRAS` and derived products), `DataFormat` (“chr”/“int”/“dbl”),
+`Description`.
 
 The `new` column is filled in for derived tables (CPUEL, CPUEA, IDX) by
 matching their `old` names against the HH/HL/CA source mapping. Columns
@@ -201,11 +201,11 @@ source("data-raw/DATASET_lookup_fields.R")
 The script fetches from the ICES web service, applies `case_when` fixes
 for known type ambiguities, appends hand-curated entries for FL, LT,
 CPUEL, CPUEA, and IDX, then fills missing `new` values from the HH/HL/CA
-source mapping. Type priority rule: **char \> decimal \> int**.
+source mapping. Type priority rule: **chr \> dbl \> int**.
 
 Key type fixes applied in `case_when` (using `old` names): -
-`HaulNumber` → `int` - `Distance` → `decimal` - `StationName` → `char` -
-`CANoAtLngt` → `decimal` (consistent with `HLNoAtLngt`)
+`HaulNumber` → `int` - `Distance` → `dbl` - `StationName` → `chr` -
+`CANoAtLngt` → `dbl` (consistent with `HLNoAtLngt`)
 
 ------------------------------------------------------------------------
 
@@ -223,7 +223,7 @@ Key type fixes applied in `case_when` (using `old` names): -
   are also coerced to numeric in the same step.
 - **IDX PlusGr → PlusGrAge:** The `PlusGr` column in IDX output is
   renamed to `PlusGrAge` in `.dr_fetch_indices()` to avoid conflict with
-  CA’s `PlusGr` char flag (“+”).
+  CA’s `PlusGr` chr flag (“+”).
 - **Sex in derived tables:** CPUEL, CPUEA, IDX return a `Sex` column
   (old-style name). The fill-in maps it to `IndividualSex` (from CA)
   because CA’s entry is encountered first — but the HL mapping would

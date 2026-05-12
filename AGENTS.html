@@ -268,13 +268,13 @@
 <div class="section level2">
 <h2 id="dr_lookup_fields--schema-and-regenerating">
 <code>dr_lookup_fields</code> — Schema and Regenerating<a class="anchor" aria-label="anchor" href="#dr_lookup_fields--schema-and-regenerating"></a></h2>
-<p>Columns: <code>table</code> (record type), <code>new</code> (new-style column name from <code>get_datras_unaggregated_data</code>), <code>old</code> (old-style column name from <code>getDATRAS</code> and derived products), <code>DataFormat</code> (“char”/“int”/“decimal”), <code>Description</code>.</p>
+<p>Columns: <code>table</code> (record type), <code>new</code> (new-style column name from <code>get_datras_unaggregated_data</code>), <code>old</code> (old-style column name from <code>getDATRAS</code> and derived products), <code>DataFormat</code> (“chr”/“int”/“dbl”), <code>Description</code>.</p>
 <p>The <code>new</code> column is filled in for derived tables (CPUEL, CPUEA, IDX) by matching their <code>old</code> names against the HH/HL/CA source mapping. Columns with no HH/HL/CA counterpart (e.g. <code>AphiaID</code>, <code>Species</code>, <code>ShootLon</code>, <code>LngtClas</code>, <code>DateTime</code>, <code>CPUE_number_per_hour</code>) remain <code>NA</code> in <code>new</code>.</p>
 <p>To regenerate after editing type specs or when the ICES field list changes:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"data-raw/DATASET_lookup_fields.R"</span><span class="op">)</span></span></code></pre></div>
-<p>The script fetches from the ICES web service, applies <code>case_when</code> fixes for known type ambiguities, appends hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX, then fills missing <code>new</code> values from the HH/HL/CA source mapping. Type priority rule: <strong>char &gt; decimal &gt; int</strong>.</p>
-<p>Key type fixes applied in <code>case_when</code> (using <code>old</code> names): - <code>HaulNumber</code> → <code>int</code> - <code>Distance</code> → <code>decimal</code> - <code>StationName</code> → <code>char</code> - <code>CANoAtLngt</code> → <code>decimal</code> (consistent with <code>HLNoAtLngt</code>)</p>
+<p>The script fetches from the ICES web service, applies <code>case_when</code> fixes for known type ambiguities, appends hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX, then fills missing <code>new</code> values from the HH/HL/CA source mapping. Type priority rule: <strong>chr &gt; dbl &gt; int</strong>.</p>
+<p>Key type fixes applied in <code>case_when</code> (using <code>old</code> names): - <code>HaulNumber</code> → <code>int</code> - <code>Distance</code> → <code>dbl</code> - <code>StationName</code> → <code>chr</code> - <code>CANoAtLngt</code> → <code>dbl</code> (consistent with <code>HLNoAtLngt</code>)</p>
 <hr></div>
 <div class="section level2">
 <h2 id="known-issues--gotchas">Known Issues / Gotchas<a class="anchor" aria-label="anchor" href="#known-issues--gotchas"></a></h2>
@@ -283,7 +283,7 @@
 <li>
 <strong>CPUEA / IDX / LT xsi:nil artifact:</strong> Columns with no data arrive with names like <code>`Age_6 xsi:nil="true"`</code> or <code>`Tickler xsi:nil="true"`</code>. The fetcher strips this suffix from <strong>all</strong> column names per df before <code>bind_rows</code>. For CPUEA/IDX, Age_* are also coerced to numeric in the same step.</li>
 <li>
-<strong>IDX PlusGr → PlusGrAge:</strong> The <code>PlusGr</code> column in IDX output is renamed to <code>PlusGrAge</code> in <code>.dr_fetch_indices()</code> to avoid conflict with CA’s <code>PlusGr</code> char flag (“+”).</li>
+<strong>IDX PlusGr → PlusGrAge:</strong> The <code>PlusGr</code> column in IDX output is renamed to <code>PlusGrAge</code> in <code>.dr_fetch_indices()</code> to avoid conflict with CA’s <code>PlusGr</code> chr flag (“+”).</li>
 <li>
 <strong>Sex in derived tables:</strong> CPUEL, CPUEA, IDX return a <code>Sex</code> column (old-style name). The fill-in maps it to <code>IndividualSex</code> (from CA) because CA’s entry is encountered first — but the HL mapping would give <code>SpeciesSex</code>. The correct new-style name for Sex in these derived products is unresolved; it remains a known ambiguity.</li>
 <li>
