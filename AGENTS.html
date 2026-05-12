@@ -45,7 +45,7 @@
 <th>Description</th>
 </tr></thead><tbody><tr><td><code>dr_lookup_fields</code></td>
 <td>~292</td>
-<td>Type lookup table: <code>table</code>, <code>new</code>, <code>old</code>, <code>DataFormat</code>, <code>Description</code>. Used internally by <code>.dr_settypes()</code>. Regenerate by sourcing <code>data-raw/DATASET_lookup_fields.R</code>.</td>
+<td>Type lookup table: <code>table</code>, <code>new</code>, <code>old</code>, <code>format</code>, <code>description</code>. Used internally by <code>.dr_settypes()</code>. Regenerate by sourcing <code>data-raw/DATASET_lookup_fields.R</code>.</td>
 </tr><tr><td><code>dr_lookup_species</code></td>
 <td>2000+</td>
 <td>Aphia ID ↔︎ latin + common name mapping. Source: worrms + HL/CA parquet. Regenerate via <code>data-raw/DATASET_species.R</code>.</td>
@@ -268,7 +268,7 @@
 <div class="section level2">
 <h2 id="dr_lookup_fields--schema-and-regenerating">
 <code>dr_lookup_fields</code> — Schema and Regenerating<a class="anchor" aria-label="anchor" href="#dr_lookup_fields--schema-and-regenerating"></a></h2>
-<p>Columns: <code>table</code> (record type), <code>new</code> (new-style column name from <code>get_datras_unaggregated_data</code>), <code>old</code> (old-style column name from <code>getDATRAS</code> and derived products), <code>DataFormat</code> (“chr”/“int”/“dbl”), <code>Description</code>.</p>
+<p>Columns: <code>table</code> (record type), <code>new</code> (new-style column name from <code>get_datras_unaggregated_data</code>), <code>old</code> (old-style column name from <code>getDATRAS</code> and derived products), <code>format</code> (“chr”/“int”/“dbl”), <code>description</code>.</p>
 <p>The <code>new</code> column is filled in for derived tables (CPUEL, CPUEA, IDX) by matching their <code>old</code> names against the HH/HL/CA source mapping. Columns with no HH/HL/CA counterpart (e.g. <code>AphiaID</code>, <code>Species</code>, <code>ShootLon</code>, <code>LngtClas</code>, <code>DateTime</code>, <code>CPUE_number_per_hour</code>) remain <code>NA</code> in <code>new</code>.</p>
 <p>To regenerate after editing type specs or when the ICES field list changes:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">

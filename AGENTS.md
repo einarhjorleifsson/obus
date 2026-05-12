@@ -21,7 +21,7 @@ devtools::load_all("/Users/einarhj/R/Pakkar/obus")
 
 | Object | Rows | Description |
 |----|----|----|
-| `dr_lookup_fields` | ~292 | Type lookup table: `table`, `new`, `old`, `DataFormat`, `Description`. Used internally by `.dr_settypes()`. Regenerate by sourcing `data-raw/DATASET_lookup_fields.R`. |
+| `dr_lookup_fields` | ~292 | Type lookup table: `table`, `new`, `old`, `format`, `description`. Used internally by `.dr_settypes()`. Regenerate by sourcing `data-raw/DATASET_lookup_fields.R`. |
 | `dr_lookup_species` | 2000+ | Aphia ID ↔︎ latin + common name mapping. Source: worrms + HL/CA parquet. Regenerate via `data-raw/DATASET_species.R`. |
 | `dr_coastline` | — | Coastline geometry for DATRAS survey area. Source: rnaturalearth. |
 
@@ -182,8 +182,8 @@ before `bind_rows` in all fetchers.
 
 Columns: `table` (record type), `new` (new-style column name from
 `get_datras_unaggregated_data`), `old` (old-style column name from
-`getDATRAS` and derived products), `DataFormat` (“chr”/“int”/“dbl”),
-`Description`.
+`getDATRAS` and derived products), `format` (“chr”/“int”/“dbl”),
+`description`.
 
 The `new` column is filled in for derived tables (CPUEL, CPUEA, IDX) by
 matching their `old` names against the HH/HL/CA source mapping. Columns

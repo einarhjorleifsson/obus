@@ -53,7 +53,8 @@
 - [`dr_lookup_species`](dr_lookup_species.md) : A table of english and
   latin species names and aphia
 
-- [`dr_settypes()`](dr_settypes.md) : Set variable types
+- [`dr_settypes()`](dr_settypes.md) : Set column types from the
+  dr_lookup_fields specification
 
 - [`dr_translate()`](dr_translate.md) : Translate column names of a
   data.frame or lazy tibble using a dictionary

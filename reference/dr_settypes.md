@@ -1,25 +1,32 @@
-# Set variable types
+# Set column types from the dr_lookup_fields specification
 
-Used when downloading raw data to ensures consistency in column types
+Coerces columns in a DATRAS exchange table to the types specified in
+[dr_lookup_fields](dr_lookup_fields.md). Also replaces literal `"NA"`
+strings with real `NA` before coercion.
 
 ## Usage
 
 ``` r
-dr_settypes(d)
+dr_settypes(d, name_col = "new", recordheader = NULL)
 ```
 
 ## Arguments
 
 - d:
 
-  A DATRAS exchange table
+  A data frame or `tbl_lazy` (DATRAS exchange table).
+
+- name_col:
+
+  `"new"` (default) to match new-style column names as returned by
+  `get_datras_unaggregated_data` / parquet; `"old"` to match old-style
+  names as returned by `getDATRAS` and derived products.
+
+- recordheader:
+
+  If not `NULL`, restrict the lookup to a single record type (e.g.
+  `"HH"`, `"CPUEL"`). `NULL` borrows types from all tables.
 
 ## Value
 
-A table of same dimention as input
-
-## Details
-
-The column type setting is according to
-[DATRAS_Field_descriptions_and_example_file_May2022.xlsx](%22www.ices.dk%5C/data/Documents%5C/DATRAS%5C/DATRAS_Field_descriptions_and_example_file_May2022.xlsx%22)
-with some additional guesswork for flexfile variables
+An object of the same class as `d`.
