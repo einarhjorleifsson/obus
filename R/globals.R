@@ -21,7 +21,7 @@ utils::globalVariables(
     "HaulDuration", "SpeciesCategory", "SpeciesCategoryWeight", "TotalNumber",
     "n_haul", "w_haul",
     "n_hour", "w_hour",
-    "DataFormat", "Description", "new", "old",
+    "format", "description", "new", "old",
     ".id2", "DateTime", "time",
     "LngtClas",
     ".has_ds", "CPUE_number_per_hour", "ValidAphiaID", "dr_latin_aphia", "record_type",

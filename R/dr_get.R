@@ -4,7 +4,7 @@
 #  3. read a parquet file                      - full dataset, all surveys
 #  4. icesDatras::getFlexFile                  - flex file (FL record type)
 #
-# Internal helpers (.dr_fetch_*, .dr_settypes) handle each path.
+# Internal helpers (.dr_fetch_*) handle each path.
 # dr_get() is a thin dispatcher.
 
 
@@ -20,25 +20,6 @@
 # Clupea harengus (herring).
 .dr_default_aphia <- function() c(126436L, 126437L, 126417L)
 
-# Apply column types from the dr_lookup_fields data object.
-#   name_col:     "new" (new-style) or "old" (old-style names).
-#   recordheader: if not NULL, restrict dr_lookup_fields to this table value.
-.dr_settypes <- function(d, name_col = "new", recordheader = NULL) {
-  fields <- dr_lookup_fields
-  if (!is.null(recordheader))
-    fields <- dplyr::filter(fields, table == recordheader)
-  fields <- tidyr::drop_na(fields, dplyr::all_of(name_col))
-
-  key_chr <- fields |> dplyr::filter(DataFormat == "chr")    |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
-  key_int <- fields |> dplyr::filter(DataFormat == "int")     |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
-  key_dbl <- fields |> dplyr::filter(DataFormat == "dbl") |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
-
-  d |>
-    dplyr::mutate(dplyr::across(dplyr::where(is.character), \(x) dplyr::na_if(x, "NA"))) |>
-    dplyr::mutate(dplyr::across(dplyr::any_of(key_chr), as.character)) |>
-    dplyr::mutate(dplyr::across(dplyr::any_of(key_int), as.integer))   |>
-    dplyr::mutate(dplyr::across(dplyr::any_of(key_dbl), as.numeric))
-}
 
 .dr_fetch_parquet <- function(recordtype) {
   url <- paste0("https://heima.hafro.is/~einarhj/datras/", recordtype, ".parquet")
@@ -61,7 +42,7 @@
   data <- data[i]
   if (length(data) == 0) return(data.frame())
   data <- data |>
-    purrr::map(\(d) .dr_settypes(d, name_col = "old")) |>
+    purrr::map(\(d) dr_settypes(d, name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -110,7 +91,7 @@
   data <- data[i]
   if (length(data) == 0) return(data.frame())
   data <- data |>
-    purrr::map(\(d) .dr_settypes(d, name_col = "old", recordheader = "FL")) |>
+    purrr::map(\(d) dr_settypes(d, name_col = "old", recordheader = "FL")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -133,7 +114,7 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "old", recordheader = "CPUEL")) |>
+  data <- purrr::map(data, \(d) dr_settypes(d, name_col = "old", recordheader = "CPUEL")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -161,7 +142,7 @@
   .clean_age <- function(d) {
     names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
     d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
-    .dr_settypes(d, name_col = "old", recordheader = "CPUEA")
+    dr_settypes(d, name_col = "old", recordheader = "CPUEA")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
@@ -186,7 +167,7 @@
   if (length(data) == 0) return(data.frame())
   # Apply types per df before bind_rows — columns like StNo can arrive as
   # integer in some surveys and character in others, causing bind_rows to fail.
-  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "old")) |>
+  data <- purrr::map(data, \(d) dr_settypes(d, name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -217,7 +198,7 @@
     # Rename PlusGr -> PlusGrAge to distinguish from CA's AgePlusGroup char flag
     names(d)[names(d) == "PlusGr"] <- "PlusGrAge"
     d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
-    .dr_settypes(d, name_col = "old", recordheader = "IDX")
+    dr_settypes(d, name_col = "old", recordheader = "IDX")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
@@ -247,7 +228,7 @@
   data <- data |>
     purrr::map(\(d) {
       names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
-      .dr_settypes(d, name_col = "old")
+      dr_settypes(d, name_col = "old")
     }) |>
     dplyr::bind_rows()
   data[data == -9] <- NA

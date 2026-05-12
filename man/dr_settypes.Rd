@@ -2,20 +2,25 @@
 % Please edit documentation in R/dr_settypes.R
 \name{dr_settypes}
 \alias{dr_settypes}
-\title{Set variable types}
+\title{Set column types from the dr_lookup_fields specification}
 \usage{
-dr_settypes(d)
+dr_settypes(d, name_col = "new", recordheader = NULL)
 }
 \arguments{
-\item{d}{A DATRAS exchange table}
+\item{d}{A data frame or \code{tbl_lazy} (DATRAS exchange table).}
+
+\item{name_col}{\code{"new"} (default) to match new-style column names as
+returned by \code{get_datras_unaggregated_data} / parquet; \code{"old"} to match
+old-style names as returned by \code{getDATRAS} and derived products.}
+
+\item{recordheader}{If not \code{NULL}, restrict the lookup to a single record
+type (e.g. \code{"HH"}, \code{"CPUEL"}). \code{NULL} borrows types from all tables.}
 }
 \value{
-A table of same dimention as input
+An object of the same class as \code{d}.
 }
 \description{
-Used when downloading raw data to ensures consistency in column types
-}
-\details{
-The column type setting is according to \href{"www.ices.dk\/data/Documents\/DATRAS\/DATRAS_Field_descriptions_and_example_file_May2022.xlsx"}{DATRAS_Field_descriptions_and_example_file_May2022.xlsx}
-with some additional guesswork for flexfile variables
+Coerces columns in a DATRAS exchange table to the types specified in
+\link{dr_lookup_fields}. Also replaces literal \code{"NA"} strings with real \code{NA}
+before coercion.
 }

@@ -35,23 +35,24 @@ dr_lookup_fields <-
   mutate(
     across(everything(), str_trim),
     old = if_else(old == "-", NA_character_, old),
-    # Year is always int; Distance is always decimal
+    # Normalise ICES format codes to chr/int/dbl
+    format = case_when(format == "char"    ~ "chr",
+                       format == "decimal" ~ "dbl",
+                       .default = format),
+    # Year is always int; Distance is always dbl
     format = case_when(new == "Year"     ~ "int",
-                           new == "Distance" ~ "dbl",
-                           .default = format),
+                       new == "Distance" ~ "dbl",
+                       .default = format),
     # Ensure Survey has an old name
     old = case_when(new == "Survey" ~ "Survey",
                     .default = old),
     # Resolve known type ambiguities across record types (priority: chr > dbl > int)
     format = case_when(old == "Distance"    ~ "dbl",
-                           old == "HaulNumber"  ~ "int",
-                           old == "StationName" ~ "chr",
-                           old == "CANoAtLngt"  ~ "dbl",
-                           .default = format)
-  ) |>
-  mutate(format = case_when(format == "char" ~ "chr",
-                            format == "decimal" ~ "dbl",
-                            .default = format))
+                       old == "HaulNumber"  ~ "int",
+                       old == "StationName" ~ "chr",
+                       old == "CANoAtLngt"  ~ "dbl",
+                       .default = format)
+  )
 
 # Hand-curated entries not covered by the ICES web service -----------------
 # FL: columns returned by icesDatras::getFlexFile()
@@ -59,7 +60,7 @@ dr_lookup_fields <-
 #     NOTE: the web service returns LT entries with new-style old values
 #     (Platform, StationName, HaulNumber) that do NOT match actual getLTassessment()
 #     column names (Ship, StNo, HaulNo) — those entries therefore don't fire in
-#     .dr_settypes(). The entries below cover what getLTassessment() actually returns.
+#     dr_settypes(). The entries below cover what getLTassessment() actually returns.
 # CPUEL/CPUEA/IDX: derived products from icesDatras; no web service coverage.
 #     Age_0..Age_15 for CPUEA and IDX are added programmatically below.
 
@@ -157,7 +158,7 @@ add <- tribble(
   "IDX", NA, "DateofCalculation", "int"
 )
 
-# Age_0..Age_15: decimal for CPUEA and IDX
+# Age_0..Age_15: dbl for CPUEA and IDX
 age_entries <- expand_grid(
   table = c("CPUEA", "IDX"),
   old   = paste0("Age_", 0:15)
@@ -180,32 +181,5 @@ dr_lookup_fields <- dr_lookup_fields |>
   left_join(source_map, by = "old", suffix = c("", "_fill")) |>
   mutate(new = coalesce(new, new_fill)) |>
   select(-new_fill)
-
-# some last minute hangovers
-dr_lookup_fields <- dr_lookup_fields |>
-  mutate(new = case_when(is.na(new) & old == "ShootLon" ~ "ShootLongitude",
-                         is.na(new) & old == "Species" ~ "Species",
-                         is.na(new) & old == "PlusGrAge" ~ "PlusGrAge",
-                         is.na(new) & old == "SubArea" ~ "SubArea",
-                         is.na(new) & old == "SweptAreaDSKM2" ~ "SweptAreaDSKM2",
-                         is.na(new) & old == "SweptAreaWSKM2" ~ "SweptAreaWSKM2",
-                         is.na(new) & old == "WSflag" ~ "WSflag",
-                         is.na(new) & str_starts(old, "Age_") ~ old,
-                         is.na(new) & old == "AphiaID" ~ "AphiaID",
-                         is.na(new) & old == "Area" ~ "Area",
-                         is.na(new) & str_starts(old, "Cal_") ~ old,
-                         is.na(new) & old == "CPUE_number_per_hour" ~ "CPUE_number_per_hour",
-                         is.na(new) & old == "DateofCalculation" ~ "DateofCalculation",
-                         is.na(new) & old == "DateTime" ~ "DateTime",
-                         is.na(new) & old == "DistanceFlag" ~ "DistanceFlag",
-                         is.na(new) & old == "DSflag" ~ "DSflag",
-                         is.na(new) & old == "EEZ" ~ "EEZ",
-                         is.na(new) & old == "ICESArea" ~ "ICESArea",
-                         is.na(new) & old == "IndexArea" ~ "IndexArea",
-                         is.na(new) & old == "LngtClas" ~ "LengthClass",
-                         is.na(new) & old == "MSFDArea" ~ "MSFDArea",
-                         is.na(new) & old == "NMArea" ~ "NMArea",
-                         is.na(new) & old == "OSPARArea" ~ "OSPARArea",
-                         .default = new))
 
 usethis::use_data(dr_lookup_fields, overwrite = TRUE)
