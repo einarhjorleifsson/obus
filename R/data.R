@@ -14,7 +14,7 @@
 "dr_fields"
 
 
-#' Coastline covering majority of DATRAS data
+#' A table of english and latin species names and aphia
 #'
 #' A data frame with over 2000 rows and 3 columns:
 #' \describe{
@@ -23,8 +23,8 @@
 #'   \item{species}{Species english name}
 #' }
 #'
-#' @source R-package worrms
-"dr_latin_aphia"
+#' @source R-package worrms and aphia in HL- and CA-tables
+"dr_lookup_species"
 
 
 #' Simple shoreline for ICES area

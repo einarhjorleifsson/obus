@@ -131,3 +131,39 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 
 
 
+#' Connect to Raw ICES DATRAS Tables
+#'
+#' Opens a lazy DuckDB connection to "as-is" DATRAS parquet files — the raw
+#' tables as downloaded from the ICES datacenter, with original old-style column
+#' names (e.g. `Ship`, `HaulNo`, `ShootLat`). Use this when you need unmodified
+#' ICES output rather than the tidied versions provided by [dr_con()].
+#'
+#' @param table A character string specifying the table. One of `"HH"` (default),
+#'   `"HL"`, `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, or `"IDX"`.
+#'
+#' @return A lazy `duckdbfs` tibble. Pipe dplyr verbs and call [dplyr::collect()]
+#'   to bring data into memory.
+#'
+#' @examples
+#' \dontrun{
+#'   dr_con_raw("FL") |> dplyr::glimpse()
+#'
+#'   dr_con_raw("FL") |>
+#'     dplyr::filter(Survey == "NS-IBTS", Year == 2020) |>
+#'     dplyr::collect()
+#' }
+#' @export
+dr_con_raw <- function(table = "HH") {
+
+  valid_tables <- c("CA", "CPUEA", "CPUEL", "CW", "FL", "HH", "HL", "IDX", "LT")
+  if (!table %in% valid_tables) {
+    stop(sprintf(
+      "Invalid table '%s'. Valid tables are: %s",
+      table, paste(valid_tables, collapse = ", ")
+    ))
+  }
+
+  url <- paste0("https://heima.hafro.is/~einarhj/datras/old/", table, ".parquet")
+  duckdbfs::open_dataset(url)
+}
+
