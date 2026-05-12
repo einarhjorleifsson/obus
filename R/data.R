@@ -1,17 +1,20 @@
-#' Datras variable types
+#' DATRAS field type lookup table
 #'
-#' A table containing the variable (field) types of the datras data
+#' A table of column names and their data types across all DATRAS record types.
+#' Used internally by \code{.dr_settypes()} to coerce columns to consistent types
+#' after fetching data. Regenerate with \code{data-raw/DATASET_lookup_fields.R}.
 #'
-#' A data frame with 208 rows and 5 columns:
+#' A data frame with 5 columns:
 #' \describe{
-#'   \item{RecordHeader}{The DATRAS data type - "HH": haul data, "HL": length-based data, "CA": age-based data}
-#'   \item{FieldName}{DATRAS variable name as returned by icesDatras::get_datras_unaggregated_data}
-#'   \item{FieldNameOld}{DATRAS variable name as returned by icesDatras::getDatras}
-#'   \item{DataFormat}{The value type, char (character), int (ingeger) and decimal (numeric)}
-#'   \item{Description}{Some description}
+#'   \item{table}{Record type: "HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "IDX"}
+#'   \item{new}{Column name as returned by \code{icesDatras::get_datras_unaggregated_data} (new-style)}
+#'   \item{old}{Column name as returned by \code{icesDatras::getDATRAS} and derived products (old-style)}
+#'   \item{DataFormat}{Type: "char", "int", or "decimal"}
+#'   \item{Description}{Field description from the ICES web service}
 #' }
-#' @source <https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList> and then some
-"dr_fields"
+#' @source <https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList>
+#'   plus hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX.
+"dr_lookup_fields"
 
 
 #' A table of english and latin species names and aphia

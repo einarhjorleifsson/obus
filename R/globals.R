@@ -17,16 +17,16 @@ utils::globalVariables(
     "Country", "Gear", "HaulNo", "Ship", "StNo", "b",
     "HaulNumber", "Platform", "StationName",
     "DevelopmentStage", "IndividualSex", "LiverWeight", "SpeciesSex", "length_cm",
-    "RecordHeader", "Species", "AphiaID",
+    "RecordHeader", "Species", "AphiaID", "table",
     "HaulDuration", "SpeciesCategory", "SpeciesCategoryWeight", "TotalNumber",
     "n_haul", "w_haul",
     "n_hour", "w_hour",
-    "DataFormat", "Description",
+    "DataFormat", "Description", "new", "old",
     ".id2", "DateTime", "time",
     "LngtClas",
     ".has_ds", "CPUE_number_per_hour", "ValidAphiaID", "dr_latin_aphia", "record_type",
-    "FieldName", "FieldNameOld",
-    "dr_fields"
+    "FieldName", "FieldNameOld",  # kept for backward compat in any user code
+    "dr_lookup_fields"
   )
 )
 

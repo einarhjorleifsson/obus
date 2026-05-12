@@ -11,9 +11,9 @@
 
 dr_settypes <- function(d) {
 
-  key_chr <- dr_fields |> dplyr::filter(DataFormat == "char") |> dplyr::pull(FieldName) |> unique()
-  key_int <- dr_fields |> dplyr::filter(DataFormat == "int") |> dplyr::pull(FieldName) |> unique()
-  key_dbl <- dr_fields |> dplyr::filter(DataFormat == "decimal") |> dplyr::pull(FieldName) |> unique()
+  key_chr <- dr_lookup_fields |> dplyr::filter(DataFormat == "chr") |> dplyr::pull(new) |> unique()
+  key_int <- dr_lookup_fields |> dplyr::filter(DataFormat == "int") |> dplyr::pull(new) |> unique()
+  key_dbl <- dr_lookup_fields |> dplyr::filter(DataFormat == "dbl") |> dplyr::pull(new) |> unique()
 
   d <-
     d |>

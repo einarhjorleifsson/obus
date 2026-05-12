@@ -20,13 +20,13 @@
 # Clupea harengus (herring).
 .dr_default_aphia <- function() c(126436L, 126437L, 126417L)
 
-# Apply column types from the dr_fields lookup table.
-#   name_col:     "FieldName" (new-style) or "FieldNameOld" (old-style names).
-#   recordheader: if not NULL, restrict dr_fields to this RecordHeader.
-.dr_settypes <- function(d, name_col = "FieldName", recordheader = NULL) {
-  fields <- dr_fields
+# Apply column types from the dr_lookup_fields data object.
+#   name_col:     "new" (new-style) or "old" (old-style names).
+#   recordheader: if not NULL, restrict dr_lookup_fields to this table value.
+.dr_settypes <- function(d, name_col = "new", recordheader = NULL) {
+  fields <- dr_lookup_fields
   if (!is.null(recordheader))
-    fields <- dplyr::filter(fields, RecordHeader == recordheader)
+    fields <- dplyr::filter(fields, table == recordheader)
   fields <- tidyr::drop_na(fields, dplyr::all_of(name_col))
 
   key_chr <- fields |> dplyr::filter(DataFormat == "char")    |> dplyr::pull(dplyr::all_of(name_col)) |> unique()
@@ -61,7 +61,7 @@
   data <- data[i]
   if (length(data) == 0) return(data.frame())
   data <- data |>
-    purrr::map(\(d) .dr_settypes(d, name_col = "FieldNameOld")) |>
+    purrr::map(\(d) .dr_settypes(d, name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -110,7 +110,7 @@
   data <- data[i]
   if (length(data) == 0) return(data.frame())
   data <- data |>
-    purrr::map(\(d) .dr_settypes(d, name_col = "FieldNameOld", recordheader = "FL")) |>
+    purrr::map(\(d) .dr_settypes(d, name_col = "old", recordheader = "FL")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -133,7 +133,7 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "FieldNameOld", recordheader = "CPUEL")) |>
+  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "old", recordheader = "CPUEL")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -161,7 +161,7 @@
   .clean_age <- function(d) {
     names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
     d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
-    .dr_settypes(d, name_col = "FieldNameOld", recordheader = "CPUEA")
+    .dr_settypes(d, name_col = "old", recordheader = "CPUEA")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
@@ -186,7 +186,7 @@
   if (length(data) == 0) return(data.frame())
   # Apply types per df before bind_rows — columns like StNo can arrive as
   # integer in some surveys and character in others, causing bind_rows to fail.
-  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "FieldNameOld")) |>
+  data <- purrr::map(data, \(d) .dr_settypes(d, name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -214,8 +214,10 @@
   # all per data frame BEFORE bind_rows to avoid duplicate column name issues.
   .clean_age <- function(d) {
     names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
+    # Rename PlusGr -> PlusGrAge to distinguish from CA's AgePlusGroup char flag
+    names(d)[names(d) == "PlusGr"] <- "PlusGrAge"
     d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
-    .dr_settypes(d, name_col = "FieldNameOld", recordheader = "IDX")
+    .dr_settypes(d, name_col = "old", recordheader = "IDX")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
   data[data == -9] <- NA
@@ -245,7 +247,7 @@
   data <- data |>
     purrr::map(\(d) {
       names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
-      .dr_settypes(d, name_col = "FieldNameOld")
+      .dr_settypes(d, name_col = "old")
     }) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
@@ -320,197 +322,6 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
   if (from == "new")     return(.dr_fetch_new(recordtype, surveys, years, quarters, quiet))
 
   stop("Unknown 'from' value: '", from, "'. Use 'parquet', 'old', or 'new'.")
-}
-
-
-
-#' Get DATRAS Field Specifications
-#'
-#' This function fetches XML data from the DATRAS web service, parses the content,
-#' and returns the field specifications as a data frame.
-#'
-#' @param url A character string specifying the URL of the DATRAS web service.
-#' Defaults to `"https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList"`.
-#'
-#' @return A tibble (data frame) containing the field specifications with the
-#' following columns:
-#' \itemize{
-#'   \item \code{RecordHeader}: A character string indicating the record header type.
-#'   \item \code{FieldName}: A character string specifying the field name.
-#'   \item \code{FieldNameOld}: A character string specifying the old field name.
-#'   \item \code{DataFormat}: A character string representing the format of the data.
-#'   \item \code{Description}: A character string describing the field.
-#' }
-#'
-#' @examples
-#' # Fetch the default DATRAS field specifications:
-#' specs <- dr_get_fields()
-#'
-#' # View the first few rows:
-#' head(specs)
-#'
-#' @export
-dr_get_fields <- function(url = "https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList") {
-
-  # Send the HTTP request using httr2
-  response <- httr2::request(url) |>
-    httr2::req_perform()
-
-  # Check the HTTP status code for success
-  if (httr2::resp_status(response) == 200) {
-    # Extract the response body as text
-    xml_data <- httr2::resp_body_string(response)
-    parsed_xml <- suppressWarnings(xml2::read_xml(xml_data))
-
-    # Manually bind the default namespace ("xmlns") to a prefix ("d")
-    ns <- c(d = "ices.dk.local/DATRAS")  # Bind the namespace to the prefix "d"
-
-    # Extract the data into a data frame
-    d <-
-      parsed_xml |>
-      xml2::xml_find_all("//d:Cls_Datras_FieldList", ns = ns) |>  # Use "d:" for namespace
-      purrr::map_df(~ dplyr::tibble(
-        RecordHeader = xml2::xml_text(xml2::xml_find_first(.x, "./d:RecordHeader", ns = ns)),
-        FieldName = xml2::xml_text(xml2::xml_find_first(.x, "./d:FieldName", ns = ns)),
-        FieldNameOld = xml2::xml_text(xml2::xml_find_first(.x, "./d:FieldNameOld", ns = ns)),
-        DataFormat = xml2::xml_text(xml2::xml_find_first(.x, "./d:DataFormat", ns = ns)),
-        Description = xml2::xml_text(xml2::xml_find_first(.x, "./d:Description", ns = ns))
-      )) |>
-      # get rid of extra space, including new line
-      dplyr::mutate(RecordHeader = stringr::str_trim(RecordHeader),
-                    FieldName = stringr::str_trim(FieldName),
-                    FieldNameOld = stringr::str_trim(FieldNameOld),
-                    DataFormat = stringr::str_trim(DataFormat),
-                    Description = stringr::str_trim(Description),
-                    FieldNameOld = ifelse(FieldNameOld == "-", NA, FieldNameOld),
-                    # Check with Vaisav
-                    DataFormat = dplyr::case_when(FieldName == "Year" ~ "int",
-                                                  FieldName == "Distance" ~ "decimal",
-                                                  .default = DataFormat),
-                    FieldNameOld = dplyr::case_when(FieldName == "Survey" ~ "Survey",
-                                                    .default = FieldNameOld),
-                    # ambiguity in type accross tables
-                    DataFormat = dplyr::case_when(FieldNameOld == "Distance" ~ "decimal",
-                                                  FieldNameOld == "HaulNumber" ~ "char",
-                                                  FieldNameOld == "StationName" ~ "char",
-                                                  .default = DataFormat))
-
-    add <-
-      tibble::tribble(~RecordHeader, ~FieldName,             ~FieldNameOld,    ~DataFormat,
-                      "FL",          "RecordHeader",          "RecordHeader",   "char",
-                      "FL",          "Survey",                "Survey",         "char",
-                      "FL",          "Quarter",               "Quarter",        "int",
-                      "FL",          "Country",               "Country",        "char",
-                      "FL",          "Platform",              "Ship",           "char",
-                      "FL",          "Gear",                  "Gear",           "char",
-                      "FL",          "HaulNumber",            "HaulNo",         "int",
-                      "FL",          "Year",                  "Year",           "int",
-                      "FL",          "Month",                 "Month",          "int",
-                      "FL",          "Day",                   "Day",            "int",
-                      "FL",          "StartTime",             "TimeShot",       "char",
-                      "FL",          "DepthStratum",          "DepthStratum",   "char",
-                      "FL",          "HaulDuration",          "HaulDur",        "int",
-                      "FL",          "DayNight",              "DayNight",       "char",
-                      "FL",          "ShootLatitude",         "ShootLat",       "decimal",
-                      "FL",          "ShootLongitude",        "ShootLong",      "decimal",
-                      "FL",          "StatisticalRectangle",  "StatRec",        "char",
-                      "FL",          NA,                      "ICESArea",       "char",
-                      "FL",          "SweepLength",           "SweepLngt",      "int",
-                      "FL",          "BottomDepth",           "Depth",          "int",
-                      "FL",          "HaulValidity",          "HaulVal",        "char",
-                      "FL",          "DataType",              "DataType",       "char",
-                      "FL",          "WarpLength",            "Warplngt",       "int",
-                      "FL",          "DoorSpread",            "DoorSpread",     "decimal",
-                      "FL",          "WingSpread",            "WingSpread",     "decimal",
-                      "FL",          "Distance",              "Distance",       "decimal",
-                      "FL",          NA,                      "Cal_DoorSpread", "decimal",
-                      "FL",          NA,                      "DSflag",         "char",
-                      "FL",          NA,                      "Cal_WingSpread", "decimal",
-                      "FL",          NA,                      "WSflag",         "char",
-                      "FL",          NA,                      "Cal_Distance",   "decimal",
-                      "FL",          NA,                      "DistanceFlag",   "char",
-                      "FL",          NA,                      "SweptAreaDSKM2", "decimal",
-                      "FL",          NA,                      "SweptAreaWSKM2", "decimal",
-                      # LT additions: columns returned by getLTassessment() not covered by the
-                      # web service response. FieldNameOld = actual column name in getLTassessment().
-                      # BottomDepth: LT uses new-style name directly (int, consistent with HH/FL).
-                      # DateofCalculation: no FieldNameOld match in dr_fields (rule -> char), but
-                      #   actual data is integer (YYYYMMDD); using int.
-                      # OSPARArea, MSFDArea, EEZ, NMArea: no match anywhere, defaulting to char.
-                      # NOTE: existing LT entries from the web service use new-style FieldNameOld
-                      #   values (Platform, StationName, HaulNumber) that do NOT match the actual
-                      #   column names returned by getLTassessment() (Ship, StNo, HaulNo). Those
-                      #   entries will therefore not fire in .dr_settypes().
-                      "LT",          "BottomDepth",           "BottomDepth",    "int",
-                      "LT",          NA,                      "DateofCalculation", "int",
-                      "LT",          NA,                      "OSPARArea",      "char",
-                      "LT",          NA,                      "MSFDArea",       "char",
-                      "LT",          NA,                      "EEZ",            "char",
-                      "LT",          NA,                      "NMArea",         "char",
-                      # CPUEL: icesDatras::getCPUELength() column types
-                      "CPUEL",       NA,  "Survey",               "char",
-                      "CPUEL",       NA,  "Year",                 "int",
-                      "CPUEL",       NA,  "Quarter",              "int",
-                      "CPUEL",       NA,  "Ship",                 "char",
-                      "CPUEL",       NA,  "Gear",                 "char",
-                      "CPUEL",       NA,  "HaulNo",               "int",
-                      "CPUEL",       NA,  "HaulDur",              "int",
-                      "CPUEL",       NA,  "ShootLat",             "decimal",
-                      "CPUEL",       NA,  "ShootLon",             "decimal",
-                      "CPUEL",       NA,  "DateTime",             "char",
-                      "CPUEL",       NA,  "Depth",                "int",
-                      "CPUEL",       NA,  "Area",                 "int",
-                      "CPUEL",       NA,  "SubArea",              "char",
-                      "CPUEL",       NA,  "DayNight",             "char",
-                      "CPUEL",       NA,  "AphiaID",              "int",
-                      "CPUEL",       NA,  "Species",              "char",
-                      "CPUEL",       NA,  "Sex",                  "int",
-                      "CPUEL",       NA,  "LngtClas",             "int",
-                      "CPUEL",       NA,  "CPUE_number_per_hour", "decimal",
-                      "CPUEL",       NA,  "Cal_DateID",           "int",
-                      # CPUEA: icesDatras::getCPUEAge() column types (Age_* added below)
-                      "CPUEA",       NA,  "Survey",               "char",
-                      "CPUEA",       NA,  "Year",                 "int",
-                      "CPUEA",       NA,  "Quarter",              "int",
-                      "CPUEA",       NA,  "Ship",                 "char",
-                      "CPUEA",       NA,  "Gear",                 "char",
-                      "CPUEA",       NA,  "HaulNo",               "int",
-                      "CPUEA",       NA,  "ShootLat",             "decimal",
-                      "CPUEA",       NA,  "ShootLon",             "decimal",
-                      "CPUEA",       NA,  "DateTime",             "char",
-                      "CPUEA",       NA,  "Depth",                "int",
-                      "CPUEA",       NA,  "Area",                 "int",
-                      "CPUEA",       NA,  "SubArea",              "char",
-                      "CPUEA",       NA,  "DayNight",             "char",
-                      "CPUEA",       NA,  "AphiaID",              "int",
-                      "CPUEA",       NA,  "Species",              "char",
-                      "CPUEA",       NA,  "Sex",                  "int",
-                      "CPUEA",       NA,  "Cal_DateID",           "int",
-                      # IDX: icesDatras::getIndices() column types (Age_* added below)
-                      "IDX",         NA,  "Survey",               "char",
-                      "IDX",         NA,  "Year",                 "int",
-                      "IDX",         NA,  "Quarter",              "int",
-                      "IDX",         NA,  "AphiaID",              "int",
-                      "IDX",         NA,  "Species",              "char",
-                      "IDX",         NA,  "IndexArea",            "char",
-                      "IDX",         NA,  "Sex",                  "char",
-                      "IDX",         NA,  "PlusGr",               "int",
-                      "IDX",         NA,  "DateofCalculation",    "int"
-      )
-
-    # Age_0..Age_15: decimal for both CPUEA and IDX
-    age_entries <- tidyr::expand_grid(
-      RecordHeader = c("CPUEA", "IDX"),
-      FieldNameOld = paste0("Age_", 0:15)
-    ) |>
-      dplyr::mutate(FieldName = NA_character_, DataFormat = "decimal")
-
-    d <- dplyr::bind_rows(d, add, age_entries)
-
-    return(d)
-  } else {
-    stop("Failed to fetch data. Status code: ", httr2::resp_status(response))
-  }
 }
 
 
