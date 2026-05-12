@@ -9,8 +9,8 @@
 #'   \item{table}{Record type: "HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "IDX"}
 #'   \item{new}{Column name as returned by \code{icesDatras::get_datras_unaggregated_data} (new-style)}
 #'   \item{old}{Column name as returned by \code{icesDatras::getDATRAS} and derived products (old-style)}
-#'   \item{DataFormat}{Type: "char", "int", or "decimal"}
-#'   \item{Description}{Field description from the ICES web service}
+#'   \item{format}{Type: "chr", "int", or "dbl"}
+#'   \item{description}{Field description from the ICES web service}
 #' }
 #' @source <https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList>
 #'   plus hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX.

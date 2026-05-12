@@ -154,7 +154,7 @@ Applies column types from `dr_lookup_fields`. Called per data frame before `bind
 
 ## `dr_lookup_fields` — Schema and Regenerating
 
-Columns: `table` (record type), `new` (new-style column name from `get_datras_unaggregated_data`), `old` (old-style column name from `getDATRAS` and derived products), `DataFormat` ("char"/"int"/"decimal"), `Description`.
+Columns: `table` (record type), `new` (new-style column name from `get_datras_unaggregated_data`), `old` (old-style column name from `getDATRAS` and derived products), `DataFormat` ("chr"/"int"/"dbl"), `Description`.
 
 The `new` column is filled in for derived tables (CPUEL, CPUEA, IDX) by matching their `old` names against the HH/HL/CA source mapping. Columns with no HH/HL/CA counterpart (e.g. `AphiaID`, `Species`, `ShootLon`, `LngtClas`, `DateTime`, `CPUE_number_per_hour`) remain `NA` in `new`.
 
@@ -164,13 +164,13 @@ To regenerate after editing type specs or when the ICES field list changes:
 source("data-raw/DATASET_lookup_fields.R")
 ```
 
-The script fetches from the ICES web service, applies `case_when` fixes for known type ambiguities, appends hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX, then fills missing `new` values from the HH/HL/CA source mapping. Type priority rule: **char > decimal > int**.
+The script fetches from the ICES web service, applies `case_when` fixes for known type ambiguities, appends hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX, then fills missing `new` values from the HH/HL/CA source mapping. Type priority rule: **chr > dbl > int**.
 
 Key type fixes applied in `case_when` (using `old` names):
 - `HaulNumber` → `int`
-- `Distance` → `decimal`
-- `StationName` → `char`
-- `CANoAtLngt` → `decimal` (consistent with `HLNoAtLngt`)
+- `Distance` → `dbl`
+- `StationName` → `chr`
+- `CANoAtLngt` → `dbl` (consistent with `HLNoAtLngt`)
 
 ---
 
@@ -178,7 +178,7 @@ Key type fixes applied in `case_when` (using `old` names):
 
 - **LT field name mismatch:** The ICES web service returns LT entries with new-style `old` values (e.g. `Platform`, `HaulNumber`) that do not match actual column names from `getLTassessment()` (e.g. `Ship`, `HaulNo`). Those entries don't fire in `.dr_settypes()`. Flagged in code comments.
 - **CPUEA / IDX / LT xsi:nil artifact:** Columns with no data arrive with names like `` `Age_6 xsi:nil="true"` `` or `` `Tickler xsi:nil="true"` ``. The fetcher strips this suffix from **all** column names per df before `bind_rows`. For CPUEA/IDX, Age_* are also coerced to numeric in the same step.
-- **IDX PlusGr → PlusGrAge:** The `PlusGr` column in IDX output is renamed to `PlusGrAge` in `.dr_fetch_indices()` to avoid conflict with CA's `PlusGr` char flag ("+").
+- **IDX PlusGr → PlusGrAge:** The `PlusGr` column in IDX output is renamed to `PlusGrAge` in `.dr_fetch_indices()` to avoid conflict with CA's `PlusGr` chr flag ("+").
 - **Sex in derived tables:** CPUEL, CPUEA, IDX return a `Sex` column (old-style name). The fill-in maps it to `IndividualSex` (from CA) because CA's entry is encountered first — but the HL mapping would give `SpeciesSex`. The correct new-style name for Sex in these derived products is unresolved; it remains a known ambiguity.
 - **CW NAs:** `CatchWgt = NA` means species was absent from that haul (not missing data). ~40% NA is typical for a two-species query.
 - **CPUEL is slow:** ~30s per survey/year/quarter API call.
