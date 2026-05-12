@@ -128,3 +128,6 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 
   return(q)
 }
+
+
+

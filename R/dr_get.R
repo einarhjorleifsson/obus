@@ -239,10 +239,14 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  # No recordheader filter: LT shares FieldNameOld values across record types,
-  # so borrow types from all RecordHeaders to cover columns like HaulLat/HaulLong.
+  # Strip xsi:nil="true" artifact from any column name before settypes/bind.
+  # LT has nil columns beyond Age_* (e.g. Tickler, Warpdia, DoorSurface).
+  # No recordheader filter: borrow types from all RecordHeaders.
   data <- data |>
-    purrr::map(\(d) .dr_settypes(d, name_col = "FieldNameOld")) |>
+    purrr::map(\(d) {
+      names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
+      .dr_settypes(d, name_col = "FieldNameOld")
+    }) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
