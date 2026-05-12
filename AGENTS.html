@@ -43,16 +43,16 @@
 <table class="table"><colgroup><col width="29%"><col width="22%"><col width="48%"></colgroup><thead><tr><th>Object</th>
 <th>Rows</th>
 <th>Description</th>
-</tr></thead><tbody><tr><td><code>dr_fields</code></td>
-<td>~214</td>
-<td>Lookup table: RecordHeader, FieldName, FieldNameOld, DataFormat, Description. Used internally for type coercion.</td>
-</tr><tr><td><code>dr_latin_aphia</code></td>
+</tr></thead><tbody><tr><td><code>dr_lookup_fields</code></td>
+<td>~292</td>
+<td>Type lookup table: <code>table</code>, <code>new</code>, <code>old</code>, <code>DataFormat</code>, <code>Description</code>. Used internally by <code>.dr_settypes()</code>. Regenerate by sourcing <code>data-raw/DATASET_lookup_fields.R</code>.</td>
+</tr><tr><td><code>dr_lookup_species</code></td>
 <td>2000+</td>
-<td>Aphia ID ↔︎ latin + common name mapping. Source: worrms.</td>
+<td>Aphia ID ↔︎ latin + common name mapping. Source: worrms + HL/CA parquet. Regenerate via <code>data-raw/DATASET_species.R</code>.</td>
 </tr><tr><td><code>dr_coastline</code></td>
 <td>—</td>
 <td>Coastline geometry for DATRAS survey area. Source: rnaturalearth.</td>
-</tr></tbody></table><p><code>dr_fields</code> is saved as <code>data/dr_fields.rda</code>. <strong>Git LFS tracks <code>data/*.rda</code></strong> via <code>.gitattributes</code> — be aware when updating <code>.rda</code> files; re-save with <code>usethis::use_data(..., overwrite = TRUE)</code>.</p>
+</tr></tbody></table><p><strong>Git LFS tracks <code>data/*.rda</code></strong> via <code>.gitattributes</code> — after <code>usethis::use_data(..., overwrite = TRUE)</code>, verify the file is staged as actual content, not just a pointer.</p>
 <hr></div>
 <div class="section level2">
 <h2 id="data-retrieval-dr_get">Data Retrieval: <code>dr_get()</code>
@@ -95,7 +95,8 @@
 <td>Catch weight; <code>aphia</code> required (or defaults); years/quarters passed as vectors; NA in CatchWgt = species absent from haul</td>
 </tr><tr><td><code>"IDX"</code></td>
 <td><code><a href="https://rdrr.io/pkg/icesDatras/man/getIndices.html" class="external-link">icesDatras::getIndices</a></code></td>
-<td>Age-based survey indices; <code>aphia</code> required (or defaults); iterates per survey×year×quarter×species (all scalar)</td>
+<td>Age-based survey indices; <code>aphia</code> required (or defaults); iterates per survey×year×quarter×species (all scalar); IDX column <code>PlusGr</code> renamed to <code>PlusGrAge</code>
+</td>
 </tr></tbody></table></div>
 <div class="section level3">
 <h3 id="from-argument-hhhlca-only">
@@ -116,11 +117,18 @@
 <hr></div>
 </div>
 <div class="section level2">
-<h2 id="duckdb-connection-dr_con">DuckDB Connection: <code>dr_con()</code>
-<a class="anchor" aria-label="anchor" href="#duckdb-connection-dr_con"></a></h2>
+<h2 id="raw-ices-tables-dr_con_raw">Raw ICES Tables: <code>dr_con_raw()</code>
+<a class="anchor" aria-label="anchor" href="#raw-ices-tables-dr_con_raw"></a></h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/dr_con_raw.html">dr_con_raw</a></span><span class="op">(</span>table <span class="op">=</span> <span class="st">"HH"</span><span class="op">)</span></span></code></pre></div>
+<p>Returns a lazy <code>duckdbfs</code> tibble connected to “as-is” ICES parquet files with original old-style column names (Ship, HaulNo, ShootLat, etc.). Valid tables: <code>"HH"</code>, <code>"HL"</code>, <code>"CA"</code>, <code>"FL"</code>, <code>"LT"</code>, <code>"CPUEL"</code>, <code>"CPUEA"</code>, <code>"CW"</code>, <code>"IDX"</code>. Use when you need unmodified ICES output.</p>
+<hr></div>
+<div class="section level2">
+<h2 id="tidy-duckdb-connection-dr_con">Tidy DuckDB Connection: <code>dr_con()</code>
+<a class="anchor" aria-label="anchor" href="#tidy-duckdb-connection-dr_con"></a></h2>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="va">type</span>, trim <span class="op">=</span> <span class="cn">TRUE</span>, url <span class="op">=</span> <span class="st">"https://heima.hafro.is/~einarhj/datras"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>Returns a lazy <code>duckdbfs</code> tibble — pipe dplyr verbs then <code>collect()</code>. Types accepted: <code>"HH"</code>, <code>"HL"</code>, <code>"CA"</code>, <code>"species"</code>, <code>"haul"</code>, <code>"dictionary"</code>, <code>"vocabulary"</code>, <code>"cpuelength"</code>.</p>
+<p>Returns a lazy <code>duckdbfs</code> tibble of tidied parquet data. Types accepted: <code>"HH"</code>, <code>"HL"</code>, <code>"CA"</code>, <code>"species"</code>, <code>"haul"</code>, <code>"dictionary"</code>, <code>"vocabulary"</code>, <code>"cpuelength"</code>.</p>
 <hr></div>
 <div class="section level2">
 <h2 id="transformation-functions">Transformation Functions<a class="anchor" aria-label="anchor" href="#transformation-functions"></a></h2>
@@ -167,21 +175,58 @@
 </tr><tr><td><code>dr_translate(d, dictionary, from, to)</code></td>
 <td>—</td>
 <td>renamed cols</td>
-<td>Renames columns using a from/to dictionary</td>
-</tr></tbody></table><hr></div>
+<td>Renames columns using a from/to dictionary; defaults <code>from = "old"</code>, <code>to = "new"</code>
+</td>
+</tr></tbody></table><div class="section level3">
+<h3 id="dr_translate-and-dr_lookup_fields">
+<code>dr_translate</code> and <code>dr_lookup_fields</code>
+<a class="anchor" aria-label="anchor" href="#dr_translate-and-dr_lookup_fields"></a></h3>
+<p>Typical usage to rename raw (old-style) columns to tidy (new-style):</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dictionary</span> <span class="op">&lt;-</span> <span class="va">dr_lookup_fields</span> <span class="op">|&gt;</span> <span class="fu">select</span><span class="op">(</span><span class="va">old</span>, <span class="va">new</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">distinct</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/dr_con_raw.html">dr_con_raw</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/dr_translate.html">dr_translate</a></span><span class="op">(</span><span class="va">dictionary</span>, from <span class="op">=</span> <span class="st">"old"</span>, to <span class="op">=</span> <span class="st">"new"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Reversibility caveat:</strong> 7 <code>new</code> names map to more than one <code>old</code> name; <code>dr_translate(..., from = "new", to = "old")</code> silently picks the first match. Affected names:</p>
+<table class="table"><thead><tr><th><code>new</code></th>
+<th>
+<code>old</code> options</th>
+</tr></thead><tbody><tr><td><code>Platform</code></td>
+<td>
+<code>Ship</code> (HH/HL/CA) · <code>Platform</code> (FL)</td>
+</tr><tr><td><code>BottomDepth</code></td>
+<td>
+<code>Depth</code> (HH/FL) · <code>BottomDepth</code> (LT)</td>
+</tr><tr><td><code>HaulNumber</code></td>
+<td>
+<code>HaulNo</code> (HH/HL/CA) · <code>HaulNumber</code> (LT)</td>
+</tr><tr><td><code>StationName</code></td>
+<td>
+<code>StNo</code> (HH) · <code>StationName</code> (LT)</td>
+</tr><tr><td><code>RecordHeader</code></td>
+<td>
+<code>RecordType</code> (CA) · <code>RecordHeader</code> (FL)</td>
+</tr><tr><td><code>NumberAtLength</code></td>
+<td>
+<code>HLNoAtLngt</code> (HL) · <code>CANoAtLngt</code> (CA)</td>
+</tr><tr><td><code>SpeciesCode</code></td>
+<td>
+<code>SpecCode</code> (HL/CA) · <code>SpeciesCode</code> (some entries)</td>
+</tr></tbody></table><p>For reliable new→old translation, filter the dictionary to a specific <code>table</code> first.</p>
+<hr></div>
+</div>
 <div class="section level2">
 <h2 id="internal-architecture-rdr_getr">Internal Architecture (<code>R/dr_get.R</code>)<a class="anchor" aria-label="anchor" href="#internal-architecture-rdr_getr"></a></h2>
 <div class="section level3">
 <h3 id="dr_settypesd-name_col-recordheader"><code>.dr_settypes(d, name_col, recordheader)</code><a class="anchor" aria-label="anchor" href="#dr_settypesd-name_col-recordheader"></a></h3>
-<p>Applies column types from <code>dr_fields</code>. Called after fetching data.</p>
+<p>Applies column types from <code>dr_lookup_fields</code>. Called per data frame before <code>bind_rows</code> in all fetchers.</p>
 <ul><li>
-<code>name_col = "FieldName"</code> → new-style names (parquet/new API)</li>
+<code>name_col = "new"</code> → new-style names (parquet/new API); this is the default</li>
 <li>
-<code>name_col = "FieldNameOld"</code> → old-style names (getDATRAS, FL, LT, CW)</li>
+<code>name_col = "old"</code> → old-style names (getDATRAS, FL, LT, CW, CPUEL, CPUEA, IDX)</li>
 <li>
-<code>recordheader</code>: filter to specific record type, or <code>NULL</code> to use all</li>
-<li>Replaces literal <code>"NA"</code> strings with real <code>NA</code> before coercion (suppresses spurious warnings)</li>
-<li>Replaces <code>-9</code> sentinel values with <code>NA</code> (done in fetchers, not here)</li>
+<code>recordheader</code>: filter to specific <code>table</code> value, or <code>NULL</code> to use all</li>
+<li>Replaces literal <code>"NA"</code> strings with real <code>NA</code> before coercion</li>
+<li>
+<code>-9</code> sentinel values replaced with <code>NA</code> in fetchers (not here)</li>
 </ul></div>
 <div class="section level3">
 <h3 id="internal-fetch-helpers">Internal fetch helpers<a class="anchor" aria-label="anchor" href="#internal-fetch-helpers"></a></h3>
@@ -191,26 +236,29 @@
 <td>Single <code><a href="https://arrow.apache.org/docs/r/reference/read_parquet.html" class="external-link">arrow::read_parquet()</a></code> from URL</td>
 </tr><tr><td><code>.dr_fetch_old(recordtype, surveys, years, quarters, quiet)</code></td>
 <td>
-<code>map(surveys, getDATRAS)</code> with tryCatch</td>
+<code>map(surveys, getDATRAS)</code> with tryCatch; <code>.dr_settypes(name_col = "old")</code>
+</td>
 </tr><tr><td><code>.dr_fetch_new(recordtype, surveys, years, quarters, quiet)</code></td>
 <td>
 <code>map(surveys, get_datras_unaggregated_data)</code> with range strings</td>
 </tr><tr><td><code>.dr_fetch_flex(surveys, years, quarters, quiet)</code></td>
 <td>
-<code>expand_grid</code> × <code>pmap</code> per survey×year×quarter</td>
+<code>expand_grid</code> × <code>pmap</code> per survey×year×quarter; <code>.dr_settypes(name_col = "old", recordheader = "FL")</code>
+</td>
 </tr><tr><td><code>.dr_fetch_lt(surveys, years, quarters, quiet)</code></td>
-<td>Same pattern; borrows types from all RecordHeaders</td>
+<td>Same pattern; strips xsi:nil from all cols; borrows types from all tables; <code>.dr_settypes(name_col = "old")</code>
+</td>
 </tr><tr><td><code>.dr_fetch_cpue_length(surveys, years, quarters, quiet)</code></td>
-<td>Same pattern; no type coercion (derived product)</td>
+<td>Same pattern; <code>.dr_settypes(name_col = "old", recordheader = "CPUEL")</code> per df</td>
 </tr><tr><td><code>.dr_fetch_cpue_age(surveys, years, quarters, quiet)</code></td>
-<td>Same pattern; strips <code>xsi:nil="true"</code> and coerces Age_* <strong>per data frame before <code>bind_rows</code></strong> to avoid duplicates across species</td>
+<td>Same pattern; strips <code>xsi:nil="true"</code> and coerces Age_* <strong>per df before <code>bind_rows</code></strong>; <code>.dr_settypes(name_col = "old", recordheader = "CPUEA")</code>
+</td>
 </tr><tr><td><code>.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet)</code></td>
 <td>
-<code>map(surveys, getCatchWgt)</code>; years/quarters as vectors; applies <code>.dr_settypes(name_col = "FieldNameOld")</code>
-</td>
+<code>map(surveys, getCatchWgt)</code>; years/quarters as vectors; <code>.dr_settypes(name_col = "old")</code> per df</td>
 </tr><tr><td><code>.dr_fetch_indices(surveys, years, quarters, aphia, quiet)</code></td>
 <td>
-<code>expand_grid</code> × <code>pmap</code> per survey×year×quarter×species (all scalar); same Age_* cleanup as CPUEA</td>
+<code>expand_grid</code> × <code>pmap</code> per survey×year×quarter×species; renames <code>PlusGr</code> → <code>PlusGrAge</code>; same Age_* cleanup as CPUEA; <code>.dr_settypes(name_col = "old", recordheader = "IDX")</code> per df</td>
 </tr><tr><td><code>.dr_default_surveys()</code></td>
 <td>Returns <code>getSurveyList()</code> minus entries matching <code>^Test</code> (case-insensitive)</td>
 </tr><tr><td><code>.dr_default_aphia()</code></td>
@@ -218,31 +266,38 @@
 </tr></tbody></table><hr></div>
 </div>
 <div class="section level2">
-<h2 id="dr_get_fields"><code>dr_get_fields()</code><a class="anchor" aria-label="anchor" href="#dr_get_fields"></a></h2>
-<p>Fetches current DATRAS field specs from the ICES web service XML endpoint and returns a tibble. Used to regenerate <code>dr_fields</code>. Includes a hand-curated <code>add</code> tribble for FL and LT fields not covered by the web service, and <code>case_when</code> fixes for type ambiguities (<code>Distance</code> → decimal, <code>HaulNumber</code> → char, <code>StationName</code> → char).</p>
-<p>To update <code>dr_fields</code> after editing <code><a href="reference/dr_get_fields.html">dr_get_fields()</a></code>:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">dr_fields</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get_fields.html">dr_get_fields</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">usethis</span><span class="fu">::</span><span class="fu"><a href="https://usethis.r-lib.org/reference/use_data.html" class="external-link">use_data</a></span><span class="op">(</span><span class="va">dr_fields</span>, overwrite <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<h2 id="dr_lookup_fields--schema-and-regenerating">
+<code>dr_lookup_fields</code> — Schema and Regenerating<a class="anchor" aria-label="anchor" href="#dr_lookup_fields--schema-and-regenerating"></a></h2>
+<p>Columns: <code>table</code> (record type), <code>new</code> (new-style column name from <code>get_datras_unaggregated_data</code>), <code>old</code> (old-style column name from <code>getDATRAS</code> and derived products), <code>DataFormat</code> (“char”/“int”/“decimal”), <code>Description</code>.</p>
+<p>The <code>new</code> column is filled in for derived tables (CPUEL, CPUEA, IDX) by matching their <code>old</code> names against the HH/HL/CA source mapping. Columns with no HH/HL/CA counterpart (e.g. <code>AphiaID</code>, <code>Species</code>, <code>ShootLon</code>, <code>LngtClas</code>, <code>DateTime</code>, <code>CPUE_number_per_hour</code>) remain <code>NA</code> in <code>new</code>.</p>
+<p>To regenerate after editing type specs or when the ICES field list changes:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"data-raw/DATASET_lookup_fields.R"</span><span class="op">)</span></span></code></pre></div>
+<p>The script fetches from the ICES web service, applies <code>case_when</code> fixes for known type ambiguities, appends hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX, then fills missing <code>new</code> values from the HH/HL/CA source mapping. Type priority rule: <strong>char &gt; decimal &gt; int</strong>.</p>
+<p>Key type fixes applied in <code>case_when</code> (using <code>old</code> names): - <code>HaulNumber</code> → <code>int</code> - <code>Distance</code> → <code>decimal</code> - <code>StationName</code> → <code>char</code> - <code>CANoAtLngt</code> → <code>decimal</code> (consistent with <code>HLNoAtLngt</code>)</p>
 <hr></div>
 <div class="section level2">
 <h2 id="known-issues--gotchas">Known Issues / Gotchas<a class="anchor" aria-label="anchor" href="#known-issues--gotchas"></a></h2>
 <ul><li>
-<strong>LT field name mismatch:</strong> The ICES web service returns LT field specs with new-style <code>FieldNameOld</code> values (e.g. <code>Platform</code>, <code>HaulNumber</code>) that do not match actual column names from <code>getLTassessment()</code> (e.g. <code>Ship</code>, <code>HaulNo</code>). Those entries don’t fire in <code>.dr_settypes()</code>. Flagged in code comments.</li>
+<strong>LT field name mismatch:</strong> The ICES web service returns LT entries with new-style <code>old</code> values (e.g. <code>Platform</code>, <code>HaulNumber</code>) that do not match actual column names from <code>getLTassessment()</code> (e.g. <code>Ship</code>, <code>HaulNo</code>). Those entries don’t fire in <code>.dr_settypes()</code>. Flagged in code comments.</li>
 <li>
-<strong>CPUEA / IDX XML nil artifact:</strong> Age columns with no data arrive with names like <code>`Age_6 xsi:nil="true"`</code>. The fetcher strips this suffix and coerces Age_* to numeric <strong>per data frame before <code>bind_rows</code></strong> — if done after, different age structures across species produce duplicate column names.</li>
+<strong>CPUEA / IDX / LT xsi:nil artifact:</strong> Columns with no data arrive with names like <code>`Age_6 xsi:nil="true"`</code> or <code>`Tickler xsi:nil="true"`</code>. The fetcher strips this suffix from <strong>all</strong> column names per df before <code>bind_rows</code>. For CPUEA/IDX, Age_* are also coerced to numeric in the same step.</li>
+<li>
+<strong>IDX PlusGr → PlusGrAge:</strong> The <code>PlusGr</code> column in IDX output is renamed to <code>PlusGrAge</code> in <code>.dr_fetch_indices()</code> to avoid conflict with CA’s <code>PlusGr</code> char flag (“+”).</li>
+<li>
+<strong>Sex in derived tables:</strong> CPUEL, CPUEA, IDX return a <code>Sex</code> column (old-style name). The fill-in maps it to <code>IndividualSex</code> (from CA) because CA’s entry is encountered first — but the HL mapping would give <code>SpeciesSex</code>. The correct new-style name for Sex in these derived products is unresolved; it remains a known ambiguity.</li>
 <li>
 <strong>CW NAs:</strong> <code>CatchWgt = NA</code> means species was absent from that haul (not missing data). ~40% NA is typical for a two-species query.</li>
 <li>
 <strong>CPUEL is slow:</strong> ~30s per survey/year/quarter API call.</li>
 <li>
-<strong>IDX returns no rows silently:</strong> If a species has no indices defined for a given survey/quarter (e.g. herring in NS-IBTS Q1), <code>tryCatch</code> drops the result silently. This is expected behaviour.</li>
+<strong>IDX returns no rows silently:</strong> If a species has no indices defined for a given survey/quarter (e.g. herring in NS-IBTS Q1), <code>tryCatch</code> drops the result silently. Expected behaviour.</li>
 <li>
 <strong>Git LFS:</strong> <code>data/*.rda</code> tracked by LFS. After <code><a href="https://usethis.r-lib.org/reference/use_data.html" class="external-link">usethis::use_data()</a></code>, verify the file is staged as actual content, not just a pointer.</li>
 </ul><hr></div>
 <div class="section level2">
 <h2 id="typical-workflow">Typical Workflow<a class="anchor" aria-label="anchor" href="#typical-workflow"></a></h2>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://einarhjorleifsson.github.io/obus/" class="external-link">obus</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Full parquet download</span></span>
@@ -279,7 +334,14 @@
 <span><span class="va">idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"IDX"</span>, surveys <span class="op">=</span> <span class="st">"NS-IBTS"</span>, years <span class="op">=</span> <span class="fl">2018</span>, quarters <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>              aphia <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">126436</span>, <span class="fl">126437</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Lazy DuckDB query (efficient for large data)</span></span>
+<span><span class="co"># Raw ICES tables (old-style column names)</span></span>
+<span><span class="fu"><a href="reference/dr_con_raw.html">dr_con_raw</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Year</span> <span class="op">==</span> <span class="fl">2020</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Translate raw old-style names to new-style</span></span>
+<span><span class="va">dictionary</span> <span class="op">&lt;-</span> <span class="va">dr_lookup_fields</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">old</span>, <span class="va">new</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/dr_con_raw.html">dr_con_raw</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/dr_translate.html">dr_translate</a></span><span class="op">(</span><span class="va">dictionary</span>, from <span class="op">=</span> <span class="st">"old"</span>, to <span class="op">=</span> <span class="st">"new"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Lazy DuckDB query on tidy parquet</span></span>
 <span><span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">&gt;=</span> <span class="fl">2020</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>

@@ -45,12 +45,10 @@
 
 - [`dr_download()`](dr_download.md) : Download DATRAS parquet files
 
-- [`dr_fields`](dr_fields.md) : Datras variable types
-
 - [`dr_get()`](dr_get.md) : Download and Import DATRAS Data
 
-- [`dr_get_fields()`](dr_get_fields.md) : Get DATRAS Field
-  Specifications
+- [`dr_lookup_fields`](dr_lookup_fields.md) : DATRAS field type lookup
+  table
 
 - [`dr_lookup_species`](dr_lookup_species.md) : A table of english and
   latin species names and aphia
