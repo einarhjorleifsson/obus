@@ -58,9 +58,6 @@
 - [`dr_translate()`](dr_translate.md) : Translate column names of a
   data.frame or lazy tibble using a dictionary
 
-- [`getDatrasUnaggregated()`](getDatrasUnaggregated.md) : Download
-  unaggregated DATRAS survey data
-
 - [`getIndicesAllYears()`](getIndicesAllYears.md) : Get Survey Indices
   for All Years
 

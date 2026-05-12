@@ -4,14 +4,9 @@ Downloads unaggregated haul- and biological-level data from the ICES
 DATRAS Download API. \#' @author Vaishav Soni, International Council for
 the Exploration of the Sea (ICES)
 
-Downloads unaggregated haul- and biological-level data from the ICES
-DATRAS Download API. Now deprecated, use getDatrasUnaggregated
-
 ## Usage
 
 ``` r
-get_datras_unaggregated_data(recordtype, survey, year, quarter)
-
 get_datras_unaggregated_data(recordtype, survey, year, quarter)
 ```
 
@@ -37,39 +32,15 @@ get_datras_unaggregated_data(recordtype, survey, year, quarter)
 
 A `data.table` containing the requested DATRAS data.
 
-A `data.table` containing the requested DATRAS data.
-
 ## Details
 
 The function downloads a zipped CSV file from the official ICES DATRAS
 API, extracts it locally, and reads it using fixed column classes to
 avoid costly type guessing.
 
-The function downloads a zipped CSV file from the official ICES DATRAS
-API, extracts it locally, and reads it using fixed column classes to
-avoid costly type guessing.
-
-## See also
-
-[`getDatrasUnaggregated()`](getDatrasUnaggregated.md)
-
-## Author
-
-Vaishav Soni, International Council for the Exploration of the Sea
-(ICES)
-
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-df <- get_datras_unaggregated_data(
-  recordtype = "HH",
-  survey = "NS-IBTS",
-  year = "1965:2025",
-  quarter = "1:4"
-)
-} # }
-
 if (FALSE) { # \dontrun{
 df <- get_datras_unaggregated_data(
   recordtype = "HH",
