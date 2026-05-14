@@ -1,50 +1,71 @@
 #' Generate a unique haul id
 #'
-#' This function generates a haul ID by concatenating fields in
-#' the DATRAS tables. The generated ID is stored in a new variable `.id`.
-#' The input must contain the columns:
-#' \code{Survey, Year, Quarter, Country, Platform, Gear, StationName, HaulNumber}.
-#' If any of these columns are missing, an error will be raised.
+#' Generates a haul ID by concatenating the eight join-key fields and stores
+#' it in a new column `.id`. Works with both new-style column names
+#' (\code{Platform}, \code{StationName}, \code{HaulNumber}) and old-style names
+#' (\code{Ship}, \code{StNo}, \code{HaulNo}).
 #'
 #' @param d A DATRAS table, one of HH, HL, or CA.
-#' @param base Vector, either "new" (default) or "old"
+#' @param base One of \code{"auto"} (default), \code{"new"}, or \code{"old"}.
+#'   \code{"auto"} inspects column names and chooses based on which style is
+#'   present: \code{Ship} -> old, \code{Platform} -> new. An error is raised if
+#'   neither or both are found.
 #'
 #' @return A table (\code{d}) with an additional variable `.id`
 #' @export
 #'
 #' @examples
-#' # Example with a simulated DATRAS table
-#' example_data <- data.frame(
-#'   Survey = "Surv1",
-#'   Year = 2026,
-#'   Quarter = 1,
-#'   Country = "Country1",
-#'   Platform = "Platform1",
-#'   Gear = "Gear1",
-#'   StationName = "StationA",
-#'   HaulNumber = 123
+#' # New-style column names
+#' example_new <- data.frame(
+#'   Survey = "Surv1", Year = 2026, Quarter = 1, Country = "Country1",
+#'   Platform = "Vessel1", Gear = "GOV", StationName = "1", HaulNumber = 1L
 #' )
-#' example_data |> dr_add_id()
-dr_add_id <- function(d, base = "new") {
+#' example_new |> dr_add_id()
+#'
+#' # Old-style column names
+#' example_old <- data.frame(
+#'   Survey = "Surv1", Year = 2026, Quarter = 1, Country = "Country1",
+#'   Ship = "Vessel1", Gear = "GOV", StNo = "1", HaulNo = 1L
+#' )
+#' example_old |> dr_add_id()
+dr_add_id <- function(d, base = "auto") {
 
-  if(base == "new") {
-    # Required columns
+  cols <- colnames(d)
+
+  if (base == "auto") {
+    has_new <- "Platform" %in% cols
+    has_old <- "Ship" %in% cols
+    if (has_new && !has_old) {
+      base <- "new"
+    } else if (has_old && !has_new) {
+      base <- "old"
+    } else if (has_new && has_old) {
+      stop("dr_add_id: both 'Platform' (new) and 'Ship' (old) found; ",
+           "set base = 'new' or base = 'old' explicitly.")
+    } else {
+      stop("dr_add_id: cannot detect column style -- neither 'Platform' (new) ",
+           "nor 'Ship' (old) found in the table.")
+    }
+  }
+
+  if (base == "new") {
     required_vars <- c("Survey", "Year", "Quarter", "Country", "Platform",
                        "Gear", "StationName", "HaulNumber")
-
-    # Check if all required variables exist in the input
-    missing_vars <- setdiff(required_vars, colnames(d))
-    if (length(missing_vars) > 0) {
-      stop("The following required columns are missing from the input table: ",
+    missing_vars <- setdiff(required_vars, cols)
+    if (length(missing_vars) > 0)
+      stop("dr_add_id: missing columns for new-style id: ",
            paste(missing_vars, collapse = ", "))
-    }
-    d <-
-      d |>
+    d <- d |>
       dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Platform, Gear,
                                 StationName, HaulNumber, sep = ":"))
   } else {
-    d <-
-      d |>
+    required_vars <- c("Survey", "Year", "Quarter", "Country", "Ship",
+                       "Gear", "StNo", "HaulNo")
+    missing_vars <- setdiff(required_vars, cols)
+    if (length(missing_vars) > 0)
+      stop("dr_add_id: missing columns for old-style id: ",
+           paste(missing_vars, collapse = ", "))
+    d <- d |>
       dplyr::mutate(.id = paste(Survey, Year, Quarter, Country, Ship, Gear,
                                 StNo, HaulNo, sep = ":"))
   }
@@ -438,3 +459,5 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
 
   return(d)
 }
+
+

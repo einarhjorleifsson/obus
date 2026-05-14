@@ -4,34 +4,37 @@
 \alias{dr_add_id}
 \title{Generate a unique haul id}
 \usage{
-dr_add_id(d, base = "new")
+dr_add_id(d, base = "auto")
 }
 \arguments{
 \item{d}{A DATRAS table, one of HH, HL, or CA.}
 
-\item{base}{Vector, either "new" (default) or "old"}
+\item{base}{One of \code{"auto"} (default), \code{"new"}, or \code{"old"}.
+\code{"auto"} inspects column names and chooses based on which style is
+present: \code{Ship} -> old, \code{Platform} -> new. An error is raised if
+neither or both are found.}
 }
 \value{
 A table (\code{d}) with an additional variable \code{.id}
 }
 \description{
-This function generates a haul ID by concatenating fields in
-the DATRAS tables. The generated ID is stored in a new variable \code{.id}.
-The input must contain the columns:
-\code{Survey, Year, Quarter, Country, Platform, Gear, StationName, HaulNumber}.
-If any of these columns are missing, an error will be raised.
+Generates a haul ID by concatenating the eight join-key fields and stores
+it in a new column \code{.id}. Works with both new-style column names
+(\code{Platform}, \code{StationName}, \code{HaulNumber}) and old-style names
+(\code{Ship}, \code{StNo}, \code{HaulNo}).
 }
 \examples{
-# Example with a simulated DATRAS table
-example_data <- data.frame(
-  Survey = "Surv1",
-  Year = 2026,
-  Quarter = 1,
-  Country = "Country1",
-  Platform = "Platform1",
-  Gear = "Gear1",
-  StationName = "StationA",
-  HaulNumber = 123
+# New-style column names
+example_new <- data.frame(
+  Survey = "Surv1", Year = 2026, Quarter = 1, Country = "Country1",
+  Platform = "Vessel1", Gear = "GOV", StationName = "1", HaulNumber = 1L
 )
-example_data |> dr_add_id()
+example_new |> dr_add_id()
+
+# Old-style column names
+example_old <- data.frame(
+  Survey = "Surv1", Year = 2026, Quarter = 1, Country = "Country1",
+  Ship = "Vessel1", Gear = "GOV", StNo = "1", HaulNo = 1L
+)
+example_old |> dr_add_id()
 }

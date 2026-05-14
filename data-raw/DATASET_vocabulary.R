@@ -5,8 +5,7 @@ devtools::load_all()
 # use dictionary to filter out DATRAS variables and to add new variable name to
 #  vocabulary
 dictionary <-
-  dr_con("dictionary") |>
-  collect() |>
+  dr_lookup_fields |>
   distinct(old, .keep_all = TRUE) |>
   drop_na(old)
 
@@ -28,11 +27,12 @@ vocabulary <-
            case_when(str_starts(variable, "TS_") ~ str_remove(variable, "TS_"),
                      str_starts(variable, "AC_") ~ str_remove(variable, "AC_"),
                      .default = variable))
-vocabulary |>
+dr_lookup_vocabulary <- vocabulary |>
   select(variable, key, description, type, type_desc) |>
   filter(variable %in% dictionary$old) |>
   filter(!variable %in% c("Month", "Quarter", "Year")) |>
   rename(old = variable) |>
   left_join(dictionary |> select(old, new)) |>
-  select(old, new, key, everything()) |>
-  arrow::write_parquet("/home/hafri/einarhj/public_html/datras/vocabulary.parquet")
+  select(old, new, key, everything())
+usethis::use_data(dr_lookup_vocabulary, overwrite = TRUE)
+

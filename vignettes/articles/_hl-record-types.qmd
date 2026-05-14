@@ -39,14 +39,12 @@ The function requires that `dr_add_n_and_cpue()` has already been called (so
 #| eval: false
 library(tidyverse)
 library(obus)
-
+dictionary <- dr_lookup_fields |> distinct(old, new)
 # Typical pipeline: load → join HaulDuration → compute n_haul → classify
-hh <- dr_hl(survey = "NS-IBTS")   # haul header
-hl <- dr_hl(survey = "NS-IBTS")   # length table (illustrative; use actual loaders)
+hh <- dr_con("HH") |> dr_translate(dictionary) # haul header
+hl <- dr_con("HL", trim = FALSE) |> dr_translate(dictionary) # length table (illustrative; use actual loaders)
 
 hl_typed <- hl |>
-  left_join(hh |> select(.id, DataType, HaulDuration), by = ".id") |>
-  dr_add_n_and_cpue() |>
   dr_add_record_type()
 ```
 
@@ -66,10 +64,12 @@ hl_record_type_lookup
 #| eval: false
 hl_typed |>
   count(record_type, sort = TRUE) |>
+  collect() |> 
   left_join(hl_record_type_lookup |> select(record_type, label),
             by = "record_type") |>
   mutate(pct = round(100 * n / sum(n), 2)) |>
-  select(record_type, label, n, pct)
+  select(record_type, label, n, pct) |> 
+  mutate(cpct = cumsum(pct))
 ```
 
 | record_type | label | n | % |

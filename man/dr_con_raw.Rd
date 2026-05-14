@@ -11,7 +11,7 @@ dr_con_raw(table = "HH")
 \code{"HL"}, \code{"CA"}, \code{"FL"}, \code{"LT"}, \code{"CPUEL"}, \code{"CPUEA"}, \code{"CW"}, or \code{"IDX"}.}
 }
 \value{
-A lazy \code{duckdbfs} tibble. Pipe dplyr verbs and call \code{\link[dplyr:compute]{dplyr::collect()}}
+A lazy \code{duckdbfs} tibble. Pipe dplyr verbs and call \code{\link[dplyr:collect]{dplyr::collect()}}
 to bring data into memory.
 }
 \description{

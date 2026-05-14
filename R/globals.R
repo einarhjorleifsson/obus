@@ -26,7 +26,15 @@ utils::globalVariables(
     "LngtClas",
     ".has_ds", "CPUE_number_per_hour", "ValidAphiaID", "dr_latin_aphia", "record_type",
     "FieldName", "FieldNameOld",  # kept for backward compat in any user code
-    "dr_lookup_fields"
+    "dr_lookup_fields",
+    # dr_check.R internals
+    ".dt", ".sf", ".fail", ".tn", ".sum", ".na", ".sp", ".sx", ".cat",
+    ".has_len", ".expected", "SubFactor", "TotalNo", "HLNoAtLngt",
+    "Valid_Aphia", "NoMeas", "s",
+    # dr_cpue_by_length / dr_cpue_by_haul
+    "HaulVal", "SpecVal", "length_mm", "zerofill",
+    "TotalNo", "CatCatchWgt", "n_haul", "n_hour", "w_haul", "w_hour",
+    ".data", ".pass", ":="
   )
 )
 
