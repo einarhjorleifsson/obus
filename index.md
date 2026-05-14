@@ -1,13 +1,13 @@
 # obus
 
-The aim of {obus} to provide users with tidy DATRAS tables with
-non-ambiguous variables.
+The aim of {obus} is to explore methods to provide fast access to DATRAS
+tables and provide tidy DATRAS tables with non-ambiguous variables.
 
-That said, {obus} is a temporary experimental package used to explore
-various DATRAS data connections and wrapper functions to make life a
-little easier for everyday user. Some of that may be taken up in a more
-official package. Or possibly not. So far {obus} does actually very
-little.
+That said, {obus} is a temporary experimental package with a very
+limited life-cycle, used to explore various DATRAS data connections and
+wrapper functions with the aim to make users life a little less painful.
+Some of these ideas may be taken up in a more official package. Or
+possibly not. So far {obus} does actually very little.
 
 For purist, one regrets to inform that this package has quite some
 number of dependencies (see
@@ -19,48 +19,32 @@ For more information, check the
 
 ## Installation
 
-You can install the development version of {obus} from
-[GitHub](https://github.com/einarhjorleifsson/obus) running:
+One can install the development version of {obus} from
+[GitHub](https://github.com/einarhjorleifsson/obus) running one of:
 
 ``` r
 
 remotes::install_github("einarhjorleifsson/obus")
-```
-
-In some cases {obus} uses wrapper functions depending on {icesDatras}
-features that have, as of yet, not been taken up in the official ICES
-version (issues pending) install that package via:
-
-``` r
-
-remotes::install_github("einarhjorleifsson/icesDatras", force = TRUE)
-```
-
-There are two ways to connect to the DATRAS data, either by importing
-the whole datasets into R or by making an in-process DuckDB database
-connection.
-
-``` r
-
-library(obus)
+# or
+pak::pak("einarhjorleifsson/obus")
 ```
 
 ## Importing
 
-The fastest way to **import** the full DATRAS data into R is:
+The fastest way to **import** a recent version of DATRAS data into R is:
 
 ``` r
 
 system.time({
-  hh <- dr_get("HH", from = "parquet")
-  hl <- dr_get("HL", from = "parquet")
-  ca <- dr_get("CA", from = "parquet")
+  hh <- dr_get_raw("HH", from = "parquet")
+  hl <- dr_get_raw("HL", from = "parquet")
+  ca <- dr_get_raw("CA", from = "parquet")
 })
 #>    user  system elapsed 
-#>   9.615   5.359  31.843
+#>   9.232   2.561  55.306
 ```
 
-So we are talking about less than 5 seconds if you sitting on the optic
+We are talking about less than 5 seconds if you sitting on the optic
 fiber. If you are connected via poor wifi this may take closer to a
 minute. Whatever the case one can assume that nobody will complain given
 that the dimension just imported are as follows:
@@ -73,23 +57,40 @@ that the dimension just imported are as follows:
 
 Number of records and variables
 
-The above fast access is achieved by importing from parquet files that
-are hosted on a conventional https-server. The parquet data source is as
-of now **not** a mirror of the data residing at ICES, but a recent copy.
-ICES datacenter is currently exploring ways to serve a mirror of the
-DATRAS data via parquet files hosted on a cloud service.
+The above fast access is achieved by importing from non-partitioned
+parquet files that are hosted on a conventional https-server. The size
+of these parquet files is not impressive:
 
-The old faithful (icesDatras::getDATRAS) is wrapped within the above
-function, with the addition that variable type is set and -9 are turned
-to NA. Here we only dare to call one year of HL-data:
+    file                 size time
+    CA.parquet         31.15M 2026-05-12 08:17:15
+    HH.parquet          5.66M 2026-05-12 08:15:30
+    HL.parquet         89.26M 2026-05-12 08:17:52
+
+    CPUEA.parquet        8.8M 2026-05-12 08:15:18
+    CPUEL.parquet      32.76M 2026-05-12 08:15:28
+    CW.parquet          9.26M 2026-05-12 08:15:29
+    FL.parquet          1.79M 2026-05-12 11:11:34
+    LT.parquet          3.02M 2026-05-12 11:11:41
+
+    IDX.parquet        32.35K 2026-05-12 08:17:52
+
+The parquet data source is as of now **not** a mirror of the data
+residing at ICES, but a recent copy. ICES datacenter is I think,
+currently exploring ways to serve a true mirror of the DATRAS data via
+parquet files hosted on a cloud service (which may though be an
+overkill).
+
+The old faithful (icesDatras::getDATRAS and friends) is wrapped within
+{obus} function dr_get_raw, with the addition that variable type is set
+and -9 are turned to NA. Here we only dare to call one year of HL-data:
 
 ``` r
 
 system.time({
-  hl_old <- dr_get(recordtype = "HL", years = 2026, from = "old", quiet = TRUE)
+  hl_old <- dr_get_raw(recordtype = "HL", years = 2026, from = "xml", quiet = TRUE)
 })
 #>    user  system elapsed 
-#>   8.873   4.156  55.653
+#>   9.481   3.175  60.862
 ```
 
 In store we now have:
@@ -103,17 +104,17 @@ hl_old |> dplyr::count(Survey)
 #> 3 SCOWCGFS 12307
 ```
 
-A little faster approach is also in experimental phase
-(icesDatras::get_datras_unaggregated_data) but it is not yet a mirror of
-the most up to date data (hence here year 2025 is used)
+A little faster approach was also in experimental phase
+(icesDatras::get_datras_unaggregated_data) but it is not of yet a mirror
+of up to date DATRAS data (hence here year 2025 is used)
 
 ``` r
 
 system.time({
-  hl_new <- dr_get("HL", years = 2025, from = "new", quiet = TRUE)
+  hl_new <- dr_get_raw("HL", years = 2025, from = "csv", quiet = TRUE)
 })
 #>    user  system elapsed 
-#>   1.085   0.416   9.298
+#>   1.086   0.267   8.623
 ```
 
 In store we now have:
@@ -137,8 +138,7 @@ hl_new |> dplyr::count(Survey)
 Although the DATRAS data can not be considered big data, one can use
 techniques developed for such datasets. So instead of importing the full
 dataset into R one can generate a connection to the url-hosted parquet
-files (these are not fully up-to-date data as of yet) using in-process
-DuckDB database.
+files using in-process DuckDB database.
 
 ### HH data
 
@@ -149,7 +149,7 @@ hh |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 76
 #> Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]
-#> $ RecordHeader            <chr> "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
+#> $ RecordHeader            <chr> "HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…
 #> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…
 #> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
 #> $ Country                 <chr> "DK", "DK", "DK", "DK", "DK", "DK", "DK", "DK"…
@@ -354,16 +354,16 @@ system.time({
     dplyr::mutate(n_haul = coalesce(n_haul, 0))
 })
 #>    user  system elapsed 
-#>   0.093   0.010   0.220
+#>   0.170   0.017   0.707
 q |> dplyr::glimpse()
 #> Rows: ??
 #> Columns: 5
 #> Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]
-#> $ .id    <chr> "BITS:2024:1:DK:26HF:TVS:104:53", "BITS:2024:1:DK:26HF:TVS:96:4…
-#> $ sur    <chr> "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BI…
-#> $ lon    <dbl> 10.8619, 10.8261, 10.7020, 15.3746, 12.4116, 10.1898, 13.4157, …
-#> $ lat    <dbl> 55.5271, 55.3924, 56.9433, 55.3554, 56.1340, 54.7324, 55.1882, …
-#> $ n_haul <dbl> 12.000, 4.000, 1.000, 321.000, 2937.020, 4.000, 883.050, 461.00…
+#> $ .id    <chr> "IE-IGFS:2024:4:IE:45CE:GOV:21:51", "BITS:2024:1:DK:26D4:TVL:12…
+#> $ sur    <chr> "IE-IGFS-4", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", …
+#> $ lon    <dbl> -10.6780, 15.9564, 15.0580, 10.7238, 14.9828, 18.7384, 17.3782,…
+#> $ lat    <dbl> 54.1730, 55.2308, 54.7960, 57.1716, 55.3155, 55.8405, 55.3239, …
+#> $ n_haul <dbl> 1.000, 471.000, 888.000, 4.000, 308.000, 1.000, 1526.094, 1.000…
 ```
 
 Here all the code steps are automatically translated to SQL and passed
@@ -378,7 +378,7 @@ q |> dplyr::show_query()
 #>   SELECT LHS.*, n_haul
 #>   FROM (
 #>     SELECT ".id", sur, ShootLongitude AS lon, ShootLatitude AS lat
-#>     FROM vjipvsndtxylhfz
+#>     FROM waglewmaplozltr
 #>     WHERE ("Year" = 2024.0) AND ("Quarter" IN (1, 2, 3, 4))
 #>   ) LHS
 #>   LEFT JOIN (
@@ -392,7 +392,7 @@ q |> dplyr::show_query()
 #>         DevelopmentStage,
 #>         n_haul,
 #>         n_hour
-#>       FROM cxvkqwwkeuruqcb
+#>       FROM rfyxxztnphsvphv
 #>       WHERE (latin = 'Gadus morhua')
 #>     ) q01
 #>     GROUP BY ".id"
@@ -410,15 +410,15 @@ system.time({
   d <- q |> dplyr::collect()
 })
 #>    user  system elapsed 
-#>   0.139   0.013   0.093
+#>   0.159   0.013   0.145
 d |> dplyr::glimpse()
 #> Rows: 4,185
 #> Columns: 5
-#> $ .id    <chr> "NS-IBTS:2024:3:SE:77SE:GOV:152:5", "NS-IBTS:2024:3:SE:77SE:GOV…
-#> $ sur    <chr> "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3"…
-#> $ lon    <dbl> 9.9734, 11.9705, 1.4565, -1.5410, 12.2221, -2.1130, 9.7497, 0.0…
-#> $ lat    <dbl> 58.0567, 56.3460, 58.2492, 56.7660, 56.8238, 58.1880, 57.6615, …
-#> $ n_haul <dbl> 13.000, 3.000, 2.000, 6.000, 1.000, 2.000, 2.000, 3.000, 7.000,…
+#> $ .id    <chr> "IE-IGFS:2024:4:IE:45CE:GOV:MB30:94", "BITS:2024:1:PL:67BC:TVL:…
+#> $ sur    <chr> "IE-IGFS-4", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", …
+#> $ lon    <dbl> -7.6040, 15.5100, 15.5649, 17.9509, 12.9713, 12.1707, 12.9172, …
+#> $ lat    <dbl> 50.6100, 54.6250, 55.5222, 56.9964, 54.9090, 56.2664, 54.9043, …
+#> $ n_haul <dbl> 1.00000, 299.00000, 351.00000, 1.00000, 143.00000, 93.00000, 71…
 ```
 
 More importantly, only the variables .id (unique station id), sur, lon,
@@ -434,6 +434,33 @@ copies because the instantaneous access makes that redundant. Only case
 where one may want a full local copy is in cases when internet access is
 unstable/slow or non-existent. But those days are all but behind us.
 
+## A tidy data-model
+
+The DATRAS exchange data are not really formatted for efficient
+downstream analysis, for the following reasons:
+
+- The meaning of a value depends on information in another variable
+  - Within the same table …
+  - In another table …
+- Station data (HH)
+  - Some station table variables repeated in child tables
+  - Some variables in the station table that should actually be in child
+    table(s)
+- Length data (HL)
+  - The table is four separated tables from an analytical perspective:
+    - station table variables
+    - bookkeeping of on-board sub-sampling process
+    - total catch, be it numbers or mass
+    - actual length measurements of individual fish
+
+So when it comes to the DATRAS data we are a bit here:
+
+    Tidy datasets are all alike; every messy dataset is messy in its own way
+                                                              Hadley Wickham
+
+The further upstream one clears up the table messy-ness, the better from
+an analytical perspective.
+
 ## Small print
 
 This stuff is in development, thus bugs, snags and errors are expected.
@@ -443,8 +470,8 @@ pruned or removed.
 Actually, as of now {obus} does not do very much, the initial focus has
 been on experimenting with fast access to DATRAS data. For all practical
 purposes one can totally live without it. Importing the full HH, HL and
-CA data into R can be achieved by (anticipated that ICES datacenter with
-maintain an official path):
+CA data into R can be achieved by (anticipated that ICES datacenter
+may/will maintain an official path):
 
 ``` R
 hh <- arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/raw/HH.parquet")
@@ -474,7 +501,7 @@ ca <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CA.parquet"
 #>  collate  en_US.UTF-8
 #>  ctype    en_US.UTF-8
 #>  tz       Atlantic/Reykjavik
-#>  date     2026-05-10
+#>  date     2026-05-12
 #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
 #>  quarto   1.8.26 @ /usr/local/bin/quarto
 #> 
@@ -509,7 +536,7 @@ ca <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CA.parquet"
 #>  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
 #>  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)
 #>  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
-#>  obus        * 2026.01.30 2026-05-10 [1] local
+#>  obus        * 2026.01.30 2026-05-12 [1] local
 #>  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
 #>  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
 #>  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
@@ -531,7 +558,7 @@ ca <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CA.parquet"
 #>  xfun          0.57       2026-03-20 [2] CRAN (R 4.5.2)
 #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
 #> 
-#>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpyfugRB/temp_libpath3b5355d328c7
+#>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmpo9qQX5/temp_libpathe9a65a7d8554
 #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
 #>  * ── Packages attached to the search path.
 #> 

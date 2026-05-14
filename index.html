@@ -49,36 +49,32 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>The aim of {obus} to provide users with tidy DATRAS tables with non-ambiguous variables.</p>
-<p>That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for everyday user. Some of that may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.</p>
+<p>The aim of {obus} is to explore methods to provide fast access to DATRAS tables and provide tidy DATRAS tables with non-ambiguous variables.</p>
+<p>That said, {obus} is a temporary experimental package with a very limited life-cycle, used to explore various DATRAS data connections and wrapper functions with the aim to make users life a little less painful. Some of these ideas may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.</p>
 <p>For purist, one regrets to inform that this package has quite some number of dependencies (see <a href="https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION" class="external-link">DESCRIPTION</a>). It should however be possible to trim down that fat.</p>
 <p>For more information, check the <a href="https://github.com/einarhjorleifsson/obus" class="external-link">README.md</a>.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version of {obus} from <a href="https://github.com/einarhjorleifsson/obus" class="external-link">GitHub</a> running:</p>
+<p>One can install the development version of {obus} from <a href="https://github.com/einarhjorleifsson/obus" class="external-link">GitHub</a> running one of:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"einarhjorleifsson/obus"</span><span class="op">)</span></span></code></pre></div>
-<p>In some cases {obus} uses wrapper functions depending on {icesDatras} features that have, as of yet, not been taken up in the official ICES version (issues pending) install that package via:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"einarhjorleifsson/icesDatras"</span>, force <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>There are two ways to connect to the DATRAS data, either by importing the whole datasets into R or by making an in-process DuckDB database connection.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://einarhjorleifsson.github.io/obus/" class="external-link">obus</a></span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"einarhjorleifsson/obus"</span><span class="op">)</span></span>
+<span><span class="co"># or</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"einarhjorleifsson/obus"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="importing">Importing<a class="anchor" aria-label="anchor" href="#importing"></a>
 </h2>
-<p>The fastest way to <strong>import</strong> the full DATRAS data into R is:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>The fastest way to <strong>import</strong> a recent version of DATRAS data into R is:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="va">hh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"HH"</span>, from <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
-<span>  <span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"HL"</span>, from <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
-<span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CA"</span>, from <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
+<span>  <span class="va">hh</span> <span class="op">&lt;-</span> <span class="fu">dr_get_raw</span><span class="op">(</span><span class="st">"HH"</span>, from <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
+<span>  <span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu">dr_get_raw</span><span class="op">(</span><span class="st">"HL"</span>, from <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
+<span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu">dr_get_raw</span><span class="op">(</span><span class="st">"CA"</span>, from <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   9.615   5.359  31.843</span></span></code></pre></div>
-<p>So we are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via poor wifi this may take closer to a minute. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:</p>
+<span><span class="co">#&gt;   9.232   2.561  55.306</span></span></code></pre></div>
+<p>We are talking about less than 5 seconds if you sitting on the optic fiber. If you are connected via poor wifi this may take closer to a minute. Whatever the case one can assume that nobody will complain given that the dimension just imported are as follows:</p>
 <table class="table">
 <thead><tr>
 <th align="left">type</th>
@@ -104,30 +100,43 @@
 </tbody>
 </table>
 <p>Number of records and variables</p>
-<p>The above fast access is achieved by importing from parquet files that are hosted on a conventional https-server. The parquet data source is as of now <strong>not</strong> a mirror of the data residing at ICES, but a recent copy. ICES datacenter is currently exploring ways to serve a mirror of the DATRAS data via parquet files hosted on a cloud service.</p>
-<p>The old faithful (icesDatras::getDATRAS) is wrapped within the above function, with the addition that variable type is set and -9 are turned to NA. Here we only dare to call one year of HL-data:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>The above fast access is achieved by importing from non-partitioned parquet files that are hosted on a conventional https-server. The size of these parquet files is not impressive:</p>
+<pre><code>file                 size time
+CA.parquet         31.15M 2026-05-12 08:17:15
+HH.parquet          5.66M 2026-05-12 08:15:30
+HL.parquet         89.26M 2026-05-12 08:17:52
+
+CPUEA.parquet        8.8M 2026-05-12 08:15:18
+CPUEL.parquet      32.76M 2026-05-12 08:15:28
+CW.parquet          9.26M 2026-05-12 08:15:29
+FL.parquet          1.79M 2026-05-12 11:11:34
+LT.parquet          3.02M 2026-05-12 11:11:41
+
+IDX.parquet        32.35K 2026-05-12 08:17:52</code></pre>
+<p>The parquet data source is as of now <strong>not</strong> a mirror of the data residing at ICES, but a recent copy. ICES datacenter is I think, currently exploring ways to serve a true mirror of the DATRAS data via parquet files hosted on a cloud service (which may though be an overkill).</p>
+<p>The old faithful (icesDatras::getDATRAS and friends) is wrapped within {obus} function dr_get_raw, with the addition that variable type is set and -9 are turned to NA. Here we only dare to call one year of HL-data:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="va">hl_old</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span>recordtype <span class="op">=</span> <span class="st">"HL"</span>, years <span class="op">=</span> <span class="fl">2026</span>, from <span class="op">=</span> <span class="st">"old"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">hl_old</span> <span class="op">&lt;-</span> <span class="fu">dr_get_raw</span><span class="op">(</span>recordtype <span class="op">=</span> <span class="st">"HL"</span>, years <span class="op">=</span> <span class="fl">2026</span>, from <span class="op">=</span> <span class="st">"xml"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   8.873   4.156  55.653</span></span></code></pre></div>
+<span><span class="co">#&gt;   9.481   3.175  60.862</span></span></code></pre></div>
 <p>In store we now have:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl_old</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">Survey</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     Survey     n</span></span>
 <span><span class="co">#&gt; 1     BITS 25115</span></span>
 <span><span class="co">#&gt; 2  NS-IBTS 48070</span></span>
 <span><span class="co">#&gt; 3 SCOWCGFS 12307</span></span></code></pre></div>
-<p>A little faster approach is also in experimental phase (icesDatras::get_datras_unaggregated_data) but it is not yet a mirror of the most up to date data (hence here year 2025 is used)</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<p>A little faster approach was also in experimental phase (icesDatras::get_datras_unaggregated_data) but it is not of yet a mirror of up to date DATRAS data (hence here year 2025 is used)</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="va">hl_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"HL"</span>, years <span class="op">=</span> <span class="fl">2025</span>, from <span class="op">=</span> <span class="st">"new"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">hl_new</span> <span class="op">&lt;-</span> <span class="fu">dr_get_raw</span><span class="op">(</span><span class="st">"HL"</span>, years <span class="op">=</span> <span class="fl">2025</span>, from <span class="op">=</span> <span class="st">"csv"</span>, quiet <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   1.085   0.416   9.298</span></span></code></pre></div>
+<span><span class="co">#&gt;   1.086   0.267   8.623</span></span></code></pre></div>
 <p>In store we now have:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl_new</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">Survey</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     Survey     n</span></span>
 <span><span class="co">#&gt; 1     BITS 27084</span></span>
@@ -142,17 +151,17 @@
 <div class="section level2">
 <h2 id="connecting">Connecting<a class="anchor" aria-label="anchor" href="#connecting"></a>
 </h2>
-<p>Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files (these are not fully up-to-date data as of yet) using in-process DuckDB database.</p>
+<p>Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the url-hosted parquet files using in-process DuckDB database.</p>
 <div class="section level3">
 <h3 id="hh-data">HH data<a class="anchor" aria-label="anchor" href="#hh-data"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span></span>
 <span><span class="va">hh</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: ??</span></span>
 <span><span class="co">#&gt; Columns: 76</span></span>
 <span><span class="co">#&gt; Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]</span></span>
-<span><span class="co">#&gt; $ RecordHeader            &lt;chr&gt; "﻿HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…</span></span>
+<span><span class="co">#&gt; $ RecordHeader            &lt;chr&gt; "HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH…</span></span>
 <span><span class="co">#&gt; $ Survey                  &lt;chr&gt; "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"…</span></span>
 <span><span class="co">#&gt; $ Quarter                 &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…</span></span>
 <span><span class="co">#&gt; $ Country                 &lt;chr&gt; "DK", "DK", "DK", "DK", "DK", "DK", "DK", "DK"…</span></span>
@@ -232,7 +241,7 @@
 <div class="section level3">
 <h3 id="hl-data">HL data<a class="anchor" aria-label="anchor" href="#hl-data"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span>, trim <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">hl</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: ??</span></span>
@@ -281,7 +290,7 @@
 <div class="section level3">
 <h3 id="ca-data">CA data<a class="anchor" aria-label="anchor" href="#ca-data"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"CA"</span>, trim <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">ca</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: ??</span></span>
@@ -333,7 +342,7 @@
 <h3 id="data-processing-using-a-connection">Data processing using a connection<a class="anchor" aria-label="anchor" href="#data-processing-using-a-connection"></a>
 </h3>
 <p>For those familiar with using dplyr-verbs to process data most of those function as well as many base-R functions can be used to process the data. E.g. one can get all survey stations in 2024 and add to that the number of cod observed using the following script:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">q</span> <span class="op">&lt;-</span></span>
 <span>    <span class="va">data</span> <span class="op">&lt;-</span></span>
@@ -350,18 +359,18 @@
 <span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_haul <span class="op">=</span> <span class="fu">coalesce</span><span class="op">(</span><span class="va">n_haul</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.093   0.010   0.220</span></span>
+<span><span class="co">#&gt;   0.170   0.017   0.707</span></span>
 <span><span class="va">q</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: ??</span></span>
 <span><span class="co">#&gt; Columns: 5</span></span>
 <span><span class="co">#&gt; Database: DuckDB 1.5.2 [root@Darwin 25.3.0:R 4.5.2/:memory:]</span></span>
-<span><span class="co">#&gt; $ .id    &lt;chr&gt; "BITS:2024:1:DK:26HF:TVS:104:53", "BITS:2024:1:DK:26HF:TVS:96:4…</span></span>
-<span><span class="co">#&gt; $ sur    &lt;chr&gt; "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BI…</span></span>
-<span><span class="co">#&gt; $ lon    &lt;dbl&gt; 10.8619, 10.8261, 10.7020, 15.3746, 12.4116, 10.1898, 13.4157, …</span></span>
-<span><span class="co">#&gt; $ lat    &lt;dbl&gt; 55.5271, 55.3924, 56.9433, 55.3554, 56.1340, 54.7324, 55.1882, …</span></span>
-<span><span class="co">#&gt; $ n_haul &lt;dbl&gt; 12.000, 4.000, 1.000, 321.000, 2937.020, 4.000, 883.050, 461.00…</span></span></code></pre></div>
+<span><span class="co">#&gt; $ .id    &lt;chr&gt; "IE-IGFS:2024:4:IE:45CE:GOV:21:51", "BITS:2024:1:DK:26D4:TVL:12…</span></span>
+<span><span class="co">#&gt; $ sur    &lt;chr&gt; "IE-IGFS-4", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", …</span></span>
+<span><span class="co">#&gt; $ lon    &lt;dbl&gt; -10.6780, 15.9564, 15.0580, 10.7238, 14.9828, 18.7384, 17.3782,…</span></span>
+<span><span class="co">#&gt; $ lat    &lt;dbl&gt; 54.1730, 55.2308, 54.7960, 57.1716, 55.3155, 55.8405, 55.3239, …</span></span>
+<span><span class="co">#&gt; $ n_haul &lt;dbl&gt; 1.000, 471.000, 888.000, 4.000, 308.000, 1.000, 1526.094, 1.000…</span></span></code></pre></div>
 <p>Here all the code steps are automatically translated to SQL and passed to the in-process DuckDB. We can view the sql via:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT ".id", sur, lon, lat, COALESCE(n_haul, 0.0) AS n_haul</span></span>
@@ -369,7 +378,7 @@
 <span><span class="co">#&gt;   SELECT LHS.*, n_haul</span></span>
 <span><span class="co">#&gt;   FROM (</span></span>
 <span><span class="co">#&gt;     SELECT ".id", sur, ShootLongitude AS lon, ShootLatitude AS lat</span></span>
-<span><span class="co">#&gt;     FROM vjipvsndtxylhfz</span></span>
+<span><span class="co">#&gt;     FROM waglewmaplozltr</span></span>
 <span><span class="co">#&gt;     WHERE ("Year" = 2024.0) AND ("Quarter" IN (1, 2, 3, 4))</span></span>
 <span><span class="co">#&gt;   ) LHS</span></span>
 <span><span class="co">#&gt;   LEFT JOIN (</span></span>
@@ -383,7 +392,7 @@
 <span><span class="co">#&gt;         DevelopmentStage,</span></span>
 <span><span class="co">#&gt;         n_haul,</span></span>
 <span><span class="co">#&gt;         n_hour</span></span>
-<span><span class="co">#&gt;       FROM cxvkqwwkeuruqcb</span></span>
+<span><span class="co">#&gt;       FROM rfyxxztnphsvphv</span></span>
 <span><span class="co">#&gt;       WHERE (latin = 'Gadus morhua')</span></span>
 <span><span class="co">#&gt;     ) q01</span></span>
 <span><span class="co">#&gt;     GROUP BY ".id"</span></span>
@@ -391,20 +400,20 @@
 <span><span class="co">#&gt;     ON (LHS.".id" = RHS.".id")</span></span>
 <span><span class="co">#&gt; ) q01</span></span></code></pre></div>
 <p>The data is not yet in R, it only at the “collect”-step that this happens:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">d</span> <span class="op">&lt;-</span> <span class="va">q</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.139   0.013   0.093</span></span>
+<span><span class="co">#&gt;   0.159   0.013   0.145</span></span>
 <span><span class="va">d</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: 4,185</span></span>
 <span><span class="co">#&gt; Columns: 5</span></span>
-<span><span class="co">#&gt; $ .id    &lt;chr&gt; "NS-IBTS:2024:3:SE:77SE:GOV:152:5", "NS-IBTS:2024:3:SE:77SE:GOV…</span></span>
-<span><span class="co">#&gt; $ sur    &lt;chr&gt; "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3", "NS-IBTS-3"…</span></span>
-<span><span class="co">#&gt; $ lon    &lt;dbl&gt; 9.9734, 11.9705, 1.4565, -1.5410, 12.2221, -2.1130, 9.7497, 0.0…</span></span>
-<span><span class="co">#&gt; $ lat    &lt;dbl&gt; 58.0567, 56.3460, 58.2492, 56.7660, 56.8238, 58.1880, 57.6615, …</span></span>
-<span><span class="co">#&gt; $ n_haul &lt;dbl&gt; 13.000, 3.000, 2.000, 6.000, 1.000, 2.000, 2.000, 3.000, 7.000,…</span></span></code></pre></div>
+<span><span class="co">#&gt; $ .id    &lt;chr&gt; "IE-IGFS:2024:4:IE:45CE:GOV:MB30:94", "BITS:2024:1:PL:67BC:TVL:…</span></span>
+<span><span class="co">#&gt; $ sur    &lt;chr&gt; "IE-IGFS-4", "BITS-1", "BITS-1", "BITS-1", "BITS-1", "BITS-1", …</span></span>
+<span><span class="co">#&gt; $ lon    &lt;dbl&gt; -7.6040, 15.5100, 15.5649, 17.9509, 12.9713, 12.1707, 12.9172, …</span></span>
+<span><span class="co">#&gt; $ lat    &lt;dbl&gt; 50.6100, 54.6250, 55.5222, 56.9964, 54.9090, 56.2664, 54.9043, …</span></span>
+<span><span class="co">#&gt; $ n_haul &lt;dbl&gt; 1.00000, 299.00000, 351.00000, 1.00000, 143.00000, 93.00000, 71…</span></span></code></pre></div>
 <p>More importantly, only the variables .id (unique station id), sur, lon, lat, latin, and n_haul are ever passed over the web. In addition only certain chunks of the parquet files (read: rows), those chunks that “fall within the range” of the filtered values are passed over the web.</p>
 </div>
 <div class="section level3">
@@ -414,10 +423,45 @@
 </div>
 </div>
 <div class="section level2">
+<h2 id="a-tidy-data-model">A tidy data-model<a class="anchor" aria-label="anchor" href="#a-tidy-data-model"></a>
+</h2>
+<p>The DATRAS exchange data are not really formatted for efficient downstream analysis, for the following reasons:</p>
+<ul>
+<li>The meaning of a value depends on information in another variable
+<ul>
+<li>Within the same table …</li>
+<li>In another table …</li>
+</ul>
+</li>
+<li>Station data (HH)
+<ul>
+<li>Some station table variables repeated in child tables</li>
+<li>Some variables in the station table that should actually be in child table(s)</li>
+</ul>
+</li>
+<li>Length data (HL)
+<ul>
+<li>The table is four separated tables from an analytical perspective:
+<ul>
+<li>station table variables</li>
+<li>bookkeeping of on-board sub-sampling process</li>
+<li>total catch, be it numbers or mass</li>
+<li>actual length measurements of individual fish</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>So when it comes to the DATRAS data we are a bit here:</p>
+<pre><code>Tidy datasets are all alike; every messy dataset is messy in its own way
+                                                          Hadley Wickham</code></pre>
+<p>The further upstream one clears up the table messy-ness, the better from an analytical perspective.</p>
+</div>
+<div class="section level2">
 <h2 id="small-print">Small print<a class="anchor" aria-label="anchor" href="#small-print"></a>
 </h2>
 <p>This stuff is in development, thus bugs, snags and errors are expected. {obus} still has some experimental hangover functions that need to be pruned or removed.</p>
-<p>Actually, as of now {obus} does not do very much, the initial focus has been on experimenting with fast access to DATRAS data. For all practical purposes one can totally live without it. Importing the full HH, HL and CA data into R can be achieved by (anticipated that ICES datacenter with maintain an official path):</p>
+<p>Actually, as of now {obus} does not do very much, the initial focus has been on experimenting with fast access to DATRAS data. For all practical purposes one can totally live without it. Importing the full HH, HL and CA data into R can be achieved by (anticipated that ICES datacenter may/will maintain an official path):</p>
 <div class="sourceCode" id="cb15"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>hh <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://heima.hafro.is/~einarhj/datras/raw/HH.parquet"</span>)</span>
 <span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>hl <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://heima.hafro.is/~einarhj/datras/raw/HL.parquet"</span>)</span>
 <span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>ca <span class="ot">&lt;-</span> arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://heima.hafro.is/~einarhj/datras/raw/CA.parquet"</span>)</span></code></pre></div>
@@ -439,7 +483,7 @@
 <span id="cb17-8"><a href="#cb17-8" tabindex="-1"></a><span class="co">#&gt;  collate  en_US.UTF-8</span></span>
 <span id="cb17-9"><a href="#cb17-9" tabindex="-1"></a><span class="co">#&gt;  ctype    en_US.UTF-8</span></span>
 <span id="cb17-10"><a href="#cb17-10" tabindex="-1"></a><span class="co">#&gt;  tz       Atlantic/Reykjavik</span></span>
-<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt;  date     2026-05-10</span></span>
+<span id="cb17-11"><a href="#cb17-11" tabindex="-1"></a><span class="co">#&gt;  date     2026-05-12</span></span>
 <span id="cb17-12"><a href="#cb17-12" tabindex="-1"></a><span class="co">#&gt;  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)</span></span>
 <span id="cb17-13"><a href="#cb17-13" tabindex="-1"></a><span class="co">#&gt;  quarto   1.8.26 @ /usr/local/bin/quarto</span></span>
 <span id="cb17-14"><a href="#cb17-14" tabindex="-1"></a><span class="co">#&gt; </span></span>
@@ -474,7 +518,7 @@
 <span id="cb17-43"><a href="#cb17-43" tabindex="-1"></a><span class="co">#&gt;  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb17-44"><a href="#cb17-44" tabindex="-1"></a><span class="co">#&gt;  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb17-45"><a href="#cb17-45" tabindex="-1"></a><span class="co">#&gt;  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb17-46"><a href="#cb17-46" tabindex="-1"></a><span class="co">#&gt;  obus        * 2026.01.30 2026-05-10 [1] local</span></span>
+<span id="cb17-46"><a href="#cb17-46" tabindex="-1"></a><span class="co">#&gt;  obus        * 2026.01.30 2026-05-12 [1] local</span></span>
 <span id="cb17-47"><a href="#cb17-47" tabindex="-1"></a><span class="co">#&gt;  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)</span></span>
 <span id="cb17-48"><a href="#cb17-48" tabindex="-1"></a><span class="co">#&gt;  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)</span></span>
 <span id="cb17-49"><a href="#cb17-49" tabindex="-1"></a><span class="co">#&gt;  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)</span></span>
@@ -496,7 +540,7 @@
 <span id="cb17-65"><a href="#cb17-65" tabindex="-1"></a><span class="co">#&gt;  xfun          0.57       2026-03-20 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb17-66"><a href="#cb17-66" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb17-67"><a href="#cb17-67" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb17-68"><a href="#cb17-68" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpyfugRB/temp_libpath3b5355d328c7</span></span>
+<span id="cb17-68"><a href="#cb17-68" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmpo9qQX5/temp_libpathe9a65a7d8554</span></span>
 <span id="cb17-69"><a href="#cb17-69" tabindex="-1"></a><span class="co">#&gt;  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library</span></span>
 <span id="cb17-70"><a href="#cb17-70" tabindex="-1"></a><span class="co">#&gt;  * ── Packages attached to the search path.</span></span>
 <span id="cb17-71"><a href="#cb17-71" tabindex="-1"></a><span class="co">#&gt; </span></span>
@@ -532,7 +576,6 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
-<li><a href="https://CRAN.R-project.org/package=imbus" class="external-link"><img src="https://www.r-pkg.org/badges/version/imbus" alt="CRAN status"></a></li>
 </ul>
 </div>
 

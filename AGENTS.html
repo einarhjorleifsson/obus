@@ -49,6 +49,9 @@
 </tr><tr><td><code>dr_lookup_species</code></td>
 <td>2000+</td>
 <td>Aphia ID ↔︎ latin + common name mapping. Source: worrms + HL/CA parquet. Regenerate via <code>data-raw/DATASET_species.R</code>.</td>
+</tr><tr><td><code>dr_lookup_vocabulary</code></td>
+<td>~10 300</td>
+<td>Valid codes for DATRAS categorical fields, sourced from the ICES vocabulary server. Columns: <code>old</code>, <code>new</code>, <code>key</code>, <code>description</code>, <code>type</code>, <code>type_desc</code>. Covers all <code>dr_lookup_fields</code> old-style names except Month/Quarter/Year. Regenerate via <code>data-raw/DATASET_vocabulary.R</code>.</td>
 </tr><tr><td><code>dr_coastline</code></td>
 <td>—</td>
 <td>Coastline geometry for DATRAS survey area. Source: rnaturalearth.</td>
@@ -214,6 +217,172 @@
 <hr></div>
 </div>
 <div class="section level2">
+<h2 id="product-functions-rdr_productsr">Product Functions (<code>R/dr_products.R</code>)<a class="anchor" aria-label="anchor" href="#product-functions-rdr_productsr"></a></h2>
+<p>Both functions accept raw HH and HL tables with <strong>old-style column names</strong> (as returned by <code><a href="reference/dr_get.html">dr_get()</a></code> or the raw parquets). They share the same filtering arguments and zero-fill convention.</p>
+<div class="section level3">
+<h3 id="shared-arguments">Shared arguments<a class="anchor" aria-label="anchor" href="#shared-arguments"></a></h3>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Argument</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr></thead><tbody><tr><td><code>hh</code></td>
+<td>—</td>
+<td>DATRAS HH table (old-style names)</td>
+</tr><tr><td><code>hl</code></td>
+<td>—</td>
+<td>DATRAS HL table (old-style names)</td>
+</tr><tr><td><code>haulval</code></td>
+<td><code>"V"</code></td>
+<td>
+<code>HaulVal</code> codes to retain (valid hauls)</td>
+</tr><tr><td><code>specval</code></td>
+<td><code>1L</code></td>
+<td>
+<code>SpecVal</code> codes to retain (standard species records)</td>
+</tr><tr><td><code>zerofill</code></td>
+<td><code>FALSE</code></td>
+<td>Add explicit zero rows for species absent from a haul but observed in the same Survey/Year/Quarter</td>
+</tr><tr><td><code>diag</code></td>
+<td><code>FALSE</code></td>
+<td>Return pre-aggregation table for QC/diagnostic inspection (both functions)</td>
+</tr></tbody></table></div>
+<div class="section level3">
+<h3 id="dr_cpue_by_lengthhh-hl-haulval-specval-zerofill-diag"><code>dr_cpue_by_length(hh, hl, haulval, specval, zerofill, diag)</code><a class="anchor" aria-label="anchor" href="#dr_cpue_by_lengthhh-hl-haulval-specval-zerofill-diag"></a></h3>
+<p>CPUE per length class per haul per species. One row per <code>.id</code> × <code>Valid_Aphia</code> × <code>length_mm</code>.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Output column</th>
+<th>Description</th>
+</tr></thead><tbody><tr><td><code>.id</code></td>
+<td>8-field haul key: <code>Survey:Year:Quarter:Country:Ship:Gear:StNo:HaulNo</code>
+</td>
+</tr><tr><td><code>.id2</code></td>
+<td>6-field key matching ICES CPUEL: <code>Survey:Year:Quarter:Ship:Gear:HaulNo</code>
+</td>
+</tr><tr><td>
+<code>Survey</code>, <code>Year</code>, <code>Quarter</code>
+</td>
+<td>Survey metadata</td>
+</tr><tr><td><code>Valid_Aphia</code></td>
+<td>Valid WoRMS AphiaID</td>
+</tr><tr><td><code>length_mm</code></td>
+<td>Length class in mm (converted from <code>LngtClass</code> via <code>LngtCode</code>)</td>
+</tr><tr><td><code>n_hour</code></td>
+<td>CPUE: numbers per hour, summed across <code>Sex</code> and <code>CatIdentifier</code>
+</td>
+</tr></tbody></table><ul><li>Zero-fill rows have <code>length_mm = NA</code>, <code>n_hour = 0</code>.</li>
+<li>
+<code>diag = TRUE</code> skips the Sex/CatIdentifier aggregation and returns per-row data with <code>Sex</code>, <code>CatIdentifier</code>, <code>HLNoAtLngt</code>, <code>SubFactor</code>, <code>DataType</code>, <code>HaulDur</code>, <code>n_haul</code>, <code>n_hour</code>. Useful for diagnosing duplicate rows or Sex-mixing.</li>
+<li>When <code>zerofill = TRUE</code> the aggregated CPUE is collected into memory; the function returns a data frame (not lazy).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="dr_cpue_by_haulhh-hl-haulval-specval-zerofill-diag"><code>dr_cpue_by_haul(hh, hl, haulval, specval, zerofill, diag)</code><a class="anchor" aria-label="anchor" href="#dr_cpue_by_haulhh-hl-haulval-specval-zerofill-diag"></a></h3>
+<p>Haul-level catch totals (numbers and weights). Operates directly on <code>TotalNo</code> and <code>CatCatchWgt</code> from HL — independent of <code>dr_cpue_by_length</code>. Deduplicates to one row per species/sex/CatIdentifier group (collapsing repeated length rows), applies DataType-aware scaling, then sums across <code>Sex</code> and <code>CatIdentifier</code>. One row per <code>.id</code> × <code>Valid_Aphia</code>.</p>
+<table class="table"><colgroup><col width="50%"><col width="50%"></colgroup><thead><tr><th>Output column</th>
+<th>Description</th>
+</tr></thead><tbody><tr><td>
+<code>.id</code>, <code>.id2</code>, <code>Survey</code>, <code>Year</code>, <code>Quarter</code>, <code>Valid_Aphia</code>
+</td>
+<td>Same as <code>dr_cpue_by_length</code>
+</td>
+</tr><tr><td><code>n_haul</code></td>
+<td>Total estimated numbers caught per haul (from <code>TotalNo</code>)</td>
+</tr><tr><td><code>n_hour</code></td>
+<td>Total numbers per hour of hauling</td>
+</tr><tr><td><code>w_haul</code></td>
+<td>Total catch weight per haul in grams (from <code>CatCatchWgt</code>)</td>
+</tr><tr><td><code>w_hour</code></td>
+<td>Total catch weight per hour of hauling in grams</td>
+</tr></tbody></table><ul><li>
+<code>w_haul</code>/<code>w_hour</code> are <code>NA</code> when <code>CatCatchWgt</code> was not recorded for all sex/category groups of a species in that haul.</li>
+<li>Zero-fill rows have all four metrics set to <code>0</code>.</li>
+<li>
+<code>diag = TRUE</code> skips aggregation and returns the deduplicated, scaled table at the species/sex/CatIdentifier level, retaining <code>DataType</code>, <code>HaulDur</code>, <code>TotalNo</code>, <code>CatCatchWgt</code>. Useful for spotting inconsistent <code>TotalNo</code> values or unexpected sex/category structure.</li>
+<li>
+<code>n_haul</code>/<code>n_hour</code> from this function may differ slightly from values derived by summing <code>dr_cpue_by_length</code> output, because <code>TotalNo</code> and <code>sum(HLNoAtLngt × SubFactor)</code> can diverge due to rounding in submitted data.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="common-pipeline">Common pipeline<a class="anchor" aria-label="anchor" href="#common-pipeline"></a></h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">hh</span> <span class="op">&lt;-</span> <span class="fu">duckdbfs</span><span class="fu">::</span><span class="fu"><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">open_dataset</a></span><span class="op">(</span><span class="st">"https://heima.hafro.is/~einarhj/datras/old/HH.parquet"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2023</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu">duckdbfs</span><span class="fu">::</span><span class="fu"><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">open_dataset</a></span><span class="op">(</span><span class="st">"https://heima.hafro.is/~einarhj/datras/old/HL.parquet"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2023</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Length-disaggregated CPUE</span></span>
+<span><span class="va">cpue</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_cpue_by_length.html">dr_cpue_by_length</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Same, with zero-fill</span></span>
+<span><span class="va">cpue_zf</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_cpue_by_length.html">dr_cpue_by_length</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span>, zerofill <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Haul-level totals with weights (no length breakdown)</span></span>
+<span><span class="va">catch</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_cpue_by_haul.html">dr_cpue_by_haul</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Diagnostic: inspect Sex / CatIdentifier structure for a species (dr_cpue_by_length)</span></span>
+<span><span class="fu"><a href="reference/dr_cpue_by_length.html">dr_cpue_by_length</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span>, diag <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Valid_Aphia</span> <span class="op">==</span> <span class="fl">126417</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Diagnostic: inspect TotalNo / CatCatchWgt structure (dr_cpue_by_haul)</span></span>
+<span><span class="fu"><a href="reference/dr_cpue_by_haul.html">dr_cpue_by_haul</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span>, diag <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Valid_Aphia</span> <span class="op">==</span> <span class="fl">126417</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="design-notes">Design notes<a class="anchor" aria-label="anchor" href="#design-notes"></a></h3>
+<ul><li>Both functions filter HH to <code>HaulVal %in% haulval</code> before joining, so invalid hauls are excluded from HL.</li>
+<li>
+<code>SpecVal %in% as.character(specval)</code> is applied to HL (the parquet stores <code>SpecVal</code> as character).</li>
+<li>Sex is always aggregated away in the standard output. <code>diag = TRUE</code> exposes the Sex/CatIdentifier breakdown for QC.</li>
+<li>The <code>.id2</code> field (6-field key lacking Country and StNo) exists solely for comparison with the ICES CPUEL product, which omits those fields. Use <code>.id</code> for all joining within obus.</li>
+<li>
+<code>dr_cpue_by_length</code> derives counts from <code>HLNoAtLngt × SubFactor</code>; <code>dr_cpue_by_haul</code> uses <code>TotalNo</code> directly. These should be equal for well-formed data but can diverge slightly due to rounding in submitted records.</li>
+</ul><hr></div>
+</div>
+<div class="section level2">
+<h2 id="quality-control-functions-rdr_checkr">Quality Control Functions (<code>R/dr_check.R</code>)<a class="anchor" aria-label="anchor" href="#quality-control-functions-rdr_checkr"></a></h2>
+<p>All <code>dr_check_*</code> functions accept a collected data frame or a <code>tbl_duckdb_connection</code> (collected internally where needed). They <strong>never throw on failure</strong> — they report results in a standard one-row tibble:</p>
+<table class="table"><thead><tr><th>Column</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead><tbody><tr><td><code>check</code></td>
+<td>chr</td>
+<td>Name of the check</td>
+</tr><tr><td><code>table</code></td>
+<td>chr</td>
+<td>Which DATRAS table was inspected</td>
+</tr><tr><td><code>n_fail</code></td>
+<td>int</td>
+<td>Number of failing rows / groups</td>
+</tr><tr><td><code>n_total</code></td>
+<td>int</td>
+<td>Total rows / groups evaluated</td>
+</tr><tr><td><code>pct_fail</code></td>
+<td>dbl</td>
+<td>Percentage failing</td>
+</tr><tr><td><code>detail</code></td>
+<td>chr</td>
+<td>Human-readable failure breakdown</td>
+</tr></tbody></table><p><strong>Column name defaults follow old-style names</strong> (as returned by <code><a href="reference/dr_con_raw.html">dr_con_raw()</a></code> / <code><a href="reference/dr_get.html">dr_get()</a></code>). Pass new-style names explicitly when working on translated tables.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr><th>Function</th>
+<th>Table</th>
+<th>What it checks</th>
+</tr></thead><tbody><tr><td><code>dr_check_sentinels(d, table_label)</code></td>
+<td>any</td>
+<td>Numeric/integer columns for surviving <code>-9</code> sentinel values (should have been replaced with <code>NA</code> on fetch)</td>
+</tr><tr><td><code>dr_check_subfactor(hl, DataType, SubFactor)</code></td>
+<td>HL</td>
+<td>
+<code>SubFactor</code> constraints: R → ≥ 1, S → &gt; 1, C → == 1. NA SubFactor always fails.</td>
+</tr><tr><td><code>dr_check_totalno(hl, DataType, TotalNo, SubFactor, HLNoAtLngt, Species, Sex, CatIdentifier, tol)</code></td>
+<td>HL</td>
+<td>Per-group arithmetic: R/S → <code>TotalNo ≈ sum(HLNoAtLngt) × SubFactor</code>; C → <code>TotalNo ≈ sum(HLNoAtLngt)</code>. Tolerance <code>tol = 0.5</code> fish. Skips groups where any key field is NA. Only evaluates groups with at least one non-NA <code>HLNoAtLngt</code> (excludes counted-but-not-measured records).</td>
+</tr><tr><td><code>dr_check_all(hh, hl, ca, ...)</code></td>
+<td>HH/HL/CA</td>
+<td>Convenience wrapper: runs sentinel checks on each supplied table, plus subfactor and totalno on HL. Returns all results bound into one tibble.</td>
+</tr></tbody></table><div class="section level3">
+<h3 id="known-qc-baseline-ns-ibts-2024-q1">Known QC baseline (NS-IBTS 2024 Q1)<a class="anchor" aria-label="anchor" href="#known-qc-baseline-ns-ibts-2024-q1"></a></h3>
+<p>From testing on NS-IBTS 2024 Q1 (~14k HH rows, ~667k HL rows): - <strong>Sentinels:</strong> 0 failures in both HH and HL — fetchers are cleaning <code>-9</code> correctly. - <strong>SubFactor:</strong> ~6 failures (0.015%) — all <code>SubFactor = NA</code> under DataType R (Norwegian and Dutch vessels). These produce <code>NA</code> in <code>n_haul</code> downstream. - <strong>TotalNo:</strong> ~72 failures (1.1%) — all DataType C records; diffs of 1–20 fish; consistent with CPUE-to-count back-conversion rounding in ICES submissions. Expected.</p>
+<hr></div>
+</div>
+<div class="section level2">
 <h2 id="internal-architecture-rdr_getr">Internal Architecture (<code>R/dr_get.R</code>)<a class="anchor" aria-label="anchor" href="#internal-architecture-rdr_getr"></a></h2>
 <div class="section level3">
 <h3 id="dr_settypesd-name_col-recordheader"><code>.dr_settypes(d, name_col, recordheader)</code><a class="anchor" aria-label="anchor" href="#dr_settypesd-name_col-recordheader"></a></h3>
@@ -271,11 +440,132 @@
 <p>Columns: <code>table</code> (record type), <code>new</code> (new-style column name from <code>get_datras_unaggregated_data</code>), <code>old</code> (old-style column name from <code>getDATRAS</code> and derived products), <code>format</code> (“chr”/“int”/“dbl”), <code>description</code>.</p>
 <p>The <code>new</code> column is filled in for derived tables (CPUEL, CPUEA, IDX) by matching their <code>old</code> names against the HH/HL/CA source mapping. Columns with no HH/HL/CA counterpart (e.g. <code>AphiaID</code>, <code>Species</code>, <code>ShootLon</code>, <code>LngtClas</code>, <code>DateTime</code>, <code>CPUE_number_per_hour</code>) remain <code>NA</code> in <code>new</code>.</p>
 <p>To regenerate after editing type specs or when the ICES field list changes:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"data-raw/DATASET_lookup_fields.R"</span><span class="op">)</span></span></code></pre></div>
 <p>The script fetches from the ICES web service, applies <code>case_when</code> fixes for known type ambiguities, appends hand-curated entries for FL, LT, CPUEL, CPUEA, and IDX, then fills missing <code>new</code> values from the HH/HL/CA source mapping. Type priority rule: <strong>chr &gt; dbl &gt; int</strong>.</p>
 <p>Key type fixes applied in <code>case_when</code> (using <code>old</code> names): - <code>HaulNumber</code> → <code>int</code> - <code>Distance</code> → <code>dbl</code> - <code>StationName</code> → <code>chr</code> - <code>CANoAtLngt</code> → <code>dbl</code> (consistent with <code>HLNoAtLngt</code>)</p>
 <hr></div>
+<div class="section level2">
+<h2 id="datras-domain-knowledge-relevant-to-code-flow">DATRAS Domain Knowledge (relevant to code flow)<a class="anchor" aria-label="anchor" href="#datras-domain-knowledge-relevant-to-code-flow"></a></h2>
+<blockquote>
+<p>Full field/unit reference: <code>docs_external/DATRAS_field_reference.md</code></p>
+</blockquote>
+<div class="section level3">
+<h3 id="haul-join-key">Haul join key<a class="anchor" aria-label="anchor" href="#haul-join-key"></a></h3>
+<p>HH/HL/CA records share their first 11 fields. The meaningful join subset is: <strong>Survey · Year · Quarter · Country · Ship · Gear · StNo · HaulNo</strong> <code><a href="reference/dr_add_id.html">dr_add_id()</a></code> constructs <code>.id</code> from exactly these fields (new-style names).</p>
+</div>
+<div class="section level3">
+<h3 id="datatype-hh-field--governs-hl-arithmetic">DataType (HH field — governs HL arithmetic)<a class="anchor" aria-label="anchor" href="#datatype-hh-field--governs-hl-arithmetic"></a></h3>
+<table style="width:100%;" class="table"><colgroup><col width="23%"><col width="21%"><col width="26%"><col width="28%"></colgroup><thead><tr><th>DataType</th>
+<th>Meaning</th>
+<th>SubFactor</th>
+<th>HLNoAtLngt</th>
+</tr></thead><tbody><tr><td><code>R</code></td>
+<td>Raw/sorted; some species sub-sampled</td>
+<td>≥ 1</td>
+<td>count in sub-sample</td>
+</tr><tr><td><code>S</code></td>
+<td>Unsorted bulk sub-sampled</td>
+<td>&gt; 1</td>
+<td>count in sub-sample</td>
+</tr><tr><td><code>C</code></td>
+<td>Already raised to 1 hr haul</td>
+<td>1</td>
+<td>
+<strong>CPUE (count per hour)</strong> — not a raw count</td>
+</tr><tr><td><code>P</code></td>
+<td>Size-stratified (pseudocategory); sorted catch split into size strata, each with its own CatIdentifier and SubFactor</td>
+<td>≥ 1 per stratum</td>
+<td>count in sub-sample for that stratum</td>
+</tr></tbody></table><p><code><a href="reference/dr_add_n_and_cpue.html">dr_add_n_and_cpue()</a></code> formulas: - R/S/P: <code>n_haul = HLNoAtLngt × SubFactor</code>; <code>n_hour = n_haul / HaulDur × 60</code> - C: <code>n_haul = HLNoAtLngt × SubFactor × HaulDur / 60</code> (back-convert CPUE → per-haul count); <code>n_hour = HLNoAtLngt × SubFactor</code></p>
+</div>
+<div class="section level3">
+<h3 id="lngtclass-units-depend-on-lngtcode">LngtClass units depend on LngtCode<a class="anchor" aria-label="anchor" href="#lngtclass-units-depend-on-lngtcode"></a></h3>
+<table class="table"><thead><tr><th>LngtCode</th>
+<th>Unit of LngtClass</th>
+</tr></thead><tbody><tr><td>
+<code>"."</code> or <code>"0"</code>
+</td>
+<td>mm (divide by 10 → cm)</td>
+</tr><tr><td>
+<code>"1"</code>, <code>"2"</code>, <code>"5"</code>
+</td>
+<td>cm (use as-is)</td>
+</tr></tbody></table><p><code><a href="reference/dr_add_length_cm.html">dr_add_length_cm()</a></code> and <code><a href="reference/dr_add_length_mm.html">dr_add_length_mm()</a></code> encode this rule.</p>
+</div>
+<div class="section level3">
+<h3 id="species-codes-across-eras">Species codes across eras<a class="anchor" aria-label="anchor" href="#species-codes-across-eras"></a></h3>
+<table class="table"><thead><tr><th><code>SpecCodeType</code></th>
+<th>Scheme</th>
+<th>Era</th>
+</tr></thead><tbody><tr><td><code>W</code></td>
+<td>WoRMS AphiaID (current)</td>
+<td>Post ~2010</td>
+</tr><tr><td><code>T</code></td>
+<td>ITIS TSN</td>
+<td>Historical</td>
+</tr><tr><td><code>N</code></td>
+<td>NODC</td>
+<td>Historical</td>
+</tr></tbody></table><p>All codes mapped to <code>ValidAphiaID</code> (WoRMS) in HL/CA for cross-era joins. Use <code>ValidAphiaID</code> (new-style: <code>AphiaID</code>) rather than <code>SpecCode</code> when joining across years.</p>
+</div>
+<div class="section level3">
+<h3 id="specval--species-validity">SpecVal — species validity<a class="anchor" aria-label="anchor" href="#specval--species-validity"></a></h3>
+<p>Only <code>SpecVal = 1</code> records are used for DATRAS derived products (CPUE, indices). Other codes indicate calibration hauls, partial sampling, etc. Raw HL/CA includes all SpecVal values. Filter to <code>SpecVal == 1</code> when replicating official product calculations.</p>
+</div>
+<div class="section level3">
+<h3 id="cpue-zeroes-in-derived-products">CPUE zeroes in derived products<a class="anchor" aria-label="anchor" href="#cpue-zeroes-in-derived-products"></a></h3>
+<p>A CPUE zero means the species was <strong>absent</strong> from that haul but was observed by at least one country in the same survey/year/quarter. The zero-record is inserted automatically by ICES. Distinct from <code>NA</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="age-plus-groups">Age plus groups<a class="anchor" aria-label="anchor" href="#age-plus-groups"></a></h3>
+<p>Age-based products cap at a survey/species-specific plus group set by the responsible expert group.</p>
+<table class="table"><thead><tr><th>Survey</th>
+<th>Plus group for standard spp.</th>
+</tr></thead><tbody><tr><td>NS-IBTS</td>
+<td>Age_6 (all fish 6+ → Age_6)</td>
+</tr><tr><td>Others</td>
+<td>Up to Age_10 (CPUEA/IDX) or Age_15 (IDX)</td>
+</tr></tbody></table></div>
+<div class="section level3">
+<h3 id="daynight">Day/Night<a class="anchor" aria-label="anchor" href="#daynight"></a></h3>
+<p>Daytime = 15 min before sunrise → 15 min after sunset. NOAA solar calculator used for shoot position + date.</p>
+</div>
+<div class="section level3">
+<h3 id="weights-and-distances--key-units">Weights and distances — key units<a class="anchor" aria-label="anchor" href="#weights-and-distances--key-units"></a></h3>
+<table class="table"><thead><tr><th>Field (old)</th>
+<th>Unit</th>
+</tr></thead><tbody><tr><td>
+<code>SubWgt</code>, <code>CatCatchWgt</code>, <code>IndWgt</code>
+</td>
+<td><strong>Grams</strong></td>
+</tr><tr><td>
+<code>Depth</code>, <code>Distance</code>, <code>WingSpread</code>, <code>DoorSpread</code>, <code>Warplngt</code>
+</td>
+<td>Metres</td>
+</tr><tr><td><code>HaulDur</code></td>
+<td>Minutes</td>
+</tr><tr><td>
+<code>GroundSpeed</code>, <code>SpeedWater</code>
+</td>
+<td>Knots</td>
+</tr><tr><td>
+<code>SurTemp</code>, <code>BotTemp</code>
+</td>
+<td>Celsius</td>
+</tr><tr><td>
+<code>SurSal</code>, <code>BotSal</code>
+</td>
+<td>PSU</td>
+</tr><tr><td><code>TimeShot</code></td>
+<td>hhmm (GMT) — parsed by <code><a href="reference/dr_add_starttime.html">dr_add_starttime()</a></code>
+</td>
+</tr><tr><td>
+<code>ShootLat/Long</code>, <code>HaulLat/Long</code>
+</td>
+<td>Degree.Decimal Degree</td>
+</tr></tbody></table><hr></div>
+</div>
 <div class="section level2">
 <h2 id="known-issues--gotchas">Known Issues / Gotchas<a class="anchor" aria-label="anchor" href="#known-issues--gotchas"></a></h2>
 <ul><li>
@@ -297,7 +587,7 @@
 </ul><hr></div>
 <div class="section level2">
 <h2 id="typical-workflow">Typical Workflow<a class="anchor" aria-label="anchor" href="#typical-workflow"></a></h2>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://einarhjorleifsson.github.io/obus/" class="external-link">obus</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Full parquet download</span></span>
@@ -344,7 +634,16 @@
 <span><span class="co"># Lazy DuckDB query on tidy parquet</span></span>
 <span><span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">&gt;=</span> <span class="fl">2020</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># QC checks on raw exchange data</span></span>
+<span><span class="va">hh_raw</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con_raw.html">dr_con_raw</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2024</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">hl_raw</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con_raw.html">dr_con_raw</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2024</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Join DataType from HH into HL before running HL-level checks</span></span>
+<span><span class="va">hl_raw</span> <span class="op">&lt;-</span> <span class="va">hl_raw</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hh_raw</span>, <span class="va">Survey</span>, <span class="va">Year</span>, <span class="va">Quarter</span>, <span class="va">Ship</span>, <span class="va">Gear</span>, <span class="va">StNo</span>, <span class="va">HaulNo</span>, <span class="va">DataType</span><span class="op">)</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Survey"</span>, <span class="st">"Year"</span>, <span class="st">"Quarter"</span>, <span class="st">"Ship"</span>, <span class="st">"Gear"</span>, <span class="st">"StNo"</span>, <span class="st">"HaulNo"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/dr_check_all.html">dr_check_all</a></span><span class="op">(</span>hh <span class="op">=</span> <span class="va">hh_raw</span>, hl <span class="op">=</span> <span class="va">hl_raw</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 

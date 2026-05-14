@@ -23,6 +23,7 @@ devtools::load_all("/Users/einarhj/R/Pakkar/obus")
 |----|----|----|
 | `dr_lookup_fields` | ~292 | Type lookup table: `table`, `new`, `old`, `format`, `description`. Used internally by `.dr_settypes()`. Regenerate by sourcing `data-raw/DATASET_lookup_fields.R`. |
 | `dr_lookup_species` | 2000+ | Aphia ID ↔︎ latin + common name mapping. Source: worrms + HL/CA parquet. Regenerate via `data-raw/DATASET_species.R`. |
+| `dr_lookup_vocabulary` | ~10 300 | Valid codes for DATRAS categorical fields, sourced from the ICES vocabulary server. Columns: `old`, `new`, `key`, `description`, `type`, `type_desc`. Covers all `dr_lookup_fields` old-style names except Month/Quarter/Year. Regenerate via `data-raw/DATASET_vocabulary.R`. |
 | `dr_coastline` | — | Coastline geometry for DATRAS survey area. Source: rnaturalearth. |
 
 **Git LFS tracks `data/*.rda`** via `.gitattributes` — after
@@ -145,6 +146,162 @@ For reliable new→old translation, filter the dictionary to a specific
 
 ------------------------------------------------------------------------
 
+## Product Functions (`R/dr_products.R`)
+
+Both functions accept raw HH and HL tables with **old-style column
+names** (as returned by [`dr_get()`](reference/dr_get.md) or the raw
+parquets). They share the same filtering arguments and zero-fill
+convention.
+
+### Shared arguments
+
+| Argument | Default | Meaning |
+|----|----|----|
+| `hh` | — | DATRAS HH table (old-style names) |
+| `hl` | — | DATRAS HL table (old-style names) |
+| `haulval` | `"V"` | `HaulVal` codes to retain (valid hauls) |
+| `specval` | `1L` | `SpecVal` codes to retain (standard species records) |
+| `zerofill` | `FALSE` | Add explicit zero rows for species absent from a haul but observed in the same Survey/Year/Quarter |
+| `diag` | `FALSE` | Return pre-aggregation table for QC/diagnostic inspection (both functions) |
+
+### `dr_cpue_by_length(hh, hl, haulval, specval, zerofill, diag)`
+
+CPUE per length class per haul per species. One row per `.id` ×
+`Valid_Aphia` × `length_mm`.
+
+| Output column | Description |
+|----|----|
+| `.id` | 8-field haul key: `Survey:Year:Quarter:Country:Ship:Gear:StNo:HaulNo` |
+| `.id2` | 6-field key matching ICES CPUEL: `Survey:Year:Quarter:Ship:Gear:HaulNo` |
+| `Survey`, `Year`, `Quarter` | Survey metadata |
+| `Valid_Aphia` | Valid WoRMS AphiaID |
+| `length_mm` | Length class in mm (converted from `LngtClass` via `LngtCode`) |
+| `n_hour` | CPUE: numbers per hour, summed across `Sex` and `CatIdentifier` |
+
+- Zero-fill rows have `length_mm = NA`, `n_hour = 0`.
+- `diag = TRUE` skips the Sex/CatIdentifier aggregation and returns
+  per-row data with `Sex`, `CatIdentifier`, `HLNoAtLngt`, `SubFactor`,
+  `DataType`, `HaulDur`, `n_haul`, `n_hour`. Useful for diagnosing
+  duplicate rows or Sex-mixing.
+- When `zerofill = TRUE` the aggregated CPUE is collected into memory;
+  the function returns a data frame (not lazy).
+
+### `dr_cpue_by_haul(hh, hl, haulval, specval, zerofill, diag)`
+
+Haul-level catch totals (numbers and weights). Operates directly on
+`TotalNo` and `CatCatchWgt` from HL — independent of
+`dr_cpue_by_length`. Deduplicates to one row per
+species/sex/CatIdentifier group (collapsing repeated length rows),
+applies DataType-aware scaling, then sums across `Sex` and
+`CatIdentifier`. One row per `.id` × `Valid_Aphia`.
+
+| Output column | Description |
+|----|----|
+| `.id`, `.id2`, `Survey`, `Year`, `Quarter`, `Valid_Aphia` | Same as `dr_cpue_by_length` |
+| `n_haul` | Total estimated numbers caught per haul (from `TotalNo`) |
+| `n_hour` | Total numbers per hour of hauling |
+| `w_haul` | Total catch weight per haul in grams (from `CatCatchWgt`) |
+| `w_hour` | Total catch weight per hour of hauling in grams |
+
+- `w_haul`/`w_hour` are `NA` when `CatCatchWgt` was not recorded for all
+  sex/category groups of a species in that haul.
+- Zero-fill rows have all four metrics set to `0`.
+- `diag = TRUE` skips aggregation and returns the deduplicated, scaled
+  table at the species/sex/CatIdentifier level, retaining `DataType`,
+  `HaulDur`, `TotalNo`, `CatCatchWgt`. Useful for spotting inconsistent
+  `TotalNo` values or unexpected sex/category structure.
+- `n_haul`/`n_hour` from this function may differ slightly from values
+  derived by summing `dr_cpue_by_length` output, because `TotalNo` and
+  `sum(HLNoAtLngt × SubFactor)` can diverge due to rounding in submitted
+  data.
+
+### Common pipeline
+
+``` r
+
+hh <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/old/HH.parquet") |>
+  dplyr::filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1)
+hl <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/old/HL.parquet") |>
+  dplyr::filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1)
+
+# Length-disaggregated CPUE
+cpue <- dr_cpue_by_length(hh, hl)
+
+# Same, with zero-fill
+cpue_zf <- dr_cpue_by_length(hh, hl, zerofill = TRUE)
+
+# Haul-level totals with weights (no length breakdown)
+catch <- dr_cpue_by_haul(hh, hl)
+
+# Diagnostic: inspect Sex / CatIdentifier structure for a species (dr_cpue_by_length)
+dr_cpue_by_length(hh, hl, diag = TRUE) |>
+  dplyr::filter(Valid_Aphia == 126417) |>
+  dplyr::collect()
+
+# Diagnostic: inspect TotalNo / CatCatchWgt structure (dr_cpue_by_haul)
+dr_cpue_by_haul(hh, hl, diag = TRUE) |>
+  dplyr::filter(Valid_Aphia == 126417) |>
+  dplyr::collect()
+```
+
+### Design notes
+
+- Both functions filter HH to `HaulVal %in% haulval` before joining, so
+  invalid hauls are excluded from HL.
+- `SpecVal %in% as.character(specval)` is applied to HL (the parquet
+  stores `SpecVal` as character).
+- Sex is always aggregated away in the standard output. `diag = TRUE`
+  exposes the Sex/CatIdentifier breakdown for QC.
+- The `.id2` field (6-field key lacking Country and StNo) exists solely
+  for comparison with the ICES CPUEL product, which omits those fields.
+  Use `.id` for all joining within obus.
+- `dr_cpue_by_length` derives counts from `HLNoAtLngt × SubFactor`;
+  `dr_cpue_by_haul` uses `TotalNo` directly. These should be equal for
+  well-formed data but can diverge slightly due to rounding in submitted
+  records.
+
+------------------------------------------------------------------------
+
+## Quality Control Functions (`R/dr_check.R`)
+
+All `dr_check_*` functions accept a collected data frame or a
+`tbl_duckdb_connection` (collected internally where needed). They
+**never throw on failure** — they report results in a standard one-row
+tibble:
+
+| Column     | Type | Description                      |
+|------------|------|----------------------------------|
+| `check`    | chr  | Name of the check                |
+| `table`    | chr  | Which DATRAS table was inspected |
+| `n_fail`   | int  | Number of failing rows / groups  |
+| `n_total`  | int  | Total rows / groups evaluated    |
+| `pct_fail` | dbl  | Percentage failing               |
+| `detail`   | chr  | Human-readable failure breakdown |
+
+**Column name defaults follow old-style names** (as returned by
+[`dr_con_raw()`](reference/dr_con_raw.md) /
+[`dr_get()`](reference/dr_get.md)). Pass new-style names explicitly when
+working on translated tables.
+
+| Function | Table | What it checks |
+|----|----|----|
+| `dr_check_sentinels(d, table_label)` | any | Numeric/integer columns for surviving `-9` sentinel values (should have been replaced with `NA` on fetch) |
+| `dr_check_subfactor(hl, DataType, SubFactor)` | HL | `SubFactor` constraints: R → ≥ 1, S → \> 1, C → == 1. NA SubFactor always fails. |
+| `dr_check_totalno(hl, DataType, TotalNo, SubFactor, HLNoAtLngt, Species, Sex, CatIdentifier, tol)` | HL | Per-group arithmetic: R/S → `TotalNo ≈ sum(HLNoAtLngt) × SubFactor`; C → `TotalNo ≈ sum(HLNoAtLngt)`. Tolerance `tol = 0.5` fish. Skips groups where any key field is NA. Only evaluates groups with at least one non-NA `HLNoAtLngt` (excludes counted-but-not-measured records). |
+| `dr_check_all(hh, hl, ca, ...)` | HH/HL/CA | Convenience wrapper: runs sentinel checks on each supplied table, plus subfactor and totalno on HL. Returns all results bound into one tibble. |
+
+### Known QC baseline (NS-IBTS 2024 Q1)
+
+From testing on NS-IBTS 2024 Q1 (~14k HH rows, ~667k HL rows): -
+**Sentinels:** 0 failures in both HH and HL — fetchers are cleaning `-9`
+correctly. - **SubFactor:** ~6 failures (0.015%) — all `SubFactor = NA`
+under DataType R (Norwegian and Dutch vessels). These produce `NA` in
+`n_haul` downstream. - **TotalNo:** ~72 failures (1.1%) — all DataType C
+records; diffs of 1–20 fish; consistent with CPUE-to-count
+back-conversion rounding in ICES submissions. Expected.
+
+------------------------------------------------------------------------
+
 ## Internal Architecture (`R/dr_get.R`)
 
 ### `.dr_settypes(d, name_col, recordheader)`
@@ -206,6 +363,97 @@ source mapping. Type priority rule: **chr \> dbl \> int**.
 Key type fixes applied in `case_when` (using `old` names): -
 `HaulNumber` → `int` - `Distance` → `dbl` - `StationName` → `chr` -
 `CANoAtLngt` → `dbl` (consistent with `HLNoAtLngt`)
+
+------------------------------------------------------------------------
+
+## DATRAS Domain Knowledge (relevant to code flow)
+
+> Full field/unit reference: `docs_external/DATRAS_field_reference.md`
+
+### Haul join key
+
+HH/HL/CA records share their first 11 fields. The meaningful join subset
+is: **Survey · Year · Quarter · Country · Ship · Gear · StNo · HaulNo**
+[`dr_add_id()`](reference/dr_add_id.md) constructs `.id` from exactly
+these fields (new-style names).
+
+### DataType (HH field — governs HL arithmetic)
+
+| DataType | Meaning | SubFactor | HLNoAtLngt |
+|----|----|----|----|
+| `R` | Raw/sorted; some species sub-sampled | ≥ 1 | count in sub-sample |
+| `S` | Unsorted bulk sub-sampled | \> 1 | count in sub-sample |
+| `C` | Already raised to 1 hr haul | 1 | **CPUE (count per hour)** — not a raw count |
+| `P` | Size-stratified (pseudocategory); sorted catch split into size strata, each with its own CatIdentifier and SubFactor | ≥ 1 per stratum | count in sub-sample for that stratum |
+
+[`dr_add_n_and_cpue()`](reference/dr_add_n_and_cpue.md) formulas: -
+R/S/P: `n_haul = HLNoAtLngt × SubFactor`;
+`n_hour = n_haul / HaulDur × 60` - C:
+`n_haul = HLNoAtLngt × SubFactor × HaulDur / 60` (back-convert CPUE →
+per-haul count); `n_hour = HLNoAtLngt × SubFactor`
+
+### LngtClass units depend on LngtCode
+
+| LngtCode            | Unit of LngtClass      |
+|---------------------|------------------------|
+| `"."` or `"0"`      | mm (divide by 10 → cm) |
+| `"1"`, `"2"`, `"5"` | cm (use as-is)         |
+
+[`dr_add_length_cm()`](reference/dr_add_length_cm.md) and
+[`dr_add_length_mm()`](reference/dr_add_length_mm.md) encode this rule.
+
+### Species codes across eras
+
+| `SpecCodeType` | Scheme                  | Era        |
+|----------------|-------------------------|------------|
+| `W`            | WoRMS AphiaID (current) | Post ~2010 |
+| `T`            | ITIS TSN                | Historical |
+| `N`            | NODC                    | Historical |
+
+All codes mapped to `ValidAphiaID` (WoRMS) in HL/CA for cross-era joins.
+Use `ValidAphiaID` (new-style: `AphiaID`) rather than `SpecCode` when
+joining across years.
+
+### SpecVal — species validity
+
+Only `SpecVal = 1` records are used for DATRAS derived products (CPUE,
+indices). Other codes indicate calibration hauls, partial sampling, etc.
+Raw HL/CA includes all SpecVal values. Filter to `SpecVal == 1` when
+replicating official product calculations.
+
+### CPUE zeroes in derived products
+
+A CPUE zero means the species was **absent** from that haul but was
+observed by at least one country in the same survey/year/quarter. The
+zero-record is inserted automatically by ICES. Distinct from `NA`.
+
+### Age plus groups
+
+Age-based products cap at a survey/species-specific plus group set by
+the responsible expert group.
+
+| Survey  | Plus group for standard spp.             |
+|---------|------------------------------------------|
+| NS-IBTS | Age_6 (all fish 6+ → Age_6)              |
+| Others  | Up to Age_10 (CPUEA/IDX) or Age_15 (IDX) |
+
+### Day/Night
+
+Daytime = 15 min before sunrise → 15 min after sunset. NOAA solar
+calculator used for shoot position + date.
+
+### Weights and distances — key units
+
+| Field (old) | Unit |
+|----|----|
+| `SubWgt`, `CatCatchWgt`, `IndWgt` | **Grams** |
+| `Depth`, `Distance`, `WingSpread`, `DoorSpread`, `Warplngt` | Metres |
+| `HaulDur` | Minutes |
+| `GroundSpeed`, `SpeedWater` | Knots |
+| `SurTemp`, `BotTemp` | Celsius |
+| `SurSal`, `BotSal` | PSU |
+| `TimeShot` | hhmm (GMT) — parsed by [`dr_add_starttime()`](reference/dr_add_starttime.md) |
+| `ShootLat/Long`, `HaulLat/Long` | Degree.Decimal Degree |
 
 ------------------------------------------------------------------------
 
@@ -292,4 +540,13 @@ dr_con_raw("HH") |> dr_translate(dictionary, from = "old", to = "new")
 dr_con("HL") |>
   dplyr::filter(Survey == "NS-IBTS", Year >= 2020) |>
   dplyr::collect()
+
+# QC checks on raw exchange data
+hh_raw <- dr_con_raw("HH") |> dplyr::filter(Survey == "NS-IBTS", Year == 2024, Quarter == 1) |> dplyr::collect()
+hl_raw <- dr_con_raw("HL") |> dplyr::filter(Survey == "NS-IBTS", Year == 2024, Quarter == 1) |> dplyr::collect()
+
+# Join DataType from HH into HL before running HL-level checks
+hl_raw <- hl_raw |> dplyr::left_join(dplyr::select(hh_raw, Survey, Year, Quarter, Ship, Gear, StNo, HaulNo, DataType), by = c("Survey", "Year", "Quarter", "Ship", "Gear", "StNo", "HaulNo"))
+
+dr_check_all(hh = hh_raw, hl = hl_raw)
 ```

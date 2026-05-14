@@ -1,15 +1,14 @@
 # Generate a unique haul id
 
-This function generates a haul ID by concatenating fields in the DATRAS
-tables. The generated ID is stored in a new variable `.id`. The input
-must contain the columns:
-`Survey, Year, Quarter, Country, Platform, Gear, StationName, HaulNumber`.
-If any of these columns are missing, an error will be raised.
+Generates a haul ID by concatenating the eight join-key fields and
+stores it in a new column `.id`. Works with both new-style column names
+(`Platform`, `StationName`, `HaulNumber`) and old-style names (`Ship`,
+`StNo`, `HaulNo`).
 
 ## Usage
 
 ``` r
-dr_add_id(d, base = "new")
+dr_add_id(d, base = "auto")
 ```
 
 ## Arguments
@@ -20,7 +19,10 @@ dr_add_id(d, base = "new")
 
 - base:
 
-  Vector, either "new" (default) or "old"
+  One of `"auto"` (default), `"new"`, or `"old"`. `"auto"` inspects
+  column names and chooses based on which style is present: `Ship` -\>
+  old, `Platform` -\> new. An error is raised if neither or both are
+  found.
 
 ## Value
 
@@ -29,20 +31,25 @@ A table (`d`) with an additional variable `.id`
 ## Examples
 
 ``` r
-# Example with a simulated DATRAS table
-example_data <- data.frame(
-  Survey = "Surv1",
-  Year = 2026,
-  Quarter = 1,
-  Country = "Country1",
-  Platform = "Platform1",
-  Gear = "Gear1",
-  StationName = "StationA",
-  HaulNumber = 123
+# New-style column names
+example_new <- data.frame(
+  Survey = "Surv1", Year = 2026, Quarter = 1, Country = "Country1",
+  Platform = "Vessel1", Gear = "GOV", StationName = "1", HaulNumber = 1L
 )
-example_data |> dr_add_id()
-#>   Survey Year Quarter  Country  Platform  Gear StationName HaulNumber
-#> 1  Surv1 2026       1 Country1 Platform1 Gear1    StationA        123
-#>                                                  .id
-#> 1 Surv1:2026:1:Country1:Platform1:Gear1:StationA:123
+example_new |> dr_add_id()
+#>   Survey Year Quarter  Country Platform Gear StationName HaulNumber
+#> 1  Surv1 2026       1 Country1  Vessel1  GOV           1          1
+#>                                     .id
+#> 1 Surv1:2026:1:Country1:Vessel1:GOV:1:1
+
+# Old-style column names
+example_old <- data.frame(
+  Survey = "Surv1", Year = 2026, Quarter = 1, Country = "Country1",
+  Ship = "Vessel1", Gear = "GOV", StNo = "1", HaulNo = 1L
+)
+example_old |> dr_add_id()
+#>   Survey Year Quarter  Country    Ship Gear StNo HaulNo
+#> 1  Surv1 2026       1 Country1 Vessel1  GOV    1      1
+#>                                     .id
+#> 1 Surv1:2026:1:Country1:Vessel1:GOV:1:1
 ```

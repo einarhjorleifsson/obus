@@ -33,15 +33,30 @@
   Calculate timestamp based on `Year`, `Month`, `Day`, and
   `StartTime`/`TimeShot`.
 
+- [`dr_check_all()`](dr_check_all.md) : Run all applicable QC checks and
+  return a combined report
+
+- [`dr_check_sentinels()`](dr_check_sentinels.md) : Check for -9
+  sentinel values remaining in numeric columns
+
+- [`dr_check_subfactor()`](dr_check_subfactor.md) : Check
+  SubsamplingFactor constraints against DataType
+
+- [`dr_check_totalno()`](dr_check_totalno.md) : Check TotalNo arithmetic
+  against DataType rules
+
 - [`dr_coastline`](dr_coastline.md) : Simple shoreline for ICES area
 
 - [`dr_con()`](dr_con.md) : Establish a DuckDB Connection to DATRAS
   Datasets
 
-- [`dr_con_by_haul()`](dr_con_by_haul.md) : Get numbers and weights
-  summary of species by haul
-
 - [`dr_con_raw()`](dr_con_raw.md) : Connect to Raw ICES DATRAS Tables
+
+- [`dr_cpue_by_haul()`](dr_cpue_by_haul.md) : Haul-level catch totals
+  (numbers and weights) from HH and HL exchange data
+
+- [`dr_cpue_by_length()`](dr_cpue_by_length.md) : Calculate CPUE per
+  length class from HH and HL exchange data
 
 - [`dr_download()`](dr_download.md) : Download DATRAS parquet files
 
@@ -52,6 +67,9 @@
 
 - [`dr_lookup_species`](dr_lookup_species.md) : A table of english and
   latin species names and aphia
+
+- [`dr_lookup_vocabulary`](dr_lookup_vocabulary.md) : ICES vocabulary
+  lookup table for DATRAS fields
 
 - [`dr_settypes()`](dr_settypes.md) : Set column types from the
   dr_lookup_fields specification
@@ -64,9 +82,6 @@
 
 - [`getIndicesAllYears2()`](getIndicesAllYears2.md) : Get Survey Indices
   for All Years
-
-- [`get_datras_unaggregated_data()`](get_datras_unaggregated_data.md) :
-  Download unaggregated DATRAS survey data
 
 - [`hl_record_type_lookup`](hl_record_type_lookup.md) : Lookup table for
   HL record types
