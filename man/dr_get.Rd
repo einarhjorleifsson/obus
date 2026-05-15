@@ -10,7 +10,8 @@ dr_get(
   years = 1965:2030,
   quarters = 1:4,
   aphia = NULL,
-  from = "parquet",
+  source = "parquet",
+  dictionary = NULL,
   quiet = TRUE
 )
 }
@@ -31,31 +32,42 @@ ICES surveys excluding test surveys are used (via \code{icesDatras::getSurveyLis
 and \code{"IDX"}. If \code{NULL}, defaults to cod (126436), haddock (126437), and
 herring (126417).}
 
-\item{from}{String specifying the data source for HH/HL/CA: \code{"parquet"}
-(default), \code{"old"}, or \code{"new"}. Ignored when \code{recordtype = "FL"}.}
+\item{source}{String specifying the data source for HH/HL/CA: \code{"parquet"}
+(default), \code{"csv"}, or \code{"xml"}. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.}
+
+\item{dictionary}{A data frame with columns \code{old} and \code{new} used to translate
+old-style ICES column names to new-style. If \code{NULL} (default), built
+automatically from \link{dr_lookup_fields}.}
 
 \item{quiet}{Logical; suppresses progress messages if \code{TRUE} (default).}
 }
 \value{
-A data frame.
+A data frame with new-style column names.
 }
 \description{
 Retrieves DATRAS trawl survey data from various sources:
 \itemize{
 \item \code{"parquet"}: Reads the full dataset from URL-hosted Parquet files (no
-survey/year/quarter filtering).
-\item \code{"old"}: Retrieves data via the legacy \code{icesDatras::getDATRAS} function.
-\item \code{"new"}: Retrieves data via \code{icesDatras::get_datras_unaggregated_data}.
+survey/year/quarter filtering). Returns new-style column names directly.
+\item \code{"csv"}: Retrieves data via \code{icesDatras::get_datras_unaggregated_data}.
+Returns new-style column names directly.
+\item \code{"xml"}: Retrieves data via the legacy \code{icesDatras::getDATRAS} function.
+Old-style column names are translated to new-style before returning.
 }
 }
 \details{
-For \code{recordtype = "FL"} (flex file), \code{icesDatras::getFlexFile} is called for
-every combination of survey, year, and quarter; the \code{from} argument is ignored.
+All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
+dedicated ICES API functions; the \code{source} argument is ignored for these.
+Their old-style column names are translated to new-style before returning.
+
+Translation is performed by \code{\link[=dr_translate]{dr_translate()}} using the \code{dictionary} argument.
+Supply a custom data frame with columns \code{old} and \code{new} to override the
+default mapping built from \link{dr_lookup_fields}.
 }
 \examples{
 \dontrun{
-  dr_get("HH")                                                      # full parquet
-  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, from = "new")
+  dr_get("HH")                                                        # full parquet
+  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "csv")
   dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 }
 }

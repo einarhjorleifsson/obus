@@ -32,6 +32,11 @@ dr_translate <- function(d, dictionary, from = "old", to = "new") {
     stop("`d` must be either a data.frame or a tbl_lazy object.")
   }
 
+  if(missing(dictionary)) {
+    dictionary <- dr_lookup_fields |>
+      dplyr::distinct(new, old)
+  }
+
   if (!is.data.frame(dictionary)) {
     stop("`dictionary` must be a data.frame or tibble.")
   }

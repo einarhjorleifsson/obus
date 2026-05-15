@@ -1,8 +1,10 @@
-# Currently there are four ways to read DATRAS data into memory:
-#  1. icesDatras::getDATRAS                    - the old faithful
-#  2. icesDatras::get_datras_unaggregated_data - new API, faster
-#  3. read a parquet file                      - full dataset, all surveys
-#  4. icesDatras::getFlexFile                  - flex file (FL record type)
+# Three sources for HH/HL/CA data (source argument in dr_get):
+#  "parquet" - URL-hosted parquet files; full dataset, new-style names
+#  "csv"     - icesDatras::get_datras_unaggregated_data; new-style names
+#  "xml"     - icesDatras::getDATRAS; old-style names, translated on return
+#
+# Derived products (FL, LT, CPUEL, CPUEA, CW, IDX) always use their own
+# ICES API functions; old-style names are translated on return via dr_translate().
 #
 # Internal helpers (.dr_fetch_*) handle each path.
 # dr_get() is a thin dispatcher.
@@ -26,7 +28,7 @@
   duckdbfs::open_dataset(url) |> dplyr::collect()
 }
 
-.dr_fetch_old <- function(recordtype, surveys, years, quarters, quiet) {
+.dr_fetch_xml <- function(recordtype, surveys, years, quarters, quiet) {
   .fetch <- function(survey) {
     tryCatch(
       icesDatras::getDATRAS(recordtype, survey, years, quarters),
@@ -48,7 +50,7 @@
   data
 }
 
-.dr_fetch_new <- function(recordtype, surveys, years, quarters, quiet) {
+.dr_fetch_csv <- function(recordtype, surveys, years, quarters, quiet) {
   years_c    <- paste0(min(years),    ":", max(years))
   quarters_c <- paste0(min(quarters), ":", max(quarters))
   .fetch <- function(survey) {
@@ -242,12 +244,19 @@
 #'
 #' Retrieves DATRAS trawl survey data from various sources:
 #' - `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
-#'   survey/year/quarter filtering).
-#' - `"old"`: Retrieves data via the legacy `icesDatras::getDATRAS` function.
-#' - `"new"`: Retrieves data via `icesDatras::get_datras_unaggregated_data`.
+#'   survey/year/quarter filtering). Returns new-style column names directly.
+#' - `"csv"`: Retrieves data via `icesDatras::get_datras_unaggregated_data`.
+#'   Returns new-style column names directly.
+#' - `"xml"`: Retrieves data via the legacy `icesDatras::getDATRAS` function.
+#'   Old-style column names are translated to new-style before returning.
 #'
-#' For `recordtype = "FL"` (flex file), `icesDatras::getFlexFile` is called for
-#' every combination of survey, year, and quarter; the `from` argument is ignored.
+#' All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
+#' dedicated ICES API functions; the `source` argument is ignored for these.
+#' Their old-style column names are translated to new-style before returning.
+#'
+#' Translation is performed by [dr_translate()] using the `dictionary` argument.
+#' Supply a custom data frame with columns `old` and `new` to override the
+#' default mapping built from [dr_lookup_fields].
 #'
 #' @param recordtype A string specifying the record type: `"HH"`, `"HL"`, `"CA"`,
 #'   `"FL"` (flex file), `"LT"` (litter assessment), `"CPUEL"` (CPUE per length
@@ -260,48 +269,67 @@
 #' @param aphia An integer vector of WoRMS Aphia species codes. Used by `"CW"`
 #'   and `"IDX"`. If `NULL`, defaults to cod (126436), haddock (126437), and
 #'   herring (126417).
-#' @param from String specifying the data source for HH/HL/CA: `"parquet"`
-#'   (default), `"old"`, or `"new"`. Ignored when `recordtype = "FL"`.
+#' @param source String specifying the data source for HH/HL/CA: `"parquet"`
+#'   (default), `"csv"`, or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
+#' @param dictionary A data frame with columns `old` and `new` used to translate
+#'   old-style ICES column names to new-style. If `NULL` (default), built
+#'   automatically from [dr_lookup_fields].
 #' @param quiet Logical; suppresses progress messages if `TRUE` (default).
 #'
-#' @return A data frame.
+#' @return A data frame with new-style column names.
 #'
 #' @examples
 #' \dontrun{
-#'   dr_get("HH")                                                      # full parquet
-#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, from = "new")
+#'   dr_get("HH")                                                        # full parquet
+#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "csv")
 #'   dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 #' }
 #' @export
 dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
-                   aphia = NULL, from = "parquet", quiet = TRUE) {
+                   aphia = NULL, source = "parquet", dictionary = NULL, quiet = TRUE) {
+
+  # Build default old -> new translation dictionary from the lookup table.
+  # Rows where either name is NA are dropped (no valid mapping exists).
+  if (is.null(dictionary)) {
+    dictionary <- dr_lookup_fields |>
+      dplyr::filter(!is.na(old), !is.na(new)) |>
+      dplyr::distinct(old, new)
+  }
 
   if (is.null(surveys)) surveys <- .dr_default_surveys()
 
   if (recordtype == "FL")
-    return(.dr_fetch_flex(surveys, years, quarters, quiet))
+    return(.dr_fetch_flex(surveys, years, quarters, quiet) |>
+             dr_translate(dictionary, from = "old", to = "new"))
 
   if (recordtype == "LT")
-    return(.dr_fetch_lt(surveys, years, quarters, quiet))
+    return(.dr_fetch_lt(surveys, years, quarters, quiet) |>
+             dr_translate(dictionary, from = "old", to = "new"))
 
   if (recordtype == "CPUEL")
-    return(.dr_fetch_cpue_length(surveys, years, quarters, quiet))
+    return(.dr_fetch_cpue_length(surveys, years, quarters, quiet) |>
+             dr_translate(dictionary, from = "old", to = "new"))
 
   if (recordtype == "CPUEA")
-    return(.dr_fetch_cpue_age(surveys, years, quarters, quiet))
+    return(.dr_fetch_cpue_age(surveys, years, quarters, quiet) |>
+             dr_translate(dictionary, from = "old", to = "new"))
 
   if (recordtype %in% c("CW", "IDX")) {
     if (is.null(aphia)) aphia <- .dr_default_aphia()
     if (recordtype == "CW")
-      return(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet))
+      return(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet) |>
+               dr_translate(dictionary, from = "old", to = "new"))
     if (recordtype == "IDX")
-      return(.dr_fetch_indices(surveys, years, quarters, aphia, quiet))
+      return(.dr_fetch_indices(surveys, years, quarters, aphia, quiet) |>
+               dr_translate(dictionary, from = "old", to = "new"))
   }
 
-  if (from == "parquet") return(.dr_fetch_parquet(recordtype))
-  if (from == "old")     return(.dr_fetch_old(recordtype, surveys, years, quarters, quiet))
-  if (from == "new")     return(.dr_fetch_new(recordtype, surveys, years, quarters, quiet))
+  # parquet and csv already return new-style names; xml needs translation.
+  if (source == "parquet") return(.dr_fetch_parquet(recordtype))
+  if (source == "csv")     return(.dr_fetch_csv(recordtype, surveys, years, quarters, quiet))
+  if (source == "xml")     return(.dr_fetch_xml(recordtype, surveys, years, quarters, quiet) |>
+                                    dr_translate(dictionary, from = "old", to = "new"))
 
-  stop("Unknown 'from' value: '", from, "'. Use 'parquet', 'old', or 'new'.")
+  stop("Unknown 'source' value: '", source, "'. Use 'parquet', 'csv', or 'xml'.")
 }
 

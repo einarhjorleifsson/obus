@@ -37,9 +37,9 @@ dr_download <- function(recordtype = c("HH", "HL", "CA"),
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
 
   # Download raw data ------------------------------------------------------------
-  hh <- dr_get("HH", from = "new")
-  hl <- dr_get("HL", from = "new")
-  ca <- dr_get("CA", from = "new")
+  hh <- dr_get("HH", source = "csv")
+  hl <- dr_get("HL", source = "csv")
+  ca <- dr_get("CA", source = "csv")
 
   if (save_raw) {
     path_raw <- file.path(path, "raw")
