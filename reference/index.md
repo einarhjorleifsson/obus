@@ -65,6 +65,9 @@
 - [`dr_lookup_fields`](dr_lookup_fields.md) : DATRAS field type lookup
   table
 
+- [`dr_lookup_hl_record_type`](dr_lookup_hl_record_type.md) : HL record
+  type lookup table
+
 - [`dr_lookup_species`](dr_lookup_species.md) : A table of english and
   latin species names and aphia
 
@@ -82,6 +85,3 @@
 
 - [`getIndicesAllYears2()`](getIndicesAllYears2.md) : Get Survey Indices
   for All Years
-
-- [`hl_record_type_lookup`](hl_record_type_lookup.md) : Lookup table for
-  HL record types

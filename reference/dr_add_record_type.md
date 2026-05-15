@@ -2,7 +2,7 @@
 
 Adds a `record_type` integer column to the HL table classifying each row
 by the combination of variables that are present or absent. See
-[`hl_record_type_lookup`](hl_record_type_lookup.md) for the full
+[`dr_lookup_hl_record_type`](dr_lookup_hl_record_type.md) for the full
 definition of each code.
 
 ## Usage
@@ -40,4 +40,4 @@ weight entries rather than standalone bulk bycatch.
 
 ## See also
 
-[`hl_record_type_lookup`](hl_record_type_lookup.md)
+[`dr_lookup_hl_record_type`](dr_lookup_hl_record_type.md)
