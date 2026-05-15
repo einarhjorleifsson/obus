@@ -9,7 +9,6 @@
 #' - **"HH" (Haul-Level Data)**: Contains information related to individual haul events.
 #' - **"HL" (Catch-at-Length Data)**: Records catches categorized by length class.
 #' - **"CA" (Catch-at-Age Data)**: Includes age-based biological data (e.g., liver weight, length).
-#' - **"species" (Species List)**: Derived from the ICES vocabulary 'SpecWoRMS' and includes species names and related metadata.
 #'
 #' @section Dataset Paths:
 #' The dataset is accessed via HTTP/HTTPS paths at a user-defined or default URL
@@ -83,11 +82,16 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
 
   # Handle `type`-specific logic
   if (type == "HL" && trim) {
-    q <- trim_data(q, c("latin", "length_cm", "SpeciesSex", "DevelopmentStage", "n_haul", "n_hour"))
+    q <- trim_data(q, c("latin", "species", "length_cm", "length_mm",
+                        "n_haul", "n_hour", "IndividualSex", "DevelopmentStage",
+                        "SpeciesValidity"))
   }
 
   if (type == "CA" && trim) {
-    q <- trim_data(q, c("latin", "length_cm", "IndividualSex", "LiverWeight"))
+    q <- trim_data(q, c("latin", "species", "length_cm",  "length_mm",
+                        "Age", "NumberAtLength", "IndividualWeight",
+                        "IndividualSex",
+                        "IndividualMaturity", "MaturityScale"))
   }
 
   # Warn for ignored `trim` parameter

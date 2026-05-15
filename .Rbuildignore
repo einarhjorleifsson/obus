@@ -1,5 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^datras$
 ^data-raw$
 ^garbage$
 ^README.Rmd

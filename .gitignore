@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 obus.Rproj
+datras
 data-raw/update_web.R
 docs/
 garbage/

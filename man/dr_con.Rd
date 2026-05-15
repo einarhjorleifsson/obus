@@ -41,7 +41,6 @@ This function operates on the following dataset types:
 \item \strong{"HH" (Haul-Level Data)}: Contains information related to individual haul events.
 \item \strong{"HL" (Catch-at-Length Data)}: Records catches categorized by length class.
 \item \strong{"CA" (Catch-at-Age Data)}: Includes age-based biological data (e.g., liver weight, length).
-\item \strong{"species" (Species List)}: Derived from the ICES vocabulary 'SpecWoRMS' and includes species names and related metadata.
 }
 }
 
