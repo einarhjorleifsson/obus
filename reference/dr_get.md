@@ -3,14 +3,17 @@
 Retrieves DATRAS trawl survey data from various sources:
 
 - `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
-  survey/year/quarter filtering).
+  survey/year/quarter filtering). Returns new-style column names
+  directly.
 
-- `"old"`: Retrieves data via the legacy
+- `"csv"`: Retrieves data via
+  `icesDatras::get_datras_unaggregated_data`. Returns new-style column
+  names directly.
+
+- `"xml"`: Retrieves data via the legacy
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)
-  function.
-
-- `"new"`: Retrieves data via
-  `icesDatras::get_datras_unaggregated_data`.
+  function. Old-style column names are translated to new-style before
+  returning.
 
 ## Usage
 
@@ -21,7 +24,8 @@ dr_get(
   years = 1965:2030,
   quarters = 1:4,
   aphia = NULL,
-  from = "parquet",
+  source = "parquet",
+  dictionary = NULL,
   quiet = TRUE
 )
 ```
@@ -56,10 +60,16 @@ dr_get(
   `"IDX"`. If `NULL`, defaults to cod (126436), haddock (126437), and
   herring (126417).
 
-- from:
+- source:
 
   String specifying the data source for HH/HL/CA: `"parquet"` (default),
-  `"old"`, or `"new"`. Ignored when `recordtype = "FL"`.
+  `"csv"`, or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
+
+- dictionary:
+
+  A data frame with columns `old` and `new` used to translate old-style
+  ICES column names to new-style. If `NULL` (default), built
+  automatically from [dr_lookup_fields](dr_lookup_fields.md).
 
 - quiet:
 
@@ -67,21 +77,26 @@ dr_get(
 
 ## Value
 
-A data frame.
+A data frame with new-style column names.
 
 ## Details
 
-For `recordtype = "FL"` (flex file),
-[`icesDatras::getFlexFile`](https://rdrr.io/pkg/icesDatras/man/getFlexFile.html)
-is called for every combination of survey, year, and quarter; the `from`
-argument is ignored.
+All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
+dedicated ICES API functions; the `source` argument is ignored for
+these. Their old-style column names are translated to new-style before
+returning.
+
+Translation is performed by [`dr_translate()`](dr_translate.md) using
+the `dictionary` argument. Supply a custom data frame with columns `old`
+and `new` to override the default mapping built from
+[dr_lookup_fields](dr_lookup_fields.md).
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-  dr_get("HH")                                                      # full parquet
-  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, from = "new")
+  dr_get("HH")                                                        # full parquet
+  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "csv")
   dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 } # }
 ```
