@@ -62,9 +62,6 @@ This function operates on the following dataset types:
 - **"CA" (Catch-at-Age Data)**: Includes age-based biological data
   (e.g., liver weight, length).
 
-- **"species" (Species List)**: Derived from the ICES vocabulary
-  'SpecWoRMS' and includes species names and related metadata.
-
 ## Dataset Paths
 
 The dataset is accessed via HTTP/HTTPS paths at a user-defined or
