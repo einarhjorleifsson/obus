@@ -29,7 +29,7 @@
 
 # Internal helper: build a standard one-row result tibble ----------------------
 .dr_result <- function(check, table, n_fail, n_total, detail) {
-  tibble::tibble(
+  data.frame(
     check    = check,
     table    = table,
     n_fail   = as.integer(n_fail),

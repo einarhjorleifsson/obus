@@ -67,3 +67,25 @@
 #'   via the ICES vocabulary server <https://vocab.ices.dk/>.
 "dr_lookup_vocabulary"
 
+
+#' HL record type lookup table
+#'
+#' A data frame describing the integer codes assigned by
+#' \code{\link{dr_add_record_type}}. Each row defines one record type by its
+#' short label, whether \code{LengthClass} is present, and a detailed
+#' description of the variable-presence pattern that defines it.
+#'
+#' Regenerate with \code{data-raw/DATASET_hl-record-types.R}.
+#'
+#' @format A data frame with 12 rows and 4 columns:
+#' \describe{
+#'   \item{record_type}{Integer code (1–4, 10–16, 99).}
+#'   \item{lc_present}{Logical; \code{TRUE} when \code{LengthClass} is present
+#'     (types 1–4), \code{FALSE} otherwise.}
+#'   \item{label}{Short human-readable label, e.g. \code{"Length-frequency, standard"}.}
+#'   \item{description}{Full description of the variable-presence pattern that
+#'     defines the type.}
+#' }
+#' @seealso \code{\link{dr_add_record_type}}
+"dr_lookup_hl_record_type"
+

@@ -18,7 +18,7 @@ dr_add_record_type(d)
 \description{
 Adds a \code{record_type} integer column to the HL table classifying each
 row by the combination of variables that are present or absent.
-See \code{\link{hl_record_type_lookup}} for the full definition of each code.
+See \code{\link{dr_lookup_hl_record_type}} for the full definition of each code.
 }
 \details{
 The function requires that \code{\link{dr_add_n_and_cpue}} has already been
@@ -34,5 +34,5 @@ for the same \code{.id} and \code{ValidAphiaID}, identifying them as
 companion weight entries rather than standalone bulk bycatch.
 }
 \seealso{
-\code{\link{hl_record_type_lookup}}
+\code{\link{dr_lookup_hl_record_type}}
 }
