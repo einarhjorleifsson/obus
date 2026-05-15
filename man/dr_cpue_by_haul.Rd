@@ -14,69 +14,76 @@ dr_cpue_by_haul(
 )
 }
 \arguments{
-\item{hh}{DATRAS haul header table (HH) with old-style column names.
+\item{hh}{DATRAS haul header table (HH) with new-style column names (as
+returned by \code{\link{dr_get}} with \code{from = "parquet"} or
+\code{from = "new"}, or by \code{\link{dr_con}}).
 Required: \code{Survey}, \code{Year}, \code{Quarter}, \code{Country},
-\code{Ship}, \code{Gear}, \code{StNo}, \code{HaulNo}, \code{HaulVal},
-\code{DataType}, \code{HaulDur}.}
+\code{Platform}, \code{Gear}, \code{StationName}, \code{HaulNumber},
+\code{HaulValidity}, \code{DataType}, \code{HaulDuration}.}
 
-\item{hl}{DATRAS length table (HL) with old-style column names.
+\item{hl}{DATRAS length table (HL) with new-style column names.
 Required: \code{Survey}, \code{Year}, \code{Quarter}, \code{Country},
-\code{Ship}, \code{Gear}, \code{StNo}, \code{HaulNo}, \code{SpecVal},
-\code{Valid_Aphia}, \code{TotalNo}, \code{CatCatchWgt},
-\code{Sex}, \code{CatIdentifier}.}
+\code{Platform}, \code{Gear}, \code{StationName}, \code{HaulNumber},
+\code{SpeciesValidity}, \code{ValidAphiaID}, \code{TotalNumber},
+\code{SpeciesCategoryWeight}, \code{SpeciesSex}, \code{SpeciesCategory}.}
 
-\item{haulval}{Character vector of \code{HaulVal} codes to retain.
+\item{haulval}{Character vector of \code{HaulValidity} codes to retain.
 Default \code{"V"} (valid hauls only).}
 
-\item{specval}{Integer or character vector of \code{SpecVal} codes to retain.
-Default \code{1L} (standard species records only).}
+\item{specval}{Integer or character vector of \code{SpeciesValidity} codes
+to retain. Default \code{1L} (standard species records only).}
 
 \item{zerofill}{Logical. When \code{TRUE}, adds explicit zero rows for every
 haul × species combination where the species was observed somewhere in the
 same \code{Survey} / \code{Year} / \code{Quarter} but was absent from that
 haul (\code{n_haul = n_hour = w_haul = w_hour = 0}). Default \code{FALSE}.}
 
-\item{diag}{Logical. When \code{TRUE}, skips the aggregation over \code{Sex}
-and \code{CatIdentifier} and returns the deduplicated, scaled table at
-the species/sex/category level. Retains \code{DataType}, \code{HaulDur},
-\code{TotalNo}, and \code{CatCatchWgt} alongside the derived columns.
-Useful for QC (e.g. spotting inconsistent \code{TotalNo} values or
+\item{diag}{Logical. When \code{TRUE}, skips the aggregation over
+\code{SpeciesSex} and \code{SpeciesCategory} and returns the
+deduplicated, scaled table at the species/sex/category level. Retains
+\code{DataType}, \code{HaulDuration}, \code{TotalNumber}, and
+\code{SpeciesCategoryWeight} alongside the derived columns.
+Useful for QC (e.g. spotting inconsistent \code{TotalNumber} values or
 unexpected sex/category structure). Default \code{FALSE}.}
 }
 \value{
 When \code{diag = FALSE} and \code{zerofill = FALSE} (defaults),
-a tibble with one row per \code{.id} × \code{Valid_Aphia}:
+a tibble with one row per \code{.id} × \code{ValidAphiaID}:
 \describe{
-\item{\code{.id}}{8-field haul key: \code{Survey:Year:Quarter:Country:Ship:Gear:StNo:HaulNo}.}
-\item{\code{.id2}}{6-field key matching the ICES CPUEL join key.}
+\item{\code{.id}}{8-field haul key:
+\code{Survey:Year:Quarter:Country:Platform:Gear:StationName:HaulNumber}.}
+\item{\code{.id2}}{6-field key matching the ICES CPUEL join key
+(lacks \code{Country} and \code{StationName}):
+\code{Survey:Year:Quarter:Platform:Gear:HaulNumber}.}
 \item{\code{Survey}, \code{Year}, \code{Quarter}}{Survey metadata.}
-\item{\code{Valid_Aphia}}{Valid WoRMS AphiaID.}
+\item{\code{ValidAphiaID}}{Valid WoRMS AphiaID.}
 \item{\code{n_haul}}{Total estimated numbers caught per haul.}
 \item{\code{n_hour}}{Total estimated numbers per hour of hauling.}
 \item{\code{w_haul}}{Total catch weight per haul (grams).}
 \item{\code{w_hour}}{Total catch weight per hour of hauling (grams).}
 }
-\code{w_haul} and \code{w_hour} are \code{NA} when \code{CatCatchWgt} was
-not recorded for all sex/category groups of a species. Zero-fill rows have
-all four columns set to \code{0}.
+\code{w_haul} and \code{w_hour} are \code{NA} when
+\code{SpeciesCategoryWeight} was not recorded for all sex/category groups
+of a species. Zero-fill rows have all four columns set to \code{0}.
 }
 \description{
 Computes total catch in numbers and weight per haul per species from raw
-DATRAS HH and HL tables. Counts are derived from \code{TotalNo} and weights
-from \code{CatCatchWgt}; both are haul-level summary fields in HL that are
-repeated across every length row within a species/sex/category group.
-The function deduplicates at the group level before applying DataType-aware
-scaling and aggregating across \code{Sex} and \code{CatIdentifier}.
+DATRAS HH and HL tables. Counts are derived from \code{TotalNumber} and
+weights from \code{SpeciesCategoryWeight}; both are haul-level summary
+fields in HL that are repeated across every length row within a
+species/sex/category group. The function deduplicates at the group level
+before applying DataType-aware scaling and aggregating across
+\code{SpeciesSex} and \code{SpeciesCategory}.
 }
 \details{
-This function operates independently of \code{\link{dr_cpue_by_length}} and is the
-appropriate choice when you need haul-level totals (including weights)
-rather than length-disaggregated CPUE. Unlike \code{dr_cpue_by_length}, which derives
-counts from \code{HLNoAtLngt}, this function uses \code{TotalNo} directly
-— the two approaches should give the same counts but may differ slightly
-due to rounding in submitted data.
+This function operates independently of \code{\link{dr_cpue_by_length}} and
+is the appropriate choice when you need haul-level totals (including weights)
+rather than length-disaggregated CPUE. Unlike \code{dr_cpue_by_length},
+which derives counts from \code{NumberAtLength}, this function uses
+\code{TotalNumber} directly — the two approaches should give the same counts
+but may differ slightly due to rounding in submitted data.
 }
 \seealso{
-\code{\link{dr_cpue_by_length}} for length-disaggregated CPUE derived from
-\code{HLNoAtLngt}.
+\code{\link{dr_cpue_by_length}} for length-disaggregated CPUE
+derived from \code{NumberAtLength}.
 }

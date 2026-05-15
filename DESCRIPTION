@@ -23,11 +23,9 @@ Depends:
 LazyData: true
 Imports:
     arrow,
-    data.table,
     dplyr,
     duckdbfs,
     ggplot2,
-    httr2,
     icesDatras,
     lubridate,
     purrr,

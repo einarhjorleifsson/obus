@@ -7,20 +7,21 @@
 dr_check_subfactor(
   hl,
   DataType = DataType,
-  SubFactor = SubFactor,
+  SubsamplingFactor = SubsamplingFactor,
   flag = FALSE
 )
 }
 \arguments{
-\item{hl}{HL exchange table. Must contain \code{DataType} and \code{SubFactor}
-(or the column names supplied via \code{DataType} / \code{SubFactor}).
+\item{hl}{HL exchange table. Must contain \code{DataType} and \code{SubsamplingFactor}
+(or the column names supplied via \code{DataType} / \code{SubsamplingFactor}).
 If \code{DataType} is absent, join HH before calling this function.}
 
 \item{DataType}{Unquoted column name for the data type field.
-Default: \code{DataType} (old-style).}
+Default: \code{DataType} (same in both naming conventions).}
 
-\item{SubFactor}{Unquoted column name for the subsampling factor.
-Default: \code{SubFactor} (old-style). Use \code{SubsamplingFactor} for new-style.}
+\item{SubsamplingFactor}{Unquoted column name for the subsampling factor.
+Default: \code{SubsamplingFactor} (new-style). Use \code{SubFactor} for old-style tables
+from \code{dr_con_raw()} or \code{dr_get(from = "old")}.}
 
 \item{flag}{Logical. If \code{FALSE} (default) return a one-row summary tibble.
 If \code{TRUE} return the input data with a \code{.pass} column added (\code{TRUE} =
@@ -32,9 +33,9 @@ A one-row summary tibble, or the input data with \code{.pass} added.
 \description{
 DATRAS requires:
 \itemize{
-\item DataType \strong{R}: \code{SubFactor >= 1}
-\item DataType \strong{S}: \code{SubFactor > 1} (strictly)
-\item DataType \strong{C}: \code{SubFactor == 1}
+\item DataType \strong{R}: \code{SubsamplingFactor >= 1}
+\item DataType \strong{S}: \code{SubsamplingFactor > 1} (strictly)
+\item DataType \strong{C}: \code{SubsamplingFactor == 1}
 }
 }
 \details{

@@ -2,30 +2,32 @@
 % Please edit documentation in R/dr_check.R
 \name{dr_check_totalno}
 \alias{dr_check_totalno}
-\title{Check TotalNo arithmetic against DataType rules}
+\title{Check TotalNumber arithmetic against DataType rules}
 \usage{
 dr_check_totalno(
   hl,
   DataType = DataType,
-  TotalNo = TotalNo,
-  SubFactor = SubFactor,
-  HLNoAtLngt = HLNoAtLngt,
-  Species = Valid_Aphia,
-  Sex = Sex,
-  CatIdentifier = CatIdentifier,
+  TotalNumber = TotalNumber,
+  SubsamplingFactor = SubsamplingFactor,
+  NumberAtLength = NumberAtLength,
+  Species = ValidAphiaID,
+  Sex = SpeciesSex,
+  SpeciesCategory = SpeciesCategory,
   tol = 0.5,
   flag = FALSE
 )
 }
 \arguments{
-\item{hl}{HL exchange table. Must contain \code{DataType}, \code{TotalNo}, \code{SubFactor},
-\code{HLNoAtLngt}, \code{.id}, and the grouping fields \code{Valid_Aphia}, \code{Sex},
-\code{CatIdentifier} (or the column names supplied below). Join HH for
-\code{DataType} if it is not present.}
+\item{hl}{HL exchange table. Must contain \code{DataType}, \code{TotalNumber},
+\code{SubsamplingFactor}, \code{NumberAtLength}, \code{.id}, and the grouping fields
+\code{ValidAphiaID}, \code{SpeciesSex}, \code{SpeciesCategory} (or the column names
+supplied below). Join HH for \code{DataType} if it is not present.
+Note: \code{.id} must be present (call \code{\link[=dr_add_id]{dr_add_id()}} first if needed).}
 
-\item{DataType, TotalNo, SubFactor, HLNoAtLngt, Species, Sex, CatIdentifier}{Unquoted column names. Old-style defaults shown. New-style equivalents:
-\code{TotalNumber}, \code{SubsamplingFactor}, \code{NumberAtLength}, \code{ValidAphiaID},
-\code{IndividualSex}, \code{SpeciesCategory}.}
+\item{DataType, TotalNumber, SubsamplingFactor, NumberAtLength, Species, Sex, SpeciesCategory}{Unquoted column names. New-style defaults shown. For old-style tables from
+\code{dr_con_raw()} or \code{dr_get(from = "old")} use:
+\code{TotalNo}, \code{SubFactor}, \code{HLNoAtLngt}, \code{Valid_Aphia}, \code{Sex}, \code{CatIdentifier}.
+Note: \code{Sex} in HL (new-style) is \code{SpeciesSex}; in CA it is \code{IndividualSex}.}
 
 \item{tol}{Numeric tolerance in number of fish. Default \code{0.5}.}
 
@@ -37,14 +39,14 @@ group passes, \code{FALSE} = group fails, \code{NA} = group not evaluated).}
 A one-row summary tibble, or the input data with \code{.pass} added.
 }
 \description{
-For each (\code{.id}, species, sex, \code{CatIdentifier}) group:
+For each (\code{.id}, species, sex, \code{SpeciesCategory}) group:
 \itemize{
-\item DataType \strong{R} or \strong{S}: \verb{TotalNo ~= sum(HLNoAtLngt) * SubFactor}
-\item DataType \strong{C}:          \verb{TotalNo ~= sum(HLNoAtLngt)}
+\item DataType \strong{R} or \strong{S}: \verb{TotalNumber ~= sum(NumberAtLength) * SubsamplingFactor}
+\item DataType \strong{C}:          \verb{TotalNumber ~= sum(NumberAtLength)}
 }
 }
 \details{
 A tolerance of \code{tol} fish is applied to allow for rounding in submissions.
-Groups with \code{NA} in \code{TotalNo}, \code{SubFactor}, or \code{HLNoAtLngt} are skipped
-(counted separately in the detail string).
+Groups with \code{NA} in \code{TotalNumber}, \code{SubsamplingFactor}, or \code{NumberAtLength}
+are skipped (counted separately in the detail string).
 }

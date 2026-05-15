@@ -7,14 +7,14 @@
 dr_check_all(hh = NULL, hl = NULL, ca = NULL, ...)
 }
 \arguments{
-\item{hh}{HH exchange table, or \code{NULL}.}
+\item{hh}{HH exchange table (with \code{.id} added), or \code{NULL}.}
 
-\item{hl}{HL exchange table (with \code{DataType} joined in), or \code{NULL}.}
+\item{hl}{HL exchange table (with \code{.id} and \code{DataType} joined in), or \code{NULL}.}
 
 \item{ca}{CA exchange table, or \code{NULL}.}
 
 \item{...}{Additional arguments passed to individual check functions
-(e.g., \code{tol} for \code{\link[=dr_check_totalno]{dr_check_totalno()}}).}
+(e.g., \code{tol} for \code{\link[=dr_check_totalno]{dr_check_totalno()}}, or old-style column name overrides).}
 }
 \value{
 A tibble with one row per check, columns \code{check}, \code{table},
@@ -29,9 +29,27 @@ binds the results into a single report tibble.
 Supply whichever tables you have. Checks that require a table you have not
 supplied are silently skipped.
 
-\code{DataType} must be present in \code{hl} for the HL arithmetic checks. If your HL
-table does not yet contain \code{DataType}, join it from HH first:
+Both \code{hh} and \code{hl} must have a \code{.id} column (call \code{\link[=dr_add_id]{dr_add_id()}} first if
+needed). \code{DataType} must also be present in \code{hl} for the HL arithmetic
+checks. If your HL table does not yet contain \code{DataType}, join it from HH:
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{hl <- hl |> dplyr::left_join(hh |> dplyr::select(.id, DataType), by = ".id")
+\strong{New-style tables} (from \code{dr_get()} or \code{dr_con()}):
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{hh <- hh |> dr_add_id()
+hl <- hl |> dr_add_id() |>
+  dplyr::left_join(dplyr::select(hh, .id, DataType), by = ".id")
+dr_check_all(hh = hh, hl = hl)
+}\if{html}{\out{</div>}}
+
+\strong{Old-style tables} (from \code{dr_con_raw()} or \code{dr_get(from = "old")}):
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{hh <- hh |> dr_add_id()
+hl <- hl |> dr_add_id() |>
+  dplyr::left_join(dplyr::select(hh, .id, DataType), by = ".id")
+dr_check_all(hh = hh, hl = hl,
+             SubsamplingFactor = SubFactor,
+             TotalNumber = TotalNo, NumberAtLength = HLNoAtLngt,
+             Species = Valid_Aphia, Sex = Sex,
+             SpeciesCategory = CatIdentifier)
 }\if{html}{\out{</div>}}
 }

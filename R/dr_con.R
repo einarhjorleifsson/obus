@@ -64,41 +64,16 @@ dr_con <- function(type = NULL, trim = TRUE, url = "https://heima.hafro.is/~eina
   # Initialize dataset path
   dataset_path <- paste0(url, type, ".parquet")
 
-  # # Check accessibility of dataset URL
-  # check_url <- function(url) {
-  #   tryCatch(
-  #     {
-  #       httr::HEAD(url)  # Use a HEAD request to ensure the file is accessible without downloading it
-  #       TRUE
-  #     },
-  #     error = function(e) FALSE
-  #   )
-  # }
-
-
-  # httr2 version of the above
-  check_url <- function(url) {
-    tryCatch(
-      {
-        # Create a HEAD request and perform it
-        httr2::request(url) |>
-          httr2::req_method("HEAD") |>  # Use a HEAD request
-          httr2::req_perform()          # Perform the request
-        TRUE  # Return TRUE if successful
-      },
-      error = function(e) FALSE  # Return FALSE if there is an error
-    )
-  }
-
-  if (!check_url(dataset_path)) {
-    stop(sprintf(
-      "Unable to connect to the dataset at '%s'. Please verify the URL or check your internet connection.",
-      dataset_path
-    ))
-  }
-
-  # Connect to dataset
-  q <- duckdbfs::open_dataset(dataset_path)
+  # Connect to dataset; let DuckDB surface the error if the URL is unreachable
+  q <- tryCatch(
+    duckdbfs::open_dataset(dataset_path),
+    error = function(e) {
+      stop(sprintf(
+        "Unable to connect to '%s'. Check the URL or your internet connection.\n  (%s)",
+        dataset_path, conditionMessage(e)
+      ), call. = FALSE)
+    }
+  )
 
   # Helper function for trimming
   trim_data <- function(data, cols) {

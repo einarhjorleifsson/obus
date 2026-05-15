@@ -34,7 +34,8 @@ utils::globalVariables(
     # dr_cpue_by_length / dr_cpue_by_haul
     "HaulVal", "SpecVal", "length_mm", "zerofill",
     "TotalNo", "CatCatchWgt", "n_haul", "n_hour", "w_haul", "w_hour",
-    ".data", ".pass", ":="
+    ".data", ".pass", ":=",
+    "HaulValidity", "SpeciesValidity"
   )
 )
 

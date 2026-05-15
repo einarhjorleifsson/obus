@@ -16,9 +16,10 @@
 #       NA    = not evaluated by this check (e.g. DataType not R/S/C)
 #   - Never stop() on failure; they report, they do not throw.
 #
-# Column name defaults follow the OLD-style names (as returned by dr_get() /
-# dr_con_raw()), which is the primary fetch path for HH and HL exchange data.
-# Pass new-style names explicitly when working on translated tables.
+# Column name defaults follow NEW-style names (as returned by dr_get() with
+# from = "parquet" or from = "new", and by dr_con()).
+# Pass old-style names explicitly when working on raw/old-style tables from
+# dr_con_raw() or dr_get(from = "old").
 
 
 # Internal helper: collect DuckDB tables silently before row-level work --------
@@ -43,19 +44,20 @@
 #' Check SubsamplingFactor constraints against DataType
 #'
 #' DATRAS requires:
-#' - DataType **R**: `SubFactor >= 1`
-#' - DataType **S**: `SubFactor > 1` (strictly)
-#' - DataType **C**: `SubFactor == 1`
+#' - DataType **R**: `SubsamplingFactor >= 1`
+#' - DataType **S**: `SubsamplingFactor > 1` (strictly)
+#' - DataType **C**: `SubsamplingFactor == 1`
 #'
 #' Violations silently corrupt `n_haul` computed by [dr_add_n_and_cpue()].
 #'
-#' @param hl HL exchange table. Must contain `DataType` and `SubFactor`
-#'   (or the column names supplied via `DataType` / `SubFactor`).
+#' @param hl HL exchange table. Must contain `DataType` and `SubsamplingFactor`
+#'   (or the column names supplied via `DataType` / `SubsamplingFactor`).
 #'   If `DataType` is absent, join HH before calling this function.
 #' @param DataType Unquoted column name for the data type field.
-#'   Default: `DataType` (old-style).
-#' @param SubFactor Unquoted column name for the subsampling factor.
-#'   Default: `SubFactor` (old-style). Use `SubsamplingFactor` for new-style.
+#'   Default: `DataType` (same in both naming conventions).
+#' @param SubsamplingFactor Unquoted column name for the subsampling factor.
+#'   Default: `SubsamplingFactor` (new-style). Use `SubFactor` for old-style tables
+#'   from `dr_con_raw()` or `dr_get(from = "old")`.
 #' @param flag Logical. If `FALSE` (default) return a one-row summary tibble.
 #'   If `TRUE` return the input data with a `.pass` column added (`TRUE` =
 #'   passes, `FALSE` = fails, `NA` = DataType not R/S/C, not evaluated).
@@ -63,12 +65,12 @@
 #' @return A one-row summary tibble, or the input data with `.pass` added.
 #' @export
 dr_check_subfactor <- function(hl,
-                               DataType  = DataType,
-                               SubFactor = SubFactor,
-                               flag      = FALSE) {
+                               DataType          = DataType,
+                               SubsamplingFactor = SubsamplingFactor,
+                               flag              = FALSE) {
 
   dt_col <- rlang::as_name(rlang::enquo(DataType))
-  sf_col <- rlang::as_name(rlang::enquo(SubFactor))
+  sf_col <- rlang::as_name(rlang::enquo(SubsamplingFactor))
 
   required <- c(dt_col, sf_col)
   missing  <- setdiff(required, colnames(hl))
@@ -116,24 +118,26 @@ dr_check_subfactor <- function(hl,
 
 
 # -----------------------------------------------------------------------------
-#' Check TotalNo arithmetic against DataType rules
+#' Check TotalNumber arithmetic against DataType rules
 #'
-#' For each (`.id`, species, sex, `CatIdentifier`) group:
-#' - DataType **R** or **S**: `TotalNo ~= sum(HLNoAtLngt) * SubFactor`
-#' - DataType **C**:          `TotalNo ~= sum(HLNoAtLngt)`
+#' For each (`.id`, species, sex, `SpeciesCategory`) group:
+#' - DataType **R** or **S**: `TotalNumber ~= sum(NumberAtLength) * SubsamplingFactor`
+#' - DataType **C**:          `TotalNumber ~= sum(NumberAtLength)`
 #'
 #' A tolerance of `tol` fish is applied to allow for rounding in submissions.
-#' Groups with `NA` in `TotalNo`, `SubFactor`, or `HLNoAtLngt` are skipped
-#' (counted separately in the detail string).
+#' Groups with `NA` in `TotalNumber`, `SubsamplingFactor`, or `NumberAtLength`
+#' are skipped (counted separately in the detail string).
 #'
-#' @param hl HL exchange table. Must contain `DataType`, `TotalNo`, `SubFactor`,
-#'   `HLNoAtLngt`, `.id`, and the grouping fields `Valid_Aphia`, `Sex`,
-#'   `CatIdentifier` (or the column names supplied below). Join HH for
-#'   `DataType` if it is not present.
-#' @param DataType,TotalNo,SubFactor,HLNoAtLngt,Species,Sex,CatIdentifier
-#'   Unquoted column names. Old-style defaults shown. New-style equivalents:
-#'   `TotalNumber`, `SubsamplingFactor`, `NumberAtLength`, `ValidAphiaID`,
-#'   `IndividualSex`, `SpeciesCategory`.
+#' @param hl HL exchange table. Must contain `DataType`, `TotalNumber`,
+#'   `SubsamplingFactor`, `NumberAtLength`, `.id`, and the grouping fields
+#'   `ValidAphiaID`, `SpeciesSex`, `SpeciesCategory` (or the column names
+#'   supplied below). Join HH for `DataType` if it is not present.
+#'   Note: `.id` must be present (call [dr_add_id()] first if needed).
+#' @param DataType,TotalNumber,SubsamplingFactor,NumberAtLength,Species,Sex,SpeciesCategory
+#'   Unquoted column names. New-style defaults shown. For old-style tables from
+#'   `dr_con_raw()` or `dr_get(from = "old")` use:
+#'   `TotalNo`, `SubFactor`, `HLNoAtLngt`, `Valid_Aphia`, `Sex`, `CatIdentifier`.
+#'   Note: `Sex` in HL (new-style) is `SpeciesSex`; in CA it is `IndividualSex`.
 #' @param tol Numeric tolerance in number of fish. Default `0.5`.
 #' @param flag Logical. If `FALSE` (default) return a one-row summary tibble.
 #'   If `TRUE` return the input data with a `.pass` column added (`TRUE` =
@@ -142,23 +146,23 @@ dr_check_subfactor <- function(hl,
 #' @return A one-row summary tibble, or the input data with `.pass` added.
 #' @export
 dr_check_totalno <- function(hl,
-                             DataType      = DataType,
-                             TotalNo       = TotalNo,
-                             SubFactor     = SubFactor,
-                             HLNoAtLngt   = HLNoAtLngt,
-                             Species       = Valid_Aphia,
-                             Sex           = Sex,
-                             CatIdentifier = CatIdentifier,
-                             tol           = 0.5,
-                             flag          = FALSE) {
+                             DataType          = DataType,
+                             TotalNumber       = TotalNumber,
+                             SubsamplingFactor = SubsamplingFactor,
+                             NumberAtLength    = NumberAtLength,
+                             Species           = ValidAphiaID,
+                             Sex               = SpeciesSex,
+                             SpeciesCategory   = SpeciesCategory,
+                             tol               = 0.5,
+                             flag              = FALSE) {
 
   dt_col  <- rlang::as_name(rlang::enquo(DataType))
-  tn_col  <- rlang::as_name(rlang::enquo(TotalNo))
-  sf_col  <- rlang::as_name(rlang::enquo(SubFactor))
-  nl_col  <- rlang::as_name(rlang::enquo(HLNoAtLngt))
+  tn_col  <- rlang::as_name(rlang::enquo(TotalNumber))
+  sf_col  <- rlang::as_name(rlang::enquo(SubsamplingFactor))
+  nl_col  <- rlang::as_name(rlang::enquo(NumberAtLength))
   sp_col  <- rlang::as_name(rlang::enquo(Species))
   sx_col  <- rlang::as_name(rlang::enquo(Sex))
-  cat_col <- rlang::as_name(rlang::enquo(CatIdentifier))
+  cat_col <- rlang::as_name(rlang::enquo(SpeciesCategory))
 
   required <- c(".id", dt_col, tn_col, sf_col, nl_col, sp_col, sx_col, cat_col)
   missing  <- setdiff(required, colnames(hl))
@@ -304,17 +308,35 @@ dr_check_sentinels <- function(d, table_label = NULL, flag = FALSE) {
 #' Supply whichever tables you have. Checks that require a table you have not
 #' supplied are silently skipped.
 #'
-#' `DataType` must be present in `hl` for the HL arithmetic checks. If your HL
-#' table does not yet contain `DataType`, join it from HH first:
+#' Both `hh` and `hl` must have a `.id` column (call [dr_add_id()] first if
+#' needed). `DataType` must also be present in `hl` for the HL arithmetic
+#' checks. If your HL table does not yet contain `DataType`, join it from HH:
+#'
+#' **New-style tables** (from `dr_get()` or `dr_con()`):
 #' ```r
-#' hl <- hl |> dplyr::left_join(hh |> dplyr::select(.id, DataType), by = ".id")
+#' hh <- hh |> dr_add_id()
+#' hl <- hl |> dr_add_id() |>
+#'   dplyr::left_join(dplyr::select(hh, .id, DataType), by = ".id")
+#' dr_check_all(hh = hh, hl = hl)
 #' ```
 #'
-#' @param hh HH exchange table, or `NULL`.
-#' @param hl HL exchange table (with `DataType` joined in), or `NULL`.
+#' **Old-style tables** (from `dr_con_raw()` or `dr_get(from = "old")`):
+#' ```r
+#' hh <- hh |> dr_add_id()
+#' hl <- hl |> dr_add_id() |>
+#'   dplyr::left_join(dplyr::select(hh, .id, DataType), by = ".id")
+#' dr_check_all(hh = hh, hl = hl,
+#'              SubsamplingFactor = SubFactor,
+#'              TotalNumber = TotalNo, NumberAtLength = HLNoAtLngt,
+#'              Species = Valid_Aphia, Sex = Sex,
+#'              SpeciesCategory = CatIdentifier)
+#' ```
+#'
+#' @param hh HH exchange table (with `.id` added), or `NULL`.
+#' @param hl HL exchange table (with `.id` and `DataType` joined in), or `NULL`.
 #' @param ca CA exchange table, or `NULL`.
 #' @param ... Additional arguments passed to individual check functions
-#'   (e.g., `tol` for [dr_check_totalno()]).
+#'   (e.g., `tol` for [dr_check_totalno()], or old-style column name overrides).
 #'
 #' @return A tibble with one row per check, columns `check`, `table`,
 #'   `n_fail`, `n_total`, `pct_fail`, `detail`.

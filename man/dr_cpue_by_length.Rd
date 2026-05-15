@@ -14,54 +14,63 @@ dr_cpue_by_length(
 )
 }
 \arguments{
-\item{hh}{DATRAS haul header table (HH) with old-style column names as
-returned by \code{\link{dr_get}} or the raw parquet. Required columns:
-\code{Survey}, \code{Year}, \code{Quarter}, \code{Country}, \code{Ship}, \code{Gear}, \code{StNo}, \code{HaulNo},
-\code{HaulVal}, \code{DataType}, \code{HaulDur}.}
+\item{hh}{DATRAS haul header table (HH) with new-style column names (as
+returned by \code{\link{dr_get}} with \code{from = "parquet"} or
+\code{from = "new"}, or by \code{\link{dr_con}}).
+Required columns: \code{Survey}, \code{Year}, \code{Quarter},
+\code{Country}, \code{Platform}, \code{Gear}, \code{StationName},
+\code{HaulNumber}, \code{HaulValidity}, \code{DataType},
+\code{HaulDuration}.}
 
-\item{hl}{DATRAS length table (HL) with old-style column names. Required
-columns: \code{Survey}, \code{Year}, \code{Quarter}, \code{Country}, \code{Ship}, \code{Gear}, \code{StNo},
-\code{HaulNo}, \code{SpecVal}, \code{LngtCode}, \code{LngtClass}, \code{HLNoAtLngt}, \code{SubFactor},
-\code{Valid_Aphia}.}
+\item{hl}{DATRAS length table (HL) with new-style column names. Required
+columns: \code{Survey}, \code{Year}, \code{Quarter}, \code{Country},
+\code{Platform}, \code{Gear}, \code{StationName}, \code{HaulNumber},
+\code{SpeciesValidity}, \code{LengthCode}, \code{LengthClass},
+\code{NumberAtLength}, \code{SubsamplingFactor}, \code{ValidAphiaID}.}
 
-\item{haulval}{Character vector of \code{HaulVal} codes to retain. Default
-\code{"V"} (valid hauls only).}
+\item{haulval}{Character vector of \code{HaulValidity} codes to retain.
+Default \code{"V"} (valid hauls only).}
 
-\item{specval}{Integer or character vector of \code{SpecVal} codes to retain.
-Default \code{1L} (standard species records only).}
+\item{specval}{Integer or character vector of \code{SpeciesValidity} codes
+to retain. Default \code{1L} (standard species records only).}
 
 \item{zerofill}{Logical. When \code{TRUE}, adds explicit zero rows for every
 haul × species combination where the species was observed somewhere in
-the same \code{Survey} / \code{Year} / \code{Quarter} but was absent from that haul.
-Zero rows carry \code{length_mm = NA} and \code{n_hour = 0}. Replicates the ICES
-CPUEL zero-fill convention. Ignored when \code{diag = TRUE}. Default \code{FALSE}.}
+the same \code{Survey} / \code{Year} / \code{Quarter} but was absent from
+that haul. Zero rows carry \code{length_mm = NA} and \code{n_hour = 0}.
+Replicates the ICES CPUEL zero-fill convention. Ignored when
+\code{diag = TRUE}. Default \code{FALSE}.}
 
-\item{diag}{Logical. When \code{TRUE}, skips the final aggregation and returns
-the per-row pre-aggregation table, retaining \code{Sex}, \code{CatIdentifier},
-\code{HLNoAtLngt}, \code{SubFactor}, \code{DataType}, \code{HaulDur}, \code{n_haul}, and
-\code{n_hour}. Useful for inspecting duplicate rows or the Sex / CatIdentifier
+\item{diag}{Logical. When \code{TRUE}, skips the final aggregation and
+returns the per-row pre-aggregation table, retaining \code{SpeciesSex},
+\code{SpeciesCategory}, \code{NumberAtLength}, \code{SubsamplingFactor},
+\code{DataType}, \code{HaulDuration}, \code{n_haul}, and \code{n_hour}.
+Useful for inspecting duplicate rows or the SpeciesSex / SpeciesCategory
 structure that drives the aggregation. Default \code{FALSE}.}
 }
 \value{
 When \code{diag = FALSE} (default), a tibble with one row per
-\code{.id} x \code{Valid_Aphia} x \code{length_mm} combination (plus one zero row per
-absent haul × species when \code{zerofill = TRUE}):
+\code{.id} × \code{ValidAphiaID} × \code{length_mm} combination (plus
+one zero row per absent haul × species when \code{zerofill = TRUE}):
 \describe{
-\item{\code{.id}}{8-field unique haul identifier from \code{\link{dr_add_id}}:
-\code{Survey:Year:Quarter:Country:Ship:Gear:StNo:HaulNo}.}
-\item{\code{.id2}}{6-field identifier matching the ICES CPUEL product join
-key (lacks \code{Country} and \code{StNo}):
-\code{Survey:Year:Quarter:Ship:Gear:HaulNo}.}
+\item{\code{.id}}{8-field unique haul identifier from
+\code{\link{dr_add_id}}:
+\code{Survey:Year:Quarter:Country:Platform:Gear:StationName:HaulNumber}.}
+\item{\code{.id2}}{6-field identifier matching the ICES CPUEL product
+join key (lacks \code{Country} and \code{StationName}):
+\code{Survey:Year:Quarter:Platform:Gear:HaulNumber}.}
 \item{\code{Survey}, \code{Year}, \code{Quarter}}{Survey metadata.}
-\item{\code{Valid_Aphia}}{Valid WoRMS AphiaID.}
+\item{\code{ValidAphiaID}}{Valid WoRMS AphiaID.}
 \item{\code{length_mm}}{Length class in millimetres (converted from
-\code{LngtClass} via \code{LngtCode}). \code{NA} for zero-fill rows.}
+\code{LengthClass} via \code{LengthCode}). \code{NA} for zero-fill rows.}
 \item{\code{n_hour}}{CPUE: estimated numbers per hour of hauling,
-summed across \code{Sex} and \code{CatIdentifier}. \code{0} for zero-fill rows.}
+summed across \code{SpeciesSex} and \code{SpeciesCategory}.
+\code{0} for zero-fill rows.}
 }
 When \code{diag = TRUE}, returns the pre-aggregation table with additional
-columns \code{Sex}, \code{CatIdentifier}, \code{HLNoAtLngt}, \code{SubFactor}, \code{DataType},
-\code{HaulDur}, \code{n_haul}.
+columns \code{SpeciesSex}, \code{SpeciesCategory}, \code{NumberAtLength},
+\code{SubsamplingFactor}, \code{DataType}, \code{HaulDuration},
+\code{n_haul}.
 }
 \description{
 Computes catch per unit effort (numbers per hour of hauling) at each length
@@ -69,11 +78,11 @@ class per haul per species from raw DATRAS HH and HL tables, replicating
 the ICES DATRAS CPUE-per-length product from first principles.
 }
 \details{
-Filters to valid hauls (\code{HaulVal == "V"}) and standard species records
-(\code{SpecVal == 1}) by default, then applies \code{\link{dr_add_n_and_cpue}}
-and \code{\link{dr_add_length_mm}}. Counts are aggregated across \code{Sex} and
-\code{CatIdentifier} so each output row represents a unique haul x species x
-length combination.
+Filters to valid hauls (\code{HaulValidity == "V"}) and standard species
+records (\code{SpeciesValidity == 1}) by default, then applies
+\code{\link{dr_add_n_and_cpue}} and \code{\link{dr_add_length_mm}}. Counts
+are aggregated across \code{SpeciesSex} and \code{SpeciesCategory} so each
+output row represents a unique haul × species × length combination.
 }
 \seealso{
 \code{\link{dr_cpue_by_haul}} for the haul-aggregated version.
