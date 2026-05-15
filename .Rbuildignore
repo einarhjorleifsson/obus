@@ -13,3 +13,4 @@
 ^\.positai$
 ^\.claude$
 ^AGENTS.md$
+^docs_external$

@@ -9,4 +9,6 @@ garbage/
 docs
 inst/doc
 *.xlsx
+*.pdf
+*.html
 .positai

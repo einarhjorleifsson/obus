@@ -23,7 +23,7 @@
 
 .dr_fetch_parquet <- function(recordtype) {
   url <- paste0("https://heima.hafro.is/~einarhj/datras/", recordtype, ".parquet")
-  arrow::read_parquet(url)
+  duckdbfs::open_dataset(url) |> dplyr::collect()
 }
 
 .dr_fetch_old <- function(recordtype, surveys, years, quarters, quiet) {
