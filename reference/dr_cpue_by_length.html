@@ -58,84 +58,93 @@ the ICES DATRAS CPUE-per-length product from first principles.</p>
 
 
 <dl><dt id="arg-hh">hh<a class="anchor" aria-label="anchor" href="#arg-hh"></a></dt>
-<dd><p>DATRAS haul header table (HH) with old-style column names as
-returned by <code><a href="dr_get.html">dr_get</a></code> or the raw parquet. Required columns:
-<code>Survey</code>, <code>Year</code>, <code>Quarter</code>, <code>Country</code>, <code>Ship</code>, <code>Gear</code>, <code>StNo</code>, <code>HaulNo</code>,
-<code>HaulVal</code>, <code>DataType</code>, <code>HaulDur</code>.</p></dd>
+<dd><p>DATRAS haul header table (HH) with new-style column names (as
+returned by <code><a href="dr_get.html">dr_get</a></code> with <code>from = "parquet"</code> or
+<code>from = "new"</code>, or by <code><a href="dr_con.html">dr_con</a></code>).
+Required columns: <code>Survey</code>, <code>Year</code>, <code>Quarter</code>,
+<code>Country</code>, <code>Platform</code>, <code>Gear</code>, <code>StationName</code>,
+<code>HaulNumber</code>, <code>HaulValidity</code>, <code>DataType</code>,
+<code>HaulDuration</code>.</p></dd>
 
 
 <dt id="arg-hl">hl<a class="anchor" aria-label="anchor" href="#arg-hl"></a></dt>
-<dd><p>DATRAS length table (HL) with old-style column names. Required
-columns: <code>Survey</code>, <code>Year</code>, <code>Quarter</code>, <code>Country</code>, <code>Ship</code>, <code>Gear</code>, <code>StNo</code>,
-<code>HaulNo</code>, <code>SpecVal</code>, <code>LngtCode</code>, <code>LngtClass</code>, <code>HLNoAtLngt</code>, <code>SubFactor</code>,
-<code>Valid_Aphia</code>.</p></dd>
+<dd><p>DATRAS length table (HL) with new-style column names. Required
+columns: <code>Survey</code>, <code>Year</code>, <code>Quarter</code>, <code>Country</code>,
+<code>Platform</code>, <code>Gear</code>, <code>StationName</code>, <code>HaulNumber</code>,
+<code>SpeciesValidity</code>, <code>LengthCode</code>, <code>LengthClass</code>,
+<code>NumberAtLength</code>, <code>SubsamplingFactor</code>, <code>ValidAphiaID</code>.</p></dd>
 
 
 <dt id="arg-haulval">haulval<a class="anchor" aria-label="anchor" href="#arg-haulval"></a></dt>
-<dd><p>Character vector of <code>HaulVal</code> codes to retain. Default
-<code>"V"</code> (valid hauls only).</p></dd>
+<dd><p>Character vector of <code>HaulValidity</code> codes to retain.
+Default <code>"V"</code> (valid hauls only).</p></dd>
 
 
 <dt id="arg-specval">specval<a class="anchor" aria-label="anchor" href="#arg-specval"></a></dt>
-<dd><p>Integer or character vector of <code>SpecVal</code> codes to retain.
-Default <code>1L</code> (standard species records only).</p></dd>
+<dd><p>Integer or character vector of <code>SpeciesValidity</code> codes
+to retain. Default <code>1L</code> (standard species records only).</p></dd>
 
 
 <dt id="arg-zerofill">zerofill<a class="anchor" aria-label="anchor" href="#arg-zerofill"></a></dt>
 <dd><p>Logical. When <code>TRUE</code>, adds explicit zero rows for every
 haul × species combination where the species was observed somewhere in
-the same <code>Survey</code> / <code>Year</code> / <code>Quarter</code> but was absent from that haul.
-Zero rows carry <code>length_mm = NA</code> and <code>n_hour = 0</code>. Replicates the ICES
-CPUEL zero-fill convention. Ignored when <code>diag = TRUE</code>. Default <code>FALSE</code>.</p></dd>
+the same <code>Survey</code> / <code>Year</code> / <code>Quarter</code> but was absent from
+that haul. Zero rows carry <code>length_mm = NA</code> and <code>n_hour = 0</code>.
+Replicates the ICES CPUEL zero-fill convention. Ignored when
+<code>diag = TRUE</code>. Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-diag">diag<a class="anchor" aria-label="anchor" href="#arg-diag"></a></dt>
-<dd><p>Logical. When <code>TRUE</code>, skips the final aggregation and returns
-the per-row pre-aggregation table, retaining <code>Sex</code>, <code>CatIdentifier</code>,
-<code>HLNoAtLngt</code>, <code>SubFactor</code>, <code>DataType</code>, <code>HaulDur</code>, <code>n_haul</code>, and
-<code>n_hour</code>. Useful for inspecting duplicate rows or the Sex / CatIdentifier
+<dd><p>Logical. When <code>TRUE</code>, skips the final aggregation and
+returns the per-row pre-aggregation table, retaining <code>SpeciesSex</code>,
+<code>SpeciesCategory</code>, <code>NumberAtLength</code>, <code>SubsamplingFactor</code>,
+<code>DataType</code>, <code>HaulDuration</code>, <code>n_haul</code>, and <code>n_hour</code>.
+Useful for inspecting duplicate rows or the SpeciesSex / SpeciesCategory
 structure that drives the aggregation. Default <code>FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>When <code>diag = FALSE</code> (default), a tibble with one row per
-<code>.id</code> x <code>Valid_Aphia</code> x <code>length_mm</code> combination (plus one zero row per
-absent haul × species when <code>zerofill = TRUE</code>):</p><dl><dt><code>.id</code></dt>
-<dd><p>8-field unique haul identifier from <code><a href="dr_add_id.html">dr_add_id</a></code>:
-<code>Survey:Year:Quarter:Country:Ship:Gear:StNo:HaulNo</code>.</p></dd>
+<code>.id</code> × <code>ValidAphiaID</code> × <code>length_mm</code> combination (plus
+one zero row per absent haul × species when <code>zerofill = TRUE</code>):</p><dl><dt><code>.id</code></dt>
+<dd><p>8-field unique haul identifier from
+<code><a href="dr_add_id.html">dr_add_id</a></code>:
+<code>Survey:Year:Quarter:Country:Platform:Gear:StationName:HaulNumber</code>.</p></dd>
 
 <dt><code>.id2</code></dt>
-<dd><p>6-field identifier matching the ICES CPUEL product join
-key (lacks <code>Country</code> and <code>StNo</code>):
-<code>Survey:Year:Quarter:Ship:Gear:HaulNo</code>.</p></dd>
+<dd><p>6-field identifier matching the ICES CPUEL product
+join key (lacks <code>Country</code> and <code>StationName</code>):
+<code>Survey:Year:Quarter:Platform:Gear:HaulNumber</code>.</p></dd>
 
 <dt><code>Survey</code>, <code>Year</code>, <code>Quarter</code></dt>
 <dd><p>Survey metadata.</p></dd>
 
-<dt><code>Valid_Aphia</code></dt>
+<dt><code>ValidAphiaID</code></dt>
 <dd><p>Valid WoRMS AphiaID.</p></dd>
 
 <dt><code>length_mm</code></dt>
 <dd><p>Length class in millimetres (converted from
-<code>LngtClass</code> via <code>LngtCode</code>). <code>NA</code> for zero-fill rows.</p></dd>
+<code>LengthClass</code> via <code>LengthCode</code>). <code>NA</code> for zero-fill rows.</p></dd>
 
 <dt><code>n_hour</code></dt>
 <dd><p>CPUE: estimated numbers per hour of hauling,
-summed across <code>Sex</code> and <code>CatIdentifier</code>. <code>0</code> for zero-fill rows.</p></dd>
+summed across <code>SpeciesSex</code> and <code>SpeciesCategory</code>.
+<code>0</code> for zero-fill rows.</p></dd>
 
 
 </dl><p>When <code>diag = TRUE</code>, returns the pre-aggregation table with additional
-columns <code>Sex</code>, <code>CatIdentifier</code>, <code>HLNoAtLngt</code>, <code>SubFactor</code>, <code>DataType</code>,
-<code>HaulDur</code>, <code>n_haul</code>.</p>
+columns <code>SpeciesSex</code>, <code>SpeciesCategory</code>, <code>NumberAtLength</code>,
+<code>SubsamplingFactor</code>, <code>DataType</code>, <code>HaulDuration</code>,
+<code>n_haul</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Filters to valid hauls (<code>HaulVal == "V"</code>) and standard species records
-(<code>SpecVal == 1</code>) by default, then applies <code><a href="dr_add_n_and_cpue.html">dr_add_n_and_cpue</a></code>
-and <code><a href="dr_add_length_mm.html">dr_add_length_mm</a></code>. Counts are aggregated across <code>Sex</code> and
-<code>CatIdentifier</code> so each output row represents a unique haul x species x
-length combination.</p>
+    <p>Filters to valid hauls (<code>HaulValidity == "V"</code>) and standard species
+records (<code>SpeciesValidity == 1</code>) by default, then applies
+<code><a href="dr_add_n_and_cpue.html">dr_add_n_and_cpue</a></code> and <code><a href="dr_add_length_mm.html">dr_add_length_mm</a></code>. Counts
+are aggregated across <code>SpeciesSex</code> and <code>SpeciesCategory</code> so each
+output row represents a unique haul × species × length combination.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

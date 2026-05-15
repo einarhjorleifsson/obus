@@ -22,27 +22,28 @@ dr_cpue_by_length(
 
 - hh:
 
-  DATRAS haul header table (HH) with old-style column names as returned
-  by [`dr_get`](dr_get.md) or the raw parquet. Required columns:
-  `Survey`, `Year`, `Quarter`, `Country`, `Ship`, `Gear`, `StNo`,
-  `HaulNo`, `HaulVal`, `DataType`, `HaulDur`.
+  DATRAS haul header table (HH) with new-style column names (as returned
+  by [`dr_get`](dr_get.md) with `from = "parquet"` or `from = "new"`, or
+  by [`dr_con`](dr_con.md)). Required columns: `Survey`, `Year`,
+  `Quarter`, `Country`, `Platform`, `Gear`, `StationName`, `HaulNumber`,
+  `HaulValidity`, `DataType`, `HaulDuration`.
 
 - hl:
 
-  DATRAS length table (HL) with old-style column names. Required
-  columns: `Survey`, `Year`, `Quarter`, `Country`, `Ship`, `Gear`,
-  `StNo`, `HaulNo`, `SpecVal`, `LngtCode`, `LngtClass`, `HLNoAtLngt`,
-  `SubFactor`, `Valid_Aphia`.
+  DATRAS length table (HL) with new-style column names. Required
+  columns: `Survey`, `Year`, `Quarter`, `Country`, `Platform`, `Gear`,
+  `StationName`, `HaulNumber`, `SpeciesValidity`, `LengthCode`,
+  `LengthClass`, `NumberAtLength`, `SubsamplingFactor`, `ValidAphiaID`.
 
 - haulval:
 
-  Character vector of `HaulVal` codes to retain. Default `"V"` (valid
-  hauls only).
+  Character vector of `HaulValidity` codes to retain. Default `"V"`
+  (valid hauls only).
 
 - specval:
 
-  Integer or character vector of `SpecVal` codes to retain. Default `1L`
-  (standard species records only).
+  Integer or character vector of `SpeciesValidity` codes to retain.
+  Default `1L` (standard species records only).
 
 - zerofill:
 
@@ -55,57 +56,59 @@ dr_cpue_by_length(
 - diag:
 
   Logical. When `TRUE`, skips the final aggregation and returns the
-  per-row pre-aggregation table, retaining `Sex`, `CatIdentifier`,
-  `HLNoAtLngt`, `SubFactor`, `DataType`, `HaulDur`, `n_haul`, and
-  `n_hour`. Useful for inspecting duplicate rows or the Sex /
-  CatIdentifier structure that drives the aggregation. Default `FALSE`.
+  per-row pre-aggregation table, retaining `SpeciesSex`,
+  `SpeciesCategory`, `NumberAtLength`, `SubsamplingFactor`, `DataType`,
+  `HaulDuration`, `n_haul`, and `n_hour`. Useful for inspecting
+  duplicate rows or the SpeciesSex / SpeciesCategory structure that
+  drives the aggregation. Default `FALSE`.
 
 ## Value
 
-When `diag = FALSE` (default), a tibble with one row per `.id` x
-`Valid_Aphia` x `length_mm` combination (plus one zero row per absent
+When `diag = FALSE` (default), a tibble with one row per `.id` ×
+`ValidAphiaID` × `length_mm` combination (plus one zero row per absent
 haul × species when `zerofill = TRUE`):
 
 - `.id`:
 
   8-field unique haul identifier from [`dr_add_id`](dr_add_id.md):
-  `Survey:Year:Quarter:Country:Ship:Gear:StNo:HaulNo`.
+  `Survey:Year:Quarter:Country:Platform:Gear:StationName:HaulNumber`.
 
 - `.id2`:
 
   6-field identifier matching the ICES CPUEL product join key (lacks
-  `Country` and `StNo`): `Survey:Year:Quarter:Ship:Gear:HaulNo`.
+  `Country` and `StationName`):
+  `Survey:Year:Quarter:Platform:Gear:HaulNumber`.
 
 - `Survey`, `Year`, `Quarter`:
 
   Survey metadata.
 
-- `Valid_Aphia`:
+- `ValidAphiaID`:
 
   Valid WoRMS AphiaID.
 
 - `length_mm`:
 
-  Length class in millimetres (converted from `LngtClass` via
-  `LngtCode`). `NA` for zero-fill rows.
+  Length class in millimetres (converted from `LengthClass` via
+  `LengthCode`). `NA` for zero-fill rows.
 
 - `n_hour`:
 
-  CPUE: estimated numbers per hour of hauling, summed across `Sex` and
-  `CatIdentifier`. `0` for zero-fill rows.
+  CPUE: estimated numbers per hour of hauling, summed across
+  `SpeciesSex` and `SpeciesCategory`. `0` for zero-fill rows.
 
 When `diag = TRUE`, returns the pre-aggregation table with additional
-columns `Sex`, `CatIdentifier`, `HLNoAtLngt`, `SubFactor`, `DataType`,
-`HaulDur`, `n_haul`.
+columns `SpeciesSex`, `SpeciesCategory`, `NumberAtLength`,
+`SubsamplingFactor`, `DataType`, `HaulDuration`, `n_haul`.
 
 ## Details
 
-Filters to valid hauls (`HaulVal == "V"`) and standard species records
-(`SpecVal == 1`) by default, then applies
+Filters to valid hauls (`HaulValidity == "V"`) and standard species
+records (`SpeciesValidity == 1`) by default, then applies
 [`dr_add_n_and_cpue`](dr_add_n_and_cpue.md) and
 [`dr_add_length_mm`](dr_add_length_mm.md). Counts are aggregated across
-`Sex` and `CatIdentifier` so each output row represents a unique haul x
-species x length combination.
+`SpeciesSex` and `SpeciesCategory` so each output row represents a
+unique haul × species × length combination.
 
 ## See also
 

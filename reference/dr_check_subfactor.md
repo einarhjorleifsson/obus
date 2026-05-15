@@ -2,11 +2,11 @@
 
 DATRAS requires:
 
-- DataType **R**: `SubFactor >= 1`
+- DataType **R**: `SubsamplingFactor >= 1`
 
-- DataType **S**: `SubFactor > 1` (strictly)
+- DataType **S**: `SubsamplingFactor > 1` (strictly)
 
-- DataType **C**: `SubFactor == 1`
+- DataType **C**: `SubsamplingFactor == 1`
 
 ## Usage
 
@@ -14,7 +14,7 @@ DATRAS requires:
 dr_check_subfactor(
   hl,
   DataType = DataType,
-  SubFactor = SubFactor,
+  SubsamplingFactor = SubsamplingFactor,
   flag = FALSE
 )
 ```
@@ -23,19 +23,20 @@ dr_check_subfactor(
 
 - hl:
 
-  HL exchange table. Must contain `DataType` and `SubFactor` (or the
-  column names supplied via `DataType` / `SubFactor`). If `DataType` is
-  absent, join HH before calling this function.
+  HL exchange table. Must contain `DataType` and `SubsamplingFactor` (or
+  the column names supplied via `DataType` / `SubsamplingFactor`). If
+  `DataType` is absent, join HH before calling this function.
 
 - DataType:
 
   Unquoted column name for the data type field. Default: `DataType`
-  (old-style).
+  (same in both naming conventions).
 
-- SubFactor:
+- SubsamplingFactor:
 
-  Unquoted column name for the subsampling factor. Default: `SubFactor`
-  (old-style). Use `SubsamplingFactor` for new-style.
+  Unquoted column name for the subsampling factor. Default:
+  `SubsamplingFactor` (new-style). Use `SubFactor` for old-style tables
+  from [`dr_con_raw()`](dr_con_raw.md) or `dr_get(from = "old")`.
 
 - flag:
 

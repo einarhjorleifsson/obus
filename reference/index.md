@@ -42,8 +42,8 @@
 - [`dr_check_subfactor()`](dr_check_subfactor.md) : Check
   SubsamplingFactor constraints against DataType
 
-- [`dr_check_totalno()`](dr_check_totalno.md) : Check TotalNo arithmetic
-  against DataType rules
+- [`dr_check_totalno()`](dr_check_totalno.md) : Check TotalNumber
+  arithmetic against DataType rules
 
 - [`dr_coastline`](dr_coastline.md) : Simple shoreline for ICES area
 

@@ -1,10 +1,11 @@
-# Check TotalNo arithmetic against DataType rules
+# Check TotalNumber arithmetic against DataType rules
 
-For each (`.id`, species, sex, `CatIdentifier`) group:
+For each (`.id`, species, sex, `SpeciesCategory`) group:
 
-- DataType **R** or **S**: `TotalNo ~= sum(HLNoAtLngt) * SubFactor`
+- DataType **R** or **S**:
+  `TotalNumber ~= sum(NumberAtLength) * SubsamplingFactor`
 
-- DataType **C**: `TotalNo ~= sum(HLNoAtLngt)`
+- DataType **C**: `TotalNumber ~= sum(NumberAtLength)`
 
 ## Usage
 
@@ -12,12 +13,12 @@ For each (`.id`, species, sex, `CatIdentifier`) group:
 dr_check_totalno(
   hl,
   DataType = DataType,
-  TotalNo = TotalNo,
-  SubFactor = SubFactor,
-  HLNoAtLngt = HLNoAtLngt,
-  Species = Valid_Aphia,
-  Sex = Sex,
-  CatIdentifier = CatIdentifier,
+  TotalNumber = TotalNumber,
+  SubsamplingFactor = SubsamplingFactor,
+  NumberAtLength = NumberAtLength,
+  Species = ValidAphiaID,
+  Sex = SpeciesSex,
+  SpeciesCategory = SpeciesCategory,
   tol = 0.5,
   flag = FALSE
 )
@@ -27,16 +28,21 @@ dr_check_totalno(
 
 - hl:
 
-  HL exchange table. Must contain `DataType`, `TotalNo`, `SubFactor`,
-  `HLNoAtLngt`, `.id`, and the grouping fields `Valid_Aphia`, `Sex`,
-  `CatIdentifier` (or the column names supplied below). Join HH for
-  `DataType` if it is not present.
+  HL exchange table. Must contain `DataType`, `TotalNumber`,
+  `SubsamplingFactor`, `NumberAtLength`, `.id`, and the grouping fields
+  `ValidAphiaID`, `SpeciesSex`, `SpeciesCategory` (or the column names
+  supplied below). Join HH for `DataType` if it is not present. Note:
+  `.id` must be present (call [`dr_add_id()`](dr_add_id.md) first if
+  needed).
 
-- DataType, TotalNo, SubFactor, HLNoAtLngt, Species, Sex, CatIdentifier:
+- DataType, TotalNumber, SubsamplingFactor, NumberAtLength, Species,
+  Sex, SpeciesCategory:
 
-  Unquoted column names. Old-style defaults shown. New-style
-  equivalents: `TotalNumber`, `SubsamplingFactor`, `NumberAtLength`,
-  `ValidAphiaID`, `IndividualSex`, `SpeciesCategory`.
+  Unquoted column names. New-style defaults shown. For old-style tables
+  from [`dr_con_raw()`](dr_con_raw.md) or `dr_get(from = "old")` use:
+  `TotalNo`, `SubFactor`, `HLNoAtLngt`, `Valid_Aphia`, `Sex`,
+  `CatIdentifier`. Note: `Sex` in HL (new-style) is `SpeciesSex`; in CA
+  it is `IndividualSex`.
 
 - tol:
 
@@ -55,5 +61,5 @@ A one-row summary tibble, or the input data with `.pass` added.
 ## Details
 
 A tolerance of `tol` fish is applied to allow for rounding in
-submissions. Groups with `NA` in `TotalNo`, `SubFactor`, or `HLNoAtLngt`
-are skipped (counted separately in the detail string).
+submissions. Groups with `NA` in `TotalNumber`, `SubsamplingFactor`, or
+`NumberAtLength` are skipped (counted separately in the detail string).
