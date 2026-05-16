@@ -89,3 +89,28 @@
 #' @seealso \code{\link{dr_add_record_type}}
 "dr_lookup_hl_record_type"
 
+
+#' DATRAS Survey Area Polygons (Valid Strata)
+#'
+#' An \code{sf} object containing the named survey strata (Valid = 1) for all
+#' DATRAS surveys available from the ICES GIS service. Geometries are simplified
+#' to a 0.01° tolerance (~1 km) to keep the package size manageable; they are
+#' accurate enough for haul-in-polygon assignment.
+#'
+#' For full-resolution polygons or Valid = 0 features,
+#' fetch live with \code{\link{dr_get_areas}}.
+#'
+#' A simple feature collection with 236 features and 7 fields (EPSG:4326):
+#' \describe{
+#'   \item{Survey}{Survey acronym (e.g. \code{"NS-IBTS"}).}
+#'   \item{AreaName}{Stratum / area name within the survey.}
+#'   \item{SubareaName}{Sub-area name (often \code{NA}).}
+#'   \item{Description}{Human-readable description (often \code{NA}).}
+#'   \item{Valid}{Always \code{1} in this dataset (named strata only).}
+#'   \item{SurveyCode}{Internal integer survey code.}
+#'   \item{Year}{Year string; only populated for surveys with year-specific areas.}
+#' }
+#'
+#' @source \url{https://gis.ices.dk/gis/rest/services/ICES_Datasets/Datras_service_prod/MapServer/0}
+#' @seealso \code{\link{dr_get_areas}}, \code{\link{dr_assign_area}}
+"dr_lookup_areas"

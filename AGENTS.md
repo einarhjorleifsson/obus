@@ -4,6 +4,16 @@
 **Location:** `/Users/einarhj/R/Pakkar/obus`  
 **Purpose:** Fast, tidy access to ICES DATRAS (trawl survey) data. Eliminates local data maintenance; provides consistent column types, standardized units, and unique haul identifiers.
 
+## Motivation
+
+The authoritative source data are the exchange tables — **HH, HL, and CA** — submitted by national institutes to the ICES Datacenter. The Datacenter computes derived products (CPUE indices, age-based indices, etc.) from these tables, but the calculation code is not publicly accessible, which limits independent verification.
+
+obus is built on the principle that derived products should be recomputable directly from the exchange tables using open, inspectable code. This serves two goals: it makes the methodology transparent to anyone who wants to understand or audit it, and it gives researchers a documented starting point for exploring alternative calculation choices — length filters, haul validity rules, zero-fill conventions, and so on — without deviating silently from an opaque standard.
+
+The server parquets therefore contain only the exchange table fields (new-style names) plus `.id`. All further computation is left to user pipelines built with `dr_add_*` and `dr_cpue_by_*` functions.
+
+Zero-filling (inserting explicit zero rows for species absent from a haul but present elsewhere in a survey/year/quarter) is likewise left to the user. obus does not provide a zero-fill helper; users who need this for index calculations must implement it themselves.
+
 ---
 
 ## Loading for Development
@@ -22,6 +32,7 @@ devtools::load_all("/Users/einarhj/R/Pakkar/obus")
 | `dr_lookup_species` | 2000+ | Aphia ID ↔ latin + common name mapping. Source: worrms + HL/CA parquet. Regenerate via `data-raw/DATASET_species.R`. |
 | `dr_lookup_vocabulary` | ~10 300 | Valid codes for DATRAS categorical fields, sourced from the ICES vocabulary server. Columns: `old`, `new`, `key`, `description`, `type`, `type_desc`. Covers all `dr_lookup_fields` old-style names except Month/Quarter/Year. Regenerate via `data-raw/DATASET_vocabulary.R`. |
 | `dr_coastline` | — | Coastline geometry for DATRAS survey area. Source: rnaturalearth. |
+| `dr_lookup_areas` | 236 | Valid = 1 survey strata as an `sf` object (EPSG:4326). Columns: `Survey`, `AreaName`, `SubareaName`, `Description`, `Valid`, `SurveyCode`, `Year`. Geometries simplified to 0.01° for size (~1 MB .rda). Regenerate via `data-raw/DATASET_areas.R`. Full-resolution data via `dr_get_areas()`. |
 
 **Git LFS tracks `data/*.rda`** via `.gitattributes` — after `usethis::use_data(..., overwrite = TRUE)`, verify the file is staged as actual content, not just a pointer.
 
@@ -31,11 +42,12 @@ devtools::load_all("/Users/einarhj/R/Pakkar/obus")
 
 ```r
 dr_get(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
-       aphia = NULL, from = "parquet", quiet = TRUE)
+       aphia = NULL, source = "parquet", dictionary = NULL, quiet = TRUE)
 ```
 
 - `surveys = NULL` → defaults to all ICES surveys excluding test surveys (via `.dr_default_surveys()`, which calls `icesDatras::getSurveyList()` and drops anything matching `^Test`).
 - `aphia = NULL` → defaults to cod (126436), haddock (126437), herring (126417) for record types that require species codes (`"CW"`, `"IDX"`).
+- `dictionary = NULL` → builds a default old→new translation dictionary from `dr_lookup_fields` (rows where both `old` and `new` are non-NA). Supply a custom data frame with columns `old` and `new` to override.
 
 ### Record Types
 
@@ -51,35 +63,26 @@ dr_get(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
 | `"CW"` | `icesDatras::getCatchWgt` | Catch weight; `aphia` required (or defaults); years/quarters passed as vectors; NA in CatchWgt = species absent from haul |
 | `"IDX"` | `icesDatras::getIndices` | Age-based survey indices; `aphia` required (or defaults); iterates per survey×year×quarter×species (all scalar); IDX column `PlusGr` renamed to `PlusGrAge` |
 
-### `from` argument (HH/HL/CA only)
+### `source` argument (HH/HL/CA only)
 
-| `from` | Source | Notes |
-|---|---|---|
-| `"parquet"` | URL-hosted parquet (default) | Fastest; all surveys; no filtering |
-| `"new"` | `get_datras_unaggregated_data` | Range strings; per-survey tryCatch |
-| `"old"` | `getDATRAS` | Legacy; per-survey tryCatch |
+| `source` | Source | Names returned | Notes |
+|---|---|---|---|
+| `"parquet"` | URL-hosted parquet (default) | New-style | Fastest; all surveys; no filtering |
+| `"csv"` | `get_datras_unaggregated_data` | New-style | Range strings; per-survey tryCatch |
+| `"xml"` | `getDATRAS` (legacy) | New-style (translated via `dictionary`) | Per-survey tryCatch |
 
-`from` is ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
-
----
-
-## Raw ICES Tables: `dr_con_raw()`
-
-```r
-dr_con_raw(table = "HH")
-```
-
-Returns a lazy `duckdbfs` tibble connected to "as-is" ICES parquet files with original old-style column names (Ship, HaulNo, ShootLat, etc.). Valid tables: `"HH"`, `"HL"`, `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`. Use when you need unmodified ICES output.
+`source` is ignored for FL, LT, CPUEL, CPUEA, CW, IDX — these always use their dedicated ICES API
+functions, and their old-style names are translated to new-style via `dr_translate(dictionary)` on return.
 
 ---
 
-## Tidy DuckDB Connection: `dr_con()`
+## DuckDB Connection: `dr_con()`
 
 ```r
-dr_con(type, trim = TRUE, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
+dr_con(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
 ```
 
-Returns a lazy `duckdbfs` tibble of tidied parquet data. Types accepted: `"HH"`, `"HL"`, `"CA"`, `"species"`, `"haul"`, `"dictionary"`, `"vocabulary"`, `"cpuelength"`.
+Returns a lazy `duckdbfs` tibble. An HTTP HEAD request confirms the file exists on the server before opening. Valid types: `"HH"`, `"HL"`, `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`. All parquets are at `<url>/<type>.parquet`.
 
 ---
 
@@ -104,7 +107,7 @@ Typical usage to rename raw (old-style) columns to tidy (new-style):
 
 ```r
 dictionary <- dr_lookup_fields |> select(old, new) |> distinct()
-dr_con_raw("HH") |> dr_translate(dictionary, from = "old", to = "new")
+dr_con("HH", raw = TRUE) |> dr_translate(dictionary, from = "old", to = "new")
 ```
 
 **Reversibility caveat:** 7 `new` names map to more than one `old` name; `dr_translate(..., from = "new", to = "old")` silently picks the first match. Affected names:
@@ -211,6 +214,64 @@ dr_cpue_by_haul(hh, hl, diag = TRUE) |>
 
 ---
 
+## Spatial Functions (`R/dr_get_areas.R`, `R/dr_assign_area.R`)
+
+### `dr_get_areas()` — fetch survey area polygons live
+
+```r
+dr_get_areas(surveys = NULL, valid = NULL, quiet = TRUE)
+```
+
+Downloads DATRAS survey area polygons from the ICES ArcGIS REST service.
+
+- **Source:** `https://gis.ices.dk/gis/rest/services/ICES_Datasets/Datras_service_prod/MapServer/0`
+- **`surveys`** — character vector of survey acronyms; `NULL` returns all 22 surveys.
+- **`valid`** — `1` = named strata used in DATRAS products; `0` = other survey-associated features; `NULL` = both.
+- Paginates automatically; full fetch (~1028 features) takes ~35s.
+- Returns an `sf` object, EPSG:4326. Column `DatasetVer` is renamed to `Survey`.
+
+**Valid = 1 surveys (236 features):** BITS, BTS, BTS-GSA17, BTS-VIII, DYFS, EVHOE, IE-IAMS, IE-IGFS, NIGFS, NS-IBTS (10 roundfish areas), NS-IDPS, PT-IBTS, SCOROC, SCOWCGFSq1, SCOWCGFSq4, SNS, SP-ARSA, SP-NORTH, SP-PORC.
+
+**Full-resolution FlatGeobuf on server:**
+`https://heima.hafro.is/~einarhj/datras/areas.fgb` — all 1028 features (Valid 0 + 1), full resolution.
+Deploy script: `data-raw/DATASET_areas.R`. Geometry column is `geom` (GEOMETRY type); readable via `duckdbfs::open_dataset("...areas.fgb")`.
+
+---
+
+### `dr_assign_area()` — spatial join haul positions to strata
+
+```r
+dr_assign_area(d, areas = NULL, lon = "ShootLongitude", lat = "ShootLatitude",
+               keep_cols = "AreaName", quiet = TRUE)
+```
+
+Strict two-path design — input types must be consistent:
+
+| `d` type | `areas` type | Join engine |
+|---|---|---|
+| `data.frame` | `sf` (or `NULL` → `dr_lookup_areas`) | `sf::st_join()` |
+| `tbl_duckdb_connection` | `tbl_duckdb_connection` (or `NULL` → auto temp fgb) | DuckDB `ST_Within(ST_Point(...), geom)` |
+
+- When `areas = NULL` with a lazy `d`, `dr_lookup_areas` is written to a temp FlatGeobuf and opened via `duckdbfs::open_dataset()`. The path is cached in `.obus_env` for the session.
+- Default areas (`areas = NULL`) add `AND h.Survey = a.Survey` to avoid cross-survey false matches. Custom areas skip this filter.
+- duckdbfs auto-loads the DuckDB spatial extension — no `INSTALL/LOAD` calls needed.
+- Geometry column in FlatGeobuf files must be named `geom`.
+- Hauls outside all polygons → `NA` in `keep_cols`.
+
+```r
+# Data frame path
+hh |> dr_assign_area()
+hh |> dr_assign_area(areas = my_sf, keep_cols = "zone_id")
+
+# DuckDB path — areas from server FlatGeobuf
+areas_con <- duckdbfs::open_dataset(
+  "https://heima.hafro.is/~einarhj/datras/areas.fgb"
+) |> dplyr::filter(Valid == 1L)
+hh_con |> dr_assign_area(areas = areas_con)
+```
+
+---
+
 ## Quality Control Functions (`R/dr_check.R`)
 
 All `dr_check_*` functions accept a collected data frame or a `tbl_duckdb_connection` (collected internally where needed). They **never throw on failure** — they report results in a standard one-row tibble:
@@ -224,7 +285,7 @@ All `dr_check_*` functions accept a collected data frame or a `tbl_duckdb_connec
 | `pct_fail` | dbl | Percentage failing |
 | `detail` | chr | Human-readable failure breakdown |
 
-**Column name defaults follow new-style names** (as returned by `dr_get()` default / `dr_con()`). Pass old-style names explicitly via the column arguments when working on tables from `dr_con_raw()` or `dr_get(from = "old")`.
+**Column name defaults follow new-style names** (as returned by `dr_get()` default / `dr_con()`). Pass old-style names explicitly via the column arguments when working on tables from `dr_con(raw = TRUE)` or `dr_get(from = "old")`.
 
 | Function | Table | What it checks |
 |---|---|---|
@@ -258,9 +319,9 @@ Applies column types from `dr_lookup_fields`. Called per data frame before `bind
 
 | Helper | Pattern |
 |---|---|
-| `.dr_fetch_parquet(recordtype)` | Single `arrow::read_parquet()` from URL |
-| `.dr_fetch_old(recordtype, surveys, years, quarters, quiet)` | `map(surveys, getDATRAS)` with tryCatch; `.dr_settypes(name_col = "old")` |
-| `.dr_fetch_new(recordtype, surveys, years, quarters, quiet)` | `map(surveys, get_datras_unaggregated_data)` with range strings |
+| `.dr_fetch_parquet(recordtype)` | `duckdbfs::open_dataset()` \|> `collect()` from URL |
+| `.dr_fetch_xml(recordtype, surveys, years, quarters, quiet)` | `map(surveys, getDATRAS)` with tryCatch; `.dr_settypes(name_col = "old")`; translated to new-style on return |
+| `.dr_fetch_csv(recordtype, surveys, years, quarters, quiet)` | `map(surveys, get_datras_unaggregated_data)` with range strings; returns new-style names directly |
 | `.dr_fetch_flex(surveys, years, quarters, quiet)` | `expand_grid` × `pmap` per survey×year×quarter; `.dr_settypes(name_col = "old", recordheader = "FL")` |
 | `.dr_fetch_lt(surveys, years, quarters, quiet)` | Same pattern; strips xsi:nil from all cols; borrows types from all tables; `.dr_settypes(name_col = "old")` |
 | `.dr_fetch_cpue_length(surveys, years, quarters, quiet)` | Same pattern; `.dr_settypes(name_col = "old", recordheader = "CPUEL")` per df |
@@ -296,7 +357,23 @@ Key type fixes applied in `case_when` (using `old` names):
 
 ## DATRAS Domain Knowledge (relevant to code flow)
 
-> Full field/unit reference: `docs_external/DATRAS_field_reference.md`
+> Full field/unit reference: `docs_external/DATRAS_Technical_Reference.md`
+
+### HL table — four conceptual layers
+
+The HL table conflates four layers of information:
+
+| Layer | Fields | Notes |
+|---|---|---|
+| A — Haul join key | `Survey`, `Year`, `Quarter`, `Country`, `Platform`, `Gear`, `StationName`, `HaulNumber` | Repeated from HH; join only |
+| B — Sampling protocol | `DataType` (from HH), `SpeciesValidity`, `SpeciesSex`, `SpeciesCategory`, `SubsamplingFactor` | Governs arithmetic for layers C and D |
+| C — Catch totals | `ValidAphiaID`, `TotalNumber`, `SpeciesCategoryWeight` | Per haul × species × sex × category; repeated across all length rows for that group |
+| D — Length frequency | `LengthCode`, `LengthClass`, `NumberAtLength` | Per haul × species × sex × category × length class |
+
+The current `HL.parquet` is a transitional format. The end-goal is to split HL into two separate
+user-facing parquet files (layer C and layer D). The split design requires sign-off from the IMBUS
+team (Vaishav Soni/ICES and WP2/WP4 leads) before it can be finalised. `dr_cpue_by_haul(diag=TRUE)`
+and `dr_cpue_by_length(diag=TRUE)` approximate the intended layer C and layer D outputs respectively.
 
 ### Haul join key
 
@@ -407,10 +484,7 @@ Issues discovered during the new-style naming refactor that warrant future atten
 4. **`dr_cpue_by_*` `.id2` field now uses new-style names; ICES CPUEL product uses old-style.**
    `.id2` is now `Survey:Year:Quarter:Platform:Gear:HaulNumber`. The ICES CPUEL parquet (raw) uses `Survey:Year:Quarter:Ship:Gear:HaulNo`. Joins between `.id2` and CPUEL will usually succeed because `Platform == Ship` and `HaulNumber == HaulNo` numerically, but this is not guaranteed in all edge cases. Consider adding a note to the `dr_cpue_by_*` documentation, or building `.id2` from the ICES-side fields explicitly for comparison purposes.
 
-5. **`dr_con()` `trim` parameter is silently ignored for non-HL/CA types.**
-   A warning is only emitted when `quiet = FALSE`. Users who pass `trim = FALSE` to a `dr_con("HH")` call get the full table with no indication that `trim` was ignored. Should either always warn or document the behaviour more clearly.
-
-6. **`dr_add_n_and_cpue()` requires `.id` and `DataType` but does not use `.id` internally.**
+5. **`dr_add_n_and_cpue()` requires `.id` and `DataType` but does not use `.id` internally.**
    `.id` is in the `required_vars` check but is not actually used in the computation. This was presumably a guard to ensure the table has been joined correctly, but it's misleading and will cause spurious failures on valid inputs that lack `.id`. Remove `.id` from the required column check or document why it's enforced.
 
 7. **No auto-detection of naming style in `dr_cpue_by_*`.**
@@ -440,8 +514,8 @@ hl <- hl |>
   dr_add_n_and_cpue() |>
   dr_add_record_type()
 
-# Specific survey, recent years, via new API
-hh_ns <- dr_get("HH", surveys = "NS-IBTS", years = 2020:2024, from = "new")
+# Specific survey, recent years, via CSV API
+hh_ns <- dr_get("HH", surveys = "NS-IBTS", years = 2020:2024, source = "csv")
 
 # Flex file
 fl <- dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
@@ -461,11 +535,11 @@ idx <- dr_get("IDX", surveys = "NS-IBTS", years = 2018, quarters = 1,
               aphia = c(126436, 126437))
 
 # Raw ICES tables (old-style column names)
-dr_con_raw("HH") |> dplyr::filter(Year == 2020) |> dplyr::collect()
+dr_con("HH", raw = TRUE) |> dplyr::filter(Year == 2020) |> dplyr::collect()
 
 # Translate raw old-style names to new-style
 dictionary <- dr_lookup_fields |> dplyr::select(old, new) |> dplyr::distinct()
-dr_con_raw("HH") |> dr_translate(dictionary, from = "old", to = "new")
+dr_con("HH", raw = TRUE) |> dr_translate(dictionary, from = "old", to = "new")
 
 # Lazy DuckDB query on tidy parquet
 dr_con("HL") |>
@@ -482,9 +556,9 @@ hl_ns <- hl_ns |> dr_add_id() |>
 
 dr_check_all(hh = hh_ns, hl = hl_ns)
 
-# QC checks on old-style raw data (dr_con_raw) — pass column overrides
-hh_raw <- dr_con_raw("HH") |> dplyr::filter(Survey == "NS-IBTS", Year == 2024, Quarter == 1) |> dplyr::collect()
-hl_raw <- dr_con_raw("HL") |> dplyr::filter(Survey == "NS-IBTS", Year == 2024, Quarter == 1) |> dplyr::collect()
+# QC checks on old-style raw data (dr_con raw = TRUE) — pass column overrides
+hh_raw <- dr_con("HH", raw = TRUE) |> dplyr::filter(Survey == "NS-IBTS", Year == 2024, Quarter == 1) |> dplyr::collect()
+hl_raw <- dr_con("HL", raw = TRUE) |> dplyr::filter(Survey == "NS-IBTS", Year == 2024, Quarter == 1) |> dplyr::collect()
 
 hh_raw <- hh_raw |> dr_add_id()
 hl_raw <- hl_raw |> dr_add_id() |>

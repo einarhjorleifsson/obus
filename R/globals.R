@@ -35,7 +35,8 @@ utils::globalVariables(
     "HaulVal", "SpecVal", "length_mm", "zerofill",
     "TotalNo", "CatCatchWgt", "n_haul", "n_hour", "w_haul", "w_hour",
     ".data", ".pass", ":=",
-    "HaulValidity", "SpeciesValidity"
+    "HaulValidity", "SpeciesValidity",
+    "dr_lookup_areas"
   )
 )
 

@@ -8,6 +8,7 @@ Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
 Description: Fast access to the full up-to-date DATRAS data. Eliminates the tedious and often error-prone task of maintaining local copies of DATRAS data tables. Aim is to provide tidy non-ambigous variables and tables. Never look back.
 License: CC BY 4.0
 Suggests:
+    arrow,
     devtools,
     rmarkdown,
     santoku,
@@ -22,13 +23,16 @@ Depends:
     R (>= 4.1.0)
 LazyData: true
 Imports:
+    dbplyr,
     dplyr,
     duckdbfs,
     ggplot2,
+    httr2,
     icesDatras,
     lubridate,
     purrr,
     rlang,
+    sf,
     tidyr
 Config/Needs/website: rmarkdown, quarto
 URL: https://einarhjorleifsson.github.io/obus/
