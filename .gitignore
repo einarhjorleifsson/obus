@@ -14,3 +14,4 @@ vignettes_ignore
 *.pdf
 *.html
 .positai
+AGENTS.md
