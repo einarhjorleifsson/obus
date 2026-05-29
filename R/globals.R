@@ -36,7 +36,8 @@ utils::globalVariables(
     "TotalNo", "CatCatchWgt", "n_haul", "n_hour", "w_haul", "w_hour",
     ".data", ".pass", ":=",
     "HaulValidity", "SpeciesValidity",
-    "dr_lookup_areas"
+    "dr_lookup_areas",
+    "SubsampleWeight", "AreaCode"
   )
 )
 
