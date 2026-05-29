@@ -3,16 +3,10 @@
 
 ## Preamble
 
-*2026-05-28: Currently the steps below may not run / are not
-reproducible. Possibly not even the installation process. Fix will be
-made before 2026-06-01.*
-
 <!-- badges: start -->
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![CRAN
-status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
 The aim of {obus} is to provide users fast and efficient access to
@@ -26,11 +20,21 @@ little.
 
 The package code resides on
 [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a
-rudimentary [web-space](https://github.com/einarhjorleifsson/obus).
+[package website](https://einarhjorleifsson.github.io/obus).
 
-This README is definitively not a gentle introduction for the novice.
-The current form is a dialogue instigator, aimed at members of the
-IMBUS-project.
+For purists, one regrets to inform that the functionality of {obus} has
+quite some number of dependencies (56, see also
+[DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)).
+Some of them may possibly be trimmed, but never all.
+
+Access to the parquet datafiles is though independent of {obus} and for
+that matter **any software platform** used. The current **temporary**
+path to the exchange files (with the new header lingo) used in {obus}
+is:
+
+    https://heima.hafro.is/~einarhj/datras/HH.parquet
+    https://heima.hafro.is/~einarhj/datras/HL.parquet
+    https://heima.hafro.is/~einarhj/datras/CA.parquet
 
 ## Installation
 
@@ -62,13 +66,24 @@ system.time({
   ca <- dr_get("CA", source = "parquet")
 })
 #>    user  system elapsed 
-#>  10.555   1.761  38.878
+#>  10.269   1.872  29.035
 ```
 
-So we are talking about around 5 seconds if you sitting on the optic
+So we are talking about around 5 seconds if you’re sitting on the optic
 fiber. If you are connected via poor wifi this may take on the order of
-a minute. Whatever the case one can assume that nobody will complain
-about the time, given that the dimension just imported are as follows:
+a minute. The dr_get is just a thin wrapper around the path stated
+above. User can thus access the data without the {obus} as middle man
+via e.g.:
+
+    arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+
+And if Python is your preferred platform:
+
+    import pandas as pd
+    pd.read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+
+Whatever the case one can assume that nobody will complain about the
+speed of access, given that the dimensions just imported are as follows:
 
 | type |     rows | cols |
 |:-----|---------:|-----:|
@@ -83,9 +98,7 @@ that are hosted on a conventional https-server. At this stage it is
 unclear how much simultaneous traffic it can handle. The way things have
 been setup so far is just a proof of concept. By the same nature, do not
 expect that the datasets accessed are the latest mirror of the data
-residing in ICES Datras Database. ICES Datacenter is currently
-evaluating/exploring ways provide faster access to the data than
-currently available.
+residing in ICES Datras Database.
 
 Those familiar with DATRAS data will notice when viewing the data that
 the variable names are based on the new lingo. If your downstream
@@ -114,17 +127,17 @@ hl |> dr_translate(from = "new", to = "old")
 #> #   DateofCalculation <int>, Valid_Aphia <int>, Year <dbl>, .id <chr>
 ```
 
-The old faithful (icesDatras::getDATRAS) is wrapped within the above
-function (specify source as “xml”, with the addition that variable type
-is set, -9 are turned to NA and one can get more than one survey a time.
-Here we only dare to call one year of HL-data:
+The old faithful (`icesDatras::getDATRAS`) is wrapped within `dr_get()`
+(specify `source = "xml"`), with the addition that variable types are
+set, -9 values are turned to NA, and one can retrieve more than one
+survey at a time. Here we only dare to call one year of HL-data:
 
 ``` r
 system.time({
   hl_xml <- dr_get(recordtype = "HL", years = 2026, source = "xml")
 })
 #>    user  system elapsed 
-#>   9.433   3.083  57.417
+#>   9.265   2.947  50.610
 ```
 
 In store we now have:
@@ -146,7 +159,7 @@ system.time({
   hl_csv <- dr_get("HL", years = 2025, source = "csv")
 })
 #>    user  system elapsed 
-#>   0.984   0.260   8.397
+#>   0.947   0.282   8.805
 ```
 
 In store we now have:
@@ -167,11 +180,11 @@ hl_csv |> count(Survey)
 The above demonstrates the following:
 
 - All approaches return to the user R-dataframes
-- The user is genarally not interested in how the data is transfered
+- The user is generally not interested in how the data is transferred
   over the wire, the function argument source (“xml”, “csv”, “parquet”)
   are here just placed as developmental demos.
 - Hosting the full DATRAS dataset as parquet files on a https-server
-  provides the fasted download time.
+  provides the fastest download and import time.
 - For all practical purposes one could embed the parquet source in
   existing function icesDatras::getDatras - the only thing the user (or
   packages that uses the function) would notice is that he would get:
@@ -180,7 +193,7 @@ The above demonstrates the following:
 
 The link between https hosted parquet files and the DATRAS database is
 something that computer engineers would need to sort out. That is if
-this is going to be taken up by the ICES Datacenter.
+parquet distribution is going to be taken up as a default.
 
 ## Connecting
 
@@ -196,7 +209,7 @@ system.time({
   ca <- dr_con("CA")
 })
 #>    user  system elapsed 
-#>   0.201   0.025   1.012
+#>   0.189   0.030   0.923
 class(hl) ; nrow(hl)
 #> [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              
 #> [4] "tbl_lazy"              "tbl"
@@ -252,7 +265,7 @@ Let’s look at the hl object from another angle:
 hl |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM uwronfvvqkjjuyt
+#> FROM adrgfsvdmqeiamm
 ```
 
 So the object hl is actually some kind of an SQL-query. What happens
@@ -260,12 +273,12 @@ behind the scene when using dr_con is:
 
 - A tiny database engine called DuckDB is started silently from R — no
   separate server or installation needed (The feature is installed
-  initially on the compute when {obus} is installed).
+  initially on the computer when {obus} is installed).
 - DuckDB opens an HTTP connection to the parquet file on the remote
   server and reads only its *index* (column names, types, and where each
   chunk of rows lives in the file). This is why the connection is nearly
   instantaneous — only limited number of records have travelled over the
-  wire.
+  wire, just to give the user a whiff of the data.
 
 Now we can do the usual:
 
@@ -280,15 +293,15 @@ What we now have in store is:
 ``` r
 q |> show_query()
 #> <SQL>
-#> SELECT uwronfvvqkjjuyt.*
-#> FROM uwronfvvqkjjuyt
+#> SELECT adrgfsvdmqeiamm.*
+#> FROM adrgfsvdmqeiamm
 #> WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 ```
 
 Ergo:
 
 - We have added to the original SQL query a filter using dplyr-verbs
-- We no longer have preset arguement within a function (like
+- We no longer have preset argument within a function (like
   icesDatras::getDATRAS) but supply that via the dplyr-filter function
 
 The magic is that we now have a system were we can supply any filter to
@@ -313,14 +326,14 @@ q |> show_query()
 #> SELECT q01.*
 #> FROM (
 #>   SELECT
-#>     uwronfvvqkjjuyt.*,
+#>     adrgfsvdmqeiamm.*,
 #>     CASE
 #> WHEN (LengthCode = '-9') THEN NULL
 #> WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>   FROM uwronfvvqkjjuyt
+#>   FROM adrgfsvdmqeiamm
 #> ) q01
 #> WHERE (Gear = 'GOV') AND (length_cm > 50.0)
 ```
@@ -336,301 +349,118 @@ q <-
   filter(Gear == "GOV", length_cm > 50)
 ```
 
-#### Out of place:
-
-- Every `filter()`, `select()`, or `mutate()` you write in R is silently
-  translated into an SQL query. That is what `show_query()` reveals.
-  Nothing is computed yet; you are just building up instructions.
-- When you finally call `collect()` — or any function that actually
-  needs the numbers — DuckDB is clever about what it fetches. If you
-  filtered to one survey, it skips the rest of the file entirely. If you
-  only selected three columns, the other fifty are never downloaded.
-  This is called *predicate and projection pushdown*.
-- Only at that point do rows travel from the server to your R session,
-  already filtered and shaped exactly as you asked.
-
-We can take a peek via:
-
-- First to observe is that the number rows is unknown
-- What may scream at you are the few numbers of variables
-- If you want them all just use argument `trim = FALSE` in the
-  `dr_con`-function.
-- What is trimmed is currently an overkill. What to trim needs
-  discussion among the bus-people.
-- You get the latin and the ingles name of the species upfront, gone is
-  the not-so-useful downstream-analysis aphia numerical code
-- Future dream could be to get the actual stock-name here, for those
-  stocks that are fixed in space and/or seasonal time.
-
-### Data processing using a connection
-
-For those familiar with using dplyr-verbs to process R data.frames most
-of those function as well as many base-R functions can be used to
-process the “connected” data. E.g. one can get all survey stations in
-2024 and add to that the number of cod observed using the following
-script:
+We can also join two or more tables:
 
 ``` r
-system.time({
-  q <-
-    # Process the data in DuckDB
-    dr_con("HH") |> 
-    filter(Year == 2024,
-                  Quarter %in% 1:4) |> 
-    select(.id, lon = ShootLongitude, lat = ShootLatitude) |> 
-    filter(between(lon, 0, 11)) |> 
-    left_join(dr_con("HL") |> 
-                       filter(latin == "Gadus morhua") |> 
-                       group_by(.id) |> 
-                       summarise(n_haul = sum(n_haul, na.rm = TRUE)),
-                     by = join_by(.id)) |> 
-    mutate(n_haul = coalesce(n_haul, 0))
-})
-#> Error in `filter()`:
-#> ℹ In argument: `latin == "Gadus morhua"`
-#> Caused by error:
-#> ! Object `latin` not found.
-q |> glimpse()
-#> Rows: ??
-#> Columns: 31
-#> Database: DuckDB 1.5.2 [root@Darwin 25.5.0:R 4.5.2/:memory:]
-#> $ RecordHeader          <chr> "HL", "HL", "HL", "HL", "HL", "HL", "HL", "HL", …
-#> $ Survey                <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-…
-#> $ Quarter               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ Country               <chr> "GB-SCT", "GB-SCT", "GB-SCT", "GB-SCT", "GB-SCT"…
-#> $ Platform              <chr> "74EX", "74EX", "74EX", "74EX", "74EX", "74EX", …
-#> $ Gear                  <chr> "GOV", "GOV", "GOV", "GOV", "GOV", "GOV", "GOV",…
-#> $ SweepLength           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ GearExceptions        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ DoorType              <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ StationName           <chr> "46", "46", "46", "46", "46", "35", "35", "35", …
-#> $ HaulNumber            <int> 16, 16, 16, 16, 16, 5, 5, 5, 9, 9, 11, 11, 13, 1…
-#> $ SpeciesCodeType       <chr> "T", "T", "T", "T", "T", "T", "T", "T", "T", "T"…
-#> $ SpeciesCode           <chr> "164712", "164712", "164712", "164712", "164712"…
-#> $ SpeciesValidity       <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
-#> $ IndividualSex         <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ TotalNumber           <dbl> 9, 9, 9, 9, 9, 3, 3, 3, 31, 31, 7, 7, 4, 4, 4, 4…
-#> $ SpeciesCategory       <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ SubsampledNumber      <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ SubsamplingFactor     <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ SubsampleWeight       <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ SpeciesCategoryWeight <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ LengthCode            <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
-#> $ LengthClass           <int> 80, 89, 95, 97, 98, 80, 95, 98, 83, 89, 57, 59, …
-#> $ NumberAtLength        <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ DevelopmentStage      <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ LengthType            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ DateofCalculation     <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ Valid_Aphia           <int> 126436, 126436, 126436, 126436, 126436, 126436, …
-#> $ Year                  <dbl> 1967, 1967, 1967, 1967, 1967, 1967, 1967, 1967, …
-#> $ .id                   <chr> "NS-IBTS:1967:1:GB-SCT:74EX:GOV:46:16", "NS-IBTS…
-#> $ length_cm             <dbl> 80, 89, 95, 97, 98, 80, 95, 98, 83, 89, 57, 59, …
+species <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/species.parquet")
+q <- 
+  hl |> 
+  left_join(hh |> select(.id, DataType, HaulDuration, HaulValidity,
+                         lon = ShootLongitude, lat = ShootLatitude),
+            by = join_by(.id)) |> 
+  left_join(species,
+            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the name returned from the parquet; alignment with the new-style standard name (ValidAphiaID) is pending clarification with the ICES Datacenter
+  dr_add_length_cm() |> 
+  dr_add_n_and_cpue() |> 
+  filter(HaulValidity == "V",
+         !is.na(LengthCode),
+         latin == "Gadus morhua",
+         Survey %in% c("NS-IBTS", "SCOWCGFS"),
+         Quarter == 1) |> 
+  select(.id, Survey, Year, lon, lat, species, length_cm, n_haul, n_hour)
 ```
 
-Here all the code steps are automatically translated to SQL and passed
-to the in-process DuckDB. We can view the sql via:
+We have now built quite a substantive SQL query (without knowing any
+SQL):
 
 ``` r
 q |> show_query()
 #> <SQL>
-#> SELECT q01.*
+#> SELECT
+#>   ".id",
+#>   Survey,
+#>   "Year",
+#>   lon,
+#>   lat,
+#>   species,
+#>   length_cm,
+#>   n_haul,
+#>   (n_haul / HaulDuration) * 60.0 AS n_hour
 #> FROM (
 #>   SELECT
-#>     uwronfvvqkjjuyt.*,
+#>     q01.*,
 #>     CASE
+#> WHEN (DataType = 'C') THEN (((NumberAtLength * SubsamplingFactor) * HaulDuration) / 60.0)
+#> WHEN (DataType = 'R') THEN (NumberAtLength * SubsamplingFactor)
+#> WHEN (DataType = 'P') THEN (NumberAtLength * SubsamplingFactor)
+#> WHEN (DataType = 'S') THEN (NumberAtLength * SubsamplingFactor)
+#> WHEN (DataType = '-9') THEN NULL
+#> WHEN ((DataType IS NULL)) THEN NULL
+#> ELSE NULL
+#> END AS n_haul
+#>   FROM (
+#>     SELECT
+#>       q01.*,
+#>       CASE
 #> WHEN (LengthCode = '-9') THEN NULL
 #> WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>   FROM uwronfvvqkjjuyt
+#>     FROM (
+#>       SELECT
+#>         adrgfsvdmqeiamm.*,
+#>         DataType,
+#>         HaulDuration,
+#>         HaulValidity,
+#>         ShootLongitude AS lon,
+#>         ShootLatitude AS lat,
+#>         latin,
+#>         species
+#>       FROM adrgfsvdmqeiamm
+#>       LEFT JOIN ysegjshareclpkb
+#>         ON (adrgfsvdmqeiamm.".id" = ysegjshareclpkb.".id")
+#>       LEFT JOIN fwwxahawbjpsqjs
+#>         ON (adrgfsvdmqeiamm.Valid_Aphia = fwwxahawbjpsqjs.aphia)
+#>     ) q01
+#>   ) q01
 #> ) q01
-#> WHERE (Gear = 'GOV') AND (length_cm > 50.0)
+#> WHERE
+#>   (HaulValidity = 'V') AND
+#>   (NOT((LengthCode IS NULL))) AND
+#>   (latin = 'Gadus morhua') AND
+#>   (Survey IN ('NS-IBTS', 'SCOWCGFS')) AND
+#>   ("Quarter" = 1.0)
 ```
 
-The data is not yet in R, we only got a whiff of the data. Only at the
-“collect”-step data are imported:
+Let’s now import the data:
 
 ``` r
-system.time({
-  d <- q |> collect()
-})
+system.time(
+  data <- q |> collect()
+)
 #>    user  system elapsed 
-#>   0.610   0.044   0.325
-d |> glimpse()
-#> Rows: 388,120
-#> Columns: 31
-#> $ RecordHeader          <chr> "HL", "HL", "HL", "HL", "HL", "HL", "HL", "HL", …
-#> $ Survey                <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-…
-#> $ Quarter               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ Country               <chr> "GB-SCT", "GB-SCT", "GB-SCT", "GB-SCT", "GB-SCT"…
-#> $ Platform              <chr> "74EX", "74EX", "74EX", "74EX", "74EX", "74EX", …
-#> $ Gear                  <chr> "GOV", "GOV", "GOV", "GOV", "GOV", "GOV", "GOV",…
-#> $ SweepLength           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ GearExceptions        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ DoorType              <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ StationName           <chr> "46", "46", "46", "46", "46", "35", "35", "35", …
-#> $ HaulNumber            <int> 16, 16, 16, 16, 16, 5, 5, 5, 9, 9, 11, 11, 13, 1…
-#> $ SpeciesCodeType       <chr> "T", "T", "T", "T", "T", "T", "T", "T", "T", "T"…
-#> $ SpeciesCode           <chr> "164712", "164712", "164712", "164712", "164712"…
-#> $ SpeciesValidity       <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
-#> $ IndividualSex         <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ TotalNumber           <dbl> 9, 9, 9, 9, 9, 3, 3, 3, 31, 31, 7, 7, 4, 4, 4, 4…
-#> $ SpeciesCategory       <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ SubsampledNumber      <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ SubsamplingFactor     <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ SubsampleWeight       <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ SpeciesCategoryWeight <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ LengthCode            <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
-#> $ LengthClass           <int> 80, 89, 95, 97, 98, 80, 95, 98, 83, 89, 57, 59, …
-#> $ NumberAtLength        <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ DevelopmentStage      <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ LengthType            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ DateofCalculation     <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ Valid_Aphia           <int> 126436, 126436, 126436, 126436, 126436, 126436, …
-#> $ Year                  <dbl> 1967, 1967, 1967, 1967, 1967, 1967, 1967, 1967, …
-#> $ .id                   <chr> "NS-IBTS:1967:1:GB-SCT:74EX:GOV:46:16", "NS-IBTS…
-#> $ length_cm             <dbl> 80, 89, 95, 97, 98, 80, 95, 98, 83, 89, 57, 59, …
+#>   0.425   0.044   0.469
 ```
 
-Note that:
+So we basically have obtained some ~150 thousand cod measurements from
+two surveys (1965 onwards) where we have:
 
-- The time this took is in the order of one second even though we
-  started off with connecting to the full DATRAS HH and HL dataset
-  **residing on the web**.
-- We joined information from two separate tables
-- We filtered by parameters that {icesDatras}-users are familiar with
-  (Survey, Year, Quarter) but sneaked also in a longitudinal filter.
+- standardized the length
+- obtained the number of cod in the haul
+- standardized the number to an hour
 
-Why so fast? - the short story:
+And this less than 1 second!
 
-- Only the variables .id (unique station id), lon, lat, latin and n_haul
-  are ever passed over the web.
-- In addition, for those variables only certain chunks of the parquet
-  files (read: rows).
-- Those chunks that the above variables “fall within the range” of the
-  filtered values are passed over the web.
+It needs to be mentioned that the same code can be used if the original
+source (hh and hl objects) were just dataframes already imported into R,
+either from the parquet files or via icesDatras::getDATRAS, the latter
+with only some minor additional twist.
 
-### I only want to work on a local copy of the Datras data
-
-If you use tidyverse you can use the same code flow as in the example
-above. We first need to get some Datras HH and HL data to demonstrate
-this. Here is the quickest way, the code actually removes also all the
-extra frills added to the HH and HL data residing on the web:
-
-``` r
-if (!dir.exists("datras")) dir.create("datras")
-dr_get("HH") |> 
-  # strip the frills, nothing up my sleeve, pure HH data
-  select(-c(.id, date, time)) |> 
-  duckdbfs::write_dataset("datras/HH.parquet")
-#> Error in `select()`:
-#> ! Can't select columns that don't exist.
-#> ✖ Column `date` doesn't exist.
-dr_get("HL") |> 
-  # strip again
-  select(-c(.id:n_hour)) |> 
-  duckdbfs::write_dataset("datras/HL.parquet")
-#> Error in `select()`:
-#> ! Can't select columns that don't exist.
-#> ✖ Column `n_hour` doesn't exist.
-```
-
-Now for the code base on “pure” local HH and HL:
-
-``` r
-duckdbfs::open_dataset("datras/HH.parquet") |> 
-  filter(Year == 2024,
-                Quarter %in% 1:4) |> 
-  dr_add_id() |> 
-  select(.id, lon = ShootLongitude, lat = ShootLatitude,
-                # needed to get the n_haul
-                DataType, HaulDuration) |> 
-  filter(between(lon, 0, 11)) |> 
-  left_join(duckdbfs::open_dataset("datras/HL.parquet") |> 
-                     left_join(dr_lookup_species |> duckdbfs::as_dataset(),
-                               by = join_by(Valid_Aphia == aphia)) |> 
-                     filter(latin == "Gadus morhua") |> 
-                     dr_add_id()) |> 
-  dr_add_n_and_cpue() |>
-  group_by(.id, lon, lat) |> 
-  summarise(n_haul = sum(n_haul, na.rm = TRUE),
-                   .groups = "drop") |> 
-  mutate(n_haul = coalesce(n_haul, 0)) |> 
-  collect()
-#> Error in `DBI::dbSendQuery()`:
-#> ! IO Error: No files found that match the pattern "datras/HH.parquet/**"
-#> 
-#> LINE 1: ... OR REPLACE TEMPORARY VIEW ikkihtmhvbbdcmy AS SELECT * FROM parquet_scan('datras/HH.parquet/**', HIVE_PARTITIONING=TRUE...
-#>                                                                        ^
-#> ℹ Context: rapi_prepare
-#> ℹ Error type: IO
-```
-
-If you are scared of using duckdb as your middle man, you can achieve
-the same thing this way:
-
-``` r
-# If you have your in some other format on disk, replace the import code
-hh <- arrow::read_parquet("datras/HH.parquet")
-#> Error:
-#> ! IOError: Failed to open local file 'datras/HH.parquet'. Detail: [errno 2] No such file or directory
-hl <- arrow::read_parquet("datras/HL.parquet")
-#> Error:
-#> ! IOError: Failed to open local file 'datras/HL.parquet'. Detail: [errno 2] No such file or directory
-
-hh |> 
-  filter(Year == 2024,
-                Quarter %in% 1:4) |> 
-  dr_add_id() |> 
-  select(.id, lon = ShootLongitude, lat = ShootLatitude,
-                # needed to get the n_haul
-                DataType, HaulDuration) |> 
-  filter(between(lon, 0, 11)) |> 
-  left_join(hl |> 
-                     left_join(dr_lookup_species,
-                               by = join_by(Valid_Aphia == aphia)) |> 
-                     filter(latin == "Gadus morhua") |> 
-                     dr_add_id()) |> 
-  dr_add_n_and_cpue() |>
-  group_by(.id, lon, lat) |> 
-  summarise(n_haul = sum(n_haul, na.rm = TRUE),
-                   .groups = "drop") |> 
-  mutate(n_haul = coalesce(n_haul, 0))
-#> Error in `auto_copy()`:
-#> ! `x` and `y` must share the same src.
-#> ℹ `x` is a <tbl_duckdb_connection/tbl_dbi/tbl_sql/tbl_lazy/tbl> object.
-#> ℹ `y` is a <tbl_df/tbl/data.frame> object.
-#> ℹ Set `copy = TRUE` if `y` can be copied to the same source as `x` (may be
-#>   slow).
-```
-
-## Small print
-
-The Devil is in the details. The code flow demonstrated here is not
-pretending to give the absolute truth. It is for now, a
-proof-of-concept. I am anticipating as well as welcoming issues, both on
-the actual code as well as on the general philosophy. The ultimate aim
-is to make both expert and novice users of the DATRAS data as painless
-as possible.
-
-Your best place for any communication regarding {obus} is [github
-issue](https://github.com/einarhjorleifsson/obus/issues).
-
-## Package dependencies
-
-For purist, one regrets to inform that {obus} has quite some number of
-dependencies (56, see also
-[DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)).
-Some of them may possibly be trimmed, but never all.
-
-Access to the parquet datafiles is though independent of {obus} and for
-that matter any platform used. Rhe current path to the exchange files
-(with the new header lingo):
-
-    https://heima.hafro.is/~einarhj/datras/HH.parquet
-    https://heima.hafro.is/~einarhj/datras/HL.parquet
-    https://heima.hafro.is/~einarhj/datras/CA.parquet
+It also should be highlighted than any local bookkeeping of Datras data
+files is kind of obsolete, unless one expects to be off-line. In these
+days and ages even vessels on the high seas are rarely without decent
+internet connection.
 
 ## Specs
 
@@ -650,10 +480,6 @@ that matter any platform used. Rhe current path to the exchange files
     #> 
     #> ─ Packages ───────────────────────────────────────────────────────────────────
     #>  package     * version    date (UTC) lib source
-    #>  arrow         24.0.0     2026-04-29 [2] CRAN (R 4.5.2)
-    #>  assertthat    0.2.1      2019-03-21 [2] CRAN (R 4.5.0)
-    #>  bit           4.6.0      2025-03-06 [2] CRAN (R 4.5.0)
-    #>  bit64         4.8.2      2026-05-19 [2] CRAN (R 4.5.2)
     #>  blob          1.3.0      2026-01-14 [2] CRAN (R 4.5.2)
     #>  cachem        1.1.0      2024-05-16 [2] CRAN (R 4.5.0)
     #>  cli           3.6.6      2026-04-09 [2] CRAN (R 4.5.2)
@@ -702,13 +528,8 @@ that matter any platform used. Rhe current path to the exchange files
     #>  xfun          0.57       2026-03-20 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmp398Saa/temp_libpathcd83d9991c7
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmp6MNse1/temp_libpathed5f71ab9389
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
     #> ──────────────────────────────────────────────────────────────────────────────
-
-    #> Error:
-    #> ! [ENOENT] Failed to remove 'datras/HH.parquet': no such file or directory
-    #> Error:
-    #> ! [ENOENT] Failed to remove 'datras/HL.parquet': no such file or directory

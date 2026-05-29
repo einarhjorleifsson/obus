@@ -1,0 +1,12 @@
+/* Widen main content area and narrow the TOC sidebar */
+@media (min-width: 768px) {
+  main.col-md-9 {
+    flex: 0 0 auto;
+    width: 82%;
+  }
+
+  aside.col-md-3 {
+    flex: 0 0 auto;
+    width: 18%;
+  }
+}

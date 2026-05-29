@@ -20,18 +20,17 @@ knitr::opts_chunk$set(
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![CRAN status](https://www.r-pkg.org/badges/version/imbus)](https://CRAN.R-project.org/package=imbus)
 <!-- badges: end -->
 
 The aim of {obus} is to provide users fast and efficient access to DATRAS tables with non-ambiguous variables.
 
 That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for ordinary user. Some of that may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.
 
-The package code resides on [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a rudimentary [web-space](https://github.com/einarhjorleifsson/obus).
+The package code resides on [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a [package website](https://einarhjorleifsson.github.io/obus).
 
-For purist, one regrets to inform that the functionalityof {obus} has quite some number of dependencies (56, see also [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). Some of them may possibly be trimmed, but never all.
+For purists, one regrets to inform that the functionality of {obus} has quite some number of dependencies (56, see also [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). Some of them may possibly be trimmed, but never all.
 
-Access to the parquet datafiles is though independent of {obus} and for that matter **any software platform** used. The current path to the exchange files (with the new header lingo) used in {obus} is:
+Access to the parquet datafiles is though independent of {obus} and for that matter **any software platform** used. The current **temporary** path to the exchange files (with the new header lingo) used in {obus} is:
 
 ```
 https://heima.hafro.is/~einarhj/datras/HH.parquet
@@ -69,7 +68,20 @@ system.time({
 })
 ```
 
-So we are talking about around 5 seconds if you sitting on the optic fiber. If you are connected via poor wifi this may take on the order of a minute. Whatever the case one can assume that nobody will complain about the time, given that the dimension just imported are as follows:
+So we are talking about around 5 seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take on the order of a minute. The dr_get is just a thin wrapper around the path stated above. User can thus access the data without the {obus} as middle man via e.g.:
+
+```
+arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+```
+
+And if Python is your preferred platform:
+
+```
+import pandas as pd
+pd.read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+```
+
+Whatever the case one can assume that nobody will complain about the speed of access, given that the dimensions just imported are as follows:
 
 ```{r, echo = FALSE}
 tibble(type = c("HH", "HL", "CA"),
@@ -78,7 +90,7 @@ tibble(type = c("HH", "HL", "CA"),
   knitr::kable(caption = "Number of records and variables")
 ```
 
-The above fast importing is achieved by importing from parquet files that are hosted on a conventional https-server. At this stage it is unclear how much simultaneous traffic it can handle. The way things have been setup so far is just a proof of concept. By the same nature, do not expect that the datasets accessed are the latest mirror of the data residing in ICES Datras Database. ICES Datacenter is currently evaluating/exploring ways provide faster access to the data than currently available.
+The above fast importing is achieved by importing from parquet files that are hosted on a conventional https-server. At this stage it is unclear how much simultaneous traffic it can handle. The way things have been setup so far is just a proof of concept. By the same nature, do not expect that the datasets accessed are the latest mirror of the data residing in ICES Datras Database.
 
 Those familiar with DATRAS data will notice when viewing the data that the variable names are based on the new lingo. If your downstream code-flow depends on the old lingo one can easily revert back via:
 
@@ -86,7 +98,7 @@ Those familiar with DATRAS data will notice when viewing the data that the varia
 hl |> dr_translate(from = "new", to = "old")
 ```
 
-The old faithful (icesDatras::getDATRAS) is wrapped within the above function (specify source as "xml", with the addition that variable type is set, -9 are turned to NA and one can get more than one survey a time. Here we only dare to call one year of HL-data:
+The old faithful (`icesDatras::getDATRAS`) is wrapped within `dr_get()` (specify `source = "xml"`), with the addition that variable types are set, -9 values are turned to NA, and one can retrieve more than one survey at a time. Here we only dare to call one year of HL-data:
 
 ```{r}
 system.time({
@@ -117,13 +129,13 @@ hl_csv |> count(Survey)
 The above demonstrates the following:
 
 * All approaches return to the user R-dataframes
-* The user is genarally not interested in how the data is transfered over the wire, the function argument source ("xml", "csv", "parquet") are here just placed as developmental demos.
-* Hosting the full DATRAS dataset as parquet files on a https-server provides the fasted download time.
+* The user is generally not interested in how the data is transferred over the wire, the function argument source ("xml", "csv", "parquet") are here just placed as developmental demos.
+* Hosting the full DATRAS dataset as parquet files on a https-server provides the fastest download and import time.
 * For all practical purposes one could embed the parquet source in existing function icesDatras::getDatras - the only thing the user (or packages that uses the function) would notice is that he would get:
   * Faster response
   * Variable types are taken care of upstream
   
-The link between https hosted parquet files and the DATRAS database is something that computer engineers would need to sort out. That is if this is going to be taken up by the ICES Datacenter.
+The link between https hosted parquet files and the DATRAS database is something that computer engineers would need to sort out. That is if parquet distribution is going to be taken up as a default.
 
 ## Connecting
 
@@ -155,8 +167,8 @@ hl |> show_query()
 
 So the object hl is actually some kind of an SQL-query. What happens behind the scene when using dr_con is:
 
-* A tiny database engine called DuckDB is started silently from R — no separate server or installation needed (The feature is installed initially on the compute when {obus} is installed).
-* DuckDB opens an HTTP connection to the parquet file on the remote server and reads only its *index* (column names, types, and where each chunk of rows lives in the file). This is why the connection is nearly instantaneous — only limited number of records have travelled over the wire.
+* A tiny database engine called DuckDB is started silently from R — no separate server or installation needed (The feature is installed initially on the computer when {obus} is installed).
+* DuckDB opens an HTTP connection to the parquet file on the remote server and reads only its *index* (column names, types, and where each chunk of rows lives in the file). This is why the connection is nearly instantaneous — only limited number of records have travelled over the wire, just to give the user a whiff of the data.
 
 Now we can do the usual:
 
@@ -175,7 +187,7 @@ q |> show_query()
 Ergo: 
 
 * We have added to the original SQL query a filter using dplyr-verbs
-* We no longer have preset arguement within a function (like icesDatras::getDATRAS) but supply that via the dplyr-filter function
+* We no longer have preset argument within a function (like icesDatras::getDATRAS) but supply that via the dplyr-filter function
 
 The magic is that we now have a system were we can supply any filter to any of the variables. And any other magic one may spin up using the {dplyr} verbs. E.g.:
 
@@ -204,180 +216,55 @@ q <-
   filter(Gear == "GOV", length_cm > 50)
 ```
 
-
-#### Out of place:
-
-
-* Every `filter()`, `select()`, or `mutate()` you write in R is silently translated into an SQL query. That is what `show_query()` reveals. Nothing is computed yet; you are just building up instructions.
-* When you finally call `collect()` — or any function that actually needs the numbers — DuckDB is clever about what it fetches. If you filtered to one survey, it skips the rest of the file entirely. If you only selected three columns, the other fifty are never downloaded. This is called *predicate and projection pushdown*.
-* Only at that point do rows travel from the server to your R session, already filtered and shaped exactly as you asked.
-
-
-
-We can take a peek via:
+We can also join two or more tables:
 
 ```{r}
-
+species <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/species.parquet")
+q <- 
+  hl |> 
+  left_join(hh |> select(.id, DataType, HaulDuration, HaulValidity,
+                         lon = ShootLongitude, lat = ShootLatitude),
+            by = join_by(.id)) |> 
+  left_join(species,
+            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the name returned from the parquet; alignment with the new-style standard name (ValidAphiaID) is pending clarification with the ICES Datacenter
+  dr_add_length_cm() |> 
+  dr_add_n_and_cpue() |> 
+  filter(HaulValidity == "V",
+         !is.na(LengthCode),
+         latin == "Gadus morhua",
+         Survey %in% c("NS-IBTS", "SCOWCGFS"),
+         Quarter == 1) |> 
+  select(.id, Survey, Year, lon, lat, species, length_cm, n_haul, n_hour)
 ```
 
-
-
-
-* First to observe is that the number rows is unknown
-* What may scream at you are the few numbers of variables
-* If you want them all just use argument `trim = FALSE` in the `dr_con`-function.
-* What is trimmed is currently an overkill. What to trim needs discussion among the bus-people.
-* You get the latin and the ingles name of the species upfront, gone is the not-so-useful downstream-analysis aphia numerical code
-* Future dream could be to get the actual stock-name here, for those stocks that are fixed in space and/or seasonal time.
-
-### Data processing using a connection
-
-For those familiar with using dplyr-verbs to process R data.frames most of those function as well as many base-R functions can be used to process the "connected" data. E.g. one can get all survey stations in 2024 and add to that the number of cod observed using the following script:
-
-```{r}
-system.time({
-  q <-
-    # Process the data in DuckDB
-    dr_con("HH") |> 
-    filter(Year == 2024,
-                  Quarter %in% 1:4) |> 
-    select(.id, lon = ShootLongitude, lat = ShootLatitude) |> 
-    filter(between(lon, 0, 11)) |> 
-    left_join(dr_con("HL") |> 
-                       filter(latin == "Gadus morhua") |> 
-                       group_by(.id) |> 
-                       summarise(n_haul = sum(n_haul, na.rm = TRUE)),
-                     by = join_by(.id)) |> 
-    mutate(n_haul = coalesce(n_haul, 0))
-})
-q |> glimpse()
-```
-
-Here all the code steps are automatically translated to SQL and passed to the in-process DuckDB. We can view the sql via:
+We have now built quite a substantive SQL query (without knowing any SQL):
 
 ```{r}
 q |> show_query()
 ```
 
-The data is not yet in R, we only got a whiff of the data. Only at the "collect"-step data are imported:
+Let's now import the data:
 
 ```{r}
-system.time({
-  d <- q |> collect()
-})
-d |> glimpse()
+system.time(
+  data <- q |> collect()
+)
 ```
 
-Note that:
+So we basically have obtained some ~150 thousand cod measurements from two surveys (1965 onwards) where we have:
 
-* The time this took is in the order of one second even though we started off with connecting to the full DATRAS HH and HL dataset **residing on the web**.
-* We joined information from two separate tables
-* We filtered by parameters that {icesDatras}-users are familiar with (Survey, Year, Quarter) but sneaked also in a longitudinal filter.
+* standardized the length
+* obtained the number of cod in the haul
+* standardized the number to an hour
 
-Why so fast? - the short story:
+And this less than 1 second!
 
-* Only the variables .id (unique station id), lon, lat, latin and n_haul are ever passed over the web.
-* In addition, for those variables only certain chunks of the parquet files (read: rows).
-* Those chunks that the above variables "fall within the range" of the filtered values are passed over the web.
+It needs to be mentioned that the same code can be used if the original source (hh and hl objects) were just dataframes already imported into R, either from the parquet files or via icesDatras::getDATRAS, the latter with only some minor additional twist.
 
-### I only want to work on a local copy of the Datras data
-
-If you use tidyverse you can use the same code flow as in the example above. We first need to get some Datras HH and HL data to demonstrate this. Here is the quickest way, the code actually removes also all the extra frills added to the HH and HL data residing on the web:
-
-```{r}
-if (!dir.exists("datras")) dir.create("datras")
-dr_get("HH") |> 
-  # strip the frills, nothing up my sleeve, pure HH data
-  select(-c(.id, date, time)) |> 
-  duckdbfs::write_dataset("datras/HH.parquet")
-dr_get("HL") |> 
-  # strip again
-  select(-c(.id:n_hour)) |> 
-  duckdbfs::write_dataset("datras/HL.parquet")
-```
-
-Now for the code base on "pure" local HH and HL:
-
-```{r}
-duckdbfs::open_dataset("datras/HH.parquet") |> 
-  filter(Year == 2024,
-                Quarter %in% 1:4) |> 
-  dr_add_id() |> 
-  select(.id, lon = ShootLongitude, lat = ShootLatitude,
-                # needed to get the n_haul
-                DataType, HaulDuration) |> 
-  filter(between(lon, 0, 11)) |> 
-  left_join(duckdbfs::open_dataset("datras/HL.parquet") |> 
-                     left_join(dr_lookup_species |> duckdbfs::as_dataset(),
-                               by = join_by(Valid_Aphia == aphia)) |> 
-                     filter(latin == "Gadus morhua") |> 
-                     dr_add_id()) |> 
-  dr_add_n_and_cpue() |>
-  group_by(.id, lon, lat) |> 
-  summarise(n_haul = sum(n_haul, na.rm = TRUE),
-                   .groups = "drop") |> 
-  mutate(n_haul = coalesce(n_haul, 0)) |> 
-  collect()
-```
-
-If you are scared of using duckdb as your middle man, you can achieve the same thing this way:
-
-```{r}
-# If you have your in some other format on disk, replace the import code
-hh <- arrow::read_parquet("datras/HH.parquet")
-hl <- arrow::read_parquet("datras/HL.parquet")
-
-hh |> 
-  filter(Year == 2024,
-                Quarter %in% 1:4) |> 
-  dr_add_id() |> 
-  select(.id, lon = ShootLongitude, lat = ShootLatitude,
-                # needed to get the n_haul
-                DataType, HaulDuration) |> 
-  filter(between(lon, 0, 11)) |> 
-  left_join(hl |> 
-                     left_join(dr_lookup_species,
-                               by = join_by(Valid_Aphia == aphia)) |> 
-                     filter(latin == "Gadus morhua") |> 
-                     dr_add_id()) |> 
-  dr_add_n_and_cpue() |>
-  group_by(.id, lon, lat) |> 
-  summarise(n_haul = sum(n_haul, na.rm = TRUE),
-                   .groups = "drop") |> 
-  mutate(n_haul = coalesce(n_haul, 0))
-```
-
-
-## Small print
-
-The Devil is in the details. The code flow demonstrated here is not pretending to give the absolute truth. It is for now, a proof-of-concept. I am anticipating as well as welcoming issues, both on the actual code as well as on the general philosophy. The ultimate aim is to make both expert and novice users of the DATRAS data as painless as possible.
-
-Your best place for any communication regarding {obus} is [github issue](https://github.com/einarhjorleifsson/obus/issues).
-
-## Package dependencies
-
-For purist, one regrets to inform that {obus} has quite some number of dependencies (56, see also [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). Some of them may possibly be trimmed, but never all.
-
-Access to the parquet datafiles is though independent of {obus} and for that matter any platform used. Rhe current path to the exchange files (with the new header lingo):
-
-```
-https://heima.hafro.is/~einarhj/datras/HH.parquet
-https://heima.hafro.is/~einarhj/datras/HL.parquet
-https://heima.hafro.is/~einarhj/datras/CA.parquet
-```
+It also should be highlighted than any local bookkeeping of Datras data files is kind of obsolete, unless one expects to be off-line. In these days and ages even vessels on the high seas are rarely without decent internet connection.
 
 ## Specs
 
 ```{r, echo = FALSE}
 devtools::session_info()
 ```
-
-
-```{r}
-#| echo: false
-# remove some clutter
-fs::file_delete("datras//HH.parquet")
-fs::file_delete("datras/HL.parquet")
-fs::dir_delete("datras")
-```
-

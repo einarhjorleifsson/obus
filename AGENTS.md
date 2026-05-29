@@ -367,7 +367,7 @@ The HL table conflates four layers of information:
 |---|---|---|
 | A — Haul join key | `Survey`, `Year`, `Quarter`, `Country`, `Platform`, `Gear`, `StationName`, `HaulNumber` | Repeated from HH; join only |
 | B — Sampling protocol | `DataType` (from HH), `SpeciesValidity`, `SpeciesSex`, `SpeciesCategory`, `SubsamplingFactor` | Governs arithmetic for layers C and D |
-| C — Catch totals | `ValidAphiaID`, `TotalNumber`, `SpeciesCategoryWeight` | Per haul × species × sex × category; repeated across all length rows for that group |
+| C — Catch totals | `Valid_Aphia`, `TotalNumber`, `SpeciesCategoryWeight` | Per haul × species × sex × category; repeated across all length rows for that group. Note: parquet uses `Valid_Aphia`; `dr_cpue_by_*` outputs rename this to `ValidAphiaID` — see Outstanding Issues. |
 | D — Length frequency | `LengthCode`, `LengthClass`, `NumberAtLength` | Per haul × species × sex × category × length class |
 
 The current `HL.parquet` is a transitional format. The end-goal is to split HL into two separate
@@ -412,8 +412,7 @@ or **Survey · Year · Quarter · Country · Ship · Gear · StNo · HaulNo** (o
 | `T` | ITIS TSN | Historical |
 | `N` | NODC | Historical |
 
-All codes mapped to `ValidAphiaID` (WoRMS) in HL/CA for cross-era joins.
-Use `ValidAphiaID` rather than `SpeciesCode` / `SpecCode` when joining across years.
+All codes are mapped to a resolved WoRMS AphiaID in HL/CA for cross-era joins. The column is named `Valid_Aphia` in the raw parquets (as returned by `dr_get()` and `dr_con()`); `dr_cpue_by_*` output renames it to `ValidAphiaID`. Use the appropriate name depending on your data source; prefer `Valid_Aphia` when working directly on the parquets until the standard name is confirmed with the ICES Datacenter.
 
 ### SpeciesValidity — species validity
 
@@ -465,6 +464,7 @@ Daytime = 15 min before sunrise → 15 min after sunset. NOAA solar calculator u
 - **CPUEL is slow:** ~30s per survey/year/quarter API call.
 - **IDX returns no rows silently:** If a species has no indices defined for a given survey/quarter (e.g. herring in NS-IBTS Q1), `tryCatch` drops the result silently. Expected behaviour.
 - **Git LFS:** `data/*.rda` tracked by LFS. After `usethis::use_data()`, verify the file is staged as actual content, not just a pointer.
+- **`Valid_Aphia` vs `ValidAphiaID` naming discrepancy:** The raw HL/CA parquets return the species AphiaID column as `Valid_Aphia`. The `dr_cpue_by_*` product functions rename this to `ValidAphiaID` in their output. The AGENTS.md documentation for `dr_cpue_by_*` consistently uses `ValidAphiaID` (correct for that output), but any direct parquet work or `dr_get()`/`dr_con()` pipelines must use `Valid_Aphia`. The canonical new-style name is pending clarification with the ICES Datacenter.
 
 ---
 
@@ -486,6 +486,9 @@ Issues discovered during the new-style naming refactor that warrant future atten
 
 5. **`dr_add_n_and_cpue()` requires `.id` and `DataType` but does not use `.id` internally.**
    `.id` is in the `required_vars` check but is not actually used in the computation. This was presumably a guard to ensure the table has been joined correctly, but it's misleading and will cause spurious failures on valid inputs that lack `.id`. Remove `.id` from the required column check or document why it's enforced.
+
+6. **`Valid_Aphia` vs `ValidAphiaID` — species column name unresolved.**
+   The raw HL/CA parquets (and therefore `dr_get()` / `dr_con()` output) use `Valid_Aphia` as the species AphiaID column name. The `dr_cpue_by_*` functions rename this to `ValidAphiaID` in their output. The `dr_check_totalno()` default (`Species = ValidAphiaID`) is therefore only correct for data that has passed through `dr_cpue_by_*`, not for raw parquet output. The canonical new-style name must be confirmed with the ICES Datacenter before standardising across all functions and documentation.
 
 7. **No auto-detection of naming style in `dr_cpue_by_*`.**
    Unlike `dr_add_id()`, the product functions do not detect old vs new style and fail with a column-not-found error if given old-style data. A deprecation shim (checking for `Platform` vs `Ship`) would provide backward compatibility during the transition period.
