@@ -9,6 +9,7 @@ docs/
 garbage/
 docs
 inst/doc
+vignettes_ignore
 *.xlsx
 *.pdf
 *.html
