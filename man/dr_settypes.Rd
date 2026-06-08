@@ -9,9 +9,9 @@ dr_settypes(d, name_col = "new", recordheader = NULL)
 \arguments{
 \item{d}{A data frame or \code{tbl_lazy} (DATRAS exchange table).}
 
-\item{name_col}{\code{"new"} (default) to match new-style column names as
-returned by \code{get_datras_unaggregated_data} / parquet; \code{"old"} to match
-old-style names as returned by \code{getDATRAS} and derived products.}
+\item{name_col}{\code{"new"} (default) to match standard column names as used in
+the parquet files; \code{"old"} to match legacy names as returned by \code{getDATRAS}
+and derived products.}
 
 \item{recordheader}{If not \code{NULL}, restrict the lookup to a single record
 type (e.g. \code{"HH"}, \code{"CPUEL"}). \code{NULL} borrows types from all tables.}

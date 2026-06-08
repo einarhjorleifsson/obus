@@ -20,7 +20,7 @@ little.
 
 The package code resides on
 [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a
-[package website](https://einarhjorleifsson.github.io/obus).
+[package website](https://heima.hafro.is/~einarhj/pkg/obus/).
 
 For purists, one regrets to inform that the functionality of {obus} has
 quite some number of dependencies (56, see also
@@ -38,8 +38,7 @@ is:
 
 ## Installation
 
-You can install {obus} from
-[GitHub](https://github.com/einarhjorleifsson/obus) using one of:
+You can install {obus} using one of:
 
 ``` r
 remotes::install_github("einarhjorleifsson/obus")
@@ -66,14 +65,15 @@ system.time({
   ca <- dr_get("CA", source = "parquet")
 })
 #>    user  system elapsed 
-#>  10.269   1.872  29.035
+#>  10.156   1.546  39.775
 ```
 
 So we are talking about around 5 seconds if you’re sitting on the optic
 fiber. If you are connected via poor wifi this may take on the order of
-a minute. The dr_get is just a thin wrapper around the path stated
-above. User can thus access the data without the {obus} as middle man
-via e.g.:
+a minute.
+
+The dr_get is just a thin wrapper around the path stated above. User can
+thus access the data without the {obus} as middle man via e.g.:
 
     arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
 
@@ -137,7 +137,7 @@ system.time({
   hl_xml <- dr_get(recordtype = "HL", years = 2026, source = "xml")
 })
 #>    user  system elapsed 
-#>   9.265   2.947  50.610
+#>   9.414   3.055  57.012
 ```
 
 In store we now have:
@@ -150,50 +150,15 @@ hl_xml |> count(Survey)
 #> 3 SCOWCGFS 12307
 ```
 
-A little faster approach is also in experimental phase
-(icesDatras::get_datras_unaggregated_data) but it is not yet a mirror of
-the most up to date data (hence here year 2025 is used)
-
-``` r
-system.time({
-  hl_csv <- dr_get("HL", years = 2025, source = "csv")
-})
-#>    user  system elapsed 
-#>   0.947   0.282   8.805
-```
-
-In store we now have:
-
-``` r
-hl_csv |> count(Survey)
-#>     Survey     n
-#> 1     BITS 27084
-#> 2      BTS 49393
-#> 3     DYFS  4967
-#> 4  NL-BSAS  1359
-#> 5  NS-IBTS 85341
-#> 6   SCOROC  5175
-#> 7 SCOWCGFS 10223
-#> 8      SNS  2597
-```
-
 The above demonstrates the following:
 
-- All approaches return to the user R-dataframes
-- The user is generally not interested in how the data is transferred
-  over the wire, the function argument source (“xml”, “csv”, “parquet”)
-  are here just placed as developmental demos.
+- Both approaches return R data frames with standard column names and
+  correct variable types.
 - Hosting the full DATRAS dataset as parquet files on a https-server
   provides the fastest download and import time.
-- For all practical purposes one could embed the parquet source in
-  existing function icesDatras::getDatras - the only thing the user (or
-  packages that uses the function) would notice is that he would get:
-  - Faster response
-  - Variable types are taken care of upstream
-
-The link between https hosted parquet files and the DATRAS database is
-something that computer engineers would need to sort out. That is if
-parquet distribution is going to be taken up as a default.
+- For all practical purposes the parquet source could be embedded in
+  `icesDatras::getDatras` — the user would simply observe faster
+  responses and upstream type handling.
 
 ## Connecting
 
@@ -209,7 +174,7 @@ system.time({
   ca <- dr_con("CA")
 })
 #>    user  system elapsed 
-#>   0.189   0.030   0.923
+#>   0.174   0.021   0.784
 class(hl) ; nrow(hl)
 #> [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              
 #> [4] "tbl_lazy"              "tbl"
@@ -265,7 +230,7 @@ Let’s look at the hl object from another angle:
 hl |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM adrgfsvdmqeiamm
+#> FROM dkpvgbxkexhblkd
 ```
 
 So the object hl is actually some kind of an SQL-query. What happens
@@ -293,8 +258,8 @@ What we now have in store is:
 ``` r
 q |> show_query()
 #> <SQL>
-#> SELECT adrgfsvdmqeiamm.*
-#> FROM adrgfsvdmqeiamm
+#> SELECT dkpvgbxkexhblkd.*
+#> FROM dkpvgbxkexhblkd
 #> WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 ```
 
@@ -326,14 +291,14 @@ q |> show_query()
 #> SELECT q01.*
 #> FROM (
 #>   SELECT
-#>     adrgfsvdmqeiamm.*,
+#>     dkpvgbxkexhblkd.*,
 #>     CASE
 #> WHEN (LengthCode = '-9') THEN NULL
 #> WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>   FROM adrgfsvdmqeiamm
+#>   FROM dkpvgbxkexhblkd
 #> ) q01
 #> WHERE (Gear = 'GOV') AND (length_cm > 50.0)
 ```
@@ -359,7 +324,7 @@ q <-
                          lon = ShootLongitude, lat = ShootLatitude),
             by = join_by(.id)) |> 
   left_join(species,
-            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the name returned from the parquet; alignment with the new-style standard name (ValidAphiaID) is pending clarification with the ICES Datacenter
+            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the parquet column name; canonical standardisation pending ICES Datacenter confirmation
   dr_add_length_cm() |> 
   dr_add_n_and_cpue() |> 
   filter(HaulValidity == "V",
@@ -409,7 +374,7 @@ q |> show_query()
 #> END AS length_cm
 #>     FROM (
 #>       SELECT
-#>         adrgfsvdmqeiamm.*,
+#>         dkpvgbxkexhblkd.*,
 #>         DataType,
 #>         HaulDuration,
 #>         HaulValidity,
@@ -417,11 +382,11 @@ q |> show_query()
 #>         ShootLatitude AS lat,
 #>         latin,
 #>         species
-#>       FROM adrgfsvdmqeiamm
-#>       LEFT JOIN ysegjshareclpkb
-#>         ON (adrgfsvdmqeiamm.".id" = ysegjshareclpkb.".id")
-#>       LEFT JOIN fwwxahawbjpsqjs
-#>         ON (adrgfsvdmqeiamm.Valid_Aphia = fwwxahawbjpsqjs.aphia)
+#>       FROM dkpvgbxkexhblkd
+#>       LEFT JOIN udnsuhiixibcesv
+#>         ON (dkpvgbxkexhblkd.".id" = udnsuhiixibcesv.".id")
+#>       LEFT JOIN mzkebdtmqwmmdku
+#>         ON (dkpvgbxkexhblkd.Valid_Aphia = mzkebdtmqwmmdku.aphia)
 #>     ) q01
 #>   ) q01
 #> ) q01
@@ -440,7 +405,7 @@ system.time(
   data <- q |> collect()
 )
 #>    user  system elapsed 
-#>   0.425   0.044   0.469
+#>   0.553   0.035   0.617
 ```
 
 So we basically have obtained some ~150 thousand cod measurements from
@@ -467,14 +432,14 @@ internet connection.
     #> ─ Session info ───────────────────────────────────────────────────────────────
     #>  setting  value
     #>  version  R version 4.5.2 (2025-10-31)
-    #>  os       macOS Tahoe 26.5
+    #>  os       macOS Tahoe 26.5.1
     #>  system   aarch64, darwin20
     #>  ui       X11
     #>  language (EN)
     #>  collate  en_US.UTF-8
     #>  ctype    en_US.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-05-29
+    #>  date     2026-06-08
     #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
     #>  quarto   1.8.26 @ /usr/local/bin/quarto
     #> 
@@ -505,7 +470,7 @@ internet connection.
     #>  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
     #>  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)
     #>  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
-    #>  obus        * 2026.01.30 2026-05-29 [1] local
+    #>  obus        * 2026.06.01 2026-06-08 [1] local
     #>  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
     #>  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
     #>  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
@@ -525,10 +490,10 @@ internet connection.
     #>  utf8          1.2.6      2025-06-08 [2] CRAN (R 4.5.0)
     #>  vctrs         0.7.3      2026-04-11 [2] CRAN (R 4.5.2)
     #>  withr         3.0.2      2024-10-28 [2] CRAN (R 4.5.0)
-    #>  xfun          0.57       2026-03-20 [2] CRAN (R 4.5.2)
+    #>  xfun          0.58       2026-06-01 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/Rtmp6MNse1/temp_libpathed5f71ab9389
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmprAGN2y/temp_libpath79e3f4ebfad
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 

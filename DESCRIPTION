@@ -1,6 +1,6 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey data
-Version: 2026.01.30
+Version: 2026.06.01
 Authors@R: c(person("Einar", "Hjorleifsson", role=c("aut", "cre"), email="einar.hjorleifsson@gmail.com"),
              person("Martin", "Pastoors"   , role=c("aut"), email="martinpastoors@mpff.nl"),
              person("Vaishav", "Soni"   , role=c("aut"), email="Vaishav@ices.dk"))
@@ -20,11 +20,12 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
 Depends: 
-    R (>= 4.1.0)
+    R (>= 4.2.0)
 LazyData: true
 Imports:
     dbplyr,
     dplyr,
+    duckdb (>= 1.5.2),
     duckdbfs,
     ggplot2,
     httr2,

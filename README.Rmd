@@ -8,7 +8,7 @@ knitr::opts_chunk$set(
   comment = "#>",
   message = FALSE, 
   warning = FALSE,
-  error = TRUE,
+  error = FALSE,
   fig.path = "man/figures/README-",
   out.width = "100%"
 )
@@ -26,7 +26,7 @@ The aim of {obus} is to provide users fast and efficient access to DATRAS tables
 
 That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for ordinary user. Some of that may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.
 
-The package code resides on [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a [package website](https://einarhjorleifsson.github.io/obus).
+The package code resides on [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a [package website](https://heima.hafro.is/~einarhj/pkg/obus/).
 
 For purists, one regrets to inform that the functionality of {obus} has quite some number of dependencies (56, see also [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). Some of them may possibly be trimmed, but never all.
 
@@ -42,7 +42,7 @@ https://heima.hafro.is/~einarhj/datras/CA.parquet
 
 ## Installation
 
-You can install {obus} from [GitHub](https://github.com/einarhjorleifsson/obus) using one of:
+You can install {obus} using one of:
 
 ```{r, eval = FALSE}
 remotes::install_github("einarhjorleifsson/obus")
@@ -68,7 +68,9 @@ system.time({
 })
 ```
 
-So we are talking about around 5 seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take on the order of a minute. The dr_get is just a thin wrapper around the path stated above. User can thus access the data without the {obus} as middle man via e.g.:
+So we are talking about around 5 seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take on the order of a minute.
+
+The dr_get is just a thin wrapper around the path stated above. User can thus access the data without the {obus} as middle man via e.g.:
 
 ```
 arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
@@ -112,30 +114,11 @@ In store we now have:
 hl_xml |> count(Survey)
 ```
 
-A little faster approach is also in experimental phase (icesDatras::get_datras_unaggregated_data) but it is not yet a mirror of the most up to date data (hence here year 2025 is used)
-
-```{r}
-system.time({
-  hl_csv <- dr_get("HL", years = 2025, source = "csv")
-})
-```
-
-In store we now have:
-
-```{r}
-hl_csv |> count(Survey)
-```
-
 The above demonstrates the following:
 
-* All approaches return to the user R-dataframes
-* The user is generally not interested in how the data is transferred over the wire, the function argument source ("xml", "csv", "parquet") are here just placed as developmental demos.
+* Both approaches return R data frames with standard column names and correct variable types.
 * Hosting the full DATRAS dataset as parquet files on a https-server provides the fastest download and import time.
-* For all practical purposes one could embed the parquet source in existing function icesDatras::getDatras - the only thing the user (or packages that uses the function) would notice is that he would get:
-  * Faster response
-  * Variable types are taken care of upstream
-  
-The link between https hosted parquet files and the DATRAS database is something that computer engineers would need to sort out. That is if parquet distribution is going to be taken up as a default.
+* For all practical purposes the parquet source could be embedded in `icesDatras::getDatras` — the user would simply observe faster responses and upstream type handling.
 
 ## Connecting
 
@@ -226,7 +209,7 @@ q <-
                          lon = ShootLongitude, lat = ShootLatitude),
             by = join_by(.id)) |> 
   left_join(species,
-            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the name returned from the parquet; alignment with the new-style standard name (ValidAphiaID) is pending clarification with the ICES Datacenter
+            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the parquet column name; canonical standardisation pending ICES Datacenter confirmation
   dr_add_length_cm() |> 
   dr_add_n_and_cpue() |> 
   filter(HaulValidity == "V",

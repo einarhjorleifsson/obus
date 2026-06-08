@@ -5,9 +5,9 @@
 #' before coercion.
 #'
 #' @param d A data frame or `tbl_lazy` (DATRAS exchange table).
-#' @param name_col `"new"` (default) to match new-style column names as
-#'   returned by `get_datras_unaggregated_data` / parquet; `"old"` to match
-#'   old-style names as returned by `getDATRAS` and derived products.
+#' @param name_col `"new"` (default) to match standard column names as used in
+#'   the parquet files; `"old"` to match legacy names as returned by `getDATRAS`
+#'   and derived products.
 #' @param recordheader If not `NULL`, restrict the lookup to a single record
 #'   type (e.g. `"HH"`, `"CPUEL"`). `NULL` borrows types from all tables.
 #'

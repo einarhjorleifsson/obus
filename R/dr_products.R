@@ -80,7 +80,7 @@ dr_cpue_by_haul <- function(hh, hl,
     stop("hh is missing required columns: ", paste(hh_missing, collapse = ", "))
 
   hl_required <- c("Survey", "Year", "Quarter", "Country", "Platform", "Gear",
-                    "StationName", "HaulNumber", "SpeciesValidity", "ValidAphiaID",
+                    "StationName", "HaulNumber", "SpeciesValidity",  "Valid_Aphia",
                     "TotalNumber", "SpeciesCategoryWeight", "SpeciesSex",
                     "SpeciesCategory")
   hl_missing  <- setdiff(hl_required, colnames(hl))
@@ -110,7 +110,7 @@ dr_cpue_by_haul <- function(hh, hl,
   # repeated across every length row in a group. Distinct collapses them
   # without summing.
   hl_dedup <- hl_joined |>
-    dplyr::distinct(.id, .id2, Survey, Year, Quarter, ValidAphiaID,
+    dplyr::distinct(.id, .id2, Survey, Year, Quarter, Valid_Aphia,
                     SpeciesSex, SpeciesCategory, DataType, HaulDuration,
                     TotalNumber, SpeciesCategoryWeight)
 

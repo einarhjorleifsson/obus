@@ -24,10 +24,9 @@ in \code{dr_lookup_fields} (old-style names) are retained; calendar fields
 \details{
 A data frame with 6 columns:
 \describe{
-\item{old}{Old-style DATRAS column name (as returned by
+\item{old}{Legacy DATRAS column name (as returned by
 \code{icesDatras::getDATRAS} and derived products).}
-\item{new}{New-style column name (as returned by
-\code{icesDatras::get_datras_unaggregated_data}); \code{NA} where no
+\item{new}{Standard column name as used in the parquet files; \code{NA} where no
 mapping exists.}
 \item{key}{The valid code value (character) as it appears in the data,
 e.g. \code{"V"}, \code{"GOV"}, \code{"M"}.}

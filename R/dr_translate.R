@@ -48,6 +48,7 @@ dr_translate <- function(d, dictionary, from = "old", to = "new") {
   # Perform the translation
   d <- dplyr::rename_with(d, .fn = function(col) {
     # Match column names in the 'from' column and translate to 'to' column
+    # Uses first column match
     new_names <- dictionary[[to]][match(col, dictionary[[from]])]
     # Keep original column names if there is no match
     ifelse(is.na(new_names), col, new_names)

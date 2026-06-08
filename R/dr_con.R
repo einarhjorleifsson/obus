@@ -5,7 +5,7 @@
 #' give a clear error if the file is absent or the server is unreachable.
 #'
 #' @param type A character string specifying the table. One of `"HH"`, `"HL"`,
-#'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`.
+#'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`, `"species"`.
 #' @param url Base URL of the parquet directory.
 #' @param quiet Logical. If `TRUE` (default), suppresses messages.
 #'
@@ -20,7 +20,7 @@
 #' @export
 dr_con <- function(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE) {
 
-  valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX")
+  valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX", "species")
 
   if (!type %in% valid_types) {
     stop(sprintf("Invalid type '%s'. Valid types are: %s",

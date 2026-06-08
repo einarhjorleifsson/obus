@@ -4,6 +4,7 @@
 # Run this script (source it or run interactively) to regenerate
 # data/dr_lookup_fields.rda whenever the ICES field list changes or the
 # hand-curated entries below need updating.
+#
 
 library(httr2)
 library(xml2)
@@ -13,6 +14,8 @@ library(purrr)
 library(stringr)
 library(tibble)
 
+
+# HH, HL, CA, FA and LT --------------------------------------------------------
 url <- "https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList"
 
 response <- request(url) |> req_perform()
@@ -23,7 +26,7 @@ xml_data   <- resp_body_string(response)
 parsed_xml <- suppressWarnings(read_xml(xml_data))
 ns         <- c(d = "ices.dk.local/DATRAS")
 
-dr_lookup_fields <-
+fields <-
   xml_find_all(parsed_xml, "//d:Cls_Datras_FieldList", ns = ns) |>
   map_df(~ tibble(
     table       = xml_text(xml_find_first(.x, "./d:RecordHeader", ns = ns)),
@@ -34,27 +37,96 @@ dr_lookup_fields <-
   )) |>
   mutate(
     across(everything(), str_trim),
-    old = if_else(old == "-", NA_character_, old),
+    # old = if_else(old == "-", NA_character_, old),
     # Normalise ICES format codes to chr/int/dbl
     format = case_when(format == "char"    ~ "chr",
                        format == "decimal" ~ "dbl",
-                       .default = format),
-    # Year is always int; Distance is always dbl
-    format = case_when(new == "Year"     ~ "int",
-                       new == "Distance" ~ "dbl",
-                       .default = format),
-    # Ensure Survey has an old name
-    old = case_when(new == "Survey" ~ "Survey",
-                    .default = old),
-    # Resolve known type ambiguities across record types (priority: chr > dbl > int)
-    format = case_when(old == "Distance"    ~ "dbl",
-                       old == "HaulNumber"  ~ "int",
-                       old == "StationName" ~ "chr",
-                       old == "CANoAtLngt"  ~ "dbl",
-                       .default = format)
-  )
+                       .default = format)) |>
+  # only a partial list for LT, full list generated below
+  filter(table != "LT")
 
-# Hand-curated entries not covered by the ICES web service -----------------
+fields |> filter(table == "FA")
+
+
+# Correction -------------------------------------------------------------------
+fields <- fields |>
+  mutate(
+    # Year is set as character - for downstream analysis this should be integer
+    format = case_when(new == "Year" ~ "int",
+    # float should be dbl
+                       format == "float" ~ "dbl",
+    # make CA new "NumberAtLength" as "dbl", no harm, avoids ambiguity with HL
+                       table == "CA" & new == "NumberAtLength" ~ "dbl",
+                       table == "FA" & new == "HaulNumber" ~ "int",
+                       table == "FA" & new == "StationName" ~ "chr",
+                       .default = format),
+    # wrong or no description
+    description = case_when(table == "FA" & new == "Year" ~ "Cruise year (YYYY)",
+                            table == "FA" & new == "HaulNumber" ~ "Sequential numbering of hauls during cruise.",
+                            table == "FA" & new == "StationName" ~ "Station number. National coding system, not defined by ICES.",
+                            table == "LT" & new == "HaulNumber" ~ "Sequential numbering of hauls during cruise.",
+                            table == "LT" & new == "StationName" ~ "Station number. National coding system, not defined by ICES.",
+                            table %in% c("CA", "HH", "HL", "LT") & new == "Survey" ~ "Survey code as used in ICES products, see https://vocab.ices.dk/?codetypeguid=016362a4-90be-424b-af01-a37ae58ca023",
+                            .default = description),
+    # For now, keep old name for Sex - they seem to contain the "same" vocabulary for both tables
+    new = case_when(table == "CA" & old == "Sex" & new == "IndividualSex" ~ "Sex",
+                    table == "HL" & old == "Sex" & new == "SpeciesSex" ~ "Sex",
+                    # getDatrasFieldList has IndividualAge - see also below for old
+                    table == "CA" & new == "IndividualAge" ~ "Age",
+                    .default = new),
+    old = case_when(table %in% c("CA", "HH", "HL") & new == "Survey" & is.na(old) ~ "Survey",
+                    # getDatrasFieldList has AgeRings while icesDatras::getDATRAS returns Age
+                    table == "CA" & old == "AgeRings" ~ "Age",
+                    .default = old))
+
+# NOTE: The Valid_Aphia or some form of it are not part of the formal
+#       field list obtained above Think this is because list is limited to
+#       uploading requirements.
+#       When user however request e.g. HL and CA from the database, the user
+#       gets Valid_Aphia. Guess that is datacenter checked value for
+#       what is uploaded as SpeciesCode
+#       The issue here is that while HL and CA passes variable name Valid_Aphia
+#       the products (cpue by length or age and the indices) return AphiaID
+#       Decision: Use "aphia" as the "new" variable within this project.
+add <-
+  tribble(~table, ~new, ~old, ~format,
+          "HL", "aphia", "Valid_Aphia", "int",
+          "CA", "aphia", "Valid_Aphia", "int",
+          "HH", "DateofCalculation", "DateofCalculation", "int",
+          "HL", "DateofCalculation", "DateofCalculation", "int",
+          "CA", "DateofCalculation", "DateofCalculation", "int")
+fields <- fields |>
+  bind_rows(add)
+
+# Testing ----------------------------------------------------------------------
+
+# The values here are different - hence ok to have separate names (unlike Sex)
+fields |> filter(new %in% c("MaturityScale", "DevelopmentStage"))
+dr_con("HL") |> count(DevelopmentStage)
+dr_con("CA") |> count(MaturityScale)
+# Same varible name should not have different types
+fields |> distinct(old, format) |> janitor::get_dupes() # expect none
+fields |> distinct(new, format) |> janitor::get_dupes() # expect none
+
+# check if all variables covered
+hh <- icesDatras::getDATRAS("HH", "NS-IBTS", 2025, 1)
+hl <- icesDatras::getDATRAS("HL", "NS-IBTS", 2025, 1)
+ca <- icesDatras::getDATRAS("CA", "NS-IBTS", 2025, 1)
+lt <- icesDatras::getLTassessment("NS-IBTS", 2025, 1)
+d <-
+  bind_rows(
+  tibble(table = "HH", old = names(hh)),
+  tibble(table = "HL", old = names(hl)),
+  tibble(table = "CA", old = names(ca)),
+  tibble(table = "LT", old = names(lt))) |>
+  left_join(fields)
+d |> filter(is.na(old))     # expect none
+d |> filter(is.na(new))     # expect none
+d |> filter(is.na(format))  # expect none
+
+
+## Hand-curated entries not covered by the ICES web service --------------------
+#   ... because these are product tables??
 # FL: columns returned by icesDatras::getFlexFile()
 # LT: columns returned by icesDatras::getLTassessment() not in the web service
 #     NOTE: the web service returns LT entries with new-style old values
@@ -64,7 +136,9 @@ dr_lookup_fields <-
 # CPUEL/CPUEA/IDX: derived products from icesDatras; no web service coverage.
 #     Age_0..Age_15 for CPUEA and IDX are added programmatically below.
 
-add <- tribble(
+
+# Note: the "RecordType" is actually stated as HH in
+add_fl <- tribble(
   ~table,    ~new,                   ~old,              ~format,
   "FL",  "RecordHeader",         "RecordHeader",   "chr",
   "FL",  "Survey",               "Survey",         "chr",
@@ -83,7 +157,7 @@ add <- tribble(
   "FL",  "ShootLatitude",        "ShootLat",       "dbl",
   "FL",  "ShootLongitude",       "ShootLong",      "dbl",
   "FL",  "StatisticalRectangle", "StatRec",        "chr",
-  "FL",  NA,                     "ICESArea",       "chr",
+  "FL",  "ICESArea",             "ICESArea",       "chr",
   "FL",  "SweepLength",          "SweepLngt",      "int",
   "FL",  "BottomDepth",          "Depth",          "int",
   "FL",  "HaulValidity",         "HaulVal",        "chr",
@@ -92,71 +166,145 @@ add <- tribble(
   "FL",  "DoorSpread",           "DoorSpread",     "dbl",
   "FL",  "WingSpread",           "WingSpread",     "dbl",
   "FL",  "Distance",             "Distance",       "dbl",
-  "FL",  NA,                     "Cal_DoorSpread", "dbl",
-  "FL",  NA,                     "DSflag",         "chr",
-  "FL",  NA,                     "Cal_WingSpread", "dbl",
-  "FL",  NA,                     "WSflag",         "chr",
-  "FL",  NA,                     "Cal_Distance",   "dbl",
-  "FL",  NA,                     "DistanceFlag",   "chr",
-  "FL",  NA,                     "SweptAreaDSKM2", "dbl",
-  "FL",  NA,                     "SweptAreaWSKM2", "dbl",
-  # LT
-  "LT",  "BottomDepth",          "BottomDepth",       "int",
-  "LT",  NA,                     "DateofCalculation", "int",
-  "LT",  NA,                     "OSPARArea",         "chr",
-  "LT",  NA,                     "MSFDArea",          "chr",
-  "LT",  NA,                     "EEZ",               "chr",
-  "LT",  NA,                     "NMArea",            "chr",
-  # CPUEL: icesDatras::getCPUELength()
-  "CPUEL", NA, "Survey",               "chr",
-  "CPUEL", NA, "Year",                 "int",
-  "CPUEL", NA, "Quarter",              "int",
-  "CPUEL", NA, "Ship",                 "chr",
-  "CPUEL", NA, "Gear",                 "chr",
-  "CPUEL", NA, "HaulNo",               "int",
-  "CPUEL", NA, "HaulDur",              "int",
-  "CPUEL", NA, "ShootLat",             "dbl",
-  "CPUEL", NA, "ShootLon",             "dbl",
-  "CPUEL", NA, "DateTime",             "chr",
-  "CPUEL", NA, "Depth",                "int",
-  "CPUEL", NA, "Area",                 "int",
-  "CPUEL", NA, "SubArea",              "chr",
-  "CPUEL", NA, "DayNight",             "chr",
-  "CPUEL", NA, "AphiaID",              "int",
-  "CPUEL", NA, "Species",              "chr",
-  "CPUEL", NA, "Sex",                  "chr",
-  "CPUEL", NA, "LngtClas",             "int",
-  "CPUEL", NA, "CPUE_number_per_hour", "dbl",
-  "CPUEL", NA, "Cal_DateID",           "int",
-  # CPUEA: icesDatras::getCPUEAge() — Age_* added below
+  "FL",  "Cal_DoorSpread",       "Cal_DoorSpread", "dbl",
+  "FL",  "DSflag",               "DSflag",         "chr",
+  "FL",  "Cal_WingSpread",       "Cal_WingSpread", "dbl",
+  "FL",  "WSflag",               "WSflag",         "chr",
+  "FL",  "Cal_Distance",         "Cal_Distance",   "dbl",
+  "FL",  "DistanceFlag",         "DistanceFlag",   "chr",
+  "FL",  "SweptAreaDSKM2",       "SweptAreaDSKM2", "dbl",
+  "FL",  "SweptAreaWSKM2",       "SweptAreaWSKM2", "dbl",
+  "FL",  "DateofCalculation",    "DateofCalculation", "int")
+
+add_lt <- tribble(
+  ~table,    ~new,                   ~old,              ~format,
+  "LT",  "Survey",               "Survey",         "chr",
+  "LT",  "Quarter",              "Quarter",        "int",
+  "LT",  "Platform",             "Ship",           "chr",
+  "LT",  "Gear",                 "Gear",           "chr",
+  "LT",  "Country",              "Country",        "chr",
+  "LT",  "StationName",          "StNo",           "chr",
+  "LT",  "HaulNumber",           "HaulNo",         "int",
+  "LT",  "ShootLatitude",        "ShootLat",       "dbl",
+  "LT",  "ShootLongitude",       "ShootLong",      "dbl",
+  "LT",  "HaulLatitude",         "HaulLat",        "dbl",
+  "LT",  "HaulLongitude",        "HaulLong",       "dbl",
+  "LT",  "OSPARArea",            "OSPARArea",      "chr",
+  "LT",  "MSFDArea",             "MSFDArea",       "chr",
+  "LT",  "BottomDepth",          "BottomDepth",    "int",
+  "LT",  "Distance",             "Distance",       "dbl",
+  "LT",  "DoorSpread",           "DoorSpread",     "dbl",
+  "LT",  "WingSpread",           "WingSpread",     "dbl",
+  "LT",  "LTREF",     "LTREF", "chr",
+  "LT",  "PARAM",     "PARAM", "chr",
+  "LT",  "LTSZC",     "LTSZC", "chr",
+  "LT",  "UnitWgt",   "UnitWgt", "chr",
+  "LT",  "LT_Weight", "LT_Weight", "dbl",
+  "LT",  "UnitItem", "UnitItem", "chr",
+  "LT",  "LT_Items", "LT_Items", "int",
+  "LT",  "LTSRC",    "LTSRC", "chr",
+  "LT",  "TYPPL",    "TYPPL", "chr",
+  "LT",  "LTPRP",    "LTPRP", "chr",
+  "LT",  "SweepLength",          "SweepLngt",      "int",
+  "LT",  "GearEx",               "GearEx",         "chr",
+  "LT",  "DoorType", "DoorType", "chr",
+  "LT",  "Month",                "Month",          "int",
+  "LT",  "Day",                  "Day",            "int",
+  "LT",  "StartTime",            "TimeShot",       "chr",
+  "LT",  "HaulDuration",         "HaulDur",        "int",
+  "LT",  "StatisticalRectangle", "StatRec",        "chr",
+  "LT",  "BottomDepth",          "Depth",          "int",
+  "LT",  "HaulValidity",         "HaulVal",        "chr",
+  "LT",  "DataType",             "DataType",       "chr",
+  "LT",  "NetOpening",           "Netopening",     "dbl",
+  "LT",  "Rigging",              "Rigging",        "chr",
+  "LT",  "Tickler",              "Tickler",        "int",
+  "LT",  "WarpLength",           "Warplngt",       "int",
+  "LT",  "WarpDiameter",         "Warpdia",        "int",
+  "LT",  "WarpDensity",          "WarpDen",        "int",
+  "LT",  "DoorSurface",          "DoorSurface",    "dbl",
+  "LT",  "DoorWeight",           "DoorWgt",        "int",
+  "LT",  "TowDirection",         "TowDir",         "int",
+  "LT",  "SpeedGround",          "GroundSpeed",    "dbl",
+  "LT",  "SpeedWater",           "SpeedWater",     "dbl",
+  "LT",  "WindDirection",        "WindDir",        "int",
+  "LT",  "WindSpeed",            "WindSpeed",      "int",
+  "LT",  "SwellDirection",       "SwellDir",       "int",
+  "LT",  "SwellHeight",          "SwellHeight",    "dbl",
+  "LT",  "CodendMesh",           "CodendMesh",     "int",
+  "LT",  "EEZ",                  "EEZ",            "chr",
+  "LT",  "NMArea",               "NMArea",         "chr",
+  "LT",  "DateofCalculation",    "DateofCalculation", "int",
+  "LT",  "Year",                 "Year",              "int")
+
+
+
+library(duckdbfs)
+cn1 <-
+  open_dataset("https://heima.hafro.is/~einarhj/datras/xml/CPUEL/Year=2025/data_0.parquet") |>
+  colnames()
+cn2 <-
+  dr_con("CPUEL") |> colnames()
+cn1
+cn2
+open_dataset("https://heima.hafro.is/~einarhj/datras/xml/CPUEL/Year=2025/data_0.parquet") |>glimpse()
+add_cpue_length <- tribble(
+  ~table,    ~new,                   ~old,              ~format,
+  "CPUEL", "Survey", "Survey",               "chr",
+  "CPUEL", "Year", "Year",                 "int",
+  "CPUEL", "Quarter", "Quarter",              "int",
+  "CPUEL", "Platform", "Ship",                 "chr",
+  "CPUEL", "Gear", "Gear",                 "chr",
+  "CPUEL", "HaulNumber", "HaulNo",               "int",
+  "CPUEL", "HaulDuration", "HaulDur",              "int",
+  "CPUEL", "ShootLatitude",  "ShootLat",             "dbl",
+  "CPUEL", "ShootLongitude", "ShootLon",             "dbl",
+  "CPUEL", "DateTime", "DateTime",             "chr",          # this should then be set as dttm
+  "CPUEL", "BottomDepth", "Depth",                "int",
+  "CPUEL", "Area", "Area",                 "int",
+  "CPUEL", "SubArea", "SubArea",              "chr",
+  "CPUEL", "DayNight", "DayNight",             "chr",
+  "CPUEL", "aphia", "AphiaID",              "int",
+  "CPUEL", "Species", "Species",              "chr",
+  "CPUEL", "SpeciesSex", "Sex",                  "chr",        # Should raise this with Vaishav
+  "CPUEL", "length_mm", "LngtClas",             "int",
+  "CPUEL", "n_hour", "CPUE_number_per_hour", "dbl",
+  "CPUEL", "DateofCalculation", "Cal_DateID",           "int")
+
+add_cpue_length <- tribble(
+  ~table,    ~new,                   ~old,              ~format,
   "CPUEA", NA, "Survey",    "chr",
   "CPUEA", NA, "Year",      "int",
   "CPUEA", NA, "Quarter",   "int",
   "CPUEA", NA, "Ship",      "chr",
   "CPUEA", NA, "Gear",      "chr",
   "CPUEA", NA, "HaulNo",    "int",
-  "CPUEA", NA, "ShootLat",  "dbl",
-  "CPUEA", NA, "ShootLon",  "dbl",
+  "CPUEA", "ShootLatitude",  "ShootLat",  "dbl",
+  "CPUEA", "ShootLongitude", "ShootLon",  "dbl",
   "CPUEA", NA, "DateTime",  "chr",
   "CPUEA", NA, "Depth",     "int",
   "CPUEA", NA, "Area",      "int",
   "CPUEA", NA, "SubArea",   "chr",
   "CPUEA", NA, "DayNight",  "chr",
-  "CPUEA", NA, "AphiaID",   "int",
+  "CPUEA", "aphia", "AphiaID",   "int",
   "CPUEA", NA, "Species",   "chr",
   "CPUEA", NA, "Sex",       "chr",
-  "CPUEA", NA, "Cal_DateID","int",
-  # IDX: icesDatras::getIndices() — Age_* added below; PlusGr renamed PlusGrAge
+  "CPUEA", DateofCalculation, "Cal_DateID","int")
+
+add_index <- tribble(
+  ~table,    ~new,                   ~old,              ~format,
   "IDX", NA, "Survey",            "chr",
   "IDX", NA, "Year",              "int",
   "IDX", NA, "Quarter",           "int",
-  "IDX", NA, "AphiaID",           "int",
+  "IDX", "aphia", "AphiaID",           "int",
   "IDX", NA, "Species",           "chr",
   "IDX", NA, "IndexArea",         "chr",
   "IDX", NA, "Sex",               "chr",
   "IDX", NA, "PlusGrAge",         "int",
   "IDX", NA, "DateofCalculation", "int"
 )
+
+
 
 # Age_0..Age_15: dbl for CPUEA and IDX
 age_entries <- expand_grid(
@@ -165,21 +313,23 @@ age_entries <- expand_grid(
 ) |>
   mutate(new = NA_character_, format = "dbl")
 
-dr_lookup_fields <- bind_rows(dr_lookup_fields, add, age_entries)
+dictionary <- bind_rows(dictionary, add, age_entries)
 
 # Fill missing `new` values in derived tables (CPUEL, CPUEA, IDX, LT) using
 # the old→new mapping established for the source record types (HH, HL, CA).
 # Columns unique to derived products (DateTime, CPUE_number_per_hour, etc.)
 # have no HH/HL/CA counterpart and remain NA in `new`.
-source_map <- dr_lookup_fields |>
+source_map <- dictionary |>
   filter(table %in% c("HH", "HL", "CA"), !is.na(new), !is.na(old)) |>
   select(old, new) |>
   # Keep first match per old name — old names are consistent across HH/HL/CA
   distinct(old, .keep_all = TRUE)
 
-dr_lookup_fields <- dr_lookup_fields |>
+dictionary <- dictionary |>
   left_join(source_map, by = "old", suffix = c("", "_fill")) |>
   mutate(new = coalesce(new, new_fill)) |>
   select(-new_fill)
 
-usethis::use_data(dr_lookup_fields, overwrite = TRUE)
+lh_lookup_dictionary <- dictionary
+usethis::use_data(dr_lookup_dictionary, overwrite = TRUE)
+

@@ -1,10 +1,9 @@
-# Three sources for HH/HL/CA data (source argument in dr_get):
-#  "parquet" - URL-hosted parquet files; full dataset, new-style names
-#  "csv"     - icesDatras::get_datras_unaggregated_data; new-style names
-#  "xml"     - icesDatras::getDATRAS; old-style names, translated on return
+# Two sources for HH/HL/CA data (source argument in dr_get):
+#  "parquet" - URL-hosted parquet files; full dataset, standard names
+#  "xml"     - icesDatras::getDATRAS; legacy names, translated to standard on return
 #
 # Derived products (FL, LT, CPUEL, CPUEA, CW, IDX) always use their own
-# ICES API functions; old-style names are translated on return via dr_translate().
+# ICES API functions; legacy names are translated to standard on return via dr_translate().
 #
 # Internal helpers (.dr_fetch_*) handle each path.
 # dr_get() is a thin dispatcher.
@@ -50,7 +49,12 @@
   data
 }
 
-.dr_fetch_csv <- function(recordtype, surveys, years, quarters, quiet) {
+# .dr_fetch_csv removed 2026-06-03 per IMBUS WP2-WP5 meeting decision:
+# icesDatras::get_datras_unaggregated_data was entered prematurely and will
+# not be included in the package. Use source = "parquet" (default) or "xml".
+
+.dr_fetch_csv_REMOVED <- function(recordtype, surveys, years, quarters, quiet) {
+  stop(".dr_fetch_csv is no longer available. Use source = 'parquet' or source = 'xml'.")
   years_c    <- paste0(min(years),    ":", max(years))
   quarters_c <- paste0(min(quarters), ":", max(quarters))
   .fetch <- function(survey) {
@@ -242,17 +246,15 @@
 
 #' Download and Import DATRAS Data
 #'
-#' Retrieves DATRAS trawl survey data from various sources:
+#' Retrieves DATRAS trawl survey data from two sources:
 #' - `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
-#'   survey/year/quarter filtering). Returns new-style column names directly.
-#' - `"csv"`: Retrieves data via `icesDatras::get_datras_unaggregated_data`.
-#'   Returns new-style column names directly.
+#'   survey/year/quarter filtering). Returns standard column names directly.
 #' - `"xml"`: Retrieves data via the legacy `icesDatras::getDATRAS` function.
-#'   Old-style column names are translated to new-style before returning.
+#'   Legacy column names are translated to standard names before returning.
 #'
 #' All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
 #' dedicated ICES API functions; the `source` argument is ignored for these.
-#' Their old-style column names are translated to new-style before returning.
+#' Their legacy column names are translated to standard names before returning.
 #'
 #' Translation is performed by [dr_translate()] using the `dictionary` argument.
 #' Supply a custom data frame with columns `old` and `new` to override the
@@ -270,18 +272,18 @@
 #'   and `"IDX"`. If `NULL`, defaults to cod (126436), haddock (126437), and
 #'   herring (126417).
 #' @param source String specifying the data source for HH/HL/CA: `"parquet"`
-#'   (default), `"csv"`, or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
+#'   (default) or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
 #' @param dictionary A data frame with columns `old` and `new` used to translate
-#'   old-style ICES column names to new-style. If `NULL` (default), built
+#'   legacy ICES column names to standard names. If `NULL` (default), built
 #'   automatically from [dr_lookup_fields].
 #' @param quiet Logical; suppresses progress messages if `TRUE` (default).
 #'
-#' @return A data frame with new-style column names.
+#' @return A data frame with standard column names.
 #'
 #' @examples
 #' \dontrun{
 #'   dr_get("HH")                                                        # full parquet
-#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "csv")
+#'   dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "xml")
 #'   dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 #' }
 #' @export
@@ -324,12 +326,10 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
                dr_translate(dictionary, from = "old", to = "new"))
   }
 
-  # parquet and csv already return new-style names; xml needs translation.
   if (source == "parquet") return(.dr_fetch_parquet(recordtype))
-  if (source == "csv")     return(.dr_fetch_csv(recordtype, surveys, years, quarters, quiet))
   if (source == "xml")     return(.dr_fetch_xml(recordtype, surveys, years, quarters, quiet) |>
                                     dr_translate(dictionary, from = "old", to = "new"))
 
-  stop("Unknown 'source' value: '", source, "'. Use 'parquet', 'csv', or 'xml'.")
+  stop("Unknown 'source' value: '", source, "'. Use 'parquet' or 'xml'.")
 }
 

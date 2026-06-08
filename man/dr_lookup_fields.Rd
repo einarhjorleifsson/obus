@@ -23,8 +23,8 @@ after fetching data. Regenerate with \code{data-raw/DATASET_lookup_fields.R}.
 A data frame with 5 columns:
 \describe{
 \item{table}{Record type: "HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "IDX"}
-\item{new}{Column name as returned by \code{icesDatras::get_datras_unaggregated_data} (new-style)}
-\item{old}{Column name as returned by \code{icesDatras::getDATRAS} and derived products (old-style)}
+\item{new}{Standard column name as used in the parquet files}
+\item{old}{Legacy column name as returned by \code{icesDatras::getDATRAS} and derived products}
 \item{format}{Type: "chr", "int", or "dbl"}
 \item{description}{Field description from the ICES web service}
 }
