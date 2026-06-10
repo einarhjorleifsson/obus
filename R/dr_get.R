@@ -290,45 +290,42 @@
 dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
                    aphia = NULL, source = "parquet", dictionary = NULL, quiet = TRUE) {
 
-  # Build default old -> new translation dictionary from the lookup table.
-  # Rows where either name is NA are dropped (no valid mapping exists).
+  # Build default old -> new translation dictionary, scoped to this record type.
+  # Pass dictionary = FALSE to skip translation entirely (raw legacy names returned).
+  # Pass a custom data frame with columns `old` and `new` to override the default.
   if (is.null(dictionary)) {
     dictionary <- dr_lookup_fields |>
-      dplyr::filter(!is.na(old), !is.na(new)) |>
+      dplyr::filter(table == recordtype, !is.na(old), !is.na(new)) |>
       dplyr::distinct(old, new)
+  }
+  .tr <- function(d) {
+    if (isFALSE(dictionary)) d else dr_translate(d, dictionary, from = "old", to = "new")
   }
 
   if (is.null(surveys)) surveys <- .dr_default_surveys()
 
   if (recordtype == "FL")
-    return(.dr_fetch_flex(surveys, years, quarters, quiet) |>
-             dr_translate(dictionary, from = "old", to = "new"))
+    return(.tr(.dr_fetch_flex(surveys, years, quarters, quiet)))
 
   if (recordtype == "LT")
-    return(.dr_fetch_lt(surveys, years, quarters, quiet) |>
-             dr_translate(dictionary, from = "old", to = "new"))
+    return(.tr(.dr_fetch_lt(surveys, years, quarters, quiet)))
 
   if (recordtype == "CPUEL")
-    return(.dr_fetch_cpue_length(surveys, years, quarters, quiet) |>
-             dr_translate(dictionary, from = "old", to = "new"))
+    return(.tr(.dr_fetch_cpue_length(surveys, years, quarters, quiet)))
 
   if (recordtype == "CPUEA")
-    return(.dr_fetch_cpue_age(surveys, years, quarters, quiet) |>
-             dr_translate(dictionary, from = "old", to = "new"))
+    return(.tr(.dr_fetch_cpue_age(surveys, years, quarters, quiet)))
 
   if (recordtype %in% c("CW", "IDX")) {
     if (is.null(aphia)) aphia <- .dr_default_aphia()
     if (recordtype == "CW")
-      return(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet) |>
-               dr_translate(dictionary, from = "old", to = "new"))
+      return(.tr(.dr_fetch_catch_wgt(surveys, years, quarters, aphia, quiet)))
     if (recordtype == "IDX")
-      return(.dr_fetch_indices(surveys, years, quarters, aphia, quiet) |>
-               dr_translate(dictionary, from = "old", to = "new"))
+      return(.tr(.dr_fetch_indices(surveys, years, quarters, aphia, quiet)))
   }
 
   if (source == "parquet") return(.dr_fetch_parquet(recordtype))
-  if (source == "xml")     return(.dr_fetch_xml(recordtype, surveys, years, quarters, quiet) |>
-                                    dr_translate(dictionary, from = "old", to = "new"))
+  if (source == "xml")     return(.tr(.dr_fetch_xml(recordtype, surveys, years, quarters, quiet)))
 
   stop("Unknown 'source' value: '", source, "'. Use 'parquet' or 'xml'.")
 }

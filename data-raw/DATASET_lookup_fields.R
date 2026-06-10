@@ -45,9 +45,6 @@ fields <-
   # only a partial list for LT, full list generated below
   filter(table != "LT")
 
-fields |> filter(table == "FA")
-
-
 # Correction -------------------------------------------------------------------
 fields <- fields |>
   mutate(
@@ -68,9 +65,12 @@ fields <- fields |>
                             table == "LT" & new == "StationName" ~ "Station number. National coding system, not defined by ICES.",
                             table %in% c("CA", "HH", "HL", "LT") & new == "Survey" ~ "Survey code as used in ICES products, see https://vocab.ices.dk/?codetypeguid=016362a4-90be-424b-af01-a37ae58ca023",
                             .default = description),
-    # For now, keep old name for Sex - they seem to contain the "same" vocabulary for both tables
-    new = case_when(table == "CA" & old == "Sex" & new == "IndividualSex" ~ "Sex",
-                    table == "HL" & old == "Sex" & new == "SpeciesSex" ~ "Sex",
+    # Use lowercase "sex" across HL and CA — a deliberate deviation from the PascalCase convention
+    # used elsewhere. HL calls this "SpeciesSex" and CA calls it "IndividualSex" in the ICES field
+    # list; these are the same concept with the same vocabulary. "sex" is a temporary canonical name
+    # until the ICES Datacenter / DATRAS team resolve the inconsistency in the upstream field list.
+    new = case_when(table == "CA" & old == "Sex" & new == "IndividualSex" ~ "sex",
+                    table == "HL" & old == "Sex" & new == "SpeciesSex" ~ "sex",
                     # getDatrasFieldList has IndividualAge - see also below for old
                     table == "CA" & new == "IndividualAge" ~ "Age",
                     .default = new),
@@ -97,33 +97,6 @@ add <-
           "CA", "DateofCalculation", "DateofCalculation", "int")
 fields <- fields |>
   bind_rows(add)
-
-# Testing ----------------------------------------------------------------------
-
-# The values here are different - hence ok to have separate names (unlike Sex)
-fields |> filter(new %in% c("MaturityScale", "DevelopmentStage"))
-dr_con("HL") |> count(DevelopmentStage)
-dr_con("CA") |> count(MaturityScale)
-# Same varible name should not have different types
-fields |> distinct(old, format) |> janitor::get_dupes() # expect none
-fields |> distinct(new, format) |> janitor::get_dupes() # expect none
-
-# check if all variables covered
-hh <- icesDatras::getDATRAS("HH", "NS-IBTS", 2025, 1)
-hl <- icesDatras::getDATRAS("HL", "NS-IBTS", 2025, 1)
-ca <- icesDatras::getDATRAS("CA", "NS-IBTS", 2025, 1)
-lt <- icesDatras::getLTassessment("NS-IBTS", 2025, 1)
-d <-
-  bind_rows(
-  tibble(table = "HH", old = names(hh)),
-  tibble(table = "HL", old = names(hl)),
-  tibble(table = "CA", old = names(ca)),
-  tibble(table = "LT", old = names(lt))) |>
-  left_join(fields)
-d |> filter(is.na(old))     # expect none
-d |> filter(is.na(new))     # expect none
-d |> filter(is.na(format))  # expect none
-
 
 ## Hand-curated entries not covered by the ICES web service --------------------
 #   ... because these are product tables??
@@ -239,15 +212,6 @@ add_lt <- tribble(
 
 
 
-library(duckdbfs)
-cn1 <-
-  open_dataset("https://heima.hafro.is/~einarhj/datras/xml/CPUEL/Year=2025/data_0.parquet") |>
-  colnames()
-cn2 <-
-  dr_con("CPUEL") |> colnames()
-cn1
-cn2
-open_dataset("https://heima.hafro.is/~einarhj/datras/xml/CPUEL/Year=2025/data_0.parquet") |>glimpse()
 add_cpue_length <- tribble(
   ~table,    ~new,                   ~old,              ~format,
   "CPUEL", "Survey", "Survey",               "chr",
@@ -266,12 +230,12 @@ add_cpue_length <- tribble(
   "CPUEL", "DayNight", "DayNight",             "chr",
   "CPUEL", "aphia", "AphiaID",              "int",
   "CPUEL", "Species", "Species",              "chr",
-  "CPUEL", "SpeciesSex", "Sex",                  "chr",        # Should raise this with Vaishav
+  "CPUEL", "sex",        "Sex",                  "chr",        # lowercase "sex" — see note above
   "CPUEL", "length_mm", "LngtClas",             "int",
   "CPUEL", "n_hour", "CPUE_number_per_hour", "dbl",
   "CPUEL", "DateofCalculation", "Cal_DateID",           "int")
 
-add_cpue_length <- tribble(
+add_cpuea <- tribble(
   ~table,    ~new,                   ~old,              ~format,
   "CPUEA", NA, "Survey",    "chr",
   "CPUEA", NA, "Year",      "int",
@@ -288,8 +252,8 @@ add_cpue_length <- tribble(
   "CPUEA", NA, "DayNight",  "chr",
   "CPUEA", "aphia", "AphiaID",   "int",
   "CPUEA", NA, "Species",   "chr",
-  "CPUEA", NA, "Sex",       "chr",
-  "CPUEA", DateofCalculation, "Cal_DateID","int")
+  "CPUEA", "sex",  "Sex",   "chr",
+  "CPUEA", "DateofCalculation", "Cal_DateID","int")
 
 add_index <- tribble(
   ~table,    ~new,                   ~old,              ~format,
@@ -299,7 +263,7 @@ add_index <- tribble(
   "IDX", "aphia", "AphiaID",           "int",
   "IDX", NA, "Species",           "chr",
   "IDX", NA, "IndexArea",         "chr",
-  "IDX", NA, "Sex",               "chr",
+  "IDX", "sex", "Sex",            "chr",
   "IDX", NA, "PlusGrAge",         "int",
   "IDX", NA, "DateofCalculation", "int"
 )
@@ -313,7 +277,7 @@ age_entries <- expand_grid(
 ) |>
   mutate(new = NA_character_, format = "dbl")
 
-dictionary <- bind_rows(dictionary, add, age_entries)
+dictionary <- bind_rows(fields, add, add_fl, add_lt, add_cpue_length, add_cpuea, add_index, age_entries)
 
 # Fill missing `new` values in derived tables (CPUEL, CPUEA, IDX, LT) using
 # the old→new mapping established for the source record types (HH, HL, CA).
@@ -330,6 +294,6 @@ dictionary <- dictionary |>
   mutate(new = coalesce(new, new_fill)) |>
   select(-new_fill)
 
-lh_lookup_dictionary <- dictionary
-usethis::use_data(dr_lookup_dictionary, overwrite = TRUE)
+dr_lookup_fields <- dictionary
+usethis::use_data(dr_lookup_fields, overwrite = TRUE)
 
