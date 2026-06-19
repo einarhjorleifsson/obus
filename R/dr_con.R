@@ -5,7 +5,9 @@
 #' give a clear error if the file is absent or the server is unreachable.
 #'
 #' @param type A character string specifying the table. One of `"HH"`, `"HL"`,
-#'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`, `"species"`.
+#'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`, `"species"`,
+#'   `"by_length"` (CPUE per length class per haul, from [dr_cpue_by_length()]),
+#'   or `"by_haul"` (haul-level catch totals, from [dr_cpue_by_haul()]).
 #' @param url Base URL of the parquet directory.
 #' @param quiet Logical. If `TRUE` (default), suppresses messages.
 #'
@@ -20,12 +22,13 @@
 #' @export
 dr_con <- function(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE) {
 
-  valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX", "species")
-
-  if (!type %in% valid_types) {
-    stop(sprintf("Invalid type '%s'. Valid types are: %s",
-                 type, paste(valid_types, collapse = ", ")), call. = FALSE)
-  }
+  # valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX", "species",
+  #                  "by_length", "by_haul")
+  #
+  # if (!type %in% valid_types) {
+  #   stop(sprintf("Invalid type '%s'. Valid types are: %s",
+  #                type, paste(valid_types, collapse = ", ")), call. = FALSE)
+  # }
 
   url  <- sub("/$", "", url)
   path <- paste0(url, "/", type, ".parquet")
