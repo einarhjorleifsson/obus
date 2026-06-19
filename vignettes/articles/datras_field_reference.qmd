@@ -276,7 +276,8 @@ Conversion formulas implemented by `dr_add_n_and_cpue()`:
 
 | DataType | `n_haul` | `n_hour` |
 |----------|----------|----------|
-| R / S / P | `NumberAtLength × SubsamplingFactor` | `n_haul / HaulDuration × 60` |
+| R | `NumberAtLength × SubsamplingFactor` (NA treated as 1) | `n_haul / HaulDuration × 60` |
+| S / P | `NumberAtLength × SubsamplingFactor` | `n_haul / HaulDuration × 60` |
 | C | `NumberAtLength × SubsamplingFactor × HaulDuration / 60` | `NumberAtLength × SubsamplingFactor` |
 
 ---
@@ -350,7 +351,7 @@ The `dr_check_*()` family returns a one-row tibble per check with columns `check
 | Check | What is tested | Typical failure rate |
 |-------|----------------|----------------------|
 | `dr_check_sentinels()` | Surviving −9 values in numeric columns | 0% (all replaced on fetch) |
-| `dr_check_subfactor()` | R/S: ≥ 1; C: = 1; NA always fails | ~0.015% (NA under DataType R) |
+| `dr_check_subfactor()` | R/S: ≥ 1; C: = 1; NA always fails | ~0.015% (NA under DataType R); `dr_add_n_and_cpue()` treats these as SubsamplingFactor = 1 rather than NA |
 | `dr_check_totalno()` | R/S: `TotalNumber ≈ sum(NumberAtLength) × SubsamplingFactor` | ~1% for DataType C (rounding artefact) |
 
 Column name defaults are standard (parquet) names. Pass legacy column names explicitly when

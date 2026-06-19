@@ -179,16 +179,6 @@ dr_add_starttime <- function(d) {
 }
 
 
-# icesVocab - LngtCode
-# Key                            Description
-# -9                           Missing Value
-# .   1 mm length class, reporting units: mm
-# 0 0.5 cm length class, reporting units: mm
-# 1   1 cm length class, reporting units: cm
-# 2   2 cm length class, reporting units: cm
-# 5   5 cm length class, reporting units: cm
-# 9                                  + group
-
 
 #' Add a standardized `length_cm` column to the input table
 #'
@@ -202,7 +192,12 @@ dr_add_starttime <- function(d) {
 #' @param LengthClass The column specifying the length class (unquoted).
 #'        Defaults to `LengthClass`.
 #'
-#' @return The input table with an additional column `length_cm`.
+#' @return The input table with two additional columns:
+#'   \describe{
+#'     \item{`length_cm`}{Length class converted to cm.}
+#'     \item{`accuracy`}{Measurement resolution in cm, derived from `LengthCode`:
+#'       `"."` → 0.1 cm, `"0"` → 0.5 cm, `"1"` → 1 cm, `"2"` → 2 cm, `"5"` → 5 cm.}
+#'   }
 #'
 #' @export
 dr_add_length_cm <- function(d, LengthCode = LengthCode, LengthClass = LengthClass) {
@@ -224,6 +219,20 @@ dr_add_length_cm <- function(d, LengthCode = LengthCode, LengthClass = LengthCla
           {{ LengthCode }} %in% c(".", "0") ~ {{ LengthClass }} / 10,  # Divide by 10
           {{ LengthCode }} %in% c("1", "2", "5") ~ {{ LengthClass }},  # Direct mapping
           TRUE ~ NA_real_                              # Any other case is NA
+        )
+    )
+
+  d <-
+    d |>
+    dplyr::mutate(
+      accuracy =
+        dplyr::case_when(
+          {{ LengthCode }} == "." ~ 0.1,
+          {{ LengthCode }} == "0" ~ 0.5,
+          {{ LengthCode }} == "1" ~ 1.0,
+          {{ LengthCode }} == "2" ~ 2.0,
+          {{ LengthCode }} == "5" ~ 5.0,
+          is.na({{ LengthCode }}) ~ NA
         )
     )
 
@@ -419,6 +428,7 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
     dplyr::mutate(
       n_hour = n_haul / {{ HaulDuration }} * 60
     )
+
 
   return(d)
 }

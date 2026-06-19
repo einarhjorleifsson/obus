@@ -17,7 +17,12 @@ Defaults to \code{LengthCode}.}
 Defaults to \code{LengthClass}.}
 }
 \value{
-The input table with an additional column \code{length_cm}.
+The input table with two additional columns:
+\describe{
+\item{\code{length_cm}}{Length class converted to cm.}
+\item{\code{accuracy}}{Measurement resolution in cm, derived from \code{LengthCode}:
+\code{"."} → 0.1 cm, \code{"0"} → 0.5 cm, \code{"1"} → 1 cm, \code{"2"} → 2 cm, \code{"5"} → 5 cm.}
+}
 }
 \description{
 This function adds a new column \code{length_cm} to the input table (\code{d}),
