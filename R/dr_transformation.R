@@ -380,6 +380,12 @@ dr_add_record_type <- function(d) {
 #' @param SubsamplingFactor The column specifying the subsampling factor (unquoted).
 #'        Defaults to `SubsamplingFactor`.
 #'
+#' @details
+#' For `DataType == "R"`, a missing (NA) `SubsamplingFactor` is treated as 1, meaning no
+#' subsampling correction is applied. This matches the convention in the DATRAS R package
+#' and reflects the assumption that absence of a subsampling factor implies the full catch
+#' was measured. For all other DataTypes, NA `SubsamplingFactor` propagates to NA `n_haul`.
+#'
 #' @return The input table with additional columns `n_haul` and `n_hour`.
 #'
 #' @export
@@ -402,7 +408,7 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
       n_haul = dplyr::case_when(
         DataType == "C"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }} * {{ HaulDuration }} / 60, # Data as CPUE
         # Could lump stuff below:
-        DataType == "R"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Data by haul
+        DataType == "R"  ~ {{ NumberAtLength }} * dplyr::coalesce({{ SubsamplingFactor }}, 1),        # Data by haul; NA SubsamplingFactor treated as 1 (no subsampling)
         DataType == "P"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Pseudocategory sampling
         DataType == "S"  ~ {{ NumberAtLength }} * {{ SubsamplingFactor }},                           # Subsampled data
         DataType == "-9" ~ NA,                                             # Invalid hauls

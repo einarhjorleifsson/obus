@@ -31,3 +31,9 @@ The input table with additional columns \code{n_haul} and \code{n_hour}.
 This function generates two new columns: \code{n} (numbers caught) and
 \code{cpue} (numbers caught per one hour towing) for the length table (HL).
 }
+\details{
+For \code{DataType == "R"}, a missing (NA) \code{SubsamplingFactor} is treated as 1, meaning no
+subsampling correction is applied. This matches the convention in the DATRAS R package
+and reflects the assumption that absence of a subsampling factor implies the full catch
+was measured. For all other DataTypes, NA \code{SubsamplingFactor} propagates to NA \code{n_haul}.
+}
