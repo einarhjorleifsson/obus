@@ -177,7 +177,7 @@ dr_hl_haul <- function(hh = NULL, hl = NULL, species = NULL) {
   # TotalNumber and SpeciesCategoryWeight are repeated across all length rows
   # within a group; distinct() collapses them without summing.
   hl_dedup <- hl |>
-    dplyr::distinct(.id, aphia, SpeciesSex, SpeciesCategory, SpeciesValidity,
+    dplyr::distinct(.id, aphia, sex, SpeciesCategory, SpeciesValidity,
                     TotalNumber, SpeciesCategoryWeight) |>
     dplyr::inner_join(dplyr::select(hh, .id, DataType, HaulDuration),
                       by = ".id")
