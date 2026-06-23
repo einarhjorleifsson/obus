@@ -37,7 +37,8 @@ utils::globalVariables(
     ".data", ".pass", ":=",
     "HaulValidity", "SpeciesValidity",
     "dr_lookup_areas",
-    "SubsampleWeight", "AreaCode"
+    "SubsampleWeight", "AreaCode",
+    "LengthClass", "NumberAtLength", "accuracy"
   )
 )
 

@@ -6,8 +6,8 @@
 #'
 #' @param type A character string specifying the table. One of `"HH"`, `"HL"`,
 #'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`, `"species"`,
-#'   `"by_length"` (CPUE per length class per haul, from [dr_cpue_by_length()]),
-#'   or `"by_haul"` (haul-level catch totals, from [dr_cpue_by_haul()]).
+#'   `"by_length"` (CPUE per length class per haul, from `.dr_cpue_by_length()`),
+#'   or `"by_haul"` (haul-level catch totals, from `.dr_cpue_by_haul()`).
 #' @param url Base URL of the parquet directory.
 #' @param quiet Logical. If `TRUE` (default), suppresses messages.
 #'
