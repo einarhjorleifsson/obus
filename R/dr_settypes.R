@@ -27,6 +27,6 @@ dr_settypes <- function(d, name_col = "new", recordheader = NULL) {
   d |>
     dplyr::mutate(dplyr::across(dplyr::where(is.character), \(x) dplyr::na_if(x, "NA"))) |>
     dplyr::mutate(dplyr::across(dplyr::any_of(key_chr), as.character)) |>
-    dplyr::mutate(dplyr::across(dplyr::any_of(key_int), as.integer))   |>
-    dplyr::mutate(dplyr::across(dplyr::any_of(key_dbl), as.numeric))
+    dplyr::mutate(dplyr::across(dplyr::any_of(key_int), \(x) suppressWarnings(as.integer(x)))) |>
+    dplyr::mutate(dplyr::across(dplyr::any_of(key_dbl), \(x) suppressWarnings(as.numeric(x))))
 }

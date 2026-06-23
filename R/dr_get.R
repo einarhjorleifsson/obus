@@ -21,6 +21,14 @@
 # Clupea harengus (herring).
 .dr_default_aphia <- function() c(126436L, 126437L, 126417L)
 
+# Strip the xsi:nil="true" XML attribute that the icesDatras XML parser leaks
+# into column names (e.g. 'Age_6 xsi:nil="true"' -> 'Age_6').  Applied per
+# data frame BEFORE bind_rows in all XML-backed fetchers; a no-op when absent.
+.strip_xsi_nil <- function(d) {
+  names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
+  d
+}
+
 
 .dr_fetch_parquet <- function(recordtype) {
   url <- paste0("https://heima.hafro.is/~einarhj/datras/", recordtype, ".parquet")
@@ -43,7 +51,7 @@
   data <- data[i]
   if (length(data) == 0) return(data.frame())
   data <- data |>
-    purrr::map(\(d) dr_settypes(d, name_col = "old")) |>
+    purrr::map(\(d) .strip_xsi_nil(d) |> dr_settypes(name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -97,7 +105,7 @@
   data <- data[i]
   if (length(data) == 0) return(data.frame())
   data <- data |>
-    purrr::map(\(d) dr_settypes(d, name_col = "old", recordheader = "FL")) |>
+    purrr::map(\(d) .strip_xsi_nil(d) |> dr_settypes(name_col = "old", recordheader = "FL")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -120,7 +128,7 @@
   i <- purrr::map_lgl(data, is.data.frame)
   data <- data[i]
   if (length(data) == 0) return(data.frame())
-  data <- purrr::map(data, \(d) dr_settypes(d, name_col = "old", recordheader = "CPUEL")) |>
+  data <- purrr::map(data, \(d) .strip_xsi_nil(d) |> dr_settypes(name_col = "old", recordheader = "CPUEL")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -146,8 +154,8 @@
   # Strip xsi:nil artifact, coerce Age_* to numeric, then apply full type spec —
   # all per data frame BEFORE bind_rows to avoid duplicate column name issues.
   .clean_age <- function(d) {
-    names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
-    d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+    d <- .strip_xsi_nil(d)
+    d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), \(x) suppressWarnings(as.numeric(x))))
     dr_settypes(d, name_col = "old", recordheader = "CPUEA")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
@@ -173,7 +181,7 @@
   if (length(data) == 0) return(data.frame())
   # Apply types per df before bind_rows — columns like StNo can arrive as
   # integer in some surveys and character in others, causing bind_rows to fail.
-  data <- purrr::map(data, \(d) dr_settypes(d, name_col = "old")) |>
+  data <- purrr::map(data, \(d) .strip_xsi_nil(d) |> dr_settypes(name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data
@@ -200,10 +208,10 @@
   # Strip xsi:nil artifact, coerce Age_* to numeric, then apply full type spec —
   # all per data frame BEFORE bind_rows to avoid duplicate column name issues.
   .clean_age <- function(d) {
-    names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
+    d <- .strip_xsi_nil(d)
     # Rename PlusGr -> PlusGrAge to distinguish from CA's AgePlusGroup char flag
     names(d)[names(d) == "PlusGr"] <- "PlusGrAge"
-    d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), as.numeric))
+    d <- dplyr::mutate(d, dplyr::across(dplyr::matches("^Age_\\d+$"), \(x) suppressWarnings(as.numeric(x))))
     dr_settypes(d, name_col = "old", recordheader = "IDX")
   }
   data <- purrr::map(data, .clean_age) |> dplyr::bind_rows()
@@ -232,10 +240,7 @@
   # LT has nil columns beyond Age_* (e.g. Tickler, Warpdia, DoorSurface).
   # No recordheader filter: borrow types from all RecordHeaders.
   data <- data |>
-    purrr::map(\(d) {
-      names(d) <- sub(' xsi:nil="true"', "", names(d), fixed = TRUE)
-      dr_settypes(d, name_col = "old")
-    }) |>
+    purrr::map(\(d) .strip_xsi_nil(d) |> dr_settypes(name_col = "old")) |>
     dplyr::bind_rows()
   data[data == -9] <- NA
   data

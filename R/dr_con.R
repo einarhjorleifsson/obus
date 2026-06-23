@@ -22,13 +22,13 @@
 #' @export
 dr_con <- function(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE) {
 
-  # valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX", "species",
-  #                  "by_length", "by_haul")
-  #
-  # if (!type %in% valid_types) {
-  #   stop(sprintf("Invalid type '%s'. Valid types are: %s",
-  #                type, paste(valid_types, collapse = ", ")), call. = FALSE)
-  # }
+  valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX", "species",
+                   "by_length", "by_haul")
+
+  if (!type %in% valid_types) {
+    stop(sprintf("Invalid type '%s'. Valid types are: %s",
+                 type, paste(valid_types, collapse = ", ")), call. = FALSE)
+  }
 
   url  <- sub("/$", "", url)
   path <- paste0(url, "/", type, ".parquet")

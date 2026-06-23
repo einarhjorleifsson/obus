@@ -433,4 +433,33 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
   return(d)
 }
 
-
+#' Add species names to a DATRAS table
+#'
+#' Joins the WoRMS-accepted Latin name and common name onto any table that
+#' contains an \code{aphia} column, using a left join so that rows with no
+#' match are retained with \code{NA} in the new columns.
+#'
+#' @param x A data frame or DuckDB lazy table with an \code{aphia} column.
+#' @param species Species lookup table with columns \code{aphia}, \code{latin},
+#'   and \code{species}. Defaults to \code{dr_con("species")}, a lazy DuckDB
+#'   connection to the species parquet on the obus server.
+#'
+#' @return \code{x} with two additional columns:
+#'   \describe{
+#'     \item{latin}{WoRMS-accepted Latin name.}
+#'     \item{species}{Common name.}
+#'   }
+#'   Rows whose \code{aphia} code is absent from the lookup table are kept with
+#'   \code{NA} in both new columns.
+#'
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' hl <- dr_get("HL", surveys = "NS-IBTS", years = 2023, quarters = 1)
+#' hl |> dr_add_species()
+#' }
+dr_add_species <- function(x, species = NULL) {
+  if (is.null(species)) species <- dr_con("species")
+  dplyr::left_join(x, species, by = dplyr::join_by(aphia == aphia))
+}
