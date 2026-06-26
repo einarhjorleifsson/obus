@@ -108,48 +108,48 @@ The result, measured directly from the server file and a freshly written CSV of 
 
 [DuckDB](https://duckdb.org) is a relational database engine designed for analytical queries on large tables. Unlike PostgreSQL or MySQL, DuckDB runs **in-process** — it starts up as a library inside your R session, with no separate server to install, configure, or connect to. When you install `{obus}`, DuckDB comes along as an R package dependency and is ready to use immediately.
 
-### Connecting to a remote Parquet file
+### Three ways to get an `hl` object — and why it doesn't matter
 
-`dr_con()` does two things:
-
-1. Sends an HTTP HEAD request to confirm the file exists on the obus server.
-2. Tells DuckDB to open the Parquet file at that URL.
-
-```{r}
-system.time({
-  hl <- dr_con("HL")
-})
-```
-
-That elapsed time is almost entirely the HEAD request. DuckDB reads the Parquet footer — a few kilobytes — and nothing else. The 14-million-row HL table has not moved.
-
-### Connecting to a local Parquet file
-
-`dr_con()` is designed for the obus server. If you have downloaded the files to your own machine, connect directly with `duckdbfs::open_dataset()` — no wrapper needed:
+Before going further, here are the three ways you might start a DATRAS analysis, and what you end up with:
 
 ```{r}
 #| eval: false
+# 1. Connect to the obus server (lazy — nothing downloaded yet)
+hl <- dr_con("HL")
+
+# 2. Connect to a local copy (lazy — identical object to dr_con())
 hl <- duckdbfs::open_dataset("~/datras/HL.parquet")
+
+# 3. Import the full table into R memory
+hl <- dr_get("HL")
 ```
 
-The object you get back is identical to what `dr_con()` returns: a lazy DuckDB connection. Every `{dplyr}` verb and every `dr_add_*()` function works exactly the same way on it. The Parquet format is the constant; the location of the file is not.
+**Options 1 and 2 return a lazy DuckDB connection. Option 3 returns a plain R data frame.** These are different objects internally, but from your perspective as a user they behave identically: every `{dplyr}` verb (`filter`, `mutate`, `group_by`, `summarise`, `left_join`, …) and every `dr_add_*()` function in `{obus}` works the same way on all three. You do not need to know or care which one you have.
 
-Compare with a full import:
+The rest of this article uses `hl` from `dr_con()`, but every single line of code shown would work unchanged if `hl` had come from `duckdbfs::open_dataset()` or `dr_get()` instead.
+
+### Connecting is nearly instant; importing is not
 
 ```{r}
 system.time({
-  hl_local <- dr_get("HL")
+  hl <- dr_con("HL")   # lazy connection — reads only the file footer
 })
 ```
 
-Both give you a table you can work with, but they represent very different things. `hl_local` is a plain R data frame sitting in memory. `hl` is a **lazy connection** — a query plan that has not run yet.
+```{r}
+system.time({
+  hl_imported <- dr_get("HL")   # full import — all rows into R memory
+})
+```
+
+The difference is what has actually happened. `dr_con()` sends an HTTP HEAD request, then tells DuckDB to note the file location and read its footer — a few kilobytes. The 14-million-row table has not moved. `dr_get()` downloads the entire file.
 
 ```{r}
 class(hl)
-nrow(hl)   # NA: DuckDB has not counted rows yet
+nrow(hl)   # NA — DuckDB has not counted rows yet
 ```
 
-The `NA` row count is a hint: `hl` is not data, it is a **promise** of data, contingent on a query.
+The `NA` row count signals that `hl` is a **promise** of data, not data itself. A query will be needed to make anything happen.
 
 ---
 
@@ -244,11 +244,9 @@ Three Parquet files joined, filtered, and computed — all in DuckDB, before a s
 
 ---
 
-## Same code, two backends
+## Same code, three backends
 
-Here is the key insight for the practical user: **you do not need to know which backend you are on**. Once you have a data frame or a DuckDB connection, the `{dplyr}` verbs and all `dr_add_*()` functions work identically on both.
-
-Consider this small helper:
+The point stated earlier bears a concrete demonstration. Here is a function that computes total cod catch by survey, year, and quarter:
 
 ```{r}
 summarise_cod <- function(hl_input, hh_input) {
@@ -263,11 +261,21 @@ summarise_cod <- function(hl_input, hh_input) {
 }
 ```
 
-Call it with **lazy DuckDB connections** — nothing downloaded until `collect()`:
+Call it with **remote DuckDB connections** — only the matching rows ever leave the server:
 
 ```{r}
 #| eval: false
 summarise_cod(dr_con("HL"), dr_con("HH")) |> collect()
+```
+
+Call it with **local DuckDB connections** — same laziness, files on your own disk:
+
+```{r}
+#| eval: false
+summarise_cod(
+  duckdbfs::open_dataset("~/datras/HL.parquet"),
+  duckdbfs::open_dataset("~/datras/HH.parquet")
+) |> collect()
 ```
 
 Call it with **in-memory data frames** — everything already in R:
@@ -279,7 +287,7 @@ hl_local <- dr_get("HL", surveys = "NS-IBTS", years = 2024, quarters = 1)
 summarise_cod(hl_local, hh_local)
 ```
 
-Same function, no changes. The `dr_add_*()` functions in `{obus}` are written to handle both `tbl_duckdb_connection` and ordinary `data.frame` inputs; `{dplyr}` dispatches to the right method automatically.
+The function is identical in all three cases. No `if` statements, no special cases, no adapter layer. The `dr_add_*()` functions in `{obus}` are written to handle both `tbl_duckdb_connection` and ordinary `data.frame` inputs; `{dplyr}` dispatches to the right method automatically.
 
 ### When to prefer each approach
 
