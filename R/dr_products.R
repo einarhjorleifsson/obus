@@ -62,6 +62,15 @@ dr_hl_length <- function(hh = NULL, hl = NULL, species = NULL) {
   if (is.null(hl))      hl      <- dr_con("HL")
   if (is.null(species)) species <- dr_con("species")
 
+  # Identify presence-only HL records before overwriting hl: rows where both
+  # NumberAtLength and TotalNumber are NA mean the species was detected but not
+  # counted. These must not be zero-filled even when the species appears in other
+  # hauls within the same Survey/Year/Quarter.
+  presence_only <- hl |>
+    dplyr::filter(is.na(NumberAtLength), is.na(TotalNumber)) |>
+    dr_add_species(species) |>
+    dplyr::distinct(.id, latin)
+
   # Process HL: filter, compute lengths and CPUE, join species, collapse sex/stage
   hl <- hl |>
     dplyr::filter(NumberAtLength != 0) |>
@@ -79,15 +88,19 @@ dr_hl_length <- function(hh = NULL, hl = NULL, species = NULL) {
   # for each haul where it was absent. Hauls sourced from HH (not HL) so that
   # hauls with no catch at all are also included.
   hauls       <- dplyr::distinct(hh, .id, Survey, Year, Quarter)
-  spp_per_syq <- dplyr::distinct(hl, latin, species) |>
-    dplyr::cross_join(dplyr::distinct(hauls, Survey, Year, Quarter))
+  spp_per_syq <- hl |>
+    dplyr::inner_join(dplyr::select(hauls, .id, Survey, Year, Quarter), by = ".id") |>
+    dplyr::distinct(latin, species, Survey, Year, Quarter)
 
   full_grid <- hauls |>
     dplyr::inner_join(spp_per_syq, by = c("Survey", "Year", "Quarter"))
 
-  # accuracy = NA: no measurement resolution for a zero-catch sentinel row
+  # accuracy = NA: no measurement resolution for a zero-catch sentinel row.
+  # Exclude presence-only pairs — species detected but not counted should not
+  # be treated as absent.
   zero_rows <- full_grid |>
     dplyr::anti_join(dplyr::distinct(hl, .id, latin), by = c(".id", "latin")) |>
+    dplyr::anti_join(presence_only, by = c(".id", "latin")) |>
     dplyr::mutate(
       length_cm       = 0,
       accuracy        = NA_real_,
@@ -220,8 +233,9 @@ dr_hl_haul <- function(hh = NULL, hl = NULL, species = NULL) {
   # --- zero-fill -----------------------------------------------------------
   # Hauls sourced from HH so that hauls with no catch at all are included.
   hauls       <- dplyr::distinct(hh, .id, Survey, Year, Quarter)
-  spp_per_syq <- dplyr::distinct(hl_agg, latin, species) |>
-    dplyr::cross_join(dplyr::distinct(hauls, Survey, Year, Quarter))
+  spp_per_syq <- hl_agg |>
+    dplyr::inner_join(dplyr::select(hauls, .id, Survey, Year, Quarter), by = ".id") |>
+    dplyr::distinct(latin, species, Survey, Year, Quarter)
 
   full_grid <- hauls |>
     dplyr::inner_join(spp_per_syq, by = c("Survey", "Year", "Quarter"))
