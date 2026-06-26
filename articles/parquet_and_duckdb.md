@@ -134,7 +134,7 @@ system.time({
 ```
 
        user  system elapsed
-      1.328   0.075   6.705 
+      1.300   0.067   6.788 
 
 That elapsed time is almost entirely the HEAD request. DuckDB reads the
 Parquet footer — a few kilobytes — and nothing else. The 14-million-row
@@ -150,7 +150,7 @@ system.time({
 ```
 
        user  system elapsed
-     11.982   1.084  62.438 
+     10.137   1.045  29.403 
 
 Both give you a table you can work with, but they represent very
 different things. `hl_local` is a plain R data frame sitting in memory.
@@ -211,7 +211,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM pqnyyslclybrgky
+    FROM ztkkoraekgqfsvx
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -255,7 +255,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM pqnyyslclybrgky
+      FROM ztkkoraekgqfsvx
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -279,7 +279,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.920   0.022   4.754 
+      0.738   0.015   5.618 
 
 ``` r
 
@@ -365,17 +365,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              pqnyyslclybrgky.*,
+              ztkkoraekgqfsvx.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM pqnyyslclybrgky
-            INNER JOIN expkbpfvefjzvhv
-              ON (pqnyyslclybrgky.".id" = expkbpfvefjzvhv.".id")
-            INNER JOIN qljpsjpsgjuctek
-              ON (pqnyyslclybrgky.aphia = qljpsjpsgjuctek.aphia)
+            FROM ztkkoraekgqfsvx
+            INNER JOIN lbditvdfmnufffn
+              ON (ztkkoraekgqfsvx.".id" = lbditvdfmnufffn.".id")
+            INNER JOIN yoqonrhzquocbxp
+              ON (ztkkoraekgqfsvx.aphia = yoqonrhzquocbxp.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -394,7 +394,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.795   0.046   9.512 
+      0.803   0.055  14.228 
 
 ``` r
 

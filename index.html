@@ -61,7 +61,7 @@
 
 <p>The aim of {obus} is to provide users fast and efficient access to DATRAS tables with non-ambiguous variables.</p>
 <p>That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for ordinary user. Some of that may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.</p>
-<p>The package code resides on <a href="https://github.com/einarhjorleifsson/obus" class="external-link">GitHub</a> and there is also a <a href="https://heima.hafro.is/~einarhj/pkg/obus/" class="external-link">package website</a>.</p>
+<p>The package code resides on <a href="https://github.com/einarhjorleifsson/obus" class="external-link">GitHub</a> and there is also a <a href="https://einarhjorleifsson.github.io/obus/">package website</a>.</p>
 <p>For purists, one regrets to inform that the functionality of {obus} has quite some number of dependencies (56, see also <a href="https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION" class="external-link">DESCRIPTION</a>). Some of them may possibly be trimmed, but never all.</p>
 <p>Access to the parquet datafiles is though independent of {obus} and for that matter <strong>any software platform</strong> used. The current <strong>temporary</strong> path to the exchange files (with the new header lingo) used in {obus} is:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>https<span class="sc">:</span><span class="er">//</span>heima.hafro.is<span class="sc">/</span><span class="er">~</span>einarhj<span class="sc">/</span>datras<span class="sc">/</span>HH.parquet</span>
@@ -91,8 +91,8 @@
 <span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CA"</span>, source <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;  10.507   2.055  28.885</span></span></code></pre></div>
-<p>So we are talking about around 10 seconds if you’re sitting on the optic fiber. If you are connected via poor wifi this may take closer to a minute.</p>
+<span><span class="co">#&gt;  12.527   1.823  40.929</span></span></code></pre></div>
+<p>So we are talking about around some 10s of seconds if you’re sitting on the optic fiber. If you are connected via poor wifi this may take a minute plus.</p>
 <p>The dr_get is just a thin wrapper around a (temporary) https-path. User can thus access the data without the {obus} as middle man via e.g.:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://heima.hafro.is/~einarhj/datras/HH.parquet"</span>)</span></code></pre></div>
 <p>And if Python is your preferred platform:</p>
@@ -153,7 +153,7 @@
 <span>  <span class="va">hl_xml</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span>recordtype <span class="op">=</span> <span class="st">"HL"</span>, years <span class="op">=</span> <span class="fl">2026</span>, source <span class="op">=</span> <span class="st">"xml"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   9.653   3.689 123.428</span></span></code></pre></div>
+<span><span class="co">#&gt;   9.054   3.221  60.502</span></span></code></pre></div>
 <p>In store we now have:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl_xml</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">Survey</span><span class="op">)</span></span>
@@ -179,7 +179,7 @@
 <span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"CA"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.137   0.015   0.526</span></span>
+<span><span class="co">#&gt;   0.188   0.023   0.959</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">hl</span><span class="op">)</span> ; <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">hl</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              </span></span>
 <span><span class="co">#&gt; [4] "tbl_lazy"              "tbl"</span></span>
@@ -230,7 +230,7 @@
 <code class="sourceCode R"><span><span class="va">hl</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT *</span></span>
-<span><span class="co">#&gt; FROM cnapmeonkyfrjme</span></span></code></pre></div>
+<span><span class="co">#&gt; FROM fuccuxjprprjqau</span></span></code></pre></div>
 <p>So the object hl is actually some kind of an SQL-query. What happens behind the scene when using dr_con is:</p>
 <ul>
 <li>A tiny database engine called DuckDB is started silently from R — no separate server or installation needed (The feature is installed initially on the computer when {obus} is installed).</li>
@@ -246,7 +246,7 @@
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT *</span></span>
-<span><span class="co">#&gt; FROM cnapmeonkyfrjme</span></span>
+<span><span class="co">#&gt; FROM fuccuxjprprjqau</span></span>
 <span><span class="co">#&gt; WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)</span></span></code></pre></div>
 <p>Ergo:</p>
 <ul>
@@ -277,7 +277,7 @@
 <span><span class="co">#&gt; WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass</span></span>
 <span><span class="co">#&gt; ELSE NULL</span></span>
 <span><span class="co">#&gt; END AS length_cm</span></span>
-<span><span class="co">#&gt;   FROM cnapmeonkyfrjme</span></span>
+<span><span class="co">#&gt;   FROM fuccuxjprprjqau</span></span>
 <span><span class="co">#&gt; ) AS q01</span></span>
 <span><span class="co">#&gt; WHERE (Gear = 'GOV') AND (length_cm &gt; 50.0)</span></span></code></pre></div>
 <p>We now have to decide how much code to hide from the average user. E.g. instead of the mutate above to convert all length classes to centimeters we could use an experimental function:</p>
@@ -352,7 +352,7 @@
 <span><span class="co">#&gt; END AS length_cm</span></span>
 <span><span class="co">#&gt;       FROM (</span></span>
 <span><span class="co">#&gt;         SELECT</span></span>
-<span><span class="co">#&gt;           cnapmeonkyfrjme.*,</span></span>
+<span><span class="co">#&gt;           fuccuxjprprjqau.*,</span></span>
 <span><span class="co">#&gt;           DataType,</span></span>
 <span><span class="co">#&gt;           HaulDuration,</span></span>
 <span><span class="co">#&gt;           HaulValidity,</span></span>
@@ -360,11 +360,11 @@
 <span><span class="co">#&gt;           ShootLatitude AS lat,</span></span>
 <span><span class="co">#&gt;           latin,</span></span>
 <span><span class="co">#&gt;           species</span></span>
-<span><span class="co">#&gt;         FROM cnapmeonkyfrjme</span></span>
-<span><span class="co">#&gt;         LEFT JOIN zrftvqencvbohpk</span></span>
-<span><span class="co">#&gt;           ON (cnapmeonkyfrjme.".id" = zrftvqencvbohpk.".id")</span></span>
-<span><span class="co">#&gt;         LEFT JOIN zkfsabanjpegwex</span></span>
-<span><span class="co">#&gt;           ON (cnapmeonkyfrjme.aphia = zkfsabanjpegwex.aphia)</span></span>
+<span><span class="co">#&gt;         FROM fuccuxjprprjqau</span></span>
+<span><span class="co">#&gt;         LEFT JOIN yprenbodfqcuvoh</span></span>
+<span><span class="co">#&gt;           ON (fuccuxjprprjqau.".id" = yprenbodfqcuvoh.".id")</span></span>
+<span><span class="co">#&gt;         LEFT JOIN glczywenykqzklz</span></span>
+<span><span class="co">#&gt;           ON (fuccuxjprprjqau.aphia = glczywenykqzklz.aphia)</span></span>
 <span><span class="co">#&gt;       ) AS q01</span></span>
 <span><span class="co">#&gt;     ) AS q01</span></span>
 <span><span class="co">#&gt;   ) AS q01</span></span>
@@ -381,7 +381,7 @@
 <span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.355   0.039   0.361</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.408   0.050   0.441</span></span></code></pre></div>
 <p>So we basically have obtained some ~150 thousand cod measurements from two surveys (1965 onwards) where we have:</p>
 <ul>
 <li>standardized the length</li>
@@ -459,7 +459,7 @@
 <span id="cb20-62"><a href="#cb20-62" tabindex="-1"></a><span class="co">#&gt;  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb20-63"><a href="#cb20-63" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb20-64"><a href="#cb20-64" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb20-65"><a href="#cb20-65" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d5c2b3cdf</span></span>
+<span id="cb20-65"><a href="#cb20-65" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84de0fdab4</span></span>
 <span id="cb20-66"><a href="#cb20-66" tabindex="-1"></a><span class="co">#&gt;  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library</span></span>
 <span id="cb20-67"><a href="#cb20-67" tabindex="-1"></a><span class="co">#&gt;  * ── Packages attached to the search path.</span></span>
 <span id="cb20-68"><a href="#cb20-68" tabindex="-1"></a><span class="co">#&gt; </span></span>
