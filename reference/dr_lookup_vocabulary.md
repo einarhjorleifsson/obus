@@ -28,15 +28,14 @@ A data frame with 6 columns:
 
 - old:
 
-  Old-style DATRAS column name (as returned by
+  Legacy DATRAS column name (as returned by
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)
   and derived products).
 
 - new:
 
-  New-style column name (as returned by
-  `icesDatras::get_datras_unaggregated_data`); `NA` where no mapping
-  exists.
+  Standard column name as used in the parquet files; `NA` where no
+  mapping exists.
 
 - key:
 

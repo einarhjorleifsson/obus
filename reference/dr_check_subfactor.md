@@ -36,7 +36,7 @@ dr_check_subfactor(
 
   Unquoted column name for the subsampling factor. Default:
   `SubsamplingFactor` (new-style). Use `SubFactor` for old-style tables
-  from [`dr_con_raw()`](dr_con_raw.md) or `dr_get(from = "old")`.
+  from `dr_con_raw()` or `dr_get(from = "old")`.
 
 - flag:
 
@@ -51,4 +51,4 @@ A one-row summary tibble, or the input data with `.pass` added.
 ## Details
 
 Violations silently corrupt `n_haul` computed by
-[`dr_add_n_and_cpue()`](dr_add_n_and_cpue.md).
+[`dr_add_n_and_cpue()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_n_and_cpue.md).

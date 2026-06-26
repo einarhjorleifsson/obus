@@ -29,4 +29,13 @@ dr_add_length_cm(d, LengthCode = LengthCode, LengthClass = LengthClass)
 
 ## Value
 
-The input table with an additional column `length_cm`.
+The input table with two additional columns:
+
+- `length_cm`:
+
+  Length class converted to cm.
+
+- `accuracy`:
+
+  Measurement resolution in cm, derived from `LengthCode`: `"."` → 0.1
+  cm, `"0"` → 0.5 cm, `"1"` → 1 cm, `"2"` → 2 cm, `"5"` → 5 cm.

@@ -1,91 +1,45 @@
-# Establish a DuckDB Connection to DATRAS Datasets
+# Connect to DATRAS Parquet Files
 
-This function creates a DuckDB connection to a specified DATRAS dataset
-type, facilitating access to trawl survey data stored in Parquet format.
-The dataset type determines which data is loaded from the remote source.
+Opens a lazy DuckDB connection to a DATRAS parquet file hosted on the
+obus server. An HTTP HEAD request is made before opening the dataset to
+give a clear error if the file is absent or the server is unreachable.
 
 ## Usage
 
 ``` r
-dr_con(
-  type = NULL,
-  trim = TRUE,
-  url = "https://heima.hafro.is/~einarhj/datras",
-  quiet = TRUE
-)
+dr_con(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
 ```
 
 ## Arguments
 
 - type:
 
-  A character string specifying the dataset type. Available values
-  (tables):
-
-  - `"HH"`: Haul-level data.
-
-  - `"HL"`: Catch-at-length data (filterable via the `trim` option).
-
-  - `"CA"`: Catch-at-age data (filterable via the `trim` option).
-
-  - `"species"`: Species dataset derived from ICES SpecWoRMS.
-
-- trim:
-
-  Logical. For `"HL"` or `"CA"`, if `TRUE` (default), non-essential
-  fields are excluded. Ignored for other datasets.
+  A character string specifying the table. One of `"HH"`, `"HL"`,
+  `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`,
+  `"species"`, `"by_length"` (CPUE per length class per haul, from
+  [`.dr_cpue_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_length.md)),
+  or `"by_haul"` (haul-level catch totals, from
+  [`.dr_cpue_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_haul.md)).
 
 - url:
 
-  URL to the Parquet file directory, currently defaulting to
-  `"https://heima.hafro.is/~einarhj/datras"`.
+  Base URL of the parquet directory.
 
 - quiet:
 
-  Logical. If `TRUE` (default), suppresses connection warnings and
-  messages.
+  Logical. If `TRUE` (default), suppresses messages.
 
 ## Value
 
-A DuckDB dataset table.
-
-## Dataset Types
-
-This function operates on the following dataset types:
-
-- **"HH" (Haul-Level Data)**: Contains information related to individual
-  haul events.
-
-- **"HL" (Catch-at-Length Data)**: Records catches categorized by length
-  class.
-
-- **"CA" (Catch-at-Age Data)**: Includes age-based biological data
-  (e.g., liver weight, length).
-
-## Dataset Paths
-
-The dataset is accessed via HTTP/HTTPS paths at a user-defined or
-default URL location. The file names are inferred from the provided
-`type` parameter (e.g., a Parquet file named `"HH.parquet"` for `"HH"`
-type data).
-
-## Unique Identifier (.id)
-
-For dataset types `"HH"`, `"HL"`, and `"CA"`, a unique identifier column
-(`.id`) represent catenation of fields Survey, Year, Quarter, Country,
-Platform, Gear, StationName and HaulNumber seperated by ":" (see
-[`dr_add_id`](dr_add_id.md)).
+A lazy `tbl_duckdb_connection`. Pipe dplyr verbs and call
+[`dplyr::collect()`](https://dplyr.tidyverse.org/reference/compute.html)
+to bring data into memory.
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
-  # Establish connections
-  dr_con("HH")                   # Connect to haul-level data.
-  dr_con("HL", trim = FALSE)     # Include all fields for catch-at-length data.
-  species_data <- dr_con("species")
-
-  # Inspect species data
-  dplyr::glimpse(species_data)
+  dr_con("HH")
+  dr_con("HL") |> dplyr::filter(Survey == "NS-IBTS", Year == 2023) |> dplyr::collect()
 } # }
 ```

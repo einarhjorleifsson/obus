@@ -1,18 +1,14 @@
 # Download and Import DATRAS Data
 
-Retrieves DATRAS trawl survey data from various sources:
+Retrieves DATRAS trawl survey data from two sources:
 
 - `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
-  survey/year/quarter filtering). Returns new-style column names
+  survey/year/quarter filtering). Returns standard column names
   directly.
-
-- `"csv"`: Retrieves data via
-  `icesDatras::get_datras_unaggregated_data`. Returns new-style column
-  names directly.
 
 - `"xml"`: Retrieves data via the legacy
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)
-  function. Old-style column names are translated to new-style before
+  function. Legacy column names are translated to standard names before
   returning.
 
 ## Usage
@@ -62,14 +58,15 @@ dr_get(
 
 - source:
 
-  String specifying the data source for HH/HL/CA: `"parquet"` (default),
-  `"csv"`, or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
+  String specifying the data source for HH/HL/CA: `"parquet"` (default)
+  or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
 
 - dictionary:
 
-  A data frame with columns `old` and `new` used to translate old-style
-  ICES column names to new-style. If `NULL` (default), built
-  automatically from [dr_lookup_fields](dr_lookup_fields.md).
+  A data frame with columns `old` and `new` used to translate legacy
+  ICES column names to standard names. If `NULL` (default), built
+  automatically from
+  [dr_lookup_fields](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_fields.md).
 
 - quiet:
 
@@ -77,26 +74,27 @@ dr_get(
 
 ## Value
 
-A data frame with new-style column names.
+A data frame with standard column names.
 
 ## Details
 
 All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
 dedicated ICES API functions; the `source` argument is ignored for
-these. Their old-style column names are translated to new-style before
+these. Their legacy column names are translated to standard names before
 returning.
 
-Translation is performed by [`dr_translate()`](dr_translate.md) using
-the `dictionary` argument. Supply a custom data frame with columns `old`
-and `new` to override the default mapping built from
-[dr_lookup_fields](dr_lookup_fields.md).
+Translation is performed by
+[`dr_translate()`](https://einarhjorleifsson.github.io/obus/reference/dr_translate.md)
+using the `dictionary` argument. Supply a custom data frame with columns
+`old` and `new` to override the default mapping built from
+[dr_lookup_fields](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_fields.md).
 
 ## Examples
 
 ``` r
 if (FALSE) { # \dontrun{
   dr_get("HH")                                                        # full parquet
-  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "csv")
+  dr_get("HH", surveys = "NS-IBTS", years = 2020:2023, source = "xml")
   dr_get("FL", surveys = "NS-IBTS", years = 2020:2023, quarters = 1)
 } # }
 ```

@@ -1,10 +1,12 @@
 # Run all applicable QC checks and return a combined report
 
 A convenience wrapper that runs
-[`dr_check_sentinels()`](dr_check_sentinels.md),
-[`dr_check_subfactor()`](dr_check_subfactor.md), and
-[`dr_check_totalno()`](dr_check_totalno.md) on the supplied tables and
-binds the results into a single report tibble.
+[`dr_check_sentinels()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_sentinels.md),
+[`dr_check_subfactor()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_subfactor.md),
+and
+[`dr_check_totalno()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_totalno.md)
+on the supplied tables and binds the results into a single report
+tibble.
 
 ## Usage
 
@@ -29,8 +31,9 @@ dr_check_all(hh = NULL, hl = NULL, ca = NULL, ...)
 - ...:
 
   Additional arguments passed to individual check functions (e.g., `tol`
-  for [`dr_check_totalno()`](dr_check_totalno.md), or old-style column
-  name overrides).
+  for
+  [`dr_check_totalno()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_totalno.md),
+  or old-style column name overrides).
 
 ## Value
 
@@ -43,20 +46,22 @@ Supply whichever tables you have. Checks that require a table you have
 not supplied are silently skipped.
 
 Both `hh` and `hl` must have a `.id` column (call
-[`dr_add_id()`](dr_add_id.md) first if needed). `DataType` must also be
-present in `hl` for the HL arithmetic checks. If your HL table does not
-yet contain `DataType`, join it from HH:
+[`dr_add_id()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_id.md)
+first if needed). `DataType` must also be present in `hl` for the HL
+arithmetic checks. If your HL table does not yet contain `DataType`,
+join it from HH:
 
-**New-style tables** (from [`dr_get()`](dr_get.md) or
-[`dr_con()`](dr_con.md)):
+**New-style tables** (from
+[`dr_get()`](https://einarhjorleifsson.github.io/obus/reference/dr_get.md)
+or
+[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)):
 
     hh <- hh |> dr_add_id()
     hl <- hl |> dr_add_id() |>
       dplyr::left_join(dplyr::select(hh, .id, DataType), by = ".id")
     dr_check_all(hh = hh, hl = hl)
 
-**Old-style tables** (from [`dr_con_raw()`](dr_con_raw.md) or
-`dr_get(from = "old")`):
+**Old-style tables** (from `dr_con_raw()` or `dr_get(from = "old")`):
 
     hh <- hh |> dr_add_id()
     hl <- hl |> dr_add_id() |>

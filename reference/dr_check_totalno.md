@@ -32,17 +32,18 @@ dr_check_totalno(
   `SubsamplingFactor`, `NumberAtLength`, `.id`, and the grouping fields
   `ValidAphiaID`, `SpeciesSex`, `SpeciesCategory` (or the column names
   supplied below). Join HH for `DataType` if it is not present. Note:
-  `.id` must be present (call [`dr_add_id()`](dr_add_id.md) first if
-  needed).
+  `.id` must be present (call
+  [`dr_add_id()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_id.md)
+  first if needed).
 
 - DataType, TotalNumber, SubsamplingFactor, NumberAtLength, Species,
   Sex, SpeciesCategory:
 
   Unquoted column names. New-style defaults shown. For old-style tables
-  from [`dr_con_raw()`](dr_con_raw.md) or `dr_get(from = "old")` use:
-  `TotalNo`, `SubFactor`, `HLNoAtLngt`, `Valid_Aphia`, `Sex`,
-  `CatIdentifier`. Note: `Sex` in HL (new-style) is `SpeciesSex`; in CA
-  it is `IndividualSex`.
+  from `dr_con_raw()` or `dr_get(from = "old")` use: `TotalNo`,
+  `SubFactor`, `HLNoAtLngt`, `Valid_Aphia`, `Sex`, `CatIdentifier`.
+  Note: `Sex` in HL (new-style) is `SpeciesSex`; in CA it is
+  `IndividualSex`.
 
 - tol:
 

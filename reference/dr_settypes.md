@@ -1,8 +1,8 @@
 # Set column types from the dr_lookup_fields specification
 
 Coerces columns in a DATRAS exchange table to the types specified in
-[dr_lookup_fields](dr_lookup_fields.md). Also replaces literal `"NA"`
-strings with real `NA` before coercion.
+[dr_lookup_fields](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_fields.md).
+Also replaces literal `"NA"` strings with real `NA` before coercion.
 
 ## Usage
 
@@ -18,9 +18,9 @@ dr_settypes(d, name_col = "new", recordheader = NULL)
 
 - name_col:
 
-  `"new"` (default) to match new-style column names as returned by
-  `get_datras_unaggregated_data` / parquet; `"old"` to match old-style
-  names as returned by `getDATRAS` and derived products.
+  `"new"` (default) to match standard column names as used in the
+  parquet files; `"old"` to match legacy names as returned by
+  `getDATRAS` and derived products.
 
 - recordheader:
 

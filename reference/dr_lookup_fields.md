@@ -13,7 +13,7 @@ dr_lookup_fields
 
 ## Format
 
-An object of class `tbl_df` (inherits from `tbl`, `data.frame`) with 292
+An object of class `tbl_df` (inherits from `tbl`, `data.frame`) with 333
 rows and 5 columns.
 
 ## Source
@@ -31,14 +31,13 @@ A data frame with 5 columns:
 
 - new:
 
-  Column name as returned by `icesDatras::get_datras_unaggregated_data`
-  (new-style)
+  Standard column name as used in the parquet files
 
 - old:
 
-  Column name as returned by
+  Legacy column name as returned by
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)
-  and derived products (old-style)
+  and derived products
 
 - format:
 

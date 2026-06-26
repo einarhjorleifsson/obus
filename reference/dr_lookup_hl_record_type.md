@@ -1,9 +1,10 @@
 # HL record type lookup table
 
 A data frame describing the integer codes assigned by
-[`dr_add_record_type`](dr_add_record_type.md). Each row defines one
-record type by its short label, whether `LengthClass` is present, and a
-detailed description of the variable-presence pattern that defines it.
+[`dr_add_record_type`](https://einarhjorleifsson.github.io/obus/reference/dr_add_record_type.md).
+Each row defines one record type by its short label, whether
+`LengthClass` is present, and a detailed description of the
+variable-presence pattern that defines it.
 
 ## Usage
 
@@ -39,4 +40,4 @@ Regenerate with `data-raw/DATASET_hl-record-types.R`.
 
 ## See also
 
-[`dr_add_record_type`](dr_add_record_type.md)
+[`dr_add_record_type`](https://einarhjorleifsson.github.io/obus/reference/dr_add_record_type.md)

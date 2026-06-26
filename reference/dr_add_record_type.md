@@ -2,8 +2,8 @@
 
 Adds a `record_type` integer column to the HL table classifying each row
 by the combination of variables that are present or absent. See
-[`dr_lookup_hl_record_type`](dr_lookup_hl_record_type.md) for the full
-definition of each code.
+[`dr_lookup_hl_record_type`](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_hl_record_type.md)
+for the full definition of each code.
 
 ## Usage
 
@@ -26,7 +26,8 @@ dr_add_record_type(d)
 
 ## Details
 
-The function requires that [`dr_add_n_and_cpue`](dr_add_n_and_cpue.md)
+The function requires that
+[`dr_add_n_and_cpue`](https://einarhjorleifsson.github.io/obus/reference/dr_add_n_and_cpue.md)
 has already been run so that `n_haul` is present; it uses `n_haul` as a
 proxy for haul validity (types 1–3 vs type 4) rather than reading
 `DataType` directly.
@@ -40,4 +41,4 @@ weight entries rather than standalone bulk bycatch.
 
 ## See also
 
-[`dr_lookup_hl_record_type`](dr_lookup_hl_record_type.md)
+[`dr_lookup_hl_record_type`](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_hl_record_type.md)

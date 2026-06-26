@@ -40,3 +40,11 @@ dr_add_n_and_cpue(
 ## Value
 
 The input table with additional columns `n_haul` and `n_hour`.
+
+## Details
+
+For `DataType == "R"`, a missing (NA) `SubsamplingFactor` is treated as
+1, meaning no subsampling correction is applied. This matches the
+convention in the DATRAS R package and reflects the assumption that
+absence of a subsampling factor implies the full catch was measured. For
+all other DataTypes, NA `SubsamplingFactor` propagates to NA `n_haul`.
