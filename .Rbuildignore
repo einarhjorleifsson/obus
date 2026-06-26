@@ -6,7 +6,7 @@
 ^README.Rmd
 ^LICENSE\.md$
 ^README\.Rmd$
-^vignettes/articles$
+^vignettes$
 ^docs$
 ^_pkgdown\.yml$
 ^pkgdown$

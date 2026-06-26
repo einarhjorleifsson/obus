@@ -11,7 +11,6 @@ Suggests:
     arrow,
     devtools,
     rmarkdown,
-    santoku,
     testthat (>= 3.0.0),
     tictoc,
     tidyverse

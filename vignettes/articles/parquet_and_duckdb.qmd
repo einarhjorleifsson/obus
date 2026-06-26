@@ -64,7 +64,7 @@ When DuckDB first connects to a Parquet file it reads only the footer — a few 
 
 ### Strict types
 
-Types are recorded in the file and enforced on read. An `INT32` column comes back as integer, a `UTF8` column comes back as character — no guessing, no surprises. This is why `dr_get()` can return correctly typed columns even for the XML source: the parquet schema is used as the type reference.
+Types are recorded in the file and enforced on read. An `INT32` column comes back as integer, a `UTF8` column comes back as character — no guessing, no surprises. When reading from the XML source (`dr_get(source = "xml")`), the parquet file is not involved at all; types are applied separately by `dr_settypes()` using the `dr_lookup_fields` table as its reference. Either way the result is a correctly typed data frame, but the two paths are independent.
 
 ### Compression
 
@@ -175,7 +175,7 @@ q <- hl |>
     Quarter == 1,
     !is.na(LengthCode)
   ) |>
-  select(.id, Survey, Year, aphia, length_cm, NumberAtLength, SubsamplingFactor)x
+  select(.id, Survey, Year, aphia, length_cm, NumberAtLength, SubsamplingFactor)
 
 q |> show_query()
 ```
