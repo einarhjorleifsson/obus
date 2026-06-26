@@ -91,13 +91,16 @@
 <span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CA"</span>, source <span class="op">=</span> <span class="st">"parquet"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;  12.527   1.823  40.929</span></span></code></pre></div>
+<span><span class="co">#&gt;  10.530   2.443  42.651</span></span></code></pre></div>
 <p>So we are talking about around some 10s of seconds if you’re sitting on the optic fiber. If you are connected via poor wifi this may take a minute plus.</p>
 <p>The dr_get is just a thin wrapper around a (temporary) https-path. User can thus access the data without the {obus} as middle man via e.g.:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>arrow<span class="sc">::</span><span class="fu">read_parquet</span>(<span class="st">"https://heima.hafro.is/~einarhj/datras/HH.parquet"</span>)</span></code></pre></div>
 <p>And if Python is your preferred platform:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>import pandas as pd</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="fu">pd.read_parquet</span>(<span class="st">"https://heima.hafro.is/~einarhj/datras/HH.parquet"</span>)</span></code></pre></div>
+<p>If you have already downloaded the parquet files locally, pass the file path directly to <code><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">duckdbfs::open_dataset()</a></code> — no {obus} wrapper needed:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>duckdbfs<span class="sc">::</span><span class="fu">open_dataset</span>(<span class="st">"~/datras/HL.parquet"</span>)</span></code></pre></div>
+<p>The returned object is a lazy DuckDB connection and behaves identically to <code><a href="reference/dr_con.html">dr_con()</a></code>: all {dplyr} verbs and <code>dr_add_*()</code> functions work unchanged.</p>
 <p>Whatever the case one can assume that nobody will complain about the speed of access, given that the dimensions just imported are as follows:</p>
 <table class="table">
 <thead><tr>
@@ -126,7 +129,7 @@
 <p>Number of records and variables</p>
 <p>The above fast approach is achieved by importing from parquet files that are hosted on a conventional https-server. At this stage it is unclear how much simultaneous traffic it can handle. The way things have been setup so far is just a proof of concept. By the same nature, do not expect that the datasets accessed are the latest mirror of the data residing in ICES Datras Database.</p>
 <p>Those familiar with DATRAS data will notice when viewing the data that the variable names are based on the new lingo. If your downstream code-flow depends on the old lingo one can easily revert back via:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/dr_translate.html">dr_translate</a></span><span class="op">(</span>from <span class="op">=</span> <span class="st">"new"</span>, to <span class="op">=</span> <span class="st">"old"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # A tibble: 14,397,334 × 30</span></span>
 <span><span class="co">#&gt;    RecordType `-`    Quarter Country Ship  Gear  SweepLngt GearEx DoorType StNo </span></span>
@@ -148,14 +151,14 @@
 <span><span class="co">#&gt; #   LngtClass &lt;int&gt;, CANoAtLngt &lt;dbl&gt;, DevStage &lt;chr&gt;, LenMeasType &lt;chr&gt;,</span></span>
 <span><span class="co">#&gt; #   DateofCalculation &lt;int&gt;, Valid_Aphia &lt;int&gt;, Year &lt;dbl&gt;, .id &lt;chr&gt;</span></span></code></pre></div>
 <p>The old faithful (<code><a href="https://rdrr.io/pkg/icesDatras/man/getDATRAS.html" class="external-link">icesDatras::getDATRAS</a></code>) is wrapped within <code><a href="reference/dr_get.html">dr_get()</a></code> (specify <code>source = "xml"</code>), with the addition that variable types are set, -9 values are turned to NA, and one can retrieve more than one survey at a time. Here we only dare to call one year of HL-data:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">hl_xml</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span>recordtype <span class="op">=</span> <span class="st">"HL"</span>, years <span class="op">=</span> <span class="fl">2026</span>, source <span class="op">=</span> <span class="st">"xml"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   9.054   3.221  60.502</span></span></code></pre></div>
+<span><span class="co">#&gt;   9.091   3.162  64.458</span></span></code></pre></div>
 <p>In store we now have:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl_xml</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">Survey</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     Survey     n</span></span>
 <span><span class="co">#&gt; 1     BITS 25115</span></span>
@@ -172,14 +175,14 @@
 <h2 id="connecting">Connecting<a class="anchor" aria-label="anchor" href="#connecting"></a>
 </h2>
 <p>Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a <strong>connection</strong> to the <strong>same</strong> web-hosted parquet files as above using in-process DuckDB database.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">hh</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span></span>
 <span>  <span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span></span>
 <span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"CA"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.188   0.023   0.959</span></span>
+<span><span class="co">#&gt;   0.202   0.033   1.052</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">hl</span><span class="op">)</span> ; <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">hl</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              </span></span>
 <span><span class="co">#&gt; [4] "tbl_lazy"              "tbl"</span></span>
@@ -226,27 +229,27 @@
 <li>the data feel like R-dataframe(s)</li>
 </ul>
 <p>Let’s look at the hl object from another angle:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT *</span></span>
-<span><span class="co">#&gt; FROM fuccuxjprprjqau</span></span></code></pre></div>
+<span><span class="co">#&gt; FROM bdmxulupgvakdxd</span></span></code></pre></div>
 <p>So the object hl is actually some kind of an SQL-query. What happens behind the scene when using dr_con is:</p>
 <ul>
 <li>A tiny database engine called DuckDB is started silently from R — no separate server or installation needed (The feature is installed initially on the computer when {obus} is installed).</li>
 <li>DuckDB opens an HTTP connection to the parquet file on the remote server and reads only its <em>index</em> (column names, types, and where each chunk of rows lives in the file). This is why the connection is nearly instantaneous — only limited number of records have travelled over the wire, just to give the user a whiff of the data.</li>
 </ul>
 <p>Now we can do the usual:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="va">hl</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2026</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <p>What we now have in store is:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT *</span></span>
-<span><span class="co">#&gt; FROM fuccuxjprprjqau</span></span>
+<span><span class="co">#&gt; FROM bdmxulupgvakdxd</span></span>
 <span><span class="co">#&gt; WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)</span></span></code></pre></div>
 <p>Ergo:</p>
 <ul>
@@ -254,7 +257,7 @@
 <li>We no longer have preset argument within a function (like icesDatras::getDATRAS) but supply that via the dplyr-filter function</li>
 </ul>
 <p>The magic is that we now have a system were we can supply any filter to any of the variables. And any other magic one may spin up using the {dplyr} verbs. E.g.:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="va">hl</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>length_cm <span class="op">=</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
@@ -264,7 +267,7 @@
 <span>          <span class="cn">TRUE</span> <span class="op">~</span> <span class="cn">NA_real_</span>                                  <span class="co"># Any other case is NA</span></span>
 <span>        <span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Gear</span> <span class="op">==</span> <span class="st">"GOV"</span>, <span class="va">length_cm</span> <span class="op">&gt;</span> <span class="fl">50</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT *</span></span>
@@ -277,17 +280,17 @@
 <span><span class="co">#&gt; WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass</span></span>
 <span><span class="co">#&gt; ELSE NULL</span></span>
 <span><span class="co">#&gt; END AS length_cm</span></span>
-<span><span class="co">#&gt;   FROM fuccuxjprprjqau</span></span>
+<span><span class="co">#&gt;   FROM bdmxulupgvakdxd</span></span>
 <span><span class="co">#&gt; ) AS q01</span></span>
 <span><span class="co">#&gt; WHERE (Gear = 'GOV') AND (length_cm &gt; 50.0)</span></span></code></pre></div>
 <p>We now have to decide how much code to hide from the average user. E.g. instead of the mutate above to convert all length classes to centimeters we could use an experimental function:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="va">hl</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu"><a href="reference/dr_add_length_cm.html">dr_add_length_cm</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Gear</span> <span class="op">==</span> <span class="st">"GOV"</span>, <span class="va">length_cm</span> <span class="op">&gt;</span> <span class="fl">50</span><span class="op">)</span></span></code></pre></div>
 <p>We can also join two or more tables:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">species</span> <span class="op">&lt;-</span> <span class="fu">duckdbfs</span><span class="fu">::</span><span class="fu"><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">open_dataset</a></span><span class="op">(</span><span class="st">"https://heima.hafro.is/~einarhj/datras/species.parquet"</span><span class="op">)</span></span>
 <span><span class="va">q</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="va">hl</span> <span class="op">|&gt;</span> </span>
@@ -305,7 +308,7 @@
 <span>         <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">Survey</span>, <span class="va">Year</span>, <span class="va">lon</span>, <span class="va">lat</span>, <span class="va">species</span>, <span class="va">length_cm</span>, <span class="va">n_haul</span>, <span class="va">n_hour</span><span class="op">)</span></span></code></pre></div>
 <p>We have now built quite a substantive SQL query (without knowing any SQL):</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;SQL&gt;</span></span>
 <span><span class="co">#&gt; SELECT</span></span>
@@ -352,7 +355,7 @@
 <span><span class="co">#&gt; END AS length_cm</span></span>
 <span><span class="co">#&gt;       FROM (</span></span>
 <span><span class="co">#&gt;         SELECT</span></span>
-<span><span class="co">#&gt;           fuccuxjprprjqau.*,</span></span>
+<span><span class="co">#&gt;           bdmxulupgvakdxd.*,</span></span>
 <span><span class="co">#&gt;           DataType,</span></span>
 <span><span class="co">#&gt;           HaulDuration,</span></span>
 <span><span class="co">#&gt;           HaulValidity,</span></span>
@@ -360,11 +363,11 @@
 <span><span class="co">#&gt;           ShootLatitude AS lat,</span></span>
 <span><span class="co">#&gt;           latin,</span></span>
 <span><span class="co">#&gt;           species</span></span>
-<span><span class="co">#&gt;         FROM fuccuxjprprjqau</span></span>
-<span><span class="co">#&gt;         LEFT JOIN yprenbodfqcuvoh</span></span>
-<span><span class="co">#&gt;           ON (fuccuxjprprjqau.".id" = yprenbodfqcuvoh.".id")</span></span>
-<span><span class="co">#&gt;         LEFT JOIN glczywenykqzklz</span></span>
-<span><span class="co">#&gt;           ON (fuccuxjprprjqau.aphia = glczywenykqzklz.aphia)</span></span>
+<span><span class="co">#&gt;         FROM bdmxulupgvakdxd</span></span>
+<span><span class="co">#&gt;         LEFT JOIN ukqntgialjmkvxb</span></span>
+<span><span class="co">#&gt;           ON (bdmxulupgvakdxd.".id" = ukqntgialjmkvxb.".id")</span></span>
+<span><span class="co">#&gt;         LEFT JOIN iqliqmjbexgezxv</span></span>
+<span><span class="co">#&gt;           ON (bdmxulupgvakdxd.aphia = iqliqmjbexgezxv.aphia)</span></span>
 <span><span class="co">#&gt;       ) AS q01</span></span>
 <span><span class="co">#&gt;     ) AS q01</span></span>
 <span><span class="co">#&gt;   ) AS q01</span></span>
@@ -376,12 +379,12 @@
 <span><span class="co">#&gt;   (Survey IN ('NS-IBTS', 'SCOWCGFS')) AND</span></span>
 <span><span class="co">#&gt;   ("Quarter" = 1.0)</span></span></code></pre></div>
 <p>Let’s now import the data:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">q</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.408   0.050   0.441</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.409   0.042   0.440</span></span></code></pre></div>
 <p>So we basically have obtained some ~150 thousand cod measurements from two surveys (1965 onwards) where we have:</p>
 <ul>
 <li>standardized the length</li>
@@ -395,75 +398,75 @@
 <div class="section level2">
 <h2 id="specs">Specs<a class="anchor" aria-label="anchor" href="#specs"></a>
 </h2>
-<div class="sourceCode" id="cb20"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co">#&gt; ─ Session info ───────────────────────────────────────────────────────────────</span></span>
-<span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a><span class="co">#&gt;  setting  value</span></span>
-<span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a><span class="co">#&gt;  version  R version 4.5.2 (2025-10-31)</span></span>
-<span id="cb20-4"><a href="#cb20-4" tabindex="-1"></a><span class="co">#&gt;  os       macOS Tahoe 26.5.1</span></span>
-<span id="cb20-5"><a href="#cb20-5" tabindex="-1"></a><span class="co">#&gt;  system   aarch64, darwin20</span></span>
-<span id="cb20-6"><a href="#cb20-6" tabindex="-1"></a><span class="co">#&gt;  ui       X11</span></span>
-<span id="cb20-7"><a href="#cb20-7" tabindex="-1"></a><span class="co">#&gt;  language (EN)</span></span>
-<span id="cb20-8"><a href="#cb20-8" tabindex="-1"></a><span class="co">#&gt;  collate  en_US.UTF-8</span></span>
-<span id="cb20-9"><a href="#cb20-9" tabindex="-1"></a><span class="co">#&gt;  ctype    en_US.UTF-8</span></span>
-<span id="cb20-10"><a href="#cb20-10" tabindex="-1"></a><span class="co">#&gt;  tz       Atlantic/Reykjavik</span></span>
-<span id="cb20-11"><a href="#cb20-11" tabindex="-1"></a><span class="co">#&gt;  date     2026-06-26</span></span>
-<span id="cb20-12"><a href="#cb20-12" tabindex="-1"></a><span class="co">#&gt;  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)</span></span>
-<span id="cb20-13"><a href="#cb20-13" tabindex="-1"></a><span class="co">#&gt;  quarto   1.8.26 @ /usr/local/bin/quarto</span></span>
-<span id="cb20-14"><a href="#cb20-14" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a><span class="co">#&gt; ─ Packages ───────────────────────────────────────────────────────────────────</span></span>
-<span id="cb20-16"><a href="#cb20-16" tabindex="-1"></a><span class="co">#&gt;  package     * version    date (UTC) lib source</span></span>
-<span id="cb20-17"><a href="#cb20-17" tabindex="-1"></a><span class="co">#&gt;  blob          1.3.0      2026-01-14 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-18"><a href="#cb20-18" tabindex="-1"></a><span class="co">#&gt;  cachem        1.1.0      2024-05-16 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-19"><a href="#cb20-19" tabindex="-1"></a><span class="co">#&gt;  cli           3.6.6      2026-04-09 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-20"><a href="#cb20-20" tabindex="-1"></a><span class="co">#&gt;  curl          7.1.0      2026-04-22 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-21"><a href="#cb20-21" tabindex="-1"></a><span class="co">#&gt;  data.table    1.18.4     2026-05-06 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-22"><a href="#cb20-22" tabindex="-1"></a><span class="co">#&gt;  DBI           1.3.0      2026-02-25 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-23"><a href="#cb20-23" tabindex="-1"></a><span class="co">#&gt;  dbplyr        2.6.0      2026-06-17 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-24"><a href="#cb20-24" tabindex="-1"></a><span class="co">#&gt;  devtools      2.5.2      2026-04-30 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-25"><a href="#cb20-25" tabindex="-1"></a><span class="co">#&gt;  digest        0.6.39     2025-11-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-26"><a href="#cb20-26" tabindex="-1"></a><span class="co">#&gt;  dplyr       * 1.2.1      2026-04-03 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-27"><a href="#cb20-27" tabindex="-1"></a><span class="co">#&gt;  duckdb        1.5.4      2026-06-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-28"><a href="#cb20-28" tabindex="-1"></a><span class="co">#&gt;  duckdbfs      0.1.2.99   2026-04-28 [2] Github (cboettig/duckdbfs@0b48916)</span></span>
-<span id="cb20-29"><a href="#cb20-29" tabindex="-1"></a><span class="co">#&gt;  ellipsis      0.3.3      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-30"><a href="#cb20-30" tabindex="-1"></a><span class="co">#&gt;  evaluate      1.0.5      2025-08-27 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-31"><a href="#cb20-31" tabindex="-1"></a><span class="co">#&gt;  fastmap       1.2.0      2024-05-15 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-32"><a href="#cb20-32" tabindex="-1"></a><span class="co">#&gt;  fs            2.1.0      2026-04-18 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-33"><a href="#cb20-33" tabindex="-1"></a><span class="co">#&gt;  generics      0.1.4      2025-05-09 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-34"><a href="#cb20-34" tabindex="-1"></a><span class="co">#&gt;  glue          1.8.1      2026-04-17 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-35"><a href="#cb20-35" tabindex="-1"></a><span class="co">#&gt;  htmltools     0.5.9      2025-12-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-36"><a href="#cb20-36" tabindex="-1"></a><span class="co">#&gt;  httr2         1.2.3      2026-06-23 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-37"><a href="#cb20-37" tabindex="-1"></a><span class="co">#&gt;  icesDatras    1.5.1      2026-05-10 [2] Github (einarhjorleifsson/icesDatras@870daf6)</span></span>
-<span id="cb20-38"><a href="#cb20-38" tabindex="-1"></a><span class="co">#&gt;  knitr         1.51       2025-12-20 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-39"><a href="#cb20-39" tabindex="-1"></a><span class="co">#&gt;  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-40"><a href="#cb20-40" tabindex="-1"></a><span class="co">#&gt;  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-41"><a href="#cb20-41" tabindex="-1"></a><span class="co">#&gt;  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-42"><a href="#cb20-42" tabindex="-1"></a><span class="co">#&gt;  obus        * 2026.06.23 2026-06-26 [1] local</span></span>
-<span id="cb20-43"><a href="#cb20-43" tabindex="-1"></a><span class="co">#&gt;  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-44"><a href="#cb20-44" tabindex="-1"></a><span class="co">#&gt;  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-45"><a href="#cb20-45" tabindex="-1"></a><span class="co">#&gt;  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-46"><a href="#cb20-46" tabindex="-1"></a><span class="co">#&gt;  pkgconfig     2.0.3      2019-09-22 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-47"><a href="#cb20-47" tabindex="-1"></a><span class="co">#&gt;  pkgload       1.5.3      2026-06-15 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-48"><a href="#cb20-48" tabindex="-1"></a><span class="co">#&gt;  purrr         1.2.2      2026-04-10 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-49"><a href="#cb20-49" tabindex="-1"></a><span class="co">#&gt;  R6            2.6.1      2025-02-15 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-50"><a href="#cb20-50" tabindex="-1"></a><span class="co">#&gt;  rappdirs      0.3.4      2026-01-17 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-51"><a href="#cb20-51" tabindex="-1"></a><span class="co">#&gt;  rlang         1.2.0      2026-04-06 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-52"><a href="#cb20-52" tabindex="-1"></a><span class="co">#&gt;  rmarkdown     2.31       2026-03-26 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-53"><a href="#cb20-53" tabindex="-1"></a><span class="co">#&gt;  rstudioapi    0.19.0     2026-06-11 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-54"><a href="#cb20-54" tabindex="-1"></a><span class="co">#&gt;  sessioninfo   1.2.4      2026-06-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-55"><a href="#cb20-55" tabindex="-1"></a><span class="co">#&gt;  tibble        3.3.1      2026-01-11 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-56"><a href="#cb20-56" tabindex="-1"></a><span class="co">#&gt;  tidyr         1.3.2      2025-12-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-57"><a href="#cb20-57" tabindex="-1"></a><span class="co">#&gt;  tidyselect    1.2.1      2024-03-11 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-58"><a href="#cb20-58" tabindex="-1"></a><span class="co">#&gt;  usethis       3.2.1      2025-09-06 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-59"><a href="#cb20-59" tabindex="-1"></a><span class="co">#&gt;  utf8          1.2.6      2025-06-08 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb20-60"><a href="#cb20-60" tabindex="-1"></a><span class="co">#&gt;  vctrs         0.7.3      2026-04-11 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-61"><a href="#cb20-61" tabindex="-1"></a><span class="co">#&gt;  withr         3.0.3      2026-06-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-62"><a href="#cb20-62" tabindex="-1"></a><span class="co">#&gt;  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-63"><a href="#cb20-63" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb20-64"><a href="#cb20-64" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb20-65"><a href="#cb20-65" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84de0fdab4</span></span>
-<span id="cb20-66"><a href="#cb20-66" tabindex="-1"></a><span class="co">#&gt;  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library</span></span>
-<span id="cb20-67"><a href="#cb20-67" tabindex="-1"></a><span class="co">#&gt;  * ── Packages attached to the search path.</span></span>
-<span id="cb20-68"><a href="#cb20-68" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb20-69"><a href="#cb20-69" tabindex="-1"></a><span class="co">#&gt; ──────────────────────────────────────────────────────────────────────────────</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co">#&gt; ─ Session info ───────────────────────────────────────────────────────────────</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="co">#&gt;  setting  value</span></span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="co">#&gt;  version  R version 4.5.2 (2025-10-31)</span></span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="co">#&gt;  os       macOS Tahoe 26.5.1</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="co">#&gt;  system   aarch64, darwin20</span></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="co">#&gt;  ui       X11</span></span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="co">#&gt;  language (EN)</span></span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="co">#&gt;  collate  en_US.UTF-8</span></span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a><span class="co">#&gt;  ctype    en_US.UTF-8</span></span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a><span class="co">#&gt;  tz       Atlantic/Reykjavik</span></span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="co">#&gt;  date     2026-06-26</span></span>
+<span id="cb21-12"><a href="#cb21-12" tabindex="-1"></a><span class="co">#&gt;  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)</span></span>
+<span id="cb21-13"><a href="#cb21-13" tabindex="-1"></a><span class="co">#&gt;  quarto   1.8.26 @ /usr/local/bin/quarto</span></span>
+<span id="cb21-14"><a href="#cb21-14" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb21-15"><a href="#cb21-15" tabindex="-1"></a><span class="co">#&gt; ─ Packages ───────────────────────────────────────────────────────────────────</span></span>
+<span id="cb21-16"><a href="#cb21-16" tabindex="-1"></a><span class="co">#&gt;  package     * version    date (UTC) lib source</span></span>
+<span id="cb21-17"><a href="#cb21-17" tabindex="-1"></a><span class="co">#&gt;  blob          1.3.0      2026-01-14 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-18"><a href="#cb21-18" tabindex="-1"></a><span class="co">#&gt;  cachem        1.1.0      2024-05-16 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-19"><a href="#cb21-19" tabindex="-1"></a><span class="co">#&gt;  cli           3.6.6      2026-04-09 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-20"><a href="#cb21-20" tabindex="-1"></a><span class="co">#&gt;  curl          7.1.0      2026-04-22 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-21"><a href="#cb21-21" tabindex="-1"></a><span class="co">#&gt;  data.table    1.18.4     2026-05-06 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-22"><a href="#cb21-22" tabindex="-1"></a><span class="co">#&gt;  DBI           1.3.0      2026-02-25 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-23"><a href="#cb21-23" tabindex="-1"></a><span class="co">#&gt;  dbplyr        2.6.0      2026-06-17 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-24"><a href="#cb21-24" tabindex="-1"></a><span class="co">#&gt;  devtools      2.5.2      2026-04-30 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-25"><a href="#cb21-25" tabindex="-1"></a><span class="co">#&gt;  digest        0.6.39     2025-11-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-26"><a href="#cb21-26" tabindex="-1"></a><span class="co">#&gt;  dplyr       * 1.2.1      2026-04-03 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-27"><a href="#cb21-27" tabindex="-1"></a><span class="co">#&gt;  duckdb        1.5.4      2026-06-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-28"><a href="#cb21-28" tabindex="-1"></a><span class="co">#&gt;  duckdbfs      0.1.2.99   2026-04-28 [2] Github (cboettig/duckdbfs@0b48916)</span></span>
+<span id="cb21-29"><a href="#cb21-29" tabindex="-1"></a><span class="co">#&gt;  ellipsis      0.3.3      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-30"><a href="#cb21-30" tabindex="-1"></a><span class="co">#&gt;  evaluate      1.0.5      2025-08-27 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-31"><a href="#cb21-31" tabindex="-1"></a><span class="co">#&gt;  fastmap       1.2.0      2024-05-15 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-32"><a href="#cb21-32" tabindex="-1"></a><span class="co">#&gt;  fs            2.1.0      2026-04-18 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-33"><a href="#cb21-33" tabindex="-1"></a><span class="co">#&gt;  generics      0.1.4      2025-05-09 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-34"><a href="#cb21-34" tabindex="-1"></a><span class="co">#&gt;  glue          1.8.1      2026-04-17 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-35"><a href="#cb21-35" tabindex="-1"></a><span class="co">#&gt;  htmltools     0.5.9      2025-12-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-36"><a href="#cb21-36" tabindex="-1"></a><span class="co">#&gt;  httr2         1.2.3      2026-06-23 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-37"><a href="#cb21-37" tabindex="-1"></a><span class="co">#&gt;  icesDatras    1.5.1      2026-05-10 [2] Github (einarhjorleifsson/icesDatras@870daf6)</span></span>
+<span id="cb21-38"><a href="#cb21-38" tabindex="-1"></a><span class="co">#&gt;  knitr         1.51       2025-12-20 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-39"><a href="#cb21-39" tabindex="-1"></a><span class="co">#&gt;  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-40"><a href="#cb21-40" tabindex="-1"></a><span class="co">#&gt;  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-41"><a href="#cb21-41" tabindex="-1"></a><span class="co">#&gt;  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-42"><a href="#cb21-42" tabindex="-1"></a><span class="co">#&gt;  obus        * 2026.06.23 2026-06-26 [1] local</span></span>
+<span id="cb21-43"><a href="#cb21-43" tabindex="-1"></a><span class="co">#&gt;  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-44"><a href="#cb21-44" tabindex="-1"></a><span class="co">#&gt;  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-45"><a href="#cb21-45" tabindex="-1"></a><span class="co">#&gt;  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-46"><a href="#cb21-46" tabindex="-1"></a><span class="co">#&gt;  pkgconfig     2.0.3      2019-09-22 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-47"><a href="#cb21-47" tabindex="-1"></a><span class="co">#&gt;  pkgload       1.5.3      2026-06-15 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-48"><a href="#cb21-48" tabindex="-1"></a><span class="co">#&gt;  purrr         1.2.2      2026-04-10 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-49"><a href="#cb21-49" tabindex="-1"></a><span class="co">#&gt;  R6            2.6.1      2025-02-15 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-50"><a href="#cb21-50" tabindex="-1"></a><span class="co">#&gt;  rappdirs      0.3.4      2026-01-17 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-51"><a href="#cb21-51" tabindex="-1"></a><span class="co">#&gt;  rlang         1.2.0      2026-04-06 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-52"><a href="#cb21-52" tabindex="-1"></a><span class="co">#&gt;  rmarkdown     2.31       2026-03-26 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-53"><a href="#cb21-53" tabindex="-1"></a><span class="co">#&gt;  rstudioapi    0.19.0     2026-06-11 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-54"><a href="#cb21-54" tabindex="-1"></a><span class="co">#&gt;  sessioninfo   1.2.4      2026-06-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-55"><a href="#cb21-55" tabindex="-1"></a><span class="co">#&gt;  tibble        3.3.1      2026-01-11 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-56"><a href="#cb21-56" tabindex="-1"></a><span class="co">#&gt;  tidyr         1.3.2      2025-12-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-57"><a href="#cb21-57" tabindex="-1"></a><span class="co">#&gt;  tidyselect    1.2.1      2024-03-11 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-58"><a href="#cb21-58" tabindex="-1"></a><span class="co">#&gt;  usethis       3.2.1      2025-09-06 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-59"><a href="#cb21-59" tabindex="-1"></a><span class="co">#&gt;  utf8          1.2.6      2025-06-08 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb21-60"><a href="#cb21-60" tabindex="-1"></a><span class="co">#&gt;  vctrs         0.7.3      2026-04-11 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-61"><a href="#cb21-61" tabindex="-1"></a><span class="co">#&gt;  withr         3.0.3      2026-06-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-62"><a href="#cb21-62" tabindex="-1"></a><span class="co">#&gt;  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-63"><a href="#cb21-63" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb21-64"><a href="#cb21-64" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb21-65"><a href="#cb21-65" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d709e8ea1</span></span>
+<span id="cb21-66"><a href="#cb21-66" tabindex="-1"></a><span class="co">#&gt;  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library</span></span>
+<span id="cb21-67"><a href="#cb21-67" tabindex="-1"></a><span class="co">#&gt;  * ── Packages attached to the search path.</span></span>
+<span id="cb21-68"><a href="#cb21-68" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb21-69"><a href="#cb21-69" tabindex="-1"></a><span class="co">#&gt; ──────────────────────────────────────────────────────────────────────────────</span></span></code></pre></div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">

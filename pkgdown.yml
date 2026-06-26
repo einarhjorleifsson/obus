@@ -3,7 +3,7 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   articles/parquet_and_duckdb: parquet_and_duckdb.html
-last_built: 2026-06-26T13:35Z
+last_built: 2026-06-26T14:05Z
 urls:
   reference: https://einarhjorleifsson.github.io/obus/reference
   article: https://einarhjorleifsson.github.io/obus/articles

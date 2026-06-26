@@ -123,7 +123,8 @@ immediately.
 [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
 does two things:
 
-1.  Sends an HTTP HEAD request to confirm the file exists.
+1.  Sends an HTTP HEAD request to confirm the file exists on the obus
+    server.
 2.  Tells DuckDB to open the Parquet file at that URL.
 
 ``` r
@@ -134,11 +135,31 @@ system.time({
 ```
 
        user  system elapsed
-      1.300   0.067   6.788 
+      1.326   0.065   6.728 
 
 That elapsed time is almost entirely the HEAD request. DuckDB reads the
 Parquet footer — a few kilobytes — and nothing else. The 14-million-row
 HL table has not moved.
+
+### 3.3 Connecting to a local Parquet file
+
+[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
+is designed for the obus server. If you have downloaded the files to
+your own machine, connect directly with
+[`duckdbfs::open_dataset()`](https://cboettig.github.io/duckdbfs/reference/open_dataset.html)
+— no wrapper needed:
+
+``` r
+
+hl <- duckdbfs::open_dataset("~/datras/HL.parquet")
+```
+
+The object you get back is identical to what
+[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
+returns: a lazy DuckDB connection. Every
+[dplyr](https://dplyr.tidyverse.org) verb and every `dr_add_*()`
+function works exactly the same way on it. The Parquet format is the
+constant; the location of the file is not.
 
 Compare with a full import:
 
@@ -150,7 +171,7 @@ system.time({
 ```
 
        user  system elapsed
-     10.137   1.045  29.403 
+     10.175   1.007  28.157 
 
 Both give you a table you can work with, but they represent very
 different things. `hl_local` is a plain R data frame sitting in memory.
@@ -211,7 +232,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM ztkkoraekgqfsvx
+    FROM urvzdrllxeaamlq
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -255,7 +276,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM ztkkoraekgqfsvx
+      FROM urvzdrllxeaamlq
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -279,7 +300,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.738   0.015   5.618 
+      0.726   0.033   5.446 
 
 ``` r
 
@@ -365,17 +386,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              ztkkoraekgqfsvx.*,
+              urvzdrllxeaamlq.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM ztkkoraekgqfsvx
-            INNER JOIN lbditvdfmnufffn
-              ON (ztkkoraekgqfsvx.".id" = lbditvdfmnufffn.".id")
-            INNER JOIN yoqonrhzquocbxp
-              ON (ztkkoraekgqfsvx.aphia = yoqonrhzquocbxp.aphia)
+            FROM urvzdrllxeaamlq
+            INNER JOIN kwnfxcxgwhityno
+              ON (urvzdrllxeaamlq.".id" = kwnfxcxgwhityno.".id")
+            INNER JOIN goaqedwxyepzmid
+              ON (urvzdrllxeaamlq.aphia = goaqedwxyepzmid.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -394,7 +415,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.803   0.055  14.228 
+      0.738   0.044  12.011 
 
 ``` r
 
@@ -403,13 +424,13 @@ glimpse(cod)
 
     Rows: 152,918
     Columns: 7
-    $ .id       <chr> "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
+    $ .id       <chr> "NS-IBTS:1980:1:DE:06DA:H18:000081:60", "NS-IBTS:1980:1:DE:0…
     $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-    $ Year      <dbl> 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
+    $ Year      <dbl> 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, …
     $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-    $ length_cm <dbl> 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
-    $ n_haul    <dbl> 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
-    $ n_hour    <dbl> 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …
+    $ length_cm <dbl> 31, 32, 45, 52, 55, 63, 68, 73, 42, 51, 41, 43, 44, 45, 46, …
+    $ n_haul    <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, …
+    $ n_hour    <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, …
 
 Three Parquet files joined, filtered, and computed — all in DuckDB,
 before a single row enters R memory.
