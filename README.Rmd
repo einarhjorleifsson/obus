@@ -68,7 +68,7 @@ system.time({
 })
 ```
 
-So we are talking about around 10 seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take closer to a minute.
+So we are talking about around some 10s of seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take a minute plus.
 
 The dr_get is just a thin wrapper around a (temporary) https-path. User can thus access the data without the {obus} as middle man via e.g.:
 

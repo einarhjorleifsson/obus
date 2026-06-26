@@ -20,7 +20,7 @@ little.
 
 The package code resides on
 [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a
-[package website](https://heima.hafro.is/~einarhj/pkg/obus/).
+[package website](https://einarhjorleifsson.github.io/obus/).
 
 For purists, one regrets to inform that the functionality of {obus} has
 quite some number of dependencies (56, see also
@@ -65,12 +65,12 @@ system.time({
   ca <- dr_get("CA", source = "parquet")
 })
 #>    user  system elapsed 
-#>  10.507   2.055  28.885
+#>  12.527   1.823  40.929
 ```
 
-So we are talking about around 10 seconds if you’re sitting on the optic
-fiber. If you are connected via poor wifi this may take closer to a
-minute.
+So we are talking about around some 10s of seconds if you’re sitting on
+the optic fiber. If you are connected via poor wifi this may take a
+minute plus.
 
 The dr_get is just a thin wrapper around a (temporary) https-path. User
 can thus access the data without the {obus} as middle man via e.g.:
@@ -137,7 +137,7 @@ system.time({
   hl_xml <- dr_get(recordtype = "HL", years = 2026, source = "xml")
 })
 #>    user  system elapsed 
-#>   9.653   3.689 123.428
+#>   9.054   3.221  60.502
 ```
 
 In store we now have:
@@ -174,7 +174,7 @@ system.time({
   ca <- dr_con("CA")
 })
 #>    user  system elapsed 
-#>   0.137   0.015   0.526
+#>   0.188   0.023   0.959
 class(hl) ; nrow(hl)
 #> [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              
 #> [4] "tbl_lazy"              "tbl"
@@ -229,7 +229,7 @@ Let’s look at the hl object from another angle:
 hl |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM cnapmeonkyfrjme
+#> FROM fuccuxjprprjqau
 ```
 
 So the object hl is actually some kind of an SQL-query. What happens
@@ -258,7 +258,7 @@ What we now have in store is:
 q |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM cnapmeonkyfrjme
+#> FROM fuccuxjprprjqau
 #> WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 ```
 
@@ -297,7 +297,7 @@ q |> show_query()
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>   FROM cnapmeonkyfrjme
+#>   FROM fuccuxjprprjqau
 #> ) AS q01
 #> WHERE (Gear = 'GOV') AND (length_cm > 50.0)
 ```
@@ -384,7 +384,7 @@ q |> show_query()
 #> END AS length_cm
 #>       FROM (
 #>         SELECT
-#>           cnapmeonkyfrjme.*,
+#>           fuccuxjprprjqau.*,
 #>           DataType,
 #>           HaulDuration,
 #>           HaulValidity,
@@ -392,11 +392,11 @@ q |> show_query()
 #>           ShootLatitude AS lat,
 #>           latin,
 #>           species
-#>         FROM cnapmeonkyfrjme
-#>         LEFT JOIN zrftvqencvbohpk
-#>           ON (cnapmeonkyfrjme.".id" = zrftvqencvbohpk.".id")
-#>         LEFT JOIN zkfsabanjpegwex
-#>           ON (cnapmeonkyfrjme.aphia = zkfsabanjpegwex.aphia)
+#>         FROM fuccuxjprprjqau
+#>         LEFT JOIN yprenbodfqcuvoh
+#>           ON (fuccuxjprprjqau.".id" = yprenbodfqcuvoh.".id")
+#>         LEFT JOIN glczywenykqzklz
+#>           ON (fuccuxjprprjqau.aphia = glczywenykqzklz.aphia)
 #>       ) AS q01
 #>     ) AS q01
 #>   ) AS q01
@@ -416,7 +416,7 @@ system.time(
   data <- q |> collect()
 )
 #>    user  system elapsed 
-#>   0.355   0.039   0.361
+#>   0.408   0.050   0.441
 ```
 
 So we basically have obtained some ~150 thousand cod measurements from
@@ -504,7 +504,7 @@ internet connection.
     #>  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d5c2b3cdf
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84de0fdab4
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
