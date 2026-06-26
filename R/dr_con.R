@@ -8,16 +8,33 @@
 #'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`, `"species"`,
 #'   `"by_length"` (CPUE per length class per haul, from `.dr_cpue_by_length()`),
 #'   or `"by_haul"` (haul-level catch totals, from `.dr_cpue_by_haul()`).
-#' @param url Base URL of the parquet directory.
+#' @param url Base URL of the parquet directory on the obus server.
 #' @param quiet Logical. If `TRUE` (default), suppresses messages.
 #'
 #' @return A lazy `tbl_duckdb_connection`. Pipe dplyr verbs and call
 #'   [dplyr::collect()] to bring data into memory.
 #'
+#' @section Local files:
+#' `dr_con()` is intended for the obus server. If you have already downloaded
+#' the parquet files to your computer, connect to them directly with
+#' [duckdbfs::open_dataset()]:
+#'
+#' ```r
+#' duckdbfs::open_dataset("~/datras/HL.parquet")
+#' ```
+#'
+#' The returned object is identical and all downstream `{dplyr}` verbs and
+#' `dr_add_*()` functions work the same way.
+#'
 #' @examples
 #' \dontrun{
 #'   dr_con("HH")
 #'   dr_con("HL") |> dplyr::filter(Survey == "NS-IBTS", Year == 2023) |> dplyr::collect()
+#'
+#'   # local files: use duckdbfs::open_dataset() directly
+#'   duckdbfs::open_dataset("~/datras/HL.parquet") |>
+#'     dplyr::filter(Survey == "NS-IBTS", Year == 2023) |>
+#'     dplyr::collect()
 #' }
 #' @export
 dr_con <- function(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE) {

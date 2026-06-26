@@ -12,7 +12,7 @@ dr_con(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
 \code{"by_length"} (CPUE per length class per haul, from \code{.dr_cpue_by_length()}),
 or \code{"by_haul"} (haul-level catch totals, from \code{.dr_cpue_by_haul()}).}
 
-\item{url}{Base URL of the parquet directory.}
+\item{url}{Base URL of the parquet directory on the obus server.}
 
 \item{quiet}{Logical. If \code{TRUE} (default), suppresses messages.}
 }
@@ -25,9 +25,27 @@ Opens a lazy DuckDB connection to a DATRAS parquet file hosted on the
 obus server. An HTTP HEAD request is made before opening the dataset to
 give a clear error if the file is absent or the server is unreachable.
 }
+\section{Local files}{
+
+\code{dr_con()} is intended for the obus server. If you have already downloaded
+the parquet files to your computer, connect to them directly with
+\code{\link[duckdbfs:open_dataset]{duckdbfs::open_dataset()}}:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{duckdbfs::open_dataset("~/datras/HL.parquet")
+}\if{html}{\out{</div>}}
+
+The returned object is identical and all downstream \code{{dplyr}} verbs and
+\verb{dr_add_*()} functions work the same way.
+}
+
 \examples{
 \dontrun{
   dr_con("HH")
   dr_con("HL") |> dplyr::filter(Survey == "NS-IBTS", Year == 2023) |> dplyr::collect()
+
+  # local files: use duckdbfs::open_dataset() directly
+  duckdbfs::open_dataset("~/datras/HL.parquet") |>
+    dplyr::filter(Survey == "NS-IBTS", Year == 2023) |>
+    dplyr::collect()
 }
 }

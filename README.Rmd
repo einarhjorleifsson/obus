@@ -83,6 +83,14 @@ import pandas as pd
 pd.read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
 ```
 
+If you have already downloaded the parquet files locally, pass the file path directly to `duckdbfs::open_dataset()` — no {obus} wrapper needed:
+
+```
+duckdbfs::open_dataset("~/datras/HL.parquet")
+```
+
+The returned object is a lazy DuckDB connection and behaves identically to `dr_con()`: all {dplyr} verbs and `dr_add_*()` functions work unchanged.
+
 Whatever the case one can assume that nobody will complain about the speed of access, given that the dimensions just imported are as follows:
 
 ```{r, echo = FALSE}

@@ -65,7 +65,7 @@ system.time({
   ca <- dr_get("CA", source = "parquet")
 })
 #>    user  system elapsed 
-#>  12.527   1.823  40.929
+#>  10.530   2.443  42.651
 ```
 
 So we are talking about around some 10s of seconds if you’re sitting on
@@ -81,6 +81,15 @@ And if Python is your preferred platform:
 
     import pandas as pd
     pd.read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
+
+If you have already downloaded the parquet files locally, pass the file
+path directly to `duckdbfs::open_dataset()` — no {obus} wrapper needed:
+
+    duckdbfs::open_dataset("~/datras/HL.parquet")
+
+The returned object is a lazy DuckDB connection and behaves identically
+to `dr_con()`: all {dplyr} verbs and `dr_add_*()` functions work
+unchanged.
 
 Whatever the case one can assume that nobody will complain about the
 speed of access, given that the dimensions just imported are as follows:
@@ -137,7 +146,7 @@ system.time({
   hl_xml <- dr_get(recordtype = "HL", years = 2026, source = "xml")
 })
 #>    user  system elapsed 
-#>   9.054   3.221  60.502
+#>   9.091   3.162  64.458
 ```
 
 In store we now have:
@@ -174,7 +183,7 @@ system.time({
   ca <- dr_con("CA")
 })
 #>    user  system elapsed 
-#>   0.188   0.023   0.959
+#>   0.202   0.033   1.052
 class(hl) ; nrow(hl)
 #> [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              
 #> [4] "tbl_lazy"              "tbl"
@@ -229,7 +238,7 @@ Let’s look at the hl object from another angle:
 hl |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM fuccuxjprprjqau
+#> FROM bdmxulupgvakdxd
 ```
 
 So the object hl is actually some kind of an SQL-query. What happens
@@ -258,7 +267,7 @@ What we now have in store is:
 q |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM fuccuxjprprjqau
+#> FROM bdmxulupgvakdxd
 #> WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 ```
 
@@ -297,7 +306,7 @@ q |> show_query()
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>   FROM fuccuxjprprjqau
+#>   FROM bdmxulupgvakdxd
 #> ) AS q01
 #> WHERE (Gear = 'GOV') AND (length_cm > 50.0)
 ```
@@ -384,7 +393,7 @@ q |> show_query()
 #> END AS length_cm
 #>       FROM (
 #>         SELECT
-#>           fuccuxjprprjqau.*,
+#>           bdmxulupgvakdxd.*,
 #>           DataType,
 #>           HaulDuration,
 #>           HaulValidity,
@@ -392,11 +401,11 @@ q |> show_query()
 #>           ShootLatitude AS lat,
 #>           latin,
 #>           species
-#>         FROM fuccuxjprprjqau
-#>         LEFT JOIN yprenbodfqcuvoh
-#>           ON (fuccuxjprprjqau.".id" = yprenbodfqcuvoh.".id")
-#>         LEFT JOIN glczywenykqzklz
-#>           ON (fuccuxjprprjqau.aphia = glczywenykqzklz.aphia)
+#>         FROM bdmxulupgvakdxd
+#>         LEFT JOIN ukqntgialjmkvxb
+#>           ON (bdmxulupgvakdxd.".id" = ukqntgialjmkvxb.".id")
+#>         LEFT JOIN iqliqmjbexgezxv
+#>           ON (bdmxulupgvakdxd.aphia = iqliqmjbexgezxv.aphia)
 #>       ) AS q01
 #>     ) AS q01
 #>   ) AS q01
@@ -416,7 +425,7 @@ system.time(
   data <- q |> collect()
 )
 #>    user  system elapsed 
-#>   0.408   0.050   0.441
+#>   0.409   0.042   0.440
 ```
 
 So we basically have obtained some ~150 thousand cod measurements from
@@ -504,7 +513,7 @@ internet connection.
     #>  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84de0fdab4
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d709e8ea1
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 

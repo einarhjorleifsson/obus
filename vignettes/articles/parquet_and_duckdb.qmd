@@ -112,7 +112,7 @@ The result, measured directly from the server file and a freshly written CSV of 
 
 `dr_con()` does two things:
 
-1. Sends an HTTP HEAD request to confirm the file exists.
+1. Sends an HTTP HEAD request to confirm the file exists on the obus server.
 2. Tells DuckDB to open the Parquet file at that URL.
 
 ```{r}
@@ -122,6 +122,17 @@ system.time({
 ```
 
 That elapsed time is almost entirely the HEAD request. DuckDB reads the Parquet footer — a few kilobytes — and nothing else. The 14-million-row HL table has not moved.
+
+### Connecting to a local Parquet file
+
+`dr_con()` is designed for the obus server. If you have downloaded the files to your own machine, connect directly with `duckdbfs::open_dataset()` — no wrapper needed:
+
+```{r}
+#| eval: false
+hl <- duckdbfs::open_dataset("~/datras/HL.parquet")
+```
+
+The object you get back is identical to what `dr_con()` returns: a lazy DuckDB connection. Every `{dplyr}` verb and every `dr_add_*()` function works exactly the same way on it. The Parquet format is the constant; the location of the file is not.
 
 Compare with a full import:
 
