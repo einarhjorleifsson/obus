@@ -68,9 +68,9 @@ system.time({
 })
 ```
 
-So we are talking about around 5 seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take on the order of a minute.
+So we are talking about around 10 seconds if you're sitting on the optic fiber. If you are connected via poor wifi this may take closer to a minute.
 
-The dr_get is just a thin wrapper around the path stated above. User can thus access the data without the {obus} as middle man via e.g.:
+The dr_get is just a thin wrapper around a (temporary) https-path. User can thus access the data without the {obus} as middle man via e.g.:
 
 ```
 arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
@@ -92,7 +92,7 @@ tibble(type = c("HH", "HL", "CA"),
   knitr::kable(caption = "Number of records and variables")
 ```
 
-The above fast importing is achieved by importing from parquet files that are hosted on a conventional https-server. At this stage it is unclear how much simultaneous traffic it can handle. The way things have been setup so far is just a proof of concept. By the same nature, do not expect that the datasets accessed are the latest mirror of the data residing in ICES Datras Database.
+The above fast approach is achieved by importing from parquet files that are hosted on a conventional https-server. At this stage it is unclear how much simultaneous traffic it can handle. The way things have been setup so far is just a proof of concept. By the same nature, do not expect that the datasets accessed are the latest mirror of the data residing in ICES Datras Database.
 
 Those familiar with DATRAS data will notice when viewing the data that the variable names are based on the new lingo. If your downstream code-flow depends on the old lingo one can easily revert back via:
 
@@ -117,12 +117,13 @@ hl_xml |> count(Survey)
 The above demonstrates the following:
 
 * Both approaches return R data frames with standard column names and correct variable types.
-* Hosting the full DATRAS dataset as parquet files on a https-server provides the fastest download and import time.
+* Hosting the full DATRAS dataset as parquet files on a https-server provides faster download and import time.
 * For all practical purposes the parquet source could be embedded in `icesDatras::getDatras` — the user would simply observe faster responses and upstream type handling.
+
 
 ## Connecting
 
-Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a connection to the **same** web-hosted parquet files as above using in-process DuckDB database. 
+Although the DATRAS data can not be considered big data, one can use techniques developed for such datasets. So instead of importing the full dataset into R one can generate a **connection** to the **same** web-hosted parquet files as above using in-process DuckDB database. 
 
 
 ```{r}
@@ -209,7 +210,7 @@ q <-
                          lon = ShootLongitude, lat = ShootLatitude),
             by = join_by(.id)) |> 
   left_join(species,
-            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the parquet column name; canonical standardisation pending ICES Datacenter confirmation
+            by = join_by(aphia)) |> 
   dr_add_length_cm() |> 
   dr_add_n_and_cpue() |> 
   filter(HaulValidity == "V",

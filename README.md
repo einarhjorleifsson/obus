@@ -65,15 +65,15 @@ system.time({
   ca <- dr_get("CA", source = "parquet")
 })
 #>    user  system elapsed 
-#>  10.156   1.546  39.775
+#>  10.507   2.055  28.885
 ```
 
-So we are talking about around 5 seconds if you’re sitting on the optic
-fiber. If you are connected via poor wifi this may take on the order of
-a minute.
+So we are talking about around 10 seconds if you’re sitting on the optic
+fiber. If you are connected via poor wifi this may take closer to a
+minute.
 
-The dr_get is just a thin wrapper around the path stated above. User can
-thus access the data without the {obus} as middle man via e.g.:
+The dr_get is just a thin wrapper around a (temporary) https-path. User
+can thus access the data without the {obus} as middle man via e.g.:
 
     arrow::read_parquet("https://heima.hafro.is/~einarhj/datras/HH.parquet")
 
@@ -87,16 +87,16 @@ speed of access, given that the dimensions just imported are as follows:
 
 | type |     rows | cols |
 |:-----|---------:|-----:|
-| HH   |   150287 |   70 |
-| HL   | 14397344 |   30 |
-| CA   |  5964650 |   35 |
+| HH   |   150261 |   70 |
+| HL   | 14397334 |   30 |
+| CA   |  5964714 |   35 |
 
 Number of records and variables
 
-The above fast importing is achieved by importing from parquet files
-that are hosted on a conventional https-server. At this stage it is
-unclear how much simultaneous traffic it can handle. The way things have
-been setup so far is just a proof of concept. By the same nature, do not
+The above fast approach is achieved by importing from parquet files that
+are hosted on a conventional https-server. At this stage it is unclear
+how much simultaneous traffic it can handle. The way things have been
+setup so far is just a proof of concept. By the same nature, do not
 expect that the datasets accessed are the latest mirror of the data
 residing in ICES Datras Database.
 
@@ -106,20 +106,20 @@ code-flow depends on the old lingo one can easily revert back via:
 
 ``` r
 hl |> dr_translate(from = "new", to = "old")
-#> # A tibble: 14,397,344 × 30
-#>    RecordType Survey Quarter Country Ship  Gear  SweepLngt GearEx DoorType StNo 
+#> # A tibble: 14,397,334 × 30
+#>    RecordType `-`    Quarter Country Ship  Gear  SweepLngt GearEx DoorType StNo 
 #>    <chr>      <chr>    <int> <chr>   <chr> <chr>     <int> <chr>  <chr>    <chr>
 #>  1 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  2 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  3 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  4 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  5 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  6 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  7 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  8 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#>  9 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#> 10 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     1    
-#> # ℹ 14,397,334 more rows
+#>  2 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  3 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  4 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  5 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  6 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  7 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  8 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#>  9 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#> 10 HL         NS-IB…       1 NL      64WB  DHT          45 <NA>   <NA>     2    
+#> # ℹ 14,397,324 more rows
 #> # ℹ 20 more variables: HaulNo <int>, SpecCodeType <chr>, SpecCode <chr>,
 #> #   SpecVal <chr>, Sex <chr>, TotalNo <dbl>, CatIdentifier <int>, NoMeas <int>,
 #> #   SubFactor <dbl>, SubWgt <int>, CatCatchWgt <int>, LngtCode <chr>,
@@ -137,7 +137,7 @@ system.time({
   hl_xml <- dr_get(recordtype = "HL", years = 2026, source = "xml")
 })
 #>    user  system elapsed 
-#>   9.414   3.055  57.012
+#>   9.653   3.689 123.428
 ```
 
 In store we now have:
@@ -155,7 +155,7 @@ The above demonstrates the following:
 - Both approaches return R data frames with standard column names and
   correct variable types.
 - Hosting the full DATRAS dataset as parquet files on a https-server
-  provides the fastest download and import time.
+  provides faster download and import time.
 - For all practical purposes the parquet source could be embedded in
   `icesDatras::getDatras` — the user would simply observe faster
   responses and upstream type handling.
@@ -164,8 +164,8 @@ The above demonstrates the following:
 
 Although the DATRAS data can not be considered big data, one can use
 techniques developed for such datasets. So instead of importing the full
-dataset into R one can generate a connection to the **same** web-hosted
-parquet files as above using in-process DuckDB database.
+dataset into R one can generate a **connection** to the **same**
+web-hosted parquet files as above using in-process DuckDB database.
 
 ``` r
 system.time({
@@ -174,7 +174,7 @@ system.time({
   ca <- dr_con("CA")
 })
 #>    user  system elapsed 
-#>   0.174   0.021   0.784
+#>   0.137   0.015   0.526
 class(hl) ; nrow(hl)
 #> [1] "tbl_duckdb_connection" "tbl_dbi"               "tbl_sql"              
 #> [4] "tbl_lazy"              "tbl"
@@ -182,7 +182,6 @@ class(hl) ; nrow(hl)
 hl |> glimpse()
 #> Rows: ??
 #> Columns: 30
-#> Database: DuckDB 1.5.2 [root@Darwin 25.5.0:R 4.5.2/:memory:]
 #> $ RecordHeader          <chr> "HL", "HL", "HL", "HL", "HL", "HL", "HL", "HL", …
 #> $ Survey                <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-…
 #> $ Quarter               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
@@ -192,25 +191,25 @@ hl |> glimpse()
 #> $ SweepLength           <int> 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, …
 #> $ GearExceptions        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
 #> $ DoorType              <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ StationName           <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
-#> $ HaulNumber            <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+#> $ StationName           <chr> "1", "2", "2", "2", "2", "2", "2", "2", "2", "2"…
+#> $ HaulNumber            <int> 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
 #> $ SpeciesCodeType       <chr> "T", "T", "T", "T", "T", "T", "T", "T", "T", "T"…
-#> $ SpeciesCode           <chr> "164758", "161722", "161722", "161722", "161722"…
+#> $ SpeciesCode           <chr> "164758", "164758", "164758", "164758", "164758"…
 #> $ SpeciesValidity       <chr> "4", "1", "1", "1", "1", "1", "1", "1", "1", "1"…
-#> $ IndividualSex         <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ TotalNumber           <dbl> 1800, 117, 117, 117, 117, 117, 117, 117, 117, 11…
+#> $ sex                   <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
+#> $ TotalNumber           <dbl> 1800, 1880, 1880, 1880, 1880, 1880, 1880, 1880, …
 #> $ SpeciesCategory       <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
-#> $ SubsampledNumber      <int> NA, 117, 117, 117, 117, 117, 117, 117, 117, 117,…
+#> $ SubsampledNumber      <int> NA, 235, 235, 235, 235, 235, 235, 235, 235, 235,…
 #> $ SubsamplingFactor     <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
 #> $ SubsampleWeight       <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
 #> $ SpeciesCategoryWeight <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ LengthCode            <chr> NA, "0", "0", "0", "0", "0", "0", "0", "0", "0",…
-#> $ LengthClass           <int> NA, 15, 95, 100, 105, 110, 115, 120, 125, 130, 1…
-#> $ NumberAtLength        <dbl> NA, 1, 1, 2, 6, 10, 9, 12, 18, 16, 16, 12, 7, 5,…
+#> $ LengthCode            <chr> NA, "1", "1", "1", "1", "1", "1", "1", "1", "1",…
+#> $ LengthClass           <int> NA, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, …
+#> $ NumberAtLength        <dbl> NA, 8, 120, 208, 312, 312, 296, 264, 104, 40, 32…
 #> $ DevelopmentStage      <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
 #> $ LengthType            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
 #> $ DateofCalculation     <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, …
-#> $ Valid_Aphia           <int> 126438, 126417, 126417, 126417, 126417, 126417, …
+#> $ aphia                 <int> 126438, 126438, 126438, 126438, 126438, 126438, …
 #> $ Year                  <dbl> 1965, 1965, 1965, 1965, 1965, 1965, 1965, 1965, …
 #> $ .id                   <chr> "NS-IBTS:1965:1:NL:64WB:DHT:1:1", "NS-IBTS:1965:…
 ```
@@ -230,7 +229,7 @@ Let’s look at the hl object from another angle:
 hl |> show_query()
 #> <SQL>
 #> SELECT *
-#> FROM dkpvgbxkexhblkd
+#> FROM cnapmeonkyfrjme
 ```
 
 So the object hl is actually some kind of an SQL-query. What happens
@@ -258,8 +257,8 @@ What we now have in store is:
 ``` r
 q |> show_query()
 #> <SQL>
-#> SELECT dkpvgbxkexhblkd.*
-#> FROM dkpvgbxkexhblkd
+#> SELECT *
+#> FROM cnapmeonkyfrjme
 #> WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 ```
 
@@ -288,18 +287,18 @@ q <-
 ``` r
 q |> show_query()
 #> <SQL>
-#> SELECT q01.*
+#> SELECT *
 #> FROM (
 #>   SELECT
-#>     dkpvgbxkexhblkd.*,
+#>     *,
 #>     CASE
 #> WHEN (LengthCode = '-9') THEN NULL
 #> WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>   FROM dkpvgbxkexhblkd
-#> ) q01
+#>   FROM cnapmeonkyfrjme
+#> ) AS q01
 #> WHERE (Gear = 'GOV') AND (length_cm > 50.0)
 ```
 
@@ -324,7 +323,7 @@ q <-
                          lon = ShootLongitude, lat = ShootLatitude),
             by = join_by(.id)) |> 
   left_join(species,
-            by = join_by(Valid_Aphia == aphia)) |>  # Note: Valid_Aphia is the parquet column name; canonical standardisation pending ICES Datacenter confirmation
+            by = join_by(aphia)) |> 
   dr_add_length_cm() |> 
   dr_add_n_and_cpue() |> 
   filter(HaulValidity == "V",
@@ -353,10 +352,10 @@ q |> show_query()
 #>   (n_haul / HaulDuration) * 60.0 AS n_hour
 #> FROM (
 #>   SELECT
-#>     q01.*,
+#>     *,
 #>     CASE
 #> WHEN (DataType = 'C') THEN (((NumberAtLength * SubsamplingFactor) * HaulDuration) / 60.0)
-#> WHEN (DataType = 'R') THEN (NumberAtLength * SubsamplingFactor)
+#> WHEN (DataType = 'R') THEN (NumberAtLength * COALESCE(SubsamplingFactor, 1.0))
 #> WHEN (DataType = 'P') THEN (NumberAtLength * SubsamplingFactor)
 #> WHEN (DataType = 'S') THEN (NumberAtLength * SubsamplingFactor)
 #> WHEN (DataType = '-9') THEN NULL
@@ -365,31 +364,43 @@ q |> show_query()
 #> END AS n_haul
 #>   FROM (
 #>     SELECT
-#>       q01.*,
+#>       *,
 #>       CASE
+#> WHEN (LengthCode = '.') THEN 0.1
+#> WHEN (LengthCode = '0') THEN 0.5
+#> WHEN (LengthCode = '1') THEN 1.0
+#> WHEN (LengthCode = '2') THEN 2.0
+#> WHEN (LengthCode = '5') THEN 5.0
+#> WHEN ((LengthCode IS NULL)) THEN NULL
+#> END AS accuracy
+#>     FROM (
+#>       SELECT
+#>         *,
+#>         CASE
 #> WHEN (LengthCode = '-9') THEN NULL
 #> WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 #> WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 #> ELSE NULL
 #> END AS length_cm
-#>     FROM (
-#>       SELECT
-#>         dkpvgbxkexhblkd.*,
-#>         DataType,
-#>         HaulDuration,
-#>         HaulValidity,
-#>         ShootLongitude AS lon,
-#>         ShootLatitude AS lat,
-#>         latin,
-#>         species
-#>       FROM dkpvgbxkexhblkd
-#>       LEFT JOIN udnsuhiixibcesv
-#>         ON (dkpvgbxkexhblkd.".id" = udnsuhiixibcesv.".id")
-#>       LEFT JOIN mzkebdtmqwmmdku
-#>         ON (dkpvgbxkexhblkd.Valid_Aphia = mzkebdtmqwmmdku.aphia)
-#>     ) q01
-#>   ) q01
-#> ) q01
+#>       FROM (
+#>         SELECT
+#>           cnapmeonkyfrjme.*,
+#>           DataType,
+#>           HaulDuration,
+#>           HaulValidity,
+#>           ShootLongitude AS lon,
+#>           ShootLatitude AS lat,
+#>           latin,
+#>           species
+#>         FROM cnapmeonkyfrjme
+#>         LEFT JOIN zrftvqencvbohpk
+#>           ON (cnapmeonkyfrjme.".id" = zrftvqencvbohpk.".id")
+#>         LEFT JOIN zkfsabanjpegwex
+#>           ON (cnapmeonkyfrjme.aphia = zkfsabanjpegwex.aphia)
+#>       ) AS q01
+#>     ) AS q01
+#>   ) AS q01
+#> ) AS q01
 #> WHERE
 #>   (HaulValidity = 'V') AND
 #>   (NOT((LengthCode IS NULL))) AND
@@ -405,7 +416,7 @@ system.time(
   data <- q |> collect()
 )
 #>    user  system elapsed 
-#>   0.553   0.035   0.617
+#>   0.355   0.039   0.361
 ```
 
 So we basically have obtained some ~150 thousand cod measurements from
@@ -439,7 +450,7 @@ internet connection.
     #>  collate  en_US.UTF-8
     #>  ctype    en_US.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-06-08
+    #>  date     2026-06-26
     #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
     #>  quarto   1.8.26 @ /usr/local/bin/quarto
     #> 
@@ -451,11 +462,11 @@ internet connection.
     #>  curl          7.1.0      2026-04-22 [2] CRAN (R 4.5.2)
     #>  data.table    1.18.4     2026-05-06 [2] CRAN (R 4.5.2)
     #>  DBI           1.3.0      2026-02-25 [2] CRAN (R 4.5.2)
-    #>  dbplyr        2.5.2      2026-02-13 [2] CRAN (R 4.5.2)
+    #>  dbplyr        2.6.0      2026-06-17 [2] CRAN (R 4.5.2)
     #>  devtools      2.5.2      2026-04-30 [2] CRAN (R 4.5.2)
     #>  digest        0.6.39     2025-11-19 [2] CRAN (R 4.5.2)
     #>  dplyr       * 1.2.1      2026-04-03 [2] CRAN (R 4.5.2)
-    #>  duckdb        1.5.2      2026-04-13 [2] CRAN (R 4.5.2)
+    #>  duckdb        1.5.4      2026-06-19 [2] CRAN (R 4.5.2)
     #>  duckdbfs      0.1.2.99   2026-04-28 [2] Github (cboettig/duckdbfs@0b48916)
     #>  ellipsis      0.3.3      2026-04-04 [2] CRAN (R 4.5.2)
     #>  evaluate      1.0.5      2025-08-27 [2] CRAN (R 4.5.0)
@@ -464,36 +475,36 @@ internet connection.
     #>  generics      0.1.4      2025-05-09 [2] CRAN (R 4.5.0)
     #>  glue          1.8.1      2026-04-17 [2] CRAN (R 4.5.2)
     #>  htmltools     0.5.9      2025-12-04 [2] CRAN (R 4.5.2)
-    #>  httr2         1.2.2      2025-12-08 [2] CRAN (R 4.5.2)
+    #>  httr2         1.2.3      2026-06-23 [2] CRAN (R 4.5.2)
     #>  icesDatras    1.5.1      2026-05-10 [2] Github (einarhjorleifsson/icesDatras@870daf6)
     #>  knitr         1.51       2025-12-20 [2] CRAN (R 4.5.2)
     #>  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
     #>  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)
     #>  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
-    #>  obus        * 2026.06.01 2026-06-08 [1] local
+    #>  obus        * 2026.06.23 2026-06-26 [1] local
     #>  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
     #>  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
     #>  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
     #>  pkgconfig     2.0.3      2019-09-22 [2] CRAN (R 4.5.0)
-    #>  pkgload       1.5.2      2026-04-22 [2] CRAN (R 4.5.2)
+    #>  pkgload       1.5.3      2026-06-15 [2] CRAN (R 4.5.2)
     #>  purrr         1.2.2      2026-04-10 [2] CRAN (R 4.5.2)
     #>  R6            2.6.1      2025-02-15 [2] CRAN (R 4.5.0)
     #>  rappdirs      0.3.4      2026-01-17 [2] CRAN (R 4.5.2)
     #>  rlang         1.2.0      2026-04-06 [2] CRAN (R 4.5.2)
     #>  rmarkdown     2.31       2026-03-26 [2] CRAN (R 4.5.2)
-    #>  rstudioapi    0.18.0     2026-01-16 [2] CRAN (R 4.5.2)
-    #>  sessioninfo   1.2.3      2025-02-05 [2] CRAN (R 4.5.0)
+    #>  rstudioapi    0.19.0     2026-06-11 [2] CRAN (R 4.5.2)
+    #>  sessioninfo   1.2.4      2026-06-04 [2] CRAN (R 4.5.2)
     #>  tibble        3.3.1      2026-01-11 [2] CRAN (R 4.5.2)
     #>  tidyr         1.3.2      2025-12-19 [2] CRAN (R 4.5.2)
     #>  tidyselect    1.2.1      2024-03-11 [2] CRAN (R 4.5.0)
     #>  usethis       3.2.1      2025-09-06 [2] CRAN (R 4.5.0)
     #>  utf8          1.2.6      2025-06-08 [2] CRAN (R 4.5.0)
     #>  vctrs         0.7.3      2026-04-11 [2] CRAN (R 4.5.2)
-    #>  withr         3.0.2      2024-10-28 [2] CRAN (R 4.5.0)
-    #>  xfun          0.58       2026-06-01 [2] CRAN (R 4.5.2)
+    #>  withr         3.0.3      2026-06-19 [2] CRAN (R 4.5.2)
+    #>  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmprAGN2y/temp_libpath79e3f4ebfad
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d5c2b3cdf
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 
