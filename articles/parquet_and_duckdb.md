@@ -134,7 +134,7 @@ system.time({
 ```
 
        user  system elapsed
-      2.854   0.150   6.313 
+      1.328   0.075   6.705 
 
 That elapsed time is almost entirely the HEAD request. DuckDB reads the
 Parquet footer — a few kilobytes — and nothing else. The 14-million-row
@@ -150,7 +150,7 @@ system.time({
 ```
 
        user  system elapsed
-     10.459   0.991  22.902 
+     11.982   1.084  62.438 
 
 Both give you a table you can work with, but they represent very
 different things. `hl_local` is a plain R data frame sitting in memory.
@@ -211,7 +211,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM psmrvcxuarviucz
+    FROM pqnyyslclybrgky
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -255,7 +255,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM psmrvcxuarviucz
+      FROM pqnyyslclybrgky
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -279,7 +279,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.772   0.014   3.778 
+      0.920   0.022   4.754 
 
 ``` r
 
@@ -365,17 +365,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              psmrvcxuarviucz.*,
+              pqnyyslclybrgky.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM psmrvcxuarviucz
-            INNER JOIN ntavaprrffzzkcd
-              ON (psmrvcxuarviucz.".id" = ntavaprrffzzkcd.".id")
-            INNER JOIN lpnyrvpipnxgviq
-              ON (psmrvcxuarviucz.aphia = lpnyrvpipnxgviq.aphia)
+            FROM pqnyyslclybrgky
+            INNER JOIN expkbpfvefjzvhv
+              ON (pqnyyslclybrgky.".id" = expkbpfvefjzvhv.".id")
+            INNER JOIN qljpsjpsgjuctek
+              ON (pqnyyslclybrgky.aphia = qljpsjpsgjuctek.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -394,7 +394,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.699   0.037   9.389 
+      0.795   0.046   9.512 
 
 ``` r
 
@@ -403,13 +403,13 @@ glimpse(cod)
 
     Rows: 152,918
     Columns: 7
-    $ .id       <chr> "NS-IBTS:1978:1:DK:26SA:HT:5:5", "NS-IBTS:1978:1:DK:26SA:HT:…
+    $ .id       <chr> "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
     $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-    $ Year      <dbl> 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, …
+    $ Year      <dbl> 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
     $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-    $ length_cm <dbl> 15, 18, 32, 14, 20, 18, 19, 20, 48, 12, 13, 15, 16, 17, 18, …
-    $ n_haul    <dbl> 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, …
-    $ n_hour    <dbl> 2, 4, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, …
+    $ length_cm <dbl> 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
+    $ n_haul    <dbl> 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
+    $ n_hour    <dbl> 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …
 
 Three Parquet files joined, filtered, and computed — all in DuckDB,
 before a single row enters R memory.

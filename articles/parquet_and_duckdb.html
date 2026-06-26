@@ -132,7 +132,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  2.854   0.150   6.313 </code></pre>
+  1.328   0.075   6.705 </code></pre>
 </div>
 </div>
 <p>That elapsed time is almost entirely the HEAD request. DuckDB reads the Parquet footer — a few kilobytes — and nothing else. The 14-million-row HL table has not moved.</p>
@@ -144,7 +144,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
- 10.459   0.991  22.902 </code></pre>
+ 11.982   1.084  62.438 </code></pre>
 </div>
 </div>
 <p>Both give you a table you can work with, but they represent very different things. <code>hl_local</code> is a plain R data frame sitting in memory. <code>hl</code> is a <strong>lazy connection</strong> — a query plan that has not run yet.</p>
@@ -182,7 +182,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>&lt;SQL&gt;
 SELECT *
-FROM psmrvcxuarviucz
+FROM pqnyyslclybrgky
 WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)</code></pre>
 </div>
 </div>
@@ -222,7 +222,7 @@ WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 ELSE NULL
 END AS length_cm
-  FROM psmrvcxuarviucz
+  FROM pqnyyslclybrgky
 ) AS q01
 WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))</code></pre>
 </div>
@@ -239,7 +239,7 @@ WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  0.772   0.014   3.778 </code></pre>
+  0.920   0.022   4.754 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
@@ -318,17 +318,17 @@ ELSE NULL
 END AS length_cm
       FROM (
         SELECT
-          psmrvcxuarviucz.*,
+          pqnyyslclybrgky.*,
           HaulValidity,
           DataType,
           HaulDuration,
           latin,
           species
-        FROM psmrvcxuarviucz
-        INNER JOIN ntavaprrffzzkcd
-          ON (psmrvcxuarviucz.".id" = ntavaprrffzzkcd.".id")
-        INNER JOIN lpnyrvpipnxgviq
-          ON (psmrvcxuarviucz.aphia = lpnyrvpipnxgviq.aphia)
+        FROM pqnyyslclybrgky
+        INNER JOIN expkbpfvefjzvhv
+          ON (pqnyyslclybrgky.".id" = expkbpfvefjzvhv.".id")
+        INNER JOIN qljpsjpsgjuctek
+          ON (pqnyyslclybrgky.aphia = qljpsjpsgjuctek.aphia)
       ) AS q01
     ) AS q01
   ) AS q01
@@ -347,20 +347,20 @@ WHERE
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  0.699   0.037   9.389 </code></pre>
+  0.795   0.046   9.512 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">cod</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 152,918
 Columns: 7
-$ .id       &lt;chr&gt; "NS-IBTS:1978:1:DK:26SA:HT:5:5", "NS-IBTS:1978:1:DK:26SA:HT:…
+$ .id       &lt;chr&gt; "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
 $ Survey    &lt;chr&gt; "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-$ Year      &lt;dbl&gt; 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, …
+$ Year      &lt;dbl&gt; 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
 $ latin     &lt;chr&gt; "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-$ length_cm &lt;dbl&gt; 15, 18, 32, 14, 20, 18, 19, 20, 48, 12, 13, 15, 16, 17, 18, …
-$ n_haul    &lt;dbl&gt; 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, …
-$ n_hour    &lt;dbl&gt; 2, 4, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, …</code></pre>
+$ length_cm &lt;dbl&gt; 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
+$ n_haul    &lt;dbl&gt; 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
+$ n_hour    &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …</code></pre>
 </div>
 </div>
 <p>Three Parquet files joined, filtered, and computed — all in DuckDB, before a single row enters R memory.</p>
