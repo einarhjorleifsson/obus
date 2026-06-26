@@ -69,9 +69,6 @@
 - [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
   : Connect to DATRAS Parquet Files
 
-- [`dr_con2()`](https://einarhjorleifsson.github.io/obus/reference/dr_con2.md)
-  : Connect to DATRAS Parquet Files
-
 - [`dr_download()`](https://einarhjorleifsson.github.io/obus/reference/dr_download.md)
   : Download DATRAS parquet files
 

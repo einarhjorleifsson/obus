@@ -118,64 +118,69 @@ When you install [obus](https://einarhjorleifsson.github.io/obus/),
 DuckDB comes along as an R package dependency and is ready to use
 immediately.
 
-### 3.2 Connecting to a remote Parquet file
+### 3.2 Three ways to get an `hl` object — and why it doesn’t matter
 
-[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
-does two things:
-
-1.  Sends an HTTP HEAD request to confirm the file exists on the obus
-    server.
-2.  Tells DuckDB to open the Parquet file at that URL.
+Before going further, here are the three ways you might start a DATRAS
+analysis, and what you end up with:
 
 ``` r
 
-system.time({
-  hl <- dr_con("HL")
-})
-```
+# 1. Connect to the obus server (lazy — nothing downloaded yet)
+hl <- dr_con("HL")
 
-       user  system elapsed
-      1.326   0.065   6.728 
-
-That elapsed time is almost entirely the HEAD request. DuckDB reads the
-Parquet footer — a few kilobytes — and nothing else. The 14-million-row
-HL table has not moved.
-
-### 3.3 Connecting to a local Parquet file
-
-[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
-is designed for the obus server. If you have downloaded the files to
-your own machine, connect directly with
-[`duckdbfs::open_dataset()`](https://cboettig.github.io/duckdbfs/reference/open_dataset.html)
-— no wrapper needed:
-
-``` r
-
+# 2. Connect to a local copy (lazy — identical object to dr_con())
 hl <- duckdbfs::open_dataset("~/datras/HL.parquet")
+
+# 3. Import the full table into R memory
+hl <- dr_get("HL")
 ```
 
-The object you get back is identical to what
-[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
-returns: a lazy DuckDB connection. Every
-[dplyr](https://dplyr.tidyverse.org) verb and every `dr_add_*()`
-function works exactly the same way on it. The Parquet format is the
-constant; the location of the file is not.
+**Options 1 and 2 return a lazy DuckDB connection. Option 3 returns a
+plain R data frame.** These are different objects internally, but from
+your perspective as a user they behave identically: every
+[dplyr](https://dplyr.tidyverse.org) verb (`filter`, `mutate`,
+`group_by`, `summarise`, `left_join`, …) and every `dr_add_*()` function
+in [obus](https://einarhjorleifsson.github.io/obus/) works the same way
+on all three. You do not need to know or care which one you have.
 
-Compare with a full import:
+The rest of this article uses `hl` from
+[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md),
+but every single line of code shown would work unchanged if `hl` had
+come from
+[`duckdbfs::open_dataset()`](https://cboettig.github.io/duckdbfs/reference/open_dataset.html)
+or
+[`dr_get()`](https://einarhjorleifsson.github.io/obus/reference/dr_get.md)
+instead.
+
+### 3.3 Connecting is nearly instant; importing is not
 
 ``` r
 
 system.time({
-  hl_local <- dr_get("HL")
+  hl <- dr_con("HL")   # lazy connection — reads only the file footer
 })
 ```
 
        user  system elapsed
-     10.175   1.007  28.157 
+      1.506   0.063   7.021 
 
-Both give you a table you can work with, but they represent very
-different things. `hl_local` is a plain R data frame sitting in memory.
-`hl` is a **lazy connection** — a query plan that has not run yet.
+``` r
+
+system.time({
+  hl_imported <- dr_get("HL")   # full import — all rows into R memory
+})
+```
+
+       user  system elapsed
+      9.651   1.382  27.673 
+
+The difference is what has actually happened.
+[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
+sends an HTTP HEAD request, then tells DuckDB to note the file location
+and read its footer — a few kilobytes. The 14-million-row table has not
+moved.
+[`dr_get()`](https://einarhjorleifsson.github.io/obus/reference/dr_get.md)
+downloads the entire file.
 
 ``` r
 
@@ -187,13 +192,13 @@ class(hl)
 
 ``` r
 
-nrow(hl)   # NA: DuckDB has not counted rows yet
+nrow(hl)   # NA — DuckDB has not counted rows yet
 ```
 
     [1] NA
 
-The `NA` row count is a hint: `hl` is not data, it is a **promise** of
-data, contingent on a query.
+The `NA` row count signals that `hl` is a **promise** of data, not data
+itself. A query will be needed to make anything happen.
 
 ------------------------------------------------------------------------
 
@@ -232,7 +237,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM urvzdrllxeaamlq
+    FROM jkgefhcrjvvvonx
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -276,7 +281,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM urvzdrllxeaamlq
+      FROM jkgefhcrjvvvonx
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -300,7 +305,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.726   0.033   5.446 
+      0.837   0.031   5.406 
 
 ``` r
 
@@ -386,17 +391,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              urvzdrllxeaamlq.*,
+              jkgefhcrjvvvonx.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM urvzdrllxeaamlq
-            INNER JOIN kwnfxcxgwhityno
-              ON (urvzdrllxeaamlq.".id" = kwnfxcxgwhityno.".id")
-            INNER JOIN goaqedwxyepzmid
-              ON (urvzdrllxeaamlq.aphia = goaqedwxyepzmid.aphia)
+            FROM jkgefhcrjvvvonx
+            INNER JOIN xfhjhpzaqmnbmym
+              ON (jkgefhcrjvvvonx.".id" = xfhjhpzaqmnbmym.".id")
+            INNER JOIN hnberquhpwdidab
+              ON (jkgefhcrjvvvonx.aphia = hnberquhpwdidab.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -415,7 +420,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.738   0.044  12.011 
+      5.117   0.049  13.328 
 
 ``` r
 
@@ -424,27 +429,23 @@ glimpse(cod)
 
     Rows: 152,918
     Columns: 7
-    $ .id       <chr> "NS-IBTS:1980:1:DE:06DA:H18:000081:60", "NS-IBTS:1980:1:DE:0…
+    $ .id       <chr> "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
     $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-    $ Year      <dbl> 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, …
+    $ Year      <dbl> 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
     $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-    $ length_cm <dbl> 31, 32, 45, 52, 55, 63, 68, 73, 42, 51, 41, 43, 44, 45, 46, …
-    $ n_haul    <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, …
-    $ n_hour    <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, …
+    $ length_cm <dbl> 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
+    $ n_haul    <dbl> 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
+    $ n_hour    <dbl> 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …
 
 Three Parquet files joined, filtered, and computed — all in DuckDB,
 before a single row enters R memory.
 
 ------------------------------------------------------------------------
 
-## 5 Same code, two backends
+## 5 Same code, three backends
 
-Here is the key insight for the practical user: **you do not need to
-know which backend you are on**. Once you have a data frame or a DuckDB
-connection, the [dplyr](https://dplyr.tidyverse.org) verbs and all
-`dr_add_*()` functions work identically on both.
-
-Consider this small helper:
+The point stated earlier bears a concrete demonstration. Here is a
+function that computes total cod catch by survey, year, and quarter:
 
 ``` r
 
@@ -460,12 +461,23 @@ summarise_cod <- function(hl_input, hh_input) {
 }
 ```
 
-Call it with **lazy DuckDB connections** — nothing downloaded until
-[`collect()`](https://dplyr.tidyverse.org/reference/compute.html):
+Call it with **remote DuckDB connections** — only the matching rows ever
+leave the server:
 
 ``` r
 
 summarise_cod(dr_con("HL"), dr_con("HH")) |> collect()
+```
+
+Call it with **local DuckDB connections** — same laziness, files on your
+own disk:
+
+``` r
+
+summarise_cod(
+  duckdbfs::open_dataset("~/datras/HL.parquet"),
+  duckdbfs::open_dataset("~/datras/HH.parquet")
+) |> collect()
 ```
 
 Call it with **in-memory data frames** — everything already in R:
@@ -477,7 +489,8 @@ hl_local <- dr_get("HL", surveys = "NS-IBTS", years = 2024, quarters = 1)
 summarise_cod(hl_local, hh_local)
 ```
 
-Same function, no changes. The `dr_add_*()` functions in
+The function is identical in all three cases. No `if` statements, no
+special cases, no adapter layer. The `dr_add_*()` functions in
 [obus](https://einarhjorleifsson.github.io/obus/) are written to handle
 both `tbl_duckdb_connection` and ordinary `data.frame` inputs;
 [dplyr](https://dplyr.tidyverse.org) dispatches to the right method
