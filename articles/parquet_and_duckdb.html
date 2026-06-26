@@ -144,7 +144,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  1.506   0.063   7.021 </code></pre>
+  1.291   0.073   5.451 </code></pre>
 </div>
 </div>
 <div class="cell">
@@ -154,7 +154,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  9.651   1.382  27.673 </code></pre>
+ 13.269   1.101  61.474 </code></pre>
 </div>
 </div>
 <p>The difference is what has actually happened. <code><a href="../reference/dr_con.html">dr_con()</a></code> sends an HTTP HEAD request, then tells DuckDB to note the file location and read its footer — a few kilobytes. The 14-million-row table has not moved. <code><a href="../reference/dr_get.html">dr_get()</a></code> downloads the entire file.</p>
@@ -192,7 +192,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>&lt;SQL&gt;
 SELECT *
-FROM jkgefhcrjvvvonx
+FROM yecjsavrloqetls
 WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)</code></pre>
 </div>
 </div>
@@ -232,7 +232,7 @@ WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 ELSE NULL
 END AS length_cm
-  FROM jkgefhcrjvvvonx
+  FROM yecjsavrloqetls
 ) AS q01
 WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))</code></pre>
 </div>
@@ -249,7 +249,7 @@ WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  0.837   0.031   5.406 </code></pre>
+  0.870   0.028   4.002 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
@@ -328,17 +328,17 @@ ELSE NULL
 END AS length_cm
       FROM (
         SELECT
-          jkgefhcrjvvvonx.*,
+          yecjsavrloqetls.*,
           HaulValidity,
           DataType,
           HaulDuration,
           latin,
           species
-        FROM jkgefhcrjvvvonx
-        INNER JOIN xfhjhpzaqmnbmym
-          ON (jkgefhcrjvvvonx.".id" = xfhjhpzaqmnbmym.".id")
-        INNER JOIN hnberquhpwdidab
-          ON (jkgefhcrjvvvonx.aphia = hnberquhpwdidab.aphia)
+        FROM yecjsavrloqetls
+        INNER JOIN wktagzzcbknkppt
+          ON (yecjsavrloqetls.".id" = wktagzzcbknkppt.".id")
+        INNER JOIN asvprbdxdubavvd
+          ON (yecjsavrloqetls.aphia = asvprbdxdubavvd.aphia)
       ) AS q01
     ) AS q01
   ) AS q01
@@ -357,29 +357,125 @@ WHERE
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  5.117   0.049  13.328 </code></pre>
+  0.769   0.056  10.991 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">cod</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Rows: 152,918
 Columns: 7
-$ .id       &lt;chr&gt; "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
+$ .id       &lt;chr&gt; "NS-IBTS:1966:1:DE:06AD:H18:300:51", "NS-IBTS:1966:1:DE:06AD…
 $ Survey    &lt;chr&gt; "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-$ Year      &lt;dbl&gt; 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
+$ Year      &lt;dbl&gt; 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, …
 $ latin     &lt;chr&gt; "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-$ length_cm &lt;dbl&gt; 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
-$ n_haul    &lt;dbl&gt; 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
-$ n_hour    &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …</code></pre>
+$ length_cm &lt;dbl&gt; NA, NA, NA, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, …
+$ n_haul    &lt;dbl&gt; NA, NA, NA, 4, 8, 10, 11, 13, 10, 22, 27, 28, 18, 16, 16, 13…
+$ n_hour    &lt;dbl&gt; NA, NA, NA, 8, 16, 20, 22, 26, 20, 44, 54, 56, 36, 32, 32, 2…</code></pre>
 </div>
 </div>
 <p>Three Parquet files joined, filtered, and computed — all in DuckDB, before a single row enters R memory.</p>
-<hr></section></section><section class="level2" data-number="5"><h2 data-number="5" id="same-code-three-backends">
-<span class="header-section-number">5</span> Same code, three backends<a class="anchor" aria-label="anchor" href="#same-code-three-backends"></a>
+<hr></section></section><section class="level2" data-number="5"><h2 data-number="5" id="skipping-dbplyr-plain-sql">
+<span class="header-section-number">5</span> Skipping dbplyr: plain SQL<a class="anchor" aria-label="anchor" href="#skipping-dbplyr-plain-sql"></a>
+</h2>
+<p>Everything shown so far has used <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> verbs with <a href="https://dbplyr.tidyverse.org/" class="external-link">dbplyr</a> translating them to SQL behind the scenes. Sometimes you want to write SQL directly — for a complex query that is cleaner in SQL, for debugging, or simply because you are more comfortable with it. There are two levels at which you can do this: inside R via DBI, and outside R entirely.</p>
+<section class="level3" data-number="5.1"><h3 data-number="5.1" id="within-r">
+<span class="header-section-number">5.1</span> Within R<a class="anchor" aria-label="anchor" href="#within-r"></a>
+</h3>
+<p><code><a href="https://dbplyr.tidyverse.org/reference/remote_name.html" class="external-link">dbplyr::remote_con()</a></code> exposes the underlying DBI connection from any <code><a href="../reference/dr_con.html">dr_con()</a></code> object. DuckDB’s <code>read_parquet()</code> function lets you reference a Parquet file by URL directly in SQL, without needing to know the internal view name:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu">dbplyr</span><span class="fu">::</span><span class="fu"><a href="https://dbplyr.tidyverse.org/reference/remote_name.html" class="external-link">remote_con</a></span><span class="op">(</span><span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">DBI</span><span class="fu">::</span><span class="fu"><a href="https://dbi.r-dbi.org/reference/dbGetQuery.html" class="external-link">dbGetQuery</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"</span></span>
+<span><span class="st">  SELECT   Survey, Year, COUNT(*) AS n_hauls</span></span>
+<span><span class="st">  FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')</span></span>
+<span><span class="st">  WHERE    Quarter = 1</span></span>
+<span><span class="st">  GROUP BY Survey, Year</span></span>
+<span><span class="st">  ORDER BY Survey, Year</span></span>
+<span><span class="st">  LIMIT    12</span></span>
+<span><span class="st">"</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Survey Year n_hauls
+1    BITS 1991   16681
+2    BITS 1992   14848
+3    BITS 1993   17160
+4    BITS 1994   18438
+5    BITS 1995   20468
+6    BITS 1996   23012
+7    BITS 1997   19184
+8    BITS 1998   20551
+9    BITS 1999   25741
+10   BITS 2000   25739
+11   BITS 2001   23060
+12   BITS 2002   22082</code></pre>
+</div>
+</div>
+<p>You can also open a fresh DuckDB connection with no <a href="https://einarhjorleifsson.github.io/obus/">obus</a> involvement at all:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu">DBI</span><span class="fu">::</span><span class="fu"><a href="https://dbi.r-dbi.org/reference/dbConnect.html" class="external-link">dbConnect</a></span><span class="op">(</span><span class="fu">duckdb</span><span class="fu">::</span><span class="fu"><a href="https://r.duckdb.org/reference/duckdb.html" class="external-link">duckdb</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">DBI</span><span class="fu">::</span><span class="fu"><a href="https://dbi.r-dbi.org/reference/dbGetQuery.html" class="external-link">dbGetQuery</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"</span></span>
+<span><span class="st">  SELECT   Survey,</span></span>
+<span><span class="st">           SUM(NumberAtLength * SubsamplingFactor) AS n_total</span></span>
+<span><span class="st">  FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')</span></span>
+<span><span class="st">  WHERE    aphia = 126436</span></span>
+<span><span class="st">  GROUP BY Survey</span></span>
+<span><span class="st">  ORDER BY n_total DESC</span></span>
+<span><span class="st">"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">DBI</span><span class="fu">::</span><span class="fu"><a href="https://dbi.r-dbi.org/reference/dbDisconnect.html" class="external-link">dbDisconnect</a></span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span></code></pre></div>
+</div>
+<p>A useful middle path: pass a SQL string to <code><a href="https://dplyr.tidyverse.org/reference/tbl.html" class="external-link">dplyr::tbl()</a></code> to get back a lazy table you can continue piping <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> verbs onto:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/tbl.html" class="external-link">tbl</a></span><span class="op">(</span><span class="va">con</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/sql.html" class="external-link">sql</a></span><span class="op">(</span><span class="st">"</span></span>
+<span><span class="st">  SELECT .id, aphia, LengthClass, LengthCode, NumberAtLength, SubsamplingFactor</span></span>
+<span><span class="st">  FROM   read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')</span></span>
+<span><span class="st">  WHERE  Survey = 'NS-IBTS' AND Year = 2024 AND Quarter = 1</span></span>
+<span><span class="st">"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/dr_add_length_cm.html">dr_add_length_cm</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">length_cm</span> <span class="op">&gt;</span> <span class="fl">40</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+</section><section class="level3" data-number="5.2"><h3 data-number="5.2" id="the-duckdb-cli-no-r-required">
+<span class="header-section-number">5.2</span> The DuckDB CLI — no R required<a class="anchor" aria-label="anchor" href="#the-duckdb-cli-no-r-required"></a>
+</h3>
+<p>DuckDB ships a standalone command-line executable. The Parquet files are just URLs; no R or Python installation is needed:</p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="ex">duckdb</span> <span class="at">-c</span> <span class="st">"</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="st">SELECT   Survey, Year, COUNT(*) AS n_hauls</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="st">FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="st">WHERE    Quarter = 1</span></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="st">GROUP BY Survey, Year</span></span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a><span class="st">ORDER BY Survey, Year</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="st">LIMIT    12</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a><span class="st">"</span></span></code></pre></div>
+<p>For longer sessions, start the interactive shell:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="ex">duckdb</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="ex">D</span> SELECT Survey, COUNT<span class="er">(</span><span class="ex">*</span><span class="kw">)</span> <span class="ex">AS</span> n</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="ex">FROM</span> read_parquet<span class="er">(</span><span class="st">'https://heima.hafro.is/~einarhj/datras/HL.parquet'</span><span class="kw">)</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  <span class="ex">GROUP</span> BY Survey ORDER BY n DESC<span class="kw">;</span></span></code></pre></div>
+</section><section class="level3" data-number="5.3"><h3 data-number="5.3" id="python">
+<span class="header-section-number">5.3</span> Python<a class="anchor" aria-label="anchor" href="#python"></a>
+</h3>
+<div class="sourceCode" id="cb32"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> duckdb</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>con <span class="op">=</span> duckdb.<span class="ex">connect</span>()</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>con.execute(<span class="st">"""</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="st">    SELECT   Survey, Year, COUNT(*) AS n_hauls</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="st">    FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="st">    WHERE    Quarter = 1</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="st">    GROUP BY Survey, Year</span></span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a><span class="st">    ORDER BY n_hauls DESC</span></span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a><span class="st">    LIMIT    12</span></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="st">"""</span>).df()</span></code></pre></div>
+<p>In all three cases — R/DBI, CLI, Python — <code>read_parquet()</code> is doing the same work: DuckDB reads the file footer, applies the <code>WHERE</code> filter at the chunk level, and returns only the rows and columns the query needs.</p>
+<hr></section></section><section class="level2" data-number="6"><h2 data-number="6" id="same-code-three-backends">
+<span class="header-section-number">6</span> Same code, three backends<a class="anchor" aria-label="anchor" href="#same-code-three-backends"></a>
 </h2>
 <p>The point stated earlier bears a concrete demonstration. Here is a function that computes total cod catch by survey, year, and quarter:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">summarise_cod</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">hl_input</span>, <span class="va">hh_input</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">hl_input</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">inner_join</a></span><span class="op">(</span><span class="va">hh_input</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">HaulValidity</span>, <span class="va">DataType</span>, <span class="va">HaulDuration</span><span class="op">)</span>,</span>
@@ -393,12 +489,12 @@ $ n_hour    &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2,
 </div>
 <p>Call it with <strong>remote DuckDB connections</strong> — only the matching rows ever leave the server:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">summarise_cod</span><span class="op">(</span><span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span>, <span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <p>Call it with <strong>local DuckDB connections</strong> — same laziness, files on your own disk:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">summarise_cod</span><span class="op">(</span></span>
 <span>  <span class="fu">duckdbfs</span><span class="fu">::</span><span class="fu"><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">open_dataset</a></span><span class="op">(</span><span class="st">"~/datras/HL.parquet"</span><span class="op">)</span>,</span>
 <span>  <span class="fu">duckdbfs</span><span class="fu">::</span><span class="fu"><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">open_dataset</a></span><span class="op">(</span><span class="st">"~/datras/HH.parquet"</span><span class="op">)</span></span>
@@ -406,14 +502,14 @@ $ n_hour    &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2,
 </div>
 <p>Call it with <strong>in-memory data frames</strong> — everything already in R:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hh_local</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"HH"</span>, surveys <span class="op">=</span> <span class="st">"NS-IBTS"</span>, years <span class="op">=</span> <span class="fl">2024</span>, quarters <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">hl_local</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"HL"</span>, surveys <span class="op">=</span> <span class="st">"NS-IBTS"</span>, years <span class="op">=</span> <span class="fl">2024</span>, quarters <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu">summarise_cod</span><span class="op">(</span><span class="va">hl_local</span>, <span class="va">hh_local</span><span class="op">)</span></span></code></pre></div>
 </div>
 <p>The function is identical in all three cases. No <code>if</code> statements, no special cases, no adapter layer. The <code>dr_add_*()</code> functions in <a href="https://einarhjorleifsson.github.io/obus/">obus</a> are written to handle both <code>tbl_duckdb_connection</code> and ordinary <code>data.frame</code> inputs; <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> dispatches to the right method automatically.</p>
-<section class="level3" data-number="5.1"><h3 data-number="5.1" id="when-to-prefer-each-approach">
-<span class="header-section-number">5.1</span> When to prefer each approach<a class="anchor" aria-label="anchor" href="#when-to-prefer-each-approach"></a>
+<section class="level3" data-number="6.1"><h3 data-number="6.1" id="when-to-prefer-each-approach">
+<span class="header-section-number">6.1</span> When to prefer each approach<a class="anchor" aria-label="anchor" href="#when-to-prefer-each-approach"></a>
 </h3>
 <table class="table caption-top">
 <colgroup>
@@ -451,15 +547,15 @@ $ n_hour    &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2,
 </tr>
 </tbody>
 </table>
-<hr></section></section><section class="level2" data-number="6"><h2 data-number="6" id="what-you-never-have-to-do">
-<span class="header-section-number">6</span> What you never have to do<a class="anchor" aria-label="anchor" href="#what-you-never-have-to-do"></a>
+<hr></section></section><section class="level2" data-number="7"><h2 data-number="7" id="what-you-never-have-to-do">
+<span class="header-section-number">7</span> What you never have to do<a class="anchor" aria-label="anchor" href="#what-you-never-have-to-do"></a>
 </h2>
 <p>A few things that used to be standard practice with DATRAS data are now unnecessary:</p>
 <p><strong>Maintain local copies.</strong> There is no need to periodically download and version a local <code>HL.csv</code>. The Parquet files on the server are the authoritative copy. Connect, filter, collect — and you always get the current version.</p>
 <p><strong>Manage file formats.</strong> You do not need to know whether the underlying storage is Snappy-compressed Parquet, zstd-compressed Parquet, or anything else. DuckDB handles the format; you handle the dplyr.</p>
 <p><strong>Write SQL.</strong> <a href="https://dbplyr.tidyverse.org/" class="external-link">dbplyr</a> writes it for you. <code><a href="https://dplyr.tidyverse.org/reference/explain.html" class="external-link">show_query()</a></code> is there if you are curious, not because you need to worry about it.</p>
-<hr></section><section class="level2" data-number="7"><h2 data-number="7" id="summary">
-<span class="header-section-number">7</span> Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
+<hr></section><section class="level2" data-number="8"><h2 data-number="8" id="summary">
+<span class="header-section-number">8</span> Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <pre><code>Parquet file on server
         │

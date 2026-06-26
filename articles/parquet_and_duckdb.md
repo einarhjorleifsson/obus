@@ -162,7 +162,7 @@ system.time({
 ```
 
        user  system elapsed
-      1.506   0.063   7.021 
+      1.291   0.073   5.451 
 
 ``` r
 
@@ -172,7 +172,7 @@ system.time({
 ```
 
        user  system elapsed
-      9.651   1.382  27.673 
+     13.269   1.101  61.474 
 
 The difference is what has actually happened.
 [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
@@ -237,7 +237,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM jkgefhcrjvvvonx
+    FROM yecjsavrloqetls
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -281,7 +281,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM jkgefhcrjvvvonx
+      FROM yecjsavrloqetls
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -305,7 +305,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.837   0.031   5.406 
+      0.870   0.028   4.002 
 
 ``` r
 
@@ -391,17 +391,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              jkgefhcrjvvvonx.*,
+              yecjsavrloqetls.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM jkgefhcrjvvvonx
-            INNER JOIN xfhjhpzaqmnbmym
-              ON (jkgefhcrjvvvonx.".id" = xfhjhpzaqmnbmym.".id")
-            INNER JOIN hnberquhpwdidab
-              ON (jkgefhcrjvvvonx.aphia = hnberquhpwdidab.aphia)
+            FROM yecjsavrloqetls
+            INNER JOIN wktagzzcbknkppt
+              ON (yecjsavrloqetls.".id" = wktagzzcbknkppt.".id")
+            INNER JOIN asvprbdxdubavvd
+              ON (yecjsavrloqetls.aphia = asvprbdxdubavvd.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -420,7 +420,7 @@ system.time(
 ```
 
        user  system elapsed
-      5.117   0.049  13.328 
+      0.769   0.056  10.991 
 
 ``` r
 
@@ -429,20 +429,149 @@ glimpse(cod)
 
     Rows: 152,918
     Columns: 7
-    $ .id       <chr> "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
+    $ .id       <chr> "NS-IBTS:1966:1:DE:06AD:H18:300:51", "NS-IBTS:1966:1:DE:06AD…
     $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-    $ Year      <dbl> 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
+    $ Year      <dbl> 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, …
     $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-    $ length_cm <dbl> 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
-    $ n_haul    <dbl> 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
-    $ n_hour    <dbl> 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …
+    $ length_cm <dbl> NA, NA, NA, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, …
+    $ n_haul    <dbl> NA, NA, NA, 4, 8, 10, 11, 13, 10, 22, 27, 28, 18, 16, 16, 13…
+    $ n_hour    <dbl> NA, NA, NA, 8, 16, 20, 22, 26, 20, 44, 54, 56, 36, 32, 32, 2…
 
 Three Parquet files joined, filtered, and computed — all in DuckDB,
 before a single row enters R memory.
 
 ------------------------------------------------------------------------
 
-## 5 Same code, three backends
+## 5 Skipping dbplyr: plain SQL
+
+Everything shown so far has used [dplyr](https://dplyr.tidyverse.org)
+verbs with [dbplyr](https://dbplyr.tidyverse.org/) translating them to
+SQL behind the scenes. Sometimes you want to write SQL directly — for a
+complex query that is cleaner in SQL, for debugging, or simply because
+you are more comfortable with it. There are two levels at which you can
+do this: inside R via DBI, and outside R entirely.
+
+### 5.1 Within R
+
+[`dbplyr::remote_con()`](https://dbplyr.tidyverse.org/reference/remote_name.html)
+exposes the underlying DBI connection from any
+[`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
+object. DuckDB’s `read_parquet()` function lets you reference a Parquet
+file by URL directly in SQL, without needing to know the internal view
+name:
+
+``` r
+
+con <- dbplyr::remote_con(dr_con("HL"))
+
+DBI::dbGetQuery(con, "
+  SELECT   Survey, Year, COUNT(*) AS n_hauls
+  FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  WHERE    Quarter = 1
+  GROUP BY Survey, Year
+  ORDER BY Survey, Year
+  LIMIT    12
+")
+```
+
+       Survey Year n_hauls
+    1    BITS 1991   16681
+    2    BITS 1992   14848
+    3    BITS 1993   17160
+    4    BITS 1994   18438
+    5    BITS 1995   20468
+    6    BITS 1996   23012
+    7    BITS 1997   19184
+    8    BITS 1998   20551
+    9    BITS 1999   25741
+    10   BITS 2000   25739
+    11   BITS 2001   23060
+    12   BITS 2002   22082
+
+You can also open a fresh DuckDB connection with no
+[obus](https://einarhjorleifsson.github.io/obus/) involvement at all:
+
+``` r
+
+con <- DBI::dbConnect(duckdb::duckdb())
+
+DBI::dbGetQuery(con, "
+  SELECT   Survey,
+           SUM(NumberAtLength * SubsamplingFactor) AS n_total
+  FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  WHERE    aphia = 126436
+  GROUP BY Survey
+  ORDER BY n_total DESC
+")
+
+DBI::dbDisconnect(con)
+```
+
+A useful middle path: pass a SQL string to
+[`dplyr::tbl()`](https://dplyr.tidyverse.org/reference/tbl.html) to get
+back a lazy table you can continue piping
+[dplyr](https://dplyr.tidyverse.org) verbs onto:
+
+``` r
+
+tbl(con, sql("
+  SELECT .id, aphia, LengthClass, LengthCode, NumberAtLength, SubsamplingFactor
+  FROM   read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  WHERE  Survey = 'NS-IBTS' AND Year = 2024 AND Quarter = 1
+")) |>
+  dr_add_length_cm() |>
+  filter(length_cm > 40) |>
+  collect()
+```
+
+### 5.2 The DuckDB CLI — no R required
+
+DuckDB ships a standalone command-line executable. The Parquet files are
+just URLs; no R or Python installation is needed:
+
+``` bash
+duckdb -c "
+SELECT   Survey, Year, COUNT(*) AS n_hauls
+FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+WHERE    Quarter = 1
+GROUP BY Survey, Year
+ORDER BY Survey, Year
+LIMIT    12
+"
+```
+
+For longer sessions, start the interactive shell:
+
+``` bash
+duckdb
+
+D SELECT Survey, COUNT(*) AS n
+  FROM read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  GROUP BY Survey ORDER BY n DESC;
+```
+
+### 5.3 Python
+
+``` python
+import duckdb
+con = duckdb.connect()
+con.execute("""
+    SELECT   Survey, Year, COUNT(*) AS n_hauls
+    FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+    WHERE    Quarter = 1
+    GROUP BY Survey, Year
+    ORDER BY n_hauls DESC
+    LIMIT    12
+""").df()
+```
+
+In all three cases — R/DBI, CLI, Python — `read_parquet()` is doing the
+same work: DuckDB reads the file footer, applies the `WHERE` filter at
+the chunk level, and returns only the rows and columns the query needs.
+
+------------------------------------------------------------------------
+
+## 6 Same code, three backends
 
 The point stated earlier bears a concrete demonstration. Here is a
 function that computes total cod catch by survey, year, and quarter:
@@ -496,7 +625,7 @@ both `tbl_duckdb_connection` and ordinary `data.frame` inputs;
 [dplyr](https://dplyr.tidyverse.org) dispatches to the right method
 automatically.
 
-### 5.1 When to prefer each approach
+### 6.1 When to prefer each approach
 
 | Situation | Recommended approach |
 |----|----|
@@ -508,7 +637,7 @@ automatically.
 
 ------------------------------------------------------------------------
 
-## 6 What you never have to do
+## 7 What you never have to do
 
 A few things that used to be standard practice with DATRAS data are now
 unnecessary:
@@ -529,7 +658,7 @@ there if you are curious, not because you need to worry about it.
 
 ------------------------------------------------------------------------
 
-## 7 Summary
+## 8 Summary
 
     Parquet file on server
             │

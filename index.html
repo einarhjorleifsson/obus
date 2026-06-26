@@ -90,7 +90,7 @@
 <span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CA"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;  10.232   2.473  29.821</span></span></code></pre></div>
+<span><span class="co">#&gt;  10.440   2.252  31.151</span></span></code></pre></div>
 <table class="table">
 <thead><tr>
 <th align="left">type</th>
@@ -150,7 +150,7 @@
 <span>  <span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.083   0.009   0.317</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.072   0.009   0.227</span></span></code></pre></div>
 <p>The connection is nearly instant — DuckDB reads only the file index, not the data. You then use ordinary <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> verbs to filter, join, and compute; DuckDB translates them to SQL and executes against the remote file. Only the rows and columns you actually need travel over the wire:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
@@ -166,19 +166,19 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.416   0.055   0.542</span></span>
+<span><span class="co">#&gt;   0.419   0.058   0.521</span></span>
 <span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">cod</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: 152,918</span></span>
 <span><span class="co">#&gt; Columns: 9</span></span>
-<span><span class="co">#&gt; $ .id       &lt;chr&gt; "NS-IBTS:1978:1:DK:26SA:HT:5:5", "NS-IBTS:1978:1:DK:26SA:HT:…</span></span>
+<span><span class="co">#&gt; $ .id       &lt;chr&gt; "NS-IBTS:1983:1:DK:26D4:GOV:41:41", "NS-IBTS:1983:1:DK:26D4:…</span></span>
 <span><span class="co">#&gt; $ Survey    &lt;chr&gt; "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…</span></span>
-<span><span class="co">#&gt; $ Year      &lt;dbl&gt; 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, …</span></span>
-<span><span class="co">#&gt; $ lon       &lt;dbl&gt; 6.5167, 6.5167, 6.5167, 4.9500, 5.3167, 5.9500, 5.9500, 5.95…</span></span>
-<span><span class="co">#&gt; $ lat       &lt;dbl&gt; 55.5167, 55.5167, 55.5167, 55.6500, 56.3333, 55.7000, 55.700…</span></span>
+<span><span class="co">#&gt; $ Year      &lt;dbl&gt; 1983, 1983, 1983, 1983, 1983, 1983, 1983, 1983, 1983, 1983, …</span></span>
+<span><span class="co">#&gt; $ lon       &lt;dbl&gt; 7.5833, 7.5833, 7.5833, 7.5833, 7.5833, 7.5833, 7.5833, 7.58…</span></span>
+<span><span class="co">#&gt; $ lat       &lt;dbl&gt; 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, …</span></span>
 <span><span class="co">#&gt; $ latin     &lt;chr&gt; "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…</span></span>
-<span><span class="co">#&gt; $ length_cm &lt;dbl&gt; 15, 18, 32, 14, 20, 18, 19, 20, 48, 12, 13, 15, 16, 17, 18, …</span></span>
-<span><span class="co">#&gt; $ n_haul    &lt;dbl&gt; 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, …</span></span>
-<span><span class="co">#&gt; $ n_hour    &lt;dbl&gt; 2, 4, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, …</span></span></code></pre></div>
+<span><span class="co">#&gt; $ length_cm &lt;dbl&gt; 38, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, …</span></span>
+<span><span class="co">#&gt; $ n_haul    &lt;dbl&gt; 1, 7, 3, 17, 13, 14, 7, 10, 6, 18, 7, 9, 10, 11, 4, 5, 7, 10…</span></span>
+<span><span class="co">#&gt; $ n_hour    &lt;dbl&gt; 2, 14, 6, 34, 26, 28, 14, 20, 12, 36, 14, 18, 20, 22, 8, 10,…</span></span></code></pre></div>
 <p><strong>The same pipeline works unchanged whether <code>hh</code> and <code>hl</code> are DuckDB connections or plain R data frames.</strong> You can mix and match — switch to <code><a href="reference/dr_get.html">dr_get()</a></code> when you need the full table in memory, use <code><a href="reference/dr_con.html">dr_con()</a></code> when you want lazy filtering. The <code>dr_add_*()</code> functions handle both transparently.</p>
 <p>For local parquet files, skip <code><a href="reference/dr_con.html">dr_con()</a></code> and use <code><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">duckdbfs::open_dataset()</a></code> directly — the result is identical:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
@@ -251,7 +251,7 @@
 <span id="cb9-61"><a href="#cb9-61" tabindex="-1"></a><span class="co">#&gt;  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb9-62"><a href="#cb9-62" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb9-63"><a href="#cb9-63" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb9-64"><a href="#cb9-64" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d46e88914</span></span>
+<span id="cb9-64"><a href="#cb9-64" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d4532fa5b</span></span>
 <span id="cb9-65"><a href="#cb9-65" tabindex="-1"></a><span class="co">#&gt;  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library</span></span>
 <span id="cb9-66"><a href="#cb9-66" tabindex="-1"></a><span class="co">#&gt;  * ── Packages attached to the search path.</span></span>
 <span id="cb9-67"><a href="#cb9-67" tabindex="-1"></a><span class="co">#&gt; </span></span>
