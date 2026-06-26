@@ -244,6 +244,103 @@ Three Parquet files joined, filtered, and computed — all in DuckDB, before a s
 
 ---
 
+## Skipping dbplyr: plain SQL
+
+Everything shown so far has used `{dplyr}` verbs with `{dbplyr}` translating them to SQL behind the scenes. Sometimes you want to write SQL directly — for a complex query that is cleaner in SQL, for debugging, or simply because you are more comfortable with it. There are two levels at which you can do this: inside R via DBI, and outside R entirely.
+
+### Within R
+
+`dbplyr::remote_con()` exposes the underlying DBI connection from any `dr_con()` object. DuckDB's `read_parquet()` function lets you reference a Parquet file by URL directly in SQL, without needing to know the internal view name:
+
+```{r}
+con <- dbplyr::remote_con(dr_con("HL"))
+
+DBI::dbGetQuery(con, "
+  SELECT   Survey, Year, COUNT(*) AS n_hauls
+  FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  WHERE    Quarter = 1
+  GROUP BY Survey, Year
+  ORDER BY Survey, Year
+  LIMIT    12
+")
+```
+
+You can also open a fresh DuckDB connection with no `{obus}` involvement at all:
+
+```{r}
+#| eval: false
+con <- DBI::dbConnect(duckdb::duckdb())
+
+DBI::dbGetQuery(con, "
+  SELECT   Survey,
+           SUM(NumberAtLength * SubsamplingFactor) AS n_total
+  FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  WHERE    aphia = 126436
+  GROUP BY Survey
+  ORDER BY n_total DESC
+")
+
+DBI::dbDisconnect(con)
+```
+
+A useful middle path: pass a SQL string to `dplyr::tbl()` to get back a lazy table you can continue piping `{dplyr}` verbs onto:
+
+```{r}
+#| eval: false
+tbl(con, sql("
+  SELECT .id, aphia, LengthClass, LengthCode, NumberAtLength, SubsamplingFactor
+  FROM   read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  WHERE  Survey = 'NS-IBTS' AND Year = 2024 AND Quarter = 1
+")) |>
+  dr_add_length_cm() |>
+  filter(length_cm > 40) |>
+  collect()
+```
+
+### The DuckDB CLI — no R required
+
+DuckDB ships a standalone command-line executable. The Parquet files are just URLs; no R or Python installation is needed:
+
+```bash
+duckdb -c "
+SELECT   Survey, Year, COUNT(*) AS n_hauls
+FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+WHERE    Quarter = 1
+GROUP BY Survey, Year
+ORDER BY Survey, Year
+LIMIT    12
+"
+```
+
+For longer sessions, start the interactive shell:
+
+```bash
+duckdb
+
+D SELECT Survey, COUNT(*) AS n
+  FROM read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+  GROUP BY Survey ORDER BY n DESC;
+```
+
+### Python
+
+```python
+import duckdb
+con = duckdb.connect()
+con.execute("""
+    SELECT   Survey, Year, COUNT(*) AS n_hauls
+    FROM     read_parquet('https://heima.hafro.is/~einarhj/datras/HL.parquet')
+    WHERE    Quarter = 1
+    GROUP BY Survey, Year
+    ORDER BY n_hauls DESC
+    LIMIT    12
+""").df()
+```
+
+In all three cases — R/DBI, CLI, Python — `read_parquet()` is doing the same work: DuckDB reads the file footer, applies the `WHERE` filter at the chunk level, and returns only the rows and columns the query needs.
+
+---
+
 ## Same code, three backends
 
 The point stated earlier bears a concrete demonstration. Here is a function that computes total cod catch by survey, year, and quarter:
