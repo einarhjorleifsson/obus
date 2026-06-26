@@ -26,7 +26,7 @@ The aim of {obus} is to provide users fast and efficient access to DATRAS tables
 
 That said, {obus} is a temporary experimental package used to explore various DATRAS data connections and wrapper functions to make life a little easier for ordinary user. Some of that may be taken up in a more official package. Or possibly not. So far {obus} does actually very little.
 
-The package code resides on [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a [package website](https://heima.hafro.is/~einarhj/pkg/obus/).
+The package code resides on [GitHub](https://github.com/einarhjorleifsson/obus) and there is also a [package website](https://einarhjorleifsson.github.io/obus/).
 
 For purists, one regrets to inform that the functionality of {obus} has quite some number of dependencies (56, see also [DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/master/DESCRIPTION)). Some of them may possibly be trimmed, but never all.
 
