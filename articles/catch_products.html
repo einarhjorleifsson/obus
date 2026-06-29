@@ -23,7 +23,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">obus</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.06.23</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2026.07</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -112,6 +112,7 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://einarhjorleifsson.github.io/obus/">obus</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hbiostat.org/R/Hmisc/" class="external-link">Hmisc</a></span><span class="op">)</span>  <span class="co"># required for stat_summary(fun.data = "mean_cl_boot")</span></span>
 <span></span>
 <span><span class="va">hh</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span></span>
 <span><span class="va">hl</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span></span>
@@ -125,25 +126,24 @@
 <section class="level3"><h3 id="why-zero-hauls-matter">Why zero hauls matter<a class="anchor" aria-label="anchor" href="#why-zero-hauls-matter"></a>
 </h3>
 <p>Species are absent from many hauls. Dropping those zeros inflates the mean CPUE and makes trends unreliable. <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> adds an explicit zero row for every haul where a species was not caught (within the same Survey/Year/Quarter stratum).</p>
+<p>Goatfish (<em>Mullus surmuletus</em>) is a good illustration: it appears in virtually every year since the late 1990s but is caught in only ~13 % of hauls, and when present it arrives in schools giving a high CPUE. Ignoring zero hauls overstates the mean by roughly 7-fold. Atlantic cod shows the same bias, more so in recent decades as the stock declined and hauls with no cod became the norm.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">species_ns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Atlantic herring"</span>, <span class="st">"Atlantic cod"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">species_ns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"goatfish"</span>, <span class="st">"Atlantic cod"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">cpue_ns</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">species_ns</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">cpue_ns_nozero</span> <span class="op">&lt;-</span> <span class="va">cpue_ns</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">n_hour</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span></span>
-<span></span>
 <span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
-<span>  <span class="va">cpue_ns</span>        <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>zeros <span class="op">=</span> <span class="st">"with zero hauls"</span><span class="op">)</span>,</span>
-<span>  <span class="va">cpue_ns_nozero</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>zeros <span class="op">=</span> <span class="st">"without zero hauls"</span><span class="op">)</span></span>
+<span>  <span class="va">cpue_ns</span>                      <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>zeros <span class="op">=</span> <span class="st">"with zero hauls"</span><span class="op">)</span>,</span>
+<span>  <span class="va">cpue_ns</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">n_hour</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>zeros <span class="op">=</span> <span class="st">"without zero hauls"</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">Year</span>, <span class="va">n_hour</span>, colour <span class="op">=</span> <span class="va">zeros</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun.data <span class="op">=</span> <span class="st">"mean_cl_boot"</span>, geom <span class="op">=</span> <span class="st">"pointrange"</span>, size <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">species</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"with zero hauls"</span> <span class="op">=</span> <span class="st">"#2166ac"</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"with zero hauls"</span>    <span class="op">=</span> <span class="st">"#2166ac"</span>,</span>
 <span>                                 <span class="st">"without zero hauls"</span> <span class="op">=</span> <span class="st">"#d73027"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>y <span class="op">=</span> <span class="st">"Numbers per hour (mean ± 95 % boot CI)"</span>,</span>
 <span>       x <span class="op">=</span> <span class="cn">NULL</span>, colour <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -157,31 +157,109 @@
 </div>
 </div>
 </div>
-<p>Including zero hauls consistently lowers the mean and widens the confidence interval — the difference is most pronounced in years with low prevalence.</p>
-</section><section class="level3"><h3 id="length-distributions-for-selected-years">Length distributions for selected years<a class="anchor" aria-label="anchor" href="#length-distributions-for-selected-years"></a>
+</section><section class="level3"><h3 id="spatial-distribution-catch-per-haul">Spatial distribution — catch per haul<a class="anchor" aria-label="anchor" href="#spatial-distribution-catch-per-haul"></a>
 </h3>
-<p><code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> propagates zero observations across the full length × haul grid, enabling length-structured indices. Here we show cod length distributions for three decades.</p>
+<p>A bubble plot on haul positions shows where a species is concentrated in a given year. Here Atlantic cod in 2015; circle area is proportional to numbers caught per haul (zero hauls shown as small open circles).</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">years_sel</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1985</span>, <span class="fl">1995</span>, <span class="fl">2005</span>, <span class="fl">2015</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">cod_hauls_2015</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>,</span>
+<span>         <span class="va">species</span> <span class="op">==</span> <span class="st">"Atlantic cod"</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2015</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">.id</span>, <span class="va">ShootLongitude</span>, <span class="va">ShootLatitude</span><span class="op">)</span>, by <span class="op">=</span> <span class="st">".id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op">==</span> <span class="st">"Atlantic cod"</span>,</span>
-<span>         <span class="va">Year</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">years_sel</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">cod_hauls_2015</span>,</span>
+<span>       <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">ShootLongitude</span>, <span class="va">ShootLatitude</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">dr_coastline</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>          fill <span class="op">=</span> <span class="st">"grey85"</span>, colour <span class="op">=</span> <span class="st">"grey50"</span>, linewidth <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="op">~</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.x</span>, <span class="va">n_haul</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>             shape <span class="op">=</span> <span class="fl">1</span>, size <span class="op">=</span> <span class="fl">1</span>, colour <span class="op">=</span> <span class="st">"grey40"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="op">~</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">.x</span>, <span class="va">n_haul</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>             <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>size <span class="op">=</span> <span class="va">n_haul</span><span class="op">)</span>, colour <span class="op">=</span> <span class="st">"#2166ac"</span>, alpha <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_size.html" class="external-link">scale_size_area</a></span><span class="op">(</span>max_size <span class="op">=</span> <span class="fl">10</span>, name <span class="op">=</span> <span class="st">"Numbers per haul"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">coord_sf</a></span><span class="op">(</span>xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">4</span>, <span class="fl">13</span><span class="op">)</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">49</span>, <span class="fl">62</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>       title <span class="op">=</span> <span class="st">"NS-IBTS Q1 2015 — Atlantic cod catch per haul"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"right"</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="catch_products_files/figure-html/ns_ibts_spatial-1.png" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section><section class="level3"><h3 id="year-class-progression-in-length-distributions">Year-class progression in length distributions<a class="anchor" aria-label="anchor" href="#year-class-progression-in-length-distributions"></a>
+</h3>
+<p>The pipeline is not limited to a single quarter. Passing both Q1 and Q3 of NS-IBTS in one call shows how the same year-class shifts rightward within a year as fish grow, and then again across years. Three years bracketing the strong 2000 year-class illustrate this clearly — within each year Q3 fish are noticeably larger than Q1 fish, and the dominant cohort advances ~10 cm per year.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">species</span> <span class="op">==</span> <span class="st">"haddock"</span>,</span>
+<span>         <span class="va">Year</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fl">2000</span><span class="op">:</span><span class="fl">2002</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">length_cm</span>, <span class="va">n_hour</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>Quarter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Q"</span>, <span class="va">Quarter</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">length_cm</span>, <span class="va">n_hour</span>, fill <span class="op">=</span> <span class="va">Quarter</span>, colour <span class="op">=</span> <span class="va">Quarter</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun.data <span class="op">=</span> <span class="st">"mean_cl_boot"</span>, geom <span class="op">=</span> <span class="st">"ribbon"</span>,</span>
 <span>               <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes_eval.html" class="external-link">after_stat</a></span><span class="op">(</span><span class="va">ymin</span><span class="op">)</span>, ymax <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes_eval.html" class="external-link">after_stat</a></span><span class="op">(</span><span class="va">ymax</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>               alpha <span class="op">=</span> <span class="fl">0.25</span>, fill <span class="op">=</span> <span class="st">"#2166ac"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun <span class="op">=</span> <span class="va">mean</span>, geom <span class="op">=</span> <span class="st">"line"</span>, colour <span class="op">=</span> <span class="st">"#2166ac"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">Year</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>               alpha <span class="op">=</span> <span class="fl">0.2</span>, colour <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun <span class="op">=</span> <span class="va">mean</span>, geom <span class="op">=</span> <span class="st">"line"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Q1 <span class="op">=</span> <span class="st">"#2166ac"</span>, Q3 <span class="op">=</span> <span class="st">"#d73027"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>Q1 <span class="op">=</span> <span class="st">"#2166ac"</span>, Q3 <span class="op">=</span> <span class="st">"#d73027"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">Year</span>, scales <span class="op">=</span> <span class="st">"free_y"</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Length (cm)"</span>, y <span class="op">=</span> <span class="st">"Numbers per hour (mean ± 95 % boot CI)"</span>,</span>
-<span>       title <span class="op">=</span> <span class="st">"NS-IBTS Q1 — Atlantic cod length distribution"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>       fill <span class="op">=</span> <span class="cn">NULL</span>, colour <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>       title <span class="op">=</span> <span class="st">"NS-IBTS Q1 &amp; Q3 — haddock length distribution 2000–2002"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output-display">
 <div>
 <figure><p><img src="catch_products_files/figure-html/ns_ibts_length-1.png" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section><section class="level3"><h3 id="juvenile-index-from-length-structured-data">Juvenile index from length-structured data<a class="anchor" aria-label="anchor" href="#juvenile-index-from-length-structured-data"></a>
+</h3>
+<p>Length-based indices require zero-filling at the length level before aggregating — otherwise hauls where no small fish were caught are silently dropped. <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> ensures every haul contributes, including those with zero juveniles.</p>
+<p>Haddock spawn in spring (March–May). The NS-IBTS runs in both Q1 (January–March) and Q3 (July–September), giving two windows onto the same year-classes at different ages:</p>
+<ul>
+<li>
+<strong>Q3 ≤ 15 cm</strong>: 0-group fish (~3–4 months old), representing the year-class spawned that same spring (year-class <em>Y</em> seen in Q3 of year <em>Y</em>).</li>
+<li>
+<strong>Q1 ≤ 22 cm</strong>: 1-group fish (~10 months old), representing the year-class spawned the previous spring (year-class <em>Y</em>−1 seen in Q1 of year <em>Y</em>).</li>
+</ul>
+<p>Aligning both to year-class puts them on the same axis and provides an independent cross-check of year-class strength.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">species</span> <span class="op">==</span> <span class="st">"haddock"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">(</span><span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">length_cm</span> <span class="op">&lt;=</span> <span class="fl">22</span><span class="op">)</span> <span class="op">|</span> <span class="op">(</span><span class="va">Quarter</span> <span class="op">==</span> <span class="fl">3</span> <span class="op">&amp;</span> <span class="va">length_cm</span> <span class="op">&lt;=</span> <span class="fl">15</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    year_class <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">Year</span> <span class="op">-</span> <span class="fl">1L</span>, <span class="va">Year</span><span class="op">)</span>,</span>
+<span>    quarter_label <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>,</span>
+<span>                            <span class="st">"Q1 (≤ 22 cm, age ~10 months)"</span>,</span>
+<span>                            <span class="st">"Q3 (≤ 15 cm, age ~4 months)"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">year_class</span>, <span class="va">quarter_label</span>, <span class="va">.id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>n_hour <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">n_hour</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">year_class</span>, <span class="va">n_hour</span>, colour <span class="op">=</span> <span class="va">quarter_label</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun.data <span class="op">=</span> <span class="st">"mean_cl_boot"</span>, geom <span class="op">=</span> <span class="st">"pointrange"</span>,</span>
+<span>               size <span class="op">=</span> <span class="fl">0.3</span>, position <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/position_dodge.html" class="external-link">position_dodge</a></span><span class="op">(</span><span class="fl">0.4</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Q1 (≤ 22 cm, age ~10 months)"</span> <span class="op">=</span> <span class="st">"#2166ac"</span>,</span>
+<span>                                 <span class="st">"Q3 (≤ 15 cm, age ~4 months)"</span>  <span class="op">=</span> <span class="st">"#d73027"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>y <span class="op">=</span> <span class="st">"Numbers per hour (mean ± 95 % boot CI)"</span>,</span>
+<span>       x <span class="op">=</span> <span class="st">"Year-class"</span>, colour <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>       title <span class="op">=</span> <span class="st">"NS-IBTS — haddock year-class strength index"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="catch_products_files/figure-html/ns_ibts_juvenile-1.png" width="768"></p>
 </figure>
 </div>
 </div>
@@ -190,7 +268,7 @@
 </h2>
 <p>BTS covers the Dutch, Belgian and English coastal waters in summer. Common dab and plaice dominate; this survey also records seahorses consistently.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">species_bts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"common dab"</span>, <span class="st">"European plaice"</span>, <span class="st">"common sole"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
@@ -216,7 +294,7 @@
 </h3>
 <p>Seahorses (<em>Hippocampus</em> spp.) are rarely caught but their occurrence in trawl surveys is used as an indicator of seagrass habitat condition. BTS has the most consistent records in DATRAS.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">seahorse_aphia</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"BTS"</span>, <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"Hippocampus"</span>, <span class="va">latin</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="va">aphia</span>, <span class="va">latin</span>, <span class="va">species</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -250,60 +328,6 @@
 </div>
 </div>
 </div>
-<hr></section></section><section class="level2"><h2 id="sp-arsa-q1-southern-iberian-atlantic-survey">SP-ARSA Q1 — Southern Iberian Atlantic survey<a class="anchor" aria-label="anchor" href="#sp-arsa-q1-southern-iberian-atlantic-survey"></a>
-</h2>
-<p>SP-ARSA covers the Gulf of Cádiz (southern Spain / northern Morocco). The small pelagic and demersal communities here differ markedly from the North Sea.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">species_sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"anchovy"</span>, <span class="st">"European hake"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"SP-ARSA"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">species_sp</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">Year</span>, <span class="va">n_hour</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun.data <span class="op">=</span> <span class="st">"mean_cl_boot"</span>, geom <span class="op">=</span> <span class="st">"pointrange"</span>,</span>
-<span>               colour <span class="op">=</span> <span class="st">"#b35806"</span>, size <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">species</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>y <span class="op">=</span> <span class="st">"Numbers per hour (mean ± 95 % boot CI)"</span>,</span>
-<span>       x <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>       title <span class="op">=</span> <span class="st">"SP-ARSA Q1 — anchovy and hake CPUE"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output-display">
-<div>
-<figure><p><img src="catch_products_files/figure-html/sparsa_cpue-1.png" width="768"></p>
-</figure>
-</div>
-</div>
-</div>
-<section class="level3"><h3 id="hake-length-distribution">Hake length distribution<a class="anchor" aria-label="anchor" href="#hake-length-distribution"></a>
-</h3>
-<p>European hake is a key commercial species in Iberian waters. Length distributions illustrate how recruitment varies between years.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">years_sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2005</span>, <span class="fl">2010</span>, <span class="fl">2015</span>, <span class="fl">2020</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"SP-ARSA"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op">==</span> <span class="st">"European hake"</span>,</span>
-<span>         <span class="va">Year</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">years_sp</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">length_cm</span>, <span class="va">n_hour</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun.data <span class="op">=</span> <span class="st">"mean_cl_boot"</span>, geom <span class="op">=</span> <span class="st">"ribbon"</span>,</span>
-<span>               <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes_eval.html" class="external-link">after_stat</a></span><span class="op">(</span><span class="va">ymin</span><span class="op">)</span>, ymax <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes_eval.html" class="external-link">after_stat</a></span><span class="op">(</span><span class="va">ymax</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>               alpha <span class="op">=</span> <span class="fl">0.25</span>, fill <span class="op">=</span> <span class="st">"#b35806"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/stat_summary.html" class="external-link">stat_summary</a></span><span class="op">(</span>fun <span class="op">=</span> <span class="va">mean</span>, geom <span class="op">=</span> <span class="st">"line"</span>, colour <span class="op">=</span> <span class="st">"#b35806"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">Year</span>, scales <span class="op">=</span> <span class="st">"free_y"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Length (cm)"</span>, y <span class="op">=</span> <span class="st">"Numbers per hour (mean ± 95 % boot CI)"</span>,</span>
-<span>       title <span class="op">=</span> <span class="st">"SP-ARSA Q1 — European hake length distribution"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output-display">
-<div>
-<figure><p><img src="catch_products_files/figure-html/sparsa_length-1.png" width="768"></p>
-</figure>
-</div>
-</div>
-</div>
 <hr></section></section><section class="level2"><h2 id="how-fast-is-it">How fast is it?<a class="anchor" aria-label="anchor" href="#how-fast-is-it"></a>
 </h2>
 <p>Ten of the most common NS-IBTS Q1 species — full CPUE pipeline from raw exchange data through to a collected data frame, timed with <code><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time()</a></code>.</p>
@@ -325,7 +349,7 @@
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"10 species, all NS-IBTS Q1 years: %.1f s\n"</span>, <span class="va">t</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>10 species, all NS-IBTS Q1 years: 4.1 s</code></pre>
+<pre><code>10 species, all NS-IBTS Q1 years: 0.8 s</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -348,27 +372,40 @@
 </div>
 <hr></section><section class="level2"><h2 id="a-note-on-dr_expand_length-and-large-selections">A note on <code>dr_expand_length()</code> and large selections<a class="anchor" aria-label="anchor" href="#a-note-on-dr_expand_length-and-large-selections"></a>
 </h2>
+<p><code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> builds a <strong>complete haul × species × length-bin grid</strong>, so output size grows as <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mtext mathvariant="normal">hauls</mtext></msub><mo>×</mo><msub><mi>N</mi><mtext mathvariant="normal">species</mtext></msub><mo>×</mo><msub><mi>N</mi><mtext mathvariant="normal">length bins</mtext></msub></mrow><annotation encoding="application/x-tex">N_\text{hauls} \times N_\text{species} \times N_\text{length bins}</annotation></semantics></math>. Even so, the DuckDB backend handles surprisingly large jobs efficiently.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">t10</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span>  <span class="va">res10</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">species_10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">t_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span>  <span class="va">res_all</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"10 species: %s rows — %.1f s\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res10</span><span class="op">)</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>, <span class="va">t10</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>10 species: 14,677,149 rows — 3.2 s</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"all species: %s rows — %.1f s\n"</span>,</span>
+<span>            <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res_all</span><span class="op">)</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>, <span class="va">t_all</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>all species: 58,966,527 rows — 33.2 s</code></pre>
+</div>
+</div>
+<p>The full length-expanded grid for every species in NS-IBTS Q1 — across the entire time series — materialises in R in tens of seconds. The only real limit is R memory: the lazy query itself is always safe, but <code><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect()</a></code> across multiple surveys simultaneously will likely exceed available RAM.</p>
 <div>
 <blockquote>
-<p><strong>Filter before expanding</strong></p>
-<p><code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> builds a <strong>complete haul × species × length-bin grid</strong> for every combination present in the Survey/Year/Quarter stratum. The output size grows as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mtext mathvariant="normal">hauls</mtext></msub><mo>×</mo><msub><mi>N</mi><mtext mathvariant="normal">species</mtext></msub><mo>×</mo><msub><mi>N</mi><mtext mathvariant="normal">length bins</mtext></msub></mrow><annotation encoding="application/x-tex">N_\text{hauls} \times N_\text{species} \times N_\text{length bins}</annotation></semantics></math></p>
-<p>Filtering to one species before calling <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> is fast. Passing many species — or worse, an unfiltered <code>cbl</code> across multiple surveys — will produce a very large table and may exhaust memory or take minutes to collect.</p>
-<p><strong>Rules of thumb:</strong></p>
-<ul>
-<li>Always filter to a single survey, quarter, and a small set of species before calling <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code>.</li>
-<li>If you only need haul-level totals (no length structure), use <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> instead — it never materialises the length grid and is substantially faster.</li>
-<li>When working with many species, iterate species-by-species rather than passing them all at once.</li>
-</ul>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Avoid — expands the full grid for all species across all surveys</span></span>
-<span><span class="va">cbl</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Correct — filter to one species first</span></span>
-<span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op">==</span> <span class="st">"Atlantic cod"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><strong>When to use <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> vs <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code></strong></p>
+<p>Use <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> when you only need haul-level totals — it skips the length grid entirely and is substantially faster. Reserve <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> for analyses that genuinely need the length structure: length-based indices, year-class tracking, or age-length keys.</p>
 </blockquote>
 </div>
 </section><script id="quarto-html-after-body" type="application/javascript">

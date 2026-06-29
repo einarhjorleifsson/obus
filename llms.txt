@@ -305,6 +305,10 @@ walkthrough of lazy query building.
   : Standardised length-frequency catch table from HH and HL exchange
   data
 
+- [`dr_catch_total()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_total.md)
+  : Haul-level catch totals (numbers and weights) from HH and HL
+  exchange data
+
 - [`dr_check_all()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_all.md)
   : Run all applicable QC checks and return a combined report
 
