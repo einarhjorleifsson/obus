@@ -127,15 +127,16 @@ cbl |>
          Year %in% 2000:2002) |>
   dr_expand_length(hh) |>
   collect() |>
-  mutate(Quarter = paste0("Q", Quarter)) |>
-  ggplot(aes(length_cm, n_hour, fill = Quarter, colour = Quarter)) +
+  mutate(YQ = paste0(Year, "-", Quarter)) |> 
+ # mutate(Quarter = paste0("Q", Quarter)) |>
+  ggplot(aes(length_cm, n_hour)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "ribbon",
                aes(ymin = after_stat(ymin), ymax = after_stat(ymax)),
                alpha = 0.2, colour = NA) +
   stat_summary(fun = mean, geom = "line") +
-  scale_fill_manual(values   = c(Q1 = "#2166ac", Q3 = "#d73027")) +
-  scale_colour_manual(values = c(Q1 = "#2166ac", Q3 = "#d73027")) +
-  facet_wrap(~Year, scales = "free_y", nrow = 1) +
+  #scale_fill_manual(values   = c(Q1 = "#2166ac", Q3 = "#d73027")) +
+  #scale_colour_manual(values = c(Q1 = "#2166ac", Q3 = "#d73027")) +
+  facet_grid(YQ ~ ., scales = "free_y") +
   labs(x = "Length (cm)", y = "Numbers per hour (mean ± 95 % boot CI)",
        fill = NULL, colour = NULL,
        title = "NS-IBTS Q1 & Q3 — haddock length distribution 2000–2002") +
@@ -344,7 +345,7 @@ cat(sprintf("all species: %s rows — %.1f s\n",
             format(nrow(res_all), big.mark = ","), t_all["elapsed"]))
 ```
 
-    all species: 58,966,527 rows — 33.2 s
+    all species: 58,966,527 rows — 32.5 s
 
 The full length-expanded grid for every species in NS-IBTS Q1 — across
 the entire time series — materialises in R in tens of seconds. The only
