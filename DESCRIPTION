@@ -1,6 +1,6 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey data
-Version: 2026.06.23
+Version: 2026.07
 Authors@R: c(person("Einar", "Hjorleifsson", role=c("aut", "cre"), email="einar.hjorleifsson@gmail.com"),
              person("Martin", "Pastoors"   , role=c("aut"), email="martinpastoors@mpff.nl"),
              person("Vaishav", "Soni"   , role=c("aut"), email="Vaishav@ices.dk"))
@@ -10,6 +10,8 @@ License: CC BY 4.0
 Suggests:
     arrow,
     devtools,
+    Hmisc,
+    knitr,
     rmarkdown,
     testthat (>= 3.0.0),
     tictoc,
@@ -35,5 +37,5 @@ Imports:
     rlang,
     sf,
     tidyr
-Config/Needs/website: rmarkdown, quarto
+Config/Needs/website: rmarkdown, quarto, Hmisc
 URL: https://einarhjorleifsson.github.io/obus/

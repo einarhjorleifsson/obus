@@ -36,6 +36,7 @@ estimation.
 library(obus)
 library(dplyr)
 library(ggplot2)
+library(Hmisc)  # required for stat_summary(fun.data = "mean_cl_boot")
 
 hh  <- dr_con("HH")
 hl  <- dr_con("HL")
@@ -56,24 +57,29 @@ and makes trends unreliable. `dr_catch_by_haul()` adds an explicit zero row for
 every haul where a species was not caught (within the same Survey/Year/Quarter
 stratum).
 
+Goatfish (*Mullus surmuletus*) is a good illustration: it appears in virtually
+every year since the late 1990s but is caught in only ~13 % of hauls, and when
+present it arrives in schools giving a high CPUE. Ignoring zero hauls
+overstates the mean by roughly 7-fold. Atlantic cod shows the same bias, more
+so in recent decades as the stock declined and hauls with no cod became the
+norm.
+
 ```{r ns_ibts_zero_demo}
-species_ns <- c("Atlantic herring", "Atlantic cod")
+species_ns <- c("goatfish", "Atlantic cod")
 
 cpue_ns <- cbl |>
   filter(Survey == "NS-IBTS", Quarter == 1, species %in% species_ns) |>
   dr_catch_by_haul(hh) |>
   collect()
 
-cpue_ns_nozero <- cpue_ns |> filter(n_hour > 0)
-
 bind_rows(
-  cpue_ns        |> mutate(zeros = "with zero hauls"),
-  cpue_ns_nozero |> mutate(zeros = "without zero hauls")
+  cpue_ns                      |> mutate(zeros = "with zero hauls"),
+  cpue_ns |> filter(n_hour > 0) |> mutate(zeros = "without zero hauls")
 ) |>
   ggplot(aes(Year, n_hour, colour = zeros)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "pointrange", size = 0.3) +
   facet_wrap(~species, scales = "free_y") +
-  scale_colour_manual(values = c("with zero hauls" = "#2166ac",
+  scale_colour_manual(values = c("with zero hauls"    = "#2166ac",
                                  "without zero hauls" = "#d73027")) +
   labs(y = "Numbers per hour (mean ± 95 % boot CI)",
        x = NULL, colour = NULL,
@@ -82,32 +88,110 @@ bind_rows(
   theme(legend.position = "bottom")
 ```
 
-Including zero hauls consistently lowers the mean and widens the confidence
-interval — the difference is most pronounced in years with low prevalence.
+### Spatial distribution — catch per haul
 
-### Length distributions for selected years
+A bubble plot on haul positions shows where a species is concentrated in a
+given year. Here Atlantic cod in 2015; circle area is proportional to numbers
+caught per haul (zero hauls shown as small open circles).
 
-`dr_expand_length()` propagates zero observations across the full length × haul
-grid, enabling length-structured indices. Here we show cod length distributions
-for three decades.
+```{r ns_ibts_spatial, fig.height=5}
+cod_hauls_2015 <- cbl |>
+  filter(Survey == "NS-IBTS", Quarter == 1,
+         species == "Atlantic cod", Year == 2015) |>
+  dr_catch_by_haul(hh) |>
+  left_join(select(hh, .id, ShootLongitude, ShootLatitude), by = ".id") |>
+  collect()
 
-```{r ns_ibts_length}
-years_sel <- c(1985, 1995, 2005, 2015)
+ggplot(cod_hauls_2015,
+       aes(ShootLongitude, ShootLatitude)) +
+  geom_sf(data = dr_coastline, inherit.aes = FALSE,
+          fill = "grey85", colour = "grey50", linewidth = 0.2) +
+  geom_point(data = ~filter(.x, n_haul == 0),
+             shape = 1, size = 1, colour = "grey40") +
+  geom_point(data = ~filter(.x, n_haul > 0),
+             aes(size = n_haul), colour = "#2166ac", alpha = 0.6) +
+  scale_size_area(max_size = 10, name = "Numbers per haul") +
+  coord_sf(xlim = c(-4, 13), ylim = c(49, 62)) +
+  labs(x = NULL, y = NULL,
+       title = "NS-IBTS Q1 2015 — Atlantic cod catch per haul") +
+  theme_bw() +
+  theme(legend.position = "right")
+```
 
+### Year-class progression in length distributions
+
+The pipeline is not limited to a single quarter. Passing both Q1 and Q3 of
+NS-IBTS in one call shows how the same year-class shifts rightward within a
+year as fish grow, and then again across years. Three years bracketing the
+strong 2000 year-class illustrate this clearly — within each year Q3 fish are
+noticeably larger than Q1 fish, and the dominant cohort advances ~10 cm per
+year.
+
+```{r ns_ibts_length, fig.height=6}
 cbl |>
-  filter(Survey == "NS-IBTS", Quarter == 1, species == "Atlantic cod",
-         Year %in% years_sel) |>
+  filter(Survey == "NS-IBTS", Quarter %in% c(1, 3), species == "haddock",
+         Year %in% 2000:2002) |>
   dr_expand_length(hh) |>
   collect() |>
-  ggplot(aes(length_cm, n_hour)) +
+  mutate(Quarter = paste0("Q", Quarter)) |>
+  ggplot(aes(length_cm, n_hour, fill = Quarter, colour = Quarter)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "ribbon",
                aes(ymin = after_stat(ymin), ymax = after_stat(ymax)),
-               alpha = 0.25, fill = "#2166ac") +
-  stat_summary(fun = mean, geom = "line", colour = "#2166ac") +
-  facet_wrap(~Year, scales = "free_y") +
+               alpha = 0.2, colour = NA) +
+  stat_summary(fun = mean, geom = "line") +
+  scale_fill_manual(values   = c(Q1 = "#2166ac", Q3 = "#d73027")) +
+  scale_colour_manual(values = c(Q1 = "#2166ac", Q3 = "#d73027")) +
+  facet_wrap(~Year, scales = "free_y", nrow = 1) +
   labs(x = "Length (cm)", y = "Numbers per hour (mean ± 95 % boot CI)",
-       title = "NS-IBTS Q1 — Atlantic cod length distribution") +
-  theme_bw()
+       fill = NULL, colour = NULL,
+       title = "NS-IBTS Q1 & Q3 — haddock length distribution 2000–2002") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+### Juvenile index from length-structured data
+
+Length-based indices require zero-filling at the length level before
+aggregating — otherwise hauls where no small fish were caught are silently
+dropped. `dr_expand_length()` ensures every haul contributes, including those
+with zero juveniles.
+
+Haddock spawn in spring (March–May). The NS-IBTS runs in both Q1
+(January–March) and Q3 (July–September), giving two windows onto the same
+year-classes at different ages:
+
+- **Q3 ≤ 15 cm**: 0-group fish (~3–4 months old), representing the year-class
+  spawned that same spring (year-class *Y* seen in Q3 of year *Y*).
+- **Q1 ≤ 22 cm**: 1-group fish (~10 months old), representing the year-class
+  spawned the previous spring (year-class *Y*−1 seen in Q1 of year *Y*).
+
+Aligning both to year-class puts them on the same axis and provides an
+independent cross-check of year-class strength.
+
+```{r ns_ibts_juvenile}
+cbl |>
+  filter(Survey == "NS-IBTS", Quarter %in% c(1, 3), species == "haddock") |>
+  dr_expand_length(hh) |>
+  collect() |>
+  filter((Quarter == 1 & length_cm <= 22) | (Quarter == 3 & length_cm <= 15)) |>
+  mutate(
+    year_class = if_else(Quarter == 1, Year - 1L, Year),
+    quarter_label = if_else(Quarter == 1,
+                            "Q1 (≤ 22 cm, age ~10 months)",
+                            "Q3 (≤ 15 cm, age ~4 months)")
+  ) |>
+  group_by(year_class, quarter_label, .id) |>
+  summarise(n_hour = sum(n_hour), .groups = "drop") |>
+  ggplot(aes(year_class, n_hour, colour = quarter_label)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
+               size = 0.3, position = position_dodge(0.4)) +
+  scale_colour_manual(values = c("Q1 (≤ 22 cm, age ~10 months)" = "#2166ac",
+                                 "Q3 (≤ 15 cm, age ~4 months)"  = "#d73027")) +
+  labs(y = "Numbers per hour (mean ± 95 % boot CI)",
+       x = "Year-class", colour = NULL,
+       title = "NS-IBTS — haddock year-class strength index") +
+  theme_bw() +
+  theme(legend.position = "bottom")
 ```
 
 ---
@@ -171,54 +255,6 @@ cbl |>
 
 ---
 
-## SP-ARSA Q1 — Southern Iberian Atlantic survey
-
-SP-ARSA covers the Gulf of Cádiz (southern Spain / northern Morocco). The small
-pelagic and demersal communities here differ markedly from the North Sea.
-
-```{r sparsa_cpue}
-species_sp <- c("anchovy", "European hake")
-
-cbl |>
-  filter(Survey == "SP-ARSA", Quarter == 1, species %in% species_sp) |>
-  dr_catch_by_haul(hh) |>
-  collect() |>
-  ggplot(aes(Year, n_hour)) +
-  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
-               colour = "#b35806", size = 0.3) +
-  facet_wrap(~species, scales = "free_y") +
-  labs(y = "Numbers per hour (mean ± 95 % boot CI)",
-       x = NULL,
-       title = "SP-ARSA Q1 — anchovy and hake CPUE") +
-  theme_bw()
-```
-
-### Hake length distribution
-
-European hake is a key commercial species in Iberian waters. Length
-distributions illustrate how recruitment varies between years.
-
-```{r sparsa_length}
-years_sp <- c(2005, 2010, 2015, 2020)
-
-cbl |>
-  filter(Survey == "SP-ARSA", Quarter == 1, species == "European hake",
-         Year %in% years_sp) |>
-  dr_expand_length(hh) |>
-  collect() |>
-  ggplot(aes(length_cm, n_hour)) +
-  stat_summary(fun.data = "mean_cl_boot", geom = "ribbon",
-               aes(ymin = after_stat(ymin), ymax = after_stat(ymax)),
-               alpha = 0.25, fill = "#b35806") +
-  stat_summary(fun = mean, geom = "line", colour = "#b35806") +
-  facet_wrap(~Year, scales = "free_y") +
-  labs(x = "Length (cm)", y = "Numbers per hour (mean ± 95 % boot CI)",
-       title = "SP-ARSA Q1 — European hake length distribution") +
-  theme_bw()
-```
-
----
-
 ## How fast is it?
 
 Ten of the most common NS-IBTS Q1 species — full CPUE pipeline from raw
@@ -258,38 +294,42 @@ cpue_10 |>
 
 ## A note on `dr_expand_length()` and large selections
 
-::: {.callout-warning}
-## Filter before expanding
+`dr_expand_length()` builds a **complete haul × species × length-bin grid**,
+so output size grows as $N_\text{hauls} \times N_\text{species} \times N_\text{length bins}$.
+Even so, the DuckDB backend handles surprisingly large jobs efficiently.
 
-`dr_expand_length()` builds a **complete haul × species × length-bin grid** for
-every combination present in the Survey/Year/Quarter stratum. The output size
-grows as:
+```{r expand_timing}
+t10 <- system.time(
+  res10 <- cbl |>
+    filter(Survey == "NS-IBTS", Quarter == 1, species %in% species_10) |>
+    dr_expand_length(hh) |>
+    collect()
+)
 
-$$N_\text{hauls} \times N_\text{species} \times N_\text{length bins}$$
+t_all <- system.time(
+  res_all <- cbl |>
+    filter(Survey == "NS-IBTS", Quarter == 1) |>
+    dr_expand_length(hh) |>
+    collect()
+)
 
-Filtering to one species before calling `dr_expand_length()` is fast. Passing
-many species — or worse, an unfiltered `cbl` across multiple surveys — will
-produce a very large table and may exhaust memory or take minutes to collect.
-
-**Rules of thumb:**
-
-- Always filter to a single survey, quarter, and a small set of species before
-  calling `dr_expand_length()`.
-- If you only need haul-level totals (no length structure), use
-  `dr_catch_by_haul()` instead — it never materialises the length grid and is
-  substantially faster.
-- When working with many species, iterate species-by-species rather than passing
-  them all at once.
-
-```r
-# Avoid — expands the full grid for all species across all surveys
-cbl |> dr_expand_length(hh) |> collect()
-
-# Correct — filter to one species first
-cbl |>
-  filter(Survey == "NS-IBTS", Quarter == 1, species == "Atlantic cod") |>
-  dr_expand_length(hh) |>
-  collect()
+cat(sprintf("10 species: %s rows — %.1f s\n",
+            format(nrow(res10), big.mark = ","), t10["elapsed"]))
+cat(sprintf("all species: %s rows — %.1f s\n",
+            format(nrow(res_all), big.mark = ","), t_all["elapsed"]))
 ```
+
+The full length-expanded grid for every species in NS-IBTS Q1 — across the
+entire time series — materialises in R in tens of seconds. The only real limit
+is R memory: the lazy query itself is always safe, but `collect()` across
+multiple surveys simultaneously will likely exceed available RAM.
+
+::: {.callout-tip}
+## When to use `dr_catch_by_haul()` vs `dr_expand_length()`
+
+Use `dr_catch_by_haul()` when you only need haul-level totals — it skips the
+length grid entirely and is substantially faster. Reserve `dr_expand_length()`
+for analyses that genuinely need the length structure: length-based indices,
+year-class tracking, or age-length keys.
 :::
 
