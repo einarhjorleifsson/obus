@@ -1,3 +1,5 @@
 project:
   render:
-  - '*.qmd'
+  - articles/*.qmd
+execute:
+  freeze: auto
