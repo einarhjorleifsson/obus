@@ -16,10 +16,9 @@ dr_con(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
 
   A character string specifying the table. One of `"HH"`, `"HL"`,
   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`,
-  `"species"`, `"by_length"` (CPUE per length class per haul, from
-  [`.dr_cpue_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_length.md)),
-  or `"by_haul"` (haul-level catch totals, from
-  [`.dr_cpue_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_haul.md)).
+  `"species"`, `"catch_by_length"` (standardised catch-only table per
+  length class per haul, from `dr_hl_length()`), or `"catch_by_haul"`
+  (haul-level catch totals, from `.dr_cpue_by_haul()`).
 
 - url:
 

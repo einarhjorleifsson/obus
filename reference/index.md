@@ -2,13 +2,6 @@
 
 ## All functions
 
-- [`.dr_cpue_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_haul.md)
-  : Haul-level catch totals (numbers and weights) from HH and HL
-  exchange data
-
-- [`.dr_cpue_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_length.md)
-  : Calculate CPUE per length class from HH and HL exchange data
-
 - [`.dr_download()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_download.md)
   : Download and process DATRAS data to parquet files
 
@@ -51,6 +44,13 @@
 - [`dr_assign_area()`](https://einarhjorleifsson.github.io/obus/reference/dr_assign_area.md)
   : Assign Survey Strata to Hauls by Position
 
+- [`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md)
+  : Haul-level CPUE with zero-fill across species
+
+- [`dr_catch_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.md)
+  : Standardised length-frequency catch table from HH and HL exchange
+  data
+
 - [`dr_check_all()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_all.md)
   : Run all applicable QC checks and return a combined report
 
@@ -72,18 +72,14 @@
 - [`dr_download()`](https://einarhjorleifsson.github.io/obus/reference/dr_download.md)
   : Download DATRAS parquet files
 
+- [`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)
+  : Full length-bin expansion with zero-fill across hauls
+
 - [`dr_get()`](https://einarhjorleifsson.github.io/obus/reference/dr_get.md)
   : Download and Import DATRAS Data
 
 - [`dr_get_areas()`](https://einarhjorleifsson.github.io/obus/reference/dr_get_areas.md)
   : Fetch DATRAS Survey Area Polygons
-
-- [`dr_hl_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_hl_haul.md)
-  : Haul-level catch totals (numbers and weights) from HH and HL
-  exchange data
-
-- [`dr_hl_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_hl_length.md)
-  : Zero-filled length-frequency CPUE table from HH and HL exchange data
 
 - [`dr_lookup_areas`](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_areas.md)
   : DATRAS Survey Area Polygons (Valid Strata)

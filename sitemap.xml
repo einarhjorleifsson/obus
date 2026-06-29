@@ -1,12 +1,11 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://einarhjorleifsson.github.io/obus/404.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/LICENSE.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/articles/catch_products.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/articles/index.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/articles/parquet_and_duckdb.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/authors.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/index.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_haul.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_cpue_by_length.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_download.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_row_classifier.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_date.html</loc></url>
@@ -18,6 +17,8 @@
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_species.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_add_starttime.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_assign_area.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_check_all.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_check_sentinels.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_check_subfactor.html</loc></url>
@@ -25,10 +26,9 @@
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_coastline.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_con.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_download.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_get.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_get_areas.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_hl_haul.html</loc></url>
-<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_hl_length.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_lookup_areas.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_lookup_fields.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_lookup_hl_record_type.html</loc></url>

@@ -2,8 +2,9 @@ pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
+  articles/catch_products: catch_products.html
   articles/parquet_and_duckdb: parquet_and_duckdb.html
-last_built: 2026-06-26T15:29Z
+last_built: 2026-06-29T14:58Z
 urls:
   reference: https://einarhjorleifsson.github.io/obus/reference
   article: https://einarhjorleifsson.github.io/obus/articles

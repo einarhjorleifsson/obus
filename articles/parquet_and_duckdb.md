@@ -1,19 +1,19 @@
 # Parquet Files and DuckDB
 
-This article explains two technologies that power
+This article explains three layers that power
 [obus](https://einarhjorleifsson.github.io/obus/) under the hood —
-**Parquet** and **DuckDB** — and why they matter even if you never think
-about them directly.
+**Parquet**, **DuckDB**, and **dbplyr** — and why they matter even if
+you never have to think about them directly.
 
 The short version: the full DATRAS exchange tables (HH, HL, CA) live on
 a web server as Parquet files. When you call
 [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md),
-a tiny in-process database called DuckDB connects to those files and
-lets you filter, join, and compute on them using ordinary
-[dplyr](https://dplyr.tidyverse.org) code — without ever downloading the
-parts you don’t need. You can switch to a regular R data frame at any
-point and **the same [dplyr](https://dplyr.tidyverse.org) code keeps
-working unchanged**.
+a tiny in-process database called DuckDB connects to those files. A
+third layer, [dbplyr](https://dbplyr.tidyverse.org/), translates
+ordinary [dplyr](https://dplyr.tidyverse.org) code into SQL so DuckDB
+can execute it — without ever downloading the parts you don’t need. You
+can switch to a regular R data frame at any point and **the same
+[dplyr](https://dplyr.tidyverse.org) code keeps working unchanged**.
 
 ------------------------------------------------------------------------
 
@@ -34,14 +34,14 @@ fail. Every time you read a CSV you re-run the guessing game.
 
 **Reads the whole file.** If you want only the `Survey`, `Year`, and
 `HaulNumber` columns from a 14-million-row HL file, a CSV reader still
-reads all 40+ columns, then discards the ones you did not ask for.
+reads all 30 columns, then discards the ones you did not ask for.
 
 **No compression awareness.** A plain CSV of the full HL table is
 multiple gigabytes. The same data in Parquet fits in a fraction of that
 — the exact numbers are measured in the [Compression](#compression)
 section below.
 
-Parquet fixes all three.
+Parquet fixes all three
 
 ------------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ Parquet stores one **column** at a time: all `Survey` values together,
 then all `Year` values together, and so on. This sounds like a minor
 implementation detail, but the consequence is important: if you ask for
 only `Survey` and `Year`, Parquet reads only those two columns from
-disk. The other 38 columns are never touched.
+disk. The other 28 columns are never touched.
 
 ### 2.2 Metadata stored in the file
 
@@ -106,7 +106,7 @@ produces a **2.1 GB** file — 22 × larger.
 
 ------------------------------------------------------------------------
 
-## 3 DuckDB: a database that lives inside R
+## 3 DuckDB: an in-process analytical database
 
 ### 3.1 What it is
 
@@ -116,7 +116,10 @@ DuckDB runs **in-process** — it starts up as a library inside your R
 session, with no separate server to install, configure, or connect to.
 When you install [obus](https://einarhjorleifsson.github.io/obus/),
 DuckDB comes along as an R package dependency and is ready to use
-immediately.
+immediately. DuckDB can also store tables in its own `.duckdb` file
+rather than reading from external Parquet files;
+[obus](https://einarhjorleifsson.github.io/obus/) uses the external-file
+mode because the data lives on a server, but both modes are available.
 
 ### 3.2 Three ways to get an `hl` object — and why it doesn’t matter
 
@@ -162,7 +165,7 @@ system.time({
 ```
 
        user  system elapsed
-      1.291   0.073   5.451 
+      1.369   0.065   4.204 
 
 ``` r
 
@@ -172,7 +175,7 @@ system.time({
 ```
 
        user  system elapsed
-     13.269   1.101  61.474 
+     10.824   1.057  27.550 
 
 The difference is what has actually happened.
 [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
@@ -216,7 +219,18 @@ magic happen. It intercepts ordinary
 [`summarise()`](https://dplyr.tidyverse.org/reference/summarise.html),
 [`left_join()`](https://dplyr.tidyverse.org/reference/mutate-joins.html)
 — and translates them into SQL, which DuckDB can then execute against
-the Parquet file.
+the Parquet file. The translation goes beyond
+[dplyr](https://dplyr.tidyverse.org): many base R functions
+([`mean()`](https://rdrr.io/r/base/mean.html),
+[`sum()`](https://rdrr.io/r/base/sum.html),
+[`is.na()`](https://rdrr.io/r/base/NA.html),
+[`paste()`](https://rdrr.io/r/base/paste.html),
+[`case_when()`](https://dplyr.tidyverse.org/reference/case-and-replace-when.html),
+string and date helpers, and more) are also recognised and converted to
+their SQL equivalents. This is not new:
+[dbplyr](https://dbplyr.tidyverse.org/) has long been used to connect R
+to traditional databases such as PostgreSQL, Oracle, and SQL Server —
+DuckDB with Parquet is simply the most recent addition to that list.
 
 You never have to write a line of SQL. You write
 [dplyr](https://dplyr.tidyverse.org):
@@ -237,7 +251,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM yecjsavrloqetls
+    FROM fkgjcsgnokoyljd
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -281,7 +295,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM yecjsavrloqetls
+      FROM fkgjcsgnokoyljd
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -305,7 +319,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.870   0.028   4.002 
+      0.737   0.033   3.986 
 
 ``` r
 
@@ -391,17 +405,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              yecjsavrloqetls.*,
+              fkgjcsgnokoyljd.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM yecjsavrloqetls
-            INNER JOIN wktagzzcbknkppt
-              ON (yecjsavrloqetls.".id" = wktagzzcbknkppt.".id")
-            INNER JOIN asvprbdxdubavvd
-              ON (yecjsavrloqetls.aphia = asvprbdxdubavvd.aphia)
+            FROM fkgjcsgnokoyljd
+            INNER JOIN ofevveygwfuwrtd
+              ON (fkgjcsgnokoyljd.".id" = ofevveygwfuwrtd.".id")
+            INNER JOIN vsfezghhlinzete
+              ON (fkgjcsgnokoyljd.aphia = vsfezghhlinzete.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -420,7 +434,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.769   0.056  10.991 
+      0.711   0.066  10.709 
 
 ``` r
 
@@ -429,13 +443,13 @@ glimpse(cod)
 
     Rows: 152,918
     Columns: 7
-    $ .id       <chr> "NS-IBTS:1966:1:DE:06AD:H18:300:51", "NS-IBTS:1966:1:DE:06AD…
+    $ .id       <chr> "NS-IBTS:1978:1:DK:26SA:HT:5:5", "NS-IBTS:1978:1:DK:26SA:HT:…
     $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-    $ Year      <dbl> 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, 1966, …
+    $ Year      <dbl> 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, 1978, …
     $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-    $ length_cm <dbl> NA, NA, NA, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, …
-    $ n_haul    <dbl> NA, NA, NA, 4, 8, 10, 11, 13, 10, 22, 27, 28, 18, 16, 16, 13…
-    $ n_hour    <dbl> NA, NA, NA, 8, 16, 20, 22, 26, 20, 44, 54, 56, 36, 32, 32, 2…
+    $ length_cm <dbl> 15, 18, 32, 14, 20, 18, 19, 20, 48, 12, 13, 15, 16, 17, 18, …
+    $ n_haul    <dbl> 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, …
+    $ n_hour    <dbl> 2, 4, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, 4, 2, 2, …
 
 Three Parquet files joined, filtered, and computed — all in DuckDB,
 before a single row enters R memory.
