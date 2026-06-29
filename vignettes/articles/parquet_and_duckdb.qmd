@@ -16,9 +16,9 @@ library(obus)
 library(dplyr)
 ```
 
-This article explains two technologies that power `{obus}` under the hood — **Parquet** and **DuckDB** — and why they matter even if you never think about them directly.
+This article explains three layers that power `{obus}` under the hood — **Parquet**, **DuckDB**, and **dbplyr** — and why they matter even if you never have to think about them directly.
 
-The short version: the full DATRAS exchange tables (HH, HL, CA) live on a web server as Parquet files. When you call `dr_con()`, a tiny in-process database called DuckDB connects to those files and lets you filter, join, and compute on them using ordinary `{dplyr}` code — without ever downloading the parts you don't need. You can switch to a regular R data frame at any point and **the same `{dplyr}` code keeps working unchanged**.
+The short version: the full DATRAS exchange tables (HH, HL, CA) live on a web server as Parquet files. When you call `dr_con()`, a tiny in-process database called DuckDB connects to those files. A third layer, `{dbplyr}`, translates ordinary `{dplyr}` code into SQL so DuckDB can execute it — without ever downloading the parts you don't need. You can switch to a regular R data frame at any point and **the same `{dplyr}` code keeps working unchanged**.
 
 ---
 
@@ -28,11 +28,12 @@ The traditional way to share tabular data is a CSV file. CSV is readable by near
 
 **No type information.** A CSV file is plain text. When you read it, the parser has to guess whether `"2026"` is a year (integer) or an ID (character). DATRAS has had persistent problems with fields like `StNo` arriving as integer in some national submissions and character in others, causing `bind_rows()` to fail. Every time you read a CSV you re-run the guessing game.
 
-**Reads the whole file.** If you want only the `Survey`, `Year`, and `HaulNumber` columns from a 14-million-row HL file, a CSV reader still reads all 40+ columns, then discards the ones you did not ask for.
+**Reads the whole file.** If you want only the `Survey`, `Year`, and `HaulNumber` columns from a 14-million-row HL file, a CSV reader still reads all 30 columns, then discards the ones you did not ask for.
 
 **No compression awareness.** A plain CSV of the full HL table is multiple gigabytes. The same data in Parquet fits in a fraction of that — the exact numbers are measured in the [Compression](#compression) section below.
 
-Parquet fixes all three.
+
+Parquet fixes all three
 
 ---
 
@@ -48,7 +49,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...
 NS-IBTS,2026,1,Scotland,Scotia,...
 ```
 
-Parquet stores one **column** at a time: all `Survey` values together, then all `Year` values together, and so on. This sounds like a minor implementation detail, but the consequence is important: if you ask for only `Survey` and `Year`, Parquet reads only those two columns from disk. The other 38 columns are never touched.
+Parquet stores one **column** at a time: all `Survey` values together, then all `Year` values together, and so on. This sounds like a minor implementation detail, but the consequence is important: if you ask for only `Survey` and `Year`, Parquet reads only those two columns from disk. The other 28 columns are never touched.
 
 ### Metadata stored in the file
 
@@ -102,11 +103,11 @@ The result, measured directly from the server file and a freshly written CSV of 
 
 ---
 
-## DuckDB: a database that lives inside R
+## DuckDB: an in-process analytical database
 
 ### What it is
 
-[DuckDB](https://duckdb.org) is a relational database engine designed for analytical queries on large tables. Unlike PostgreSQL or MySQL, DuckDB runs **in-process** — it starts up as a library inside your R session, with no separate server to install, configure, or connect to. When you install `{obus}`, DuckDB comes along as an R package dependency and is ready to use immediately.
+[DuckDB](https://duckdb.org) is a relational database engine designed for analytical queries on large tables. Unlike PostgreSQL or MySQL, DuckDB runs **in-process** — it starts up as a library inside your R session, with no separate server to install, configure, or connect to. When you install `{obus}`, DuckDB comes along as an R package dependency and is ready to use immediately. DuckDB can also store tables in its own `.duckdb` file rather than reading from external Parquet files; `{obus}` uses the external-file mode because the data lives on a server, but both modes are available.
 
 ### Three ways to get an `hl` object — and why it doesn't matter
 
@@ -157,7 +158,7 @@ The `NA` row count signals that `hl` is a **promise** of data, not data itself. 
 
 ### The translation layer
 
-`{dbplyr}` is the package that makes the magic happen. It intercepts ordinary `{dplyr}` verbs — `filter()`, `select()`, `mutate()`, `group_by()`, `summarise()`, `left_join()` — and translates them into SQL, which DuckDB can then execute against the Parquet file.
+`{dbplyr}` is the package that makes the magic happen. It intercepts ordinary `{dplyr}` verbs — `filter()`, `select()`, `mutate()`, `group_by()`, `summarise()`, `left_join()` — and translates them into SQL, which DuckDB can then execute against the Parquet file. The translation goes beyond `{dplyr}`: many base R functions (`mean()`, `sum()`, `is.na()`, `paste()`, `case_when()`, string and date helpers, and more) are also recognised and converted to their SQL equivalents. This is not new: `{dbplyr}` has long been used to connect R to traditional databases such as PostgreSQL, Oracle, and SQL Server — DuckDB with Parquet is simply the most recent addition to that list.
 
 You never have to write a line of SQL. You write `{dplyr}`:
 

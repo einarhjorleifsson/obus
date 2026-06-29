@@ -61,7 +61,7 @@ system.time({
   ca <- dr_get("CA")
 })
 #>    user  system elapsed 
-#>  10.440   2.252  31.151
+#>   9.934   1.927  25.813
 ```
 
 | type |     rows | cols |
@@ -114,7 +114,7 @@ system.time({
   hl <- dr_con("HL")
 })
 #>    user  system elapsed 
-#>   0.072   0.009   0.227
+#>   0.077   0.011   0.281
 ```
 
 The connection is nearly instant — DuckDB reads only the file index, not
@@ -136,19 +136,19 @@ system.time(
     collect()
 )
 #>    user  system elapsed 
-#>   0.419   0.058   0.521
+#>   0.437   0.058   0.468
 glimpse(cod)
 #> Rows: 152,918
 #> Columns: 9
-#> $ .id       <chr> "NS-IBTS:1983:1:DK:26D4:GOV:41:41", "NS-IBTS:1983:1:DK:26D4:…
+#> $ .id       <chr> "NS-IBTS:1986:1:NO:58EJ:GOV:60041:41", "NS-IBTS:1986:1:NO:58…
 #> $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-#> $ Year      <dbl> 1983, 1983, 1983, 1983, 1983, 1983, 1983, 1983, 1983, 1983, …
-#> $ lon       <dbl> 7.5833, 7.5833, 7.5833, 7.5833, 7.5833, 7.5833, 7.5833, 7.58…
-#> $ lat       <dbl> 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, 55.2, …
+#> $ Year      <dbl> 1986, 1986, 1986, 1986, 1986, 1986, 1986, 1986, 1986, 1986, …
+#> $ lon       <dbl> 7.6833, 7.6833, 7.6833, 7.6833, 7.6833, 7.6833, 7.6833, 7.68…
+#> $ lat       <dbl> 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, …
 #> $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-#> $ length_cm <dbl> 38, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, …
-#> $ n_haul    <dbl> 1, 7, 3, 17, 13, 14, 7, 10, 6, 18, 7, 9, 10, 11, 4, 5, 7, 10…
-#> $ n_hour    <dbl> 2, 14, 6, 34, 26, 28, 14, 20, 12, 36, 14, 18, 20, 22, 8, 10,…
+#> $ length_cm <dbl> 16, 17, 20, 22, 27, 30, 31, 35, 36, 38, 39, 48, 53, 69, 71, …
+#> $ n_haul    <dbl> 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, …
+#> $ n_hour    <dbl> 2, 2, 4, 4, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, …
 ```
 
 **The same pipeline works unchanged whether `hh` and `hl` are DuckDB
@@ -181,7 +181,7 @@ lazy query building.
     #>  collate  en_US.UTF-8
     #>  ctype    en_US.UTF-8
     #>  tz       Atlantic/Reykjavik
-    #>  date     2026-06-26
+    #>  date     2026-06-29
     #>  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)
     #>  quarto   1.8.26 @ /usr/local/bin/quarto
     #> 
@@ -212,7 +212,7 @@ lazy query building.
     #>  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
     #>  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)
     #>  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
-    #>  obus        * 2026.06.23 2026-06-26 [1] local
+    #>  obus        * 2026.06.23 2026-06-29 [1] local
     #>  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
     #>  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
     #>  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)
@@ -234,7 +234,7 @@ lazy query building.
     #>  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)
     #>  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
     #> 
-    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpmwZd22/temp_libpatha84d4532fa5b
+    #>  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpYwE8hx/temp_libpath61fe6b7395c1
     #>  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
     #>  * ── Packages attached to the search path.
     #> 

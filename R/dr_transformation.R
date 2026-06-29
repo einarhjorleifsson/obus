@@ -269,10 +269,10 @@ dr_add_length_mm <- function(d, LengthCode = LengthCode, LengthClass = LengthCla
     dplyr::mutate(
       length_mm =
         dplyr::case_when(
-          {{ LengthCode }} == "-9" ~ NA_real_,          # Invalid length codes marked as NA
-          {{ LengthCode }} %in% c(".", "0") ~ {{ LengthClass }},            # Direct mapping
-          {{ LengthCode }} %in% c("1", "2", "5") ~ {{ LengthClass }} * 10,  # Multiply by 10
-          TRUE ~ NA_real_                              # Any other case is NA
+          {{ LengthCode }} == "-9" ~ NA_integer_,
+          {{ LengthCode }} %in% c(".", "0") ~ {{ LengthClass }},
+          {{ LengthCode }} %in% c("1", "2", "5") ~ {{ LengthClass }} * 10L,
+          TRUE ~ NA_integer_
         )
     )
 
