@@ -10,9 +10,11 @@ License: CC BY 4.0
 Suggests:
     arrow,
     devtools,
+    gridExtra,
     Hmisc,
     knitr,
     rmarkdown,
+    scales,
     testthat (>= 3.0.0),
     tictoc,
     tidyverse

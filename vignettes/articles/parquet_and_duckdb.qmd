@@ -158,7 +158,7 @@ The `NA` row count signals that `hl` is a **promise** of data, not data itself. 
 
 ### The translation layer
 
-`{dbplyr}` is the package that makes the magic happen. It intercepts ordinary `{dplyr}` verbs — `filter()`, `select()`, `mutate()`, `group_by()`, `summarise()`, `left_join()` — and translates them into SQL, which DuckDB can then execute against the Parquet file. The translation goes beyond `{dplyr}`: many base R functions (`mean()`, `sum()`, `is.na()`, `paste()`, `case_when()`, string and date helpers, and more) are also recognised and converted to their SQL equivalents. This is not new: `{dbplyr}` has long been used to connect R to traditional databases such as PostgreSQL, Oracle, and SQL Server — DuckDB with Parquet is simply the most recent addition to that list.
+`{dbplyr}` is the package that makes the magic happen. It intercepts ordinary `{dplyr}` verbs — `filter()`, `select()`, `mutate()`, `group_by()`, `summarise()`, `left_join()` — and translates them into SQL, which DuckDB can then execute against the Parquet file. The translation goes beyond `{dplyr}`: many base R functions (`mean()`, `sum()`, `is.na()`, `paste()`, `case_when()`, string and date helpers, and more) are also recognised and converted to their SQL equivalents. This is not new: `{dbplyr}` has long been used to connect R to traditional databases such as PostgreSQL, Oracle, MySQL and SQLite — DuckDB is simply the most recent addition to that list.
 
 You never have to write a line of SQL. You write `{dplyr}`:
 
@@ -205,7 +205,7 @@ system.time(
 nrow(data)
 ```
 
-DuckDB reads only the columns used in the query, skips row-groups that can't match the filter, decompresses what remains, and returns the result. A query that touches a few percent of the 14-million-row file completes in under a second even over an HTTP connection.
+DuckDB reads only the columns used in the query, skips row-groups that can't match the filter, decompresses what remains, and returns the result. A query that touches a portion of the 14-million-row file completes in seconds even over an HTTP connection.
 
 ### Joins stay lazy too
 

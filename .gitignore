@@ -5,13 +5,15 @@
 obus.Rproj
 datras
 data-raw/update_web.R
-docs/
 garbage/
-docs
+docs/
 inst/doc
+vignettes/_freeze/
+vignettes/.quarto/
 vignettes_ignore
 *.xlsx
 *.pdf
 *.html
+*.fgb
 .positai
 AGENTS.md

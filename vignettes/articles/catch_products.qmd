@@ -12,7 +12,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-Three functions cover most survey-index workflows:
+Three functions cover most survey-index workflows. They are designed for
+**interactive analysis**: lazy DuckDB queries, automatic zero-filling, and a
+concise pipeline that goes from raw exchange data to a collected data frame in
+a single chain. If instead you need a **shareable data product** — a parquet
+file with unambiguous columns and protocol metadata attached — see the
+[Standardized HL](standardize_hl.qmd) article.
+
+
 
 | Function | Input | Output | Zero-fill |
 |---|---|---|---|
@@ -142,12 +149,13 @@ cbl |>
   stat_summary(fun = mean, geom = "line") +
   #scale_fill_manual(values   = c(Q1 = "#2166ac", Q3 = "#d73027")) +
   #scale_colour_manual(values = c(Q1 = "#2166ac", Q3 = "#d73027")) +
-  facet_grid(YQ ~ ., scales = "free_y") +
+  facet_grid(YQ ~ .) +
   labs(x = "Length (cm)", y = "Numbers per hour (mean ± 95 % boot CI)",
        fill = NULL, colour = NULL,
        title = "NS-IBTS Q1 & Q3 — haddock length distribution 2000–2002") +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  coord_cartesian(xlim = c(5, 45))
 ```
 
 ### Juvenile index from length-structured data
