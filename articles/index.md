@@ -6,3 +6,5 @@
   indices](https://einarhjorleifsson.github.io/obus/articles/catch_products.md):
 - [Parquet Files and
   DuckDB](https://einarhjorleifsson.github.io/obus/articles/parquet_and_duckdb.md):
+- [Standardized HL: the semantic layer for DATRAS length
+  data](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.md):

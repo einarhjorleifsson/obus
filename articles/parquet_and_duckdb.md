@@ -165,7 +165,7 @@ system.time({
 ```
 
        user  system elapsed
-      0.688   0.052   4.960 
+      1.330   0.065   3.544 
 
 ``` r
 
@@ -175,7 +175,7 @@ system.time({
 ```
 
        user  system elapsed
-      5.809   0.895  16.628 
+     10.386   1.087  21.132 
 
 The difference is what has actually happened.
 [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
@@ -229,8 +229,8 @@ the Parquet file. The translation goes beyond
 string and date helpers, and more) are also recognised and converted to
 their SQL equivalents. This is not new:
 [dbplyr](https://dbplyr.tidyverse.org/) has long been used to connect R
-to traditional databases such as PostgreSQL, Oracle, and SQL Server —
-DuckDB with Parquet is simply the most recent addition to that list.
+to traditional databases such as PostgreSQL, Oracle, MySQL and SQLite —
+DuckDB is simply the most recent addition to that list.
 
 You never have to write a line of SQL. You write
 [dplyr](https://dplyr.tidyverse.org):
@@ -251,7 +251,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM szdhqrqntaxvwll
+    FROM obgustrqcdqyqfo
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -295,7 +295,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM szdhqrqntaxvwll
+      FROM obgustrqcdqyqfo
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -319,7 +319,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.388   0.014   5.069 
+      0.836   0.020   3.850 
 
 ``` r
 
@@ -330,8 +330,8 @@ nrow(data)
 
 DuckDB reads only the columns used in the query, skips row-groups that
 can’t match the filter, decompresses what remains, and returns the
-result. A query that touches a few percent of the 14-million-row file
-completes in under a second even over an HTTP connection.
+result. A query that touches a portion of the 14-million-row file
+completes in seconds even over an HTTP connection.
 
 ### 4.4 Joins stay lazy too
 
@@ -405,17 +405,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              szdhqrqntaxvwll.*,
+              obgustrqcdqyqfo.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM szdhqrqntaxvwll
-            INNER JOIN cejnuwnkwzfzapw
-              ON (szdhqrqntaxvwll.".id" = cejnuwnkwzfzapw.".id")
-            INNER JOIN tgpuejpmajdnbxm
-              ON (szdhqrqntaxvwll.aphia = tgpuejpmajdnbxm.aphia)
+            FROM obgustrqcdqyqfo
+            INNER JOIN actybtsxgvwwpjm
+              ON (obgustrqcdqyqfo.".id" = actybtsxgvwwpjm.".id")
+            INNER JOIN ecrqptxeozffuuh
+              ON (obgustrqcdqyqfo.aphia = ecrqptxeozffuuh.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -434,7 +434,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.321   0.031  10.280 
+      2.565   0.034   7.125 
 
 ``` r
 

@@ -4,6 +4,7 @@
 <url><loc>https://einarhjorleifsson.github.io/obus/articles/catch_products.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/articles/index.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/articles/parquet_and_duckdb.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/articles/standardize_hl.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/authors.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/index.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dot-dr_download.html</loc></url>
@@ -36,6 +37,7 @@
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_lookup_species.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_lookup_vocabulary.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_settypes.html</loc></url>
+<url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/dr_translate.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/getIndicesAllYears.html</loc></url>
 <url><loc>https://einarhjorleifsson.github.io/obus/reference/getIndicesAllYears2.html</loc></url>

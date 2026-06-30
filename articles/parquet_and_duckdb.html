@@ -38,6 +38,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/catch_products.html">Catch products: from raw exchange data to survey indices</a></li>
     <li><a class="dropdown-item" href="../articles/parquet_and_duckdb.html">Parquet Files and DuckDB</a></li>
+    <li><a class="dropdown-item" href="../articles/standardize_hl.html">Standardized HL: the semantic layer for DATRAS length data</a></li>
   </ul>
 </li>
       </ul>
@@ -145,7 +146,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  0.688   0.052   4.960 </code></pre>
+  1.330   0.065   3.544 </code></pre>
 </div>
 </div>
 <div class="cell">
@@ -155,7 +156,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  5.809   0.895  16.628 </code></pre>
+ 10.386   1.087  21.132 </code></pre>
 </div>
 </div>
 <p>The difference is what has actually happened. <code><a href="../reference/dr_con.html">dr_con()</a></code> sends an HTTP HEAD request, then tells DuckDB to note the file location and read its footer — a few kilobytes. The 14-million-row table has not moved. <code><a href="../reference/dr_get.html">dr_get()</a></code> downloads the entire file.</p>
@@ -179,7 +180,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <section class="level3" data-number="4.1"><h3 data-number="4.1" id="the-translation-layer">
 <span class="header-section-number">4.1</span> The translation layer<a class="anchor" aria-label="anchor" href="#the-translation-layer"></a>
 </h3>
-<p><a href="https://dbplyr.tidyverse.org/" class="external-link">dbplyr</a> is the package that makes the magic happen. It intercepts ordinary <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> verbs — <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join()</a></code> — and translates them into SQL, which DuckDB can then execute against the Parquet file. The translation goes beyond <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a>: many base R functions (<code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code>, <code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code>, <code><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na()</a></code>, <code><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when()</a></code>, string and date helpers, and more) are also recognised and converted to their SQL equivalents. This is not new: <a href="https://dbplyr.tidyverse.org/" class="external-link">dbplyr</a> has long been used to connect R to traditional databases such as PostgreSQL, Oracle, and SQL Server — DuckDB with Parquet is simply the most recent addition to that list.</p>
+<p><a href="https://dbplyr.tidyverse.org/" class="external-link">dbplyr</a> is the package that makes the magic happen. It intercepts ordinary <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> verbs — <code><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join()</a></code> — and translates them into SQL, which DuckDB can then execute against the Parquet file. The translation goes beyond <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a>: many base R functions (<code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code>, <code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code>, <code><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na()</a></code>, <code><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste()</a></code>, <code><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when()</a></code>, string and date helpers, and more) are also recognised and converted to their SQL equivalents. This is not new: <a href="https://dbplyr.tidyverse.org/" class="external-link">dbplyr</a> has long been used to connect R to traditional databases such as PostgreSQL, Oracle, MySQL and SQLite — DuckDB is simply the most recent addition to that list.</p>
 <p>You never have to write a line of SQL. You write <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a>:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
@@ -193,7 +194,7 @@ NS-IBTS,2026,1,Scotland,Scotia,...</code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>&lt;SQL&gt;
 SELECT *
-FROM szdhqrqntaxvwll
+FROM obgustrqcdqyqfo
 WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)</code></pre>
 </div>
 </div>
@@ -233,7 +234,7 @@ WHEN (LengthCode IN ('.', '0')) THEN (LengthClass / 10.0)
 WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
 ELSE NULL
 END AS length_cm
-  FROM szdhqrqntaxvwll
+  FROM obgustrqcdqyqfo
 ) AS q01
 WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))</code></pre>
 </div>
@@ -250,7 +251,7 @@ WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  0.388   0.014   5.069 </code></pre>
+  0.836   0.020   3.850 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span></span></code></pre></div>
@@ -258,7 +259,7 @@ WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 <pre><code>[1] 2301995</code></pre>
 </div>
 </div>
-<p>DuckDB reads only the columns used in the query, skips row-groups that can’t match the filter, decompresses what remains, and returns the result. A query that touches a few percent of the 14-million-row file completes in under a second even over an HTTP connection.</p>
+<p>DuckDB reads only the columns used in the query, skips row-groups that can’t match the filter, decompresses what remains, and returns the result. A query that touches a portion of the 14-million-row file completes in seconds even over an HTTP connection.</p>
 </section><section class="level3" data-number="4.4"><h3 data-number="4.4" id="joins-stay-lazy-too">
 <span class="header-section-number">4.4</span> Joins stay lazy too<a class="anchor" aria-label="anchor" href="#joins-stay-lazy-too"></a>
 </h3>
@@ -329,17 +330,17 @@ ELSE NULL
 END AS length_cm
       FROM (
         SELECT
-          szdhqrqntaxvwll.*,
+          obgustrqcdqyqfo.*,
           HaulValidity,
           DataType,
           HaulDuration,
           latin,
           species
-        FROM szdhqrqntaxvwll
-        INNER JOIN cejnuwnkwzfzapw
-          ON (szdhqrqntaxvwll.".id" = cejnuwnkwzfzapw.".id")
-        INNER JOIN tgpuejpmajdnbxm
-          ON (szdhqrqntaxvwll.aphia = tgpuejpmajdnbxm.aphia)
+        FROM obgustrqcdqyqfo
+        INNER JOIN actybtsxgvwwpjm
+          ON (obgustrqcdqyqfo.".id" = actybtsxgvwwpjm.".id")
+        INNER JOIN ecrqptxeozffuuh
+          ON (obgustrqcdqyqfo.aphia = ecrqptxeozffuuh.aphia)
       ) AS q01
     ) AS q01
   ) AS q01
@@ -358,7 +359,7 @@ WHERE
 <span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>   user  system elapsed
-  0.321   0.031  10.280 </code></pre>
+  2.565   0.034   7.125 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">cod</span><span class="op">)</span></span></code></pre></div>
