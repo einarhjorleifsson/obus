@@ -50,6 +50,14 @@ hl  <- dr_con("HL")
 
 # Build the base catch table once (lazy); filter downstream
 cbl <- dr_catch_by_length(hh, hl, haulval = "V")
+
+# Ensure DuckDB can write temp files for large spill-to-disk queries
+local({
+  tmp <- file.path(tempdir(), "duckdb_temp")
+  dir.create(tmp, showWarnings = FALSE, recursive = TRUE)
+  DBI::dbExecute(duckdbfs::cached_connection(),
+                 sprintf("SET temp_directory='%s'", tmp))
+})
 ```
 
 
@@ -315,6 +323,13 @@ t10 <- system.time(
     collect()
 )
 
+cat(sprintf("10 species: %s rows — %.1f s\n",
+            format(nrow(res10), big.mark = ","), t10["elapsed"]))
+```
+
+Running the same pipeline over all species in NS-IBTS Q1 — every year, every species — takes tens of seconds and produces millions of rows. The only real limit is R memory: the lazy query is always safe, but `collect()` across multiple surveys simultaneously may exceed available RAM.
+
+```{r expand_timing_all, eval=FALSE}
 t_all <- system.time(
   res_all <- cbl |>
     filter(Survey == "NS-IBTS", Quarter == 1) |>
@@ -322,16 +337,9 @@ t_all <- system.time(
     collect()
 )
 
-cat(sprintf("10 species: %s rows — %.1f s\n",
-            format(nrow(res10), big.mark = ","), t10["elapsed"]))
 cat(sprintf("all species: %s rows — %.1f s\n",
             format(nrow(res_all), big.mark = ","), t_all["elapsed"]))
 ```
-
-The full length-expanded grid for every species in NS-IBTS Q1 — across the
-entire time series — materialises in R in tens of seconds. The only real limit
-is R memory: the lazy query itself is always safe, but `collect()` across
-multiple surveys simultaneously will likely exceed available RAM.
 
 ::: {.callout-tip}
 ## When to use `dr_catch_by_haul()` vs `dr_expand_length()`
