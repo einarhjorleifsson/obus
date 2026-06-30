@@ -186,16 +186,16 @@ cbl |>
   mutate(
     year_class = if_else(Quarter == 1, Year - 1L, Year),
     quarter_label = if_else(Quarter == 1,
-                            "Q1 (≤ 22 cm, age ~10 months)",
-                            "Q3 (≤ 15 cm, age ~4 months)")
+                            "Q1 (<= 22 cm, age ~10 months)",
+                            "Q3 (<= 15 cm, age ~4 months)")
   ) |>
   group_by(year_class, quarter_label, .id) |>
   summarise(n_hour = sum(n_hour), .groups = "drop") |>
   ggplot(aes(year_class, n_hour, colour = quarter_label)) +
   stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
                size = 0.3, position = position_dodge(0.4)) +
-  scale_colour_manual(values = c("Q1 (≤ 22 cm, age ~10 months)" = "#2166ac",
-                                 "Q3 (≤ 15 cm, age ~4 months)"  = "#d73027")) +
+  scale_colour_manual(values = c("Q1 (<= 22 cm, age ~10 months)" = "#2166ac",
+                                 "Q3 (<= 15 cm, age ~4 months)"  = "#d73027")) +
   labs(y = "Numbers per hour (mean ± 95 % boot CI)",
        x = "Year-class", colour = NULL,
        title = "NS-IBTS — haddock year-class strength index") +
