@@ -294,6 +294,48 @@ dictionary <- dictionary |>
   mutate(new = coalesce(new, new_fill)) |>
   select(-new_fill)
 
+# Hand-curated improved descriptions -------------------------------------------
+# description_new: what the field IS and how to use it.
+# Code values belong in dr_lookup_vocabulary, not here.
+description_new_tbl <- tribble(
+  ~table, ~new,                  ~description_new,
+
+  # HH ---
+  "HH", "HaulValidity",
+    "Validity assessment for the haul. Filter to valid hauls before computing abundance indices.",
+
+  "HH", "DataType",
+    "Governs how NumberAtLength, TotalNumber, and SpeciesCategoryWeight in HL must be interpreted. The most common source of silent errors in user code. Must be joined from HH before any HL arithmetic.",
+
+  "HH", "StandardSpeciesCode",
+    "Recording tier for the standard species list applied at this haul. Determines which hauls are valid for a given species abundance index; hauls below the required tier must be excluded before zero-filling. Survey-specific; see survey manuals.",
+
+  "HH", "BycatchSpeciesCode",
+    "Recording tier for bycatch species at this haul. Paired with StandardSpeciesCode to assess whether a species absence reflects true absence or incomplete protocol coverage. Survey-specific; see survey manuals.",
+
+  # HL ---
+  "HL", "SpeciesValidity",
+    "Record type indicating what was measured for this species/haul group. Governs which rows to include in derived products; standard products retain only the primary full-record type.",
+
+  "HL", "SpeciesCategory",
+    "Size-based subsampling stratum identifier for a species/sex group within a haul. Used when catch is split into size grades with different SubsamplingFactor per stratum. Part of the HL grouping key (.id x aphia x sex x DevelopmentStage x SpeciesCategory).",
+
+  "HL", "SubsamplingFactor",
+    "Raise factor for the measured sub-sample. Multiply NumberAtLength by SubsamplingFactor to estimate total catch at that length class. May vary between size strata within the same species/haul group when size-stratified subsampling is applied.",
+
+  "HL", "TotalNumber",
+    "Total catch count for the species/sex/SpeciesCategory group. Repeated identically across every length row within the same group - deduplicate before summing. Semantics (per haul vs. per hour) depend on DataType. When size-stratified subsampling is used, reflects the stratum total, not the species-haul total.",
+
+  "HL", "sex",
+    "Sex of the measured specimens, determined by visual bulk-catch examination (not dissection; dissection applies in CA). Part of the HL grouping key (.id x aphia x sex x DevelopmentStage x SpeciesCategory). For sexually dimorphic species, males and females appear in separate rows.",
+
+  "HL", "DevelopmentStage",
+    "Developmental or maturity stage assessed by external observation. Rarely populated; most rows are NA. Part of the HL grouping key (.id x aphia x sex x DevelopmentStage x SpeciesCategory) when present."
+)
+
+dictionary <- dictionary |>
+  left_join(description_new_tbl, by = c("table", "new"))
+
 dr_lookup_fields <- dictionary
 usethis::use_data(dr_lookup_fields, overwrite = TRUE)
 

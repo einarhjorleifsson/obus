@@ -5,7 +5,7 @@
 \alias{dr_lookup_fields}
 \title{DATRAS field type lookup table}
 \format{
-An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 333 rows and 5 columns.
+An object of class \code{tbl_df} (inherits from \code{tbl}, \code{data.frame}) with 333 rows and 6 columns.
 }
 \source{
 \url{https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList}

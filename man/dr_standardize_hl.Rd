@@ -2,35 +2,66 @@
 % Please edit documentation in R/dr_standardize.R
 \name{dr_standardize_hl}
 \alias{dr_standardize_hl}
-\title{Standardize HL table with derived columns and type flag}
+\title{Standardize HL into a clean catch foundation (length and haul summaries)}
 \usage{
 dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)
 }
 \arguments{
-\item{hh}{DATRAS HH table with columns: .id, Survey, Year, Quarter, DataType, HaulDuration}
+\item{hh}{DATRAS HH table (standard column names, \code{.id} present).
+Required columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter},
+\code{DataType}, \code{HaulDuration}, \code{StandardSpeciesCode},
+\code{BycatchSpeciesCode}. Optional: \code{HaulValidity} (used when
+\code{haulval} is set).}
 
-\item{hl}{DATRAS HL table with columns: .id, aphia, LengthCode, LengthClass,
-NumberAtLength, SubsamplingFactor, TotalNumber, SpeciesCategoryWeight,
-SpeciesSex, SpeciesCategory, SpeciesValidity}
+\item{hl}{DATRAS HL table (standard column names, \code{.id} present).
+Required for \code{type = "length"}: \code{.id}, \code{aphia},
+\code{NumberAtLength}, \code{LengthClass}, \code{LengthCode},
+\code{SubsamplingFactor}, \code{sex}, \code{SpeciesValidity}.
+Required for \code{type = "haul"}: additionally \code{TotalNumber},
+\code{SpeciesCategoryWeight}, \code{SpeciesCategory}.}
 
-\item{species}{Species lookup table (aphia, latin, species). Defaults to dr_con("species")}
+\item{species}{Species lookup with columns \code{aphia}, \code{latin},
+\code{species}. Defaults to \code{dr_con("species")}.}
 
-\item{haulval}{Character vector of HaulValidity codes to retain. NULL keeps all.}
+\item{haulval}{Character vector of \code{HaulValidity} codes to retain.
+\code{NULL} keeps all hauls.}
 }
 \value{
-A lazy DuckDB table with two row types:
-\itemize{
-\item type="length": one row per haul × species × length_mm
-\item type="haul": one row per haul × species
-Both have columns: .id, Survey, Year, Quarter, aphia, latin, species, type,
-length_mm, length_cm, accuracy (length type only), n_haul, n_hour,
-w_haul, w_hour (haul type only), SpeciesValidity, StandardSpeciesCode, BycatchSpeciesCode
-}
+A lazy DuckDB table with columns:
+\code{.id}, \code{Survey}, \code{Year}, \code{Quarter},
+\code{aphia}, \code{latin}, \code{species}, \code{type},
+\code{length_mm}, \code{length_cm}, \code{accuracy}
+(\code{NA} for \code{type = "haul"}),
+\code{n_haul}, \code{n_hour},
+\code{w_haul}, \code{w_hour}
+(\code{NA} for \code{type = "length"}),
+\code{p_females}, \code{SpeciesValidity},
+\code{StandardSpeciesCode}, \code{BycatchSpeciesCode}.
 }
 \description{
-Creates a standardized HL parquet foundation with two row types:
-\itemize{
-\item type="length": length-frequency records with computed n_haul/n_hour
-\item type="haul": haul-level summaries (TotalNumber, weight) deduplicated by haul × species
+Produces a unified catch table from raw HH and HL exchange tables with two
+row types controlled by the \code{type} column:
 }
+\details{
+\describe{
+\item{\code{type = "length"}}{One row per \code{.id} \eqn{\times} \code{aphia}
+\eqn{\times} \code{length_mm}. Sex and DevelopmentStage are collapsed;
+sex composition is summarised as \code{p_females} (proportion female among
+sexed fish). Derived from \code{NumberAtLength} via
+\code{\link{dr_add_n_and_cpue}}. Replaces \code{dr_catch_by_length()}.}
+\item{\code{type = "haul"}}{One row per \code{.id} \eqn{\times} \code{aphia}.
+Numbers (\code{n_haul}, \code{n_hour}) come from \code{TotalNumber};
+weights (\code{w_haul}, \code{w_hour}) from \code{SpeciesCategoryWeight}.
+Sex composition summarised as \code{p_females}. Replaces
+\code{dr_catch_total()} (without zero-filling). Pass output to
+\code{\link{dr_catch_by_haul}} for zero-filling.}
+}
+
+\strong{Note:} \code{n_haul} from \code{type = "haul"} may differ from the
+sum of \code{n_haul} across \code{type = "length"} rows for the same haul
+and species. The haul path uses \code{TotalNumber} which counts all fish
+including those counted but not measured at length.
+}
+\seealso{
+\code{\link{dr_catch_by_haul}}, \code{\link{dr_expand_length}}
 }

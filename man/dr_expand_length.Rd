@@ -7,16 +7,21 @@
 dr_expand_length(catch, hh)
 }
 \arguments{
-\item{catch}{Output of \code{\link{dr_catch_by_length}} (or a filtered subset).}
+\item{catch}{A length-frequency catch table — typically
+\code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
+\code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
+\code{latin}, \code{species}, \code{length_mm}, \code{length_cm},
+\code{accuracy}, \code{n_haul}, \code{n_hour}, \code{SpeciesValidity}.}
 
 \item{hh}{DATRAS haul header table providing the full haul list. Required
 columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}.}
 }
 \value{
 A lazy DuckDB table with one row per \code{.id} \eqn{\times}
-\code{aphia} \eqn{\times} \code{length_mm}: same columns as
-\code{\link{dr_catch_by_length}}. \code{n_haul} and \code{n_hour} are
-\code{0} and \code{SpeciesValidity} is \code{NA} for zero rows.
+\code{aphia} \eqn{\times} \code{length_mm}. \code{n_haul} and
+\code{n_hour} are \code{0} and \code{SpeciesValidity} is \code{NA} for
+zero rows.
 }
 \description{
 Expands \code{\link{dr_catch_by_length}} output to a complete
@@ -26,5 +31,5 @@ that SQY, with zeros where absent. Works with one or more species; filter
 to a single species before calling to keep the result manageable.
 }
 \seealso{
-\code{\link{dr_catch_by_length}}, \code{\link{dr_catch_by_haul}}
+\code{\link{dr_standardize_hl}}, \code{\link{dr_catch_by_haul}}
 }

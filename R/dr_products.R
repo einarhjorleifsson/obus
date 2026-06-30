@@ -42,7 +42,9 @@
 #' @export
 
 dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
-
+  .Deprecated("dr_standardize_hl",
+              msg = paste0("'dr_catch_by_length()' is deprecated. ",
+                           "Use dr_standardize_hl() and filter(type == 'length') instead."))
   if (is.null(species)) species <- dr_con("species")
   if (!is.null(haulval)) hh <- dplyr::filter(hh, HaulValidity %in% haulval)
 
@@ -70,7 +72,11 @@ dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' anywhere in a Survey/Year/Quarter gets an explicit zero row for each haul
 #' in that SQY where it was absent. Works with one or more species.
 #'
-#' @param catch Output of \code{\link{dr_catch_by_length}} (or a filtered subset).
+#' @param catch A length-frequency catch table — typically
+#'   \code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+#'   deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
+#'   \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
+#'   \code{latin}, \code{species}, \code{n_haul}, \code{n_hour}.
 #' @param hh DATRAS haul header table providing the full haul list. Required
 #'   columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}.
 #'
@@ -79,7 +85,7 @@ dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #'   \code{aphia}, \code{latin}, \code{species}, \code{n_haul}, \code{n_hour}.
 #'   \code{n_haul} and \code{n_hour} are \code{0} for zero rows.
 #'
-#' @seealso \code{\link{dr_catch_by_length}}, \code{\link{dr_expand_length}}
+#' @seealso \code{\link{dr_standardize_hl}}, \code{\link{dr_expand_length}}
 #' @export
 
 dr_catch_by_haul <- function(catch, hh) {
@@ -115,16 +121,21 @@ dr_catch_by_haul <- function(catch, hh) {
 #' that SQY, with zeros where absent. Works with one or more species; filter
 #' to a single species before calling to keep the result manageable.
 #'
-#' @param catch Output of \code{\link{dr_catch_by_length}} (or a filtered subset).
+#' @param catch A length-frequency catch table — typically
+#'   \code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+#'   deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
+#'   \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
+#'   \code{latin}, \code{species}, \code{length_mm}, \code{length_cm},
+#'   \code{accuracy}, \code{n_haul}, \code{n_hour}, \code{SpeciesValidity}.
 #' @param hh DATRAS haul header table providing the full haul list. Required
 #'   columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}.
 #'
 #' @return A lazy DuckDB table with one row per \code{.id} \eqn{\times}
-#'   \code{aphia} \eqn{\times} \code{length_mm}: same columns as
-#'   \code{\link{dr_catch_by_length}}. \code{n_haul} and \code{n_hour} are
-#'   \code{0} and \code{SpeciesValidity} is \code{NA} for zero rows.
+#'   \code{aphia} \eqn{\times} \code{length_mm}. \code{n_haul} and
+#'   \code{n_hour} are \code{0} and \code{SpeciesValidity} is \code{NA} for
+#'   zero rows.
 #'
-#' @seealso \code{\link{dr_catch_by_length}}, \code{\link{dr_catch_by_haul}}
+#' @seealso \code{\link{dr_standardize_hl}}, \code{\link{dr_catch_by_haul}}
 #' @export
 
 dr_expand_length <- function(catch, hh) {
@@ -238,6 +249,11 @@ dr_expand_length <- function(catch, hh) {
 #'
 #' @export
 dr_catch_total <- function(hh = NULL, hl = NULL, species = NULL) {
+  .Deprecated("dr_standardize_hl",
+              msg = paste0("'dr_catch_total()' is deprecated. ",
+                           "Use dr_standardize_hl() and filter(type == 'haul') instead. ",
+                           "Note: dr_standardize_hl() does not zero-fill; ",
+                           "pipe to dr_catch_by_haul() for zero-filling."))
   if (is.null(hh))      hh      <- dr_con("HH")
   if (is.null(hl))      hl      <- dr_con("HL")
   if (is.null(species)) species <- dr_con("species")

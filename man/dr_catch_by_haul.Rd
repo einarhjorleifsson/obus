@@ -7,7 +7,11 @@
 dr_catch_by_haul(catch, hh)
 }
 \arguments{
-\item{catch}{Output of \code{\link{dr_catch_by_length}} (or a filtered subset).}
+\item{catch}{A length-frequency catch table — typically
+\code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
+\code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
+\code{latin}, \code{species}, \code{n_haul}, \code{n_hour}.}
 
 \item{hh}{DATRAS haul header table providing the full haul list. Required
 columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}.}
@@ -25,5 +29,5 @@ anywhere in a Survey/Year/Quarter gets an explicit zero row for each haul
 in that SQY where it was absent. Works with one or more species.
 }
 \seealso{
-\code{\link{dr_catch_by_length}}, \code{\link{dr_expand_length}}
+\code{\link{dr_standardize_hl}}, \code{\link{dr_expand_length}}
 }
