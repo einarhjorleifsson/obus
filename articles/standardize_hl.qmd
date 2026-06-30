@@ -27,13 +27,12 @@ Users shouldn't need to understand these interdependencies. They should work wit
 ## The solution: standardized HL
 
 `dr_standardize_hl()` creates a **semantic layer** — a parquet file that is designed
-to be written once and reused across many analyses. For **interactive work** — quick
-CPUE indices, length distributions, zero-filling handled automatically — the
-[Catch products](catch_products.qmd) pipeline (`dr_catch_by_length()` →
-`dr_catch_by_haul()` / `dr_expand_length()`) is more ergonomic. The two approaches
-are complementary: the `catch_products` functions are convenient but do not expose
-protocol metadata; `dr_standardize_hl()` carries `StandardSpeciesCode` and
-`BycatchSpeciesCode` through so protocol-aware filtering is possible.
+to be written once and reused across many analyses. It is also the recommended
+starting point for interactive work: `filter(type == "length")` output feeds
+directly into `dr_catch_by_haul()` and `dr_expand_length()` for zero-filling,
+while `filter(type == "haul")` gives haul-level numbers and weights with protocol
+metadata (`StandardSpeciesCode`, `BycatchSpeciesCode`) attached. See
+[Catch products](catch_products.qmd) for worked zero-fill examples.
 
 The standardized HL is a parquet file that is:
 
@@ -45,9 +44,7 @@ The standardized HL is a parquet file that is:
 ```{r load}
 library(obus)
 library(dplyr)
-library(tidyr)
 library(ggplot2)
-library(Hmisc)
 
 hh <- dr_con("HH")
 hl <- dr_con("HL")
@@ -70,11 +67,22 @@ The standardized HL has a `type` flag that separates two fundamentally different
 ```{r}
 length_rows <- hl_std |> filter(type == "length") |> head(3)
 cat("Type='length' rows — length-frequency measurements:\n")
-print(length_rows |> select(.id, species, length_mm, n_haul, n_hour))
+print(length_rows |> select(.id, species, length_mm, n_haul, n_hour, p_females))
 
 haul_rows <- hl_std |> filter(type == "haul") |> head(3)
 cat("\nType='haul' rows — haul-level bookkeeping (deduplicated):\n")
-print(haul_rows |> select(.id, species, n_haul, w_haul))
+print(haul_rows |> select(.id, species, n_haul, w_haul, p_females))
+```
+
+`p_females` encodes sex composition as a single proportion: `n_F / (n_F + n_M)`
+computed from fish with recorded sex (`sex` ∈ `{"F", "M"}`). It is `NA` when
+no fish in the group were sexed (unsexed catches, `"B"`, `"U"`). Males and
+females can be recovered downstream:
+
+```r
+filter(type == "length") |>
+  mutate(n_females = n_haul * p_females,
+         n_males   = n_haul * (1 - p_females))
 ```
 
 **Why two types in one table?**
@@ -82,63 +90,11 @@ print(haul_rows |> select(.id, species, n_haul, w_haul))
 1. **Simplicity**: users interact with one parquet file
 2. **Flexibility**: users choose which data to use downstream
 3. **Completeness**: preserves all caught species (even those not measured at length)
-4. **Zero-fill**: haul-type rows define the species grid for zero-filling
+4. **Zero-fill**: type="length" feeds `dr_catch_by_haul()` and `dr_expand_length()` unchanged
 
-## Example workflows
-
-### Length-structured index
-
-For stock assessment, use type="length" rows:
-
-```{r}
-# Haddock length distribution across all hauls
-haddock_lf <- hl_std |>
-  filter(type == "length", species == "haddock")
-
-cat("Haddock length records:", nrow(haddock_lf), "\n")
-cat("Mean CPUE by 10cm bin:\n")
-print(haddock_lf |>
-  mutate(bin = floor(length_cm / 10) * 10) |>
-  group_by(bin) |>
-  summarise(mean_cpue = mean(n_hour, na.rm = TRUE), .groups = "drop"))
-```
-
-### Haul-level CPUE with zero-fill
-
-For indices, use type="haul" rows and add zero hauls:
-
-```{r}
-# All hauls in the SYQ (collect to work with expand_grid)
-all_hauls <- hh |>
-  filter(Survey == "NS-IBTS", Quarter == 1, Year == 2015, HaulValidity == "V") |>
-  distinct(.id) |>
-  pull(.id)
-
-# Species that were caught (from haul-type rows)
-caught_species <- hl_std |>
-  filter(type == "haul") |>
-  pull(species) |>
-  unique()
-
-# Build zero-filled CPUE (collect haul rows for join)
-haul_cpue <- hl_std |>
-  filter(type == "haul") |>
-  select(.id, species, n_haul, n_hour) |>
-  collect()
-
-# Add zeros (expand_grid works on in-memory data)
-zero_rows <- expand_grid(
-  .id = all_hauls,
-  species = caught_species
-) |>
-  anti_join(haul_cpue |> distinct(.id, species), by = c(".id", "species")) |>
-  mutate(n_haul = 0, n_hour = 0)
-
-cpue_complete <- bind_rows(haul_cpue, zero_rows)
-
-cat("CPUE grid:", n_distinct(cpue_complete$.id), "×",
-    n_distinct(cpue_complete$species), "=", nrow(cpue_complete), "\n")
-```
+For worked examples that build survey indices on top of these two row
+types — CPUE, length distributions, sex-specific indices using
+`p_females` — see [Catch products](catch_products.qmd).
 
 ## Design rationale and trade-offs
 
@@ -186,9 +142,11 @@ This is **expected behavior in real DATRAS data**, not an error.
 
 | Need | Use | Example |
 |------|-----|---------|
-| Length structure, zero-filled per haul | expand type="length" to full length×haul grid | ALK, maturity ogive |
-| Haul-level CPUE, zero-filled per species | type="haul" + zero-fill across species | CPUE index, stock assessment |
-| All caught species (even unmeasured) | type="haul" species list | ecosystem analysis |
+| Length structure, zero-filled per haul | `filter(type=="length")` → `dr_expand_length(hh)` | ALK, maturity ogive |
+| Haul-level CPUE, zero-filled per species | `filter(type=="length")` → `dr_catch_by_haul(hh)` | CPUE index, stock assessment |
+| Haul totals with weight | `filter(type=="haul")` | biomass index |
+| Sex composition at length | `filter(type=="length")` → use `p_females` | sex-ratio at size — see [Catch products](catch_products.qmd) |
+| All caught species (even unmeasured) | `filter(type=="haul")` species list | ecosystem analysis |
 | Know which fish went unmeasured | rejoin to raw HL | detailed QA/QC |
 
 ## Sampling protocol flags
@@ -214,10 +172,11 @@ complete_hauls <- hl_std |>
 - `species`: species lookup (defaults to `dr_con("species")`)
 - `haulval`: optional haul validity filter (e.g. `"V"` only)
 
-Output: lazy DuckDB table with 18 columns and two row types. Can be written to parquet:
+Output: lazy DuckDB table with 19 columns and two row types. Can be written to parquet:
 
 ```{r eval=FALSE}
-hl_std <- dr_standardize_hl(hh, hl) |>
+dr_standardize_hl(hh, hl) |>
+  dplyr::collect() |>
   arrow::write_parquet("hl_standardized.parquet")
 ```
 

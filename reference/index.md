@@ -104,7 +104,8 @@
   : Set column types from the dr_lookup_fields specification
 
 - [`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
-  : Standardize HL table with derived columns and type flag
+  : Standardize HL into a clean catch foundation (length and haul
+  summaries)
 
 - [`dr_translate()`](https://einarhjorleifsson.github.io/obus/reference/dr_translate.md)
   : Translate column names of a data.frame or lazy tibble using a

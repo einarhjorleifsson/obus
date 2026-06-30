@@ -25,22 +25,17 @@ work with clean, self-contained data.
 
 [`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
 creates a **semantic layer** — a parquet file that is designed to be
-written once and reused across many analyses. For **interactive work** —
-quick CPUE indices, length distributions, zero-filling handled
-automatically — the [Catch
-products](https://einarhjorleifsson.github.io/obus/articles/catch_products.qmd)
-pipeline
-([`dr_catch_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.md)
-→
+written once and reused across many analyses. It is also the recommended
+starting point for interactive work: `filter(type == "length")` output
+feeds directly into
 [`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md)
-/
-[`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md))
-is more ergonomic. The two approaches are complementary: the
-`catch_products` functions are convenient but do not expose protocol
-metadata;
-[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
-carries `StandardSpeciesCode` and `BycatchSpeciesCode` through so
-protocol-aware filtering is possible.
+and
+[`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)
+for zero-filling, while `filter(type == "haul")` gives haul-level
+numbers and weights with protocol metadata (`StandardSpeciesCode`,
+`BycatchSpeciesCode`) attached. See [Catch
+products](https://einarhjorleifsson.github.io/obus/articles/catch_products.qmd)
+for worked zero-fill examples.
 
 The standardized HL is a parquet file that is:
 
@@ -56,9 +51,7 @@ The standardized HL is a parquet file that is:
 
 library(obus)
 library(dplyr)
-library(tidyr)
 library(ggplot2)
-library(Hmisc)
 
 hh <- dr_con("HH")
 hl <- dr_con("HL")
@@ -72,7 +65,7 @@ hl_std <- dr_standardize_hl(
 cat("Standardized HL rows:", nrow(hl_std), "\n")
 ```
 
-    Standardized HL rows: 2139 
+    Standardized HL rows: 2106 
 
 ``` r
 
@@ -88,7 +81,7 @@ print(table(hl_std$type))
 
 
       haul length
-       266   1873 
+       266   1840 
 
 ## Two row types, one table
 
@@ -105,15 +98,15 @@ cat("Type='length' rows — length-frequency measurements:\n")
 
 ``` r
 
-print(length_rows |> select(.id, species, length_mm, n_haul, n_hour))
+print(length_rows |> select(.id, species, length_mm, n_haul, n_hour, p_females))
 ```
 
-    # A tibble: 3 × 5
-      .id                                  species           length_mm n_haul n_hour
-      <chr>                                <chr>                 <int>  <dbl>  <dbl>
-    1 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 blue whiting            170      1      2
-    2 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 grey gurnard            270     19     38
-    3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Corbin's sand eel       280      1      2
+    # A tibble: 3 × 6
+      .id                                  species length_mm n_haul n_hour p_females
+      <chr>                                <chr>       <int>  <dbl>  <dbl>     <dbl>
+    1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlant…       140      3      6        NA
+    2 NS-IBTS:2015:1:GB-SCT:748S:GOV:9:9   bib           220      1      2        NA
+    3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlant…       190      1      2        NA
 
 ``` r
 
@@ -126,15 +119,27 @@ cat("\nType='haul' rows — haul-level bookkeeping (deduplicated):\n")
 
 ``` r
 
-print(haul_rows |> select(.id, species, n_haul, w_haul))
+print(haul_rows |> select(.id, species, n_haul, w_haul, p_females))
 ```
 
-    # A tibble: 3 × 4
-      .id                                  species                 n_haul w_haul
-      <chr>                                <chr>                    <dbl>  <dbl>
-    1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 American plaice            161   4945
-    2 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic horse mackerel      9    160
-    3 NS-IBTS:2015:1:GB-SCT:748S:GOV:6:6   flet                         1    198
+    # A tibble: 3 × 5
+      .id                                  species           n_haul w_haul p_females
+      <chr>                                <chr>              <dbl>  <dbl>     <dbl>
+    1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 blue whiting          15    360        NA
+    2 NS-IBTS:2015:1:GB-SCT:748S:GOV:7:7   grey gurnard         539  18110        NA
+    3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Corbin's sand eel      1     36        NA
+
+`p_females` encodes sex composition as a single proportion:
+`n_F / (n_F + n_M)` computed from fish with recorded sex (`sex` ∈
+`{"F", "M"}`). It is `NA` when no fish in the group were sexed (unsexed
+catches, `"B"`, `"U"`). Males and females can be recovered downstream:
+
+``` r
+
+filter(type == "length") |>
+  mutate(n_females = n_haul * p_females,
+         n_males   = n_haul * (1 - p_females))
+```
 
 **Why two types in one table?**
 
@@ -142,89 +147,16 @@ print(haul_rows |> select(.id, species, n_haul, w_haul))
 2.  **Flexibility**: users choose which data to use downstream
 3.  **Completeness**: preserves all caught species (even those not
     measured at length)
-4.  **Zero-fill**: haul-type rows define the species grid for
-    zero-filling
+4.  **Zero-fill**: type=“length” feeds
+    [`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md)
+    and
+    [`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)
+    unchanged
 
-## Example workflows
-
-### Length-structured index
-
-For stock assessment, use type=“length” rows:
-
-``` r
-
-# Haddock length distribution across all hauls
-haddock_lf <- hl_std |>
-  filter(type == "length", species == "haddock")
-
-cat("Haddock length records:", nrow(haddock_lf), "\n")
-```
-
-    Haddock length records: 252 
-
-``` r
-
-cat("Mean CPUE by 10cm bin:\n")
-```
-
-    Mean CPUE by 10cm bin:
-
-``` r
-
-print(haddock_lf |>
-  mutate(bin = floor(length_cm / 10) * 10) |>
-  group_by(bin) |>
-  summarise(mean_cpue = mean(n_hour, na.rm = TRUE), .groups = "drop"))
-```
-
-    # A tibble: 5 × 2
-        bin mean_cpue
-      <dbl>     <dbl>
-    1    10     115.
-    2    20      35.4
-    3    30      27.7
-    4    40      13.6
-    5    50       2  
-
-### Haul-level CPUE with zero-fill
-
-For indices, use type=“haul” rows and add zero hauls:
-
-``` r
-
-# All hauls in the SYQ (collect to work with expand_grid)
-all_hauls <- hh |>
-  filter(Survey == "NS-IBTS", Quarter == 1, Year == 2015, HaulValidity == "V") |>
-  distinct(.id) |>
-  pull(.id)
-
-# Species that were caught (from haul-type rows)
-caught_species <- hl_std |>
-  filter(type == "haul") |>
-  pull(species) |>
-  unique()
-
-# Build zero-filled CPUE (collect haul rows for join)
-haul_cpue <- hl_std |>
-  filter(type == "haul") |>
-  select(.id, species, n_haul, n_hour) |>
-  collect()
-
-# Add zeros (expand_grid works on in-memory data)
-zero_rows <- expand_grid(
-  .id = all_hauls,
-  species = caught_species
-) |>
-  anti_join(haul_cpue |> distinct(.id, species), by = c(".id", "species")) |>
-  mutate(n_haul = 0, n_hour = 0)
-
-cpue_complete <- bind_rows(haul_cpue, zero_rows)
-
-cat("CPUE grid:", n_distinct(cpue_complete$.id), "×",
-    n_distinct(cpue_complete$species), "=", nrow(cpue_complete), "\n")
-```
-
-    CPUE grid: 378 × 51 = 19286 
+For worked examples that build survey indices on top of these two row
+types — CPUE, length distributions, sex-specific indices using
+`p_females` — see [Catch
+products](https://einarhjorleifsson.github.io/obus/articles/catch_products.qmd).
 
 ## Design rationale and trade-offs
 
@@ -267,11 +199,11 @@ print(head(comparison, 5))
     # A tibble: 5 × 4
       .id                                  species         n_haul_from_length n_haul
       <chr>                                <chr>                        <dbl>  <dbl>
-    1 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 American plaice                 21     21
-    2 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic cod                    47     47
-    3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic herri…                  1      1
-    4 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic horse…                 20     20
-    5 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic macke…                  1      1
+    1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 American plaice                161    161
+    2 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic cod                     4      4
+    3 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic herri…                  3      3
+    4 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic horse…                  9      9
+    5 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic macke…                  2      2
 
 **Why they differ:**
 
@@ -297,9 +229,11 @@ This is **expected behavior in real DATRAS data**, not an error.
 
 | Need | Use | Example |
 |----|----|----|
-| Length structure, zero-filled per haul | expand type=“length” to full length×haul grid | ALK, maturity ogive |
-| Haul-level CPUE, zero-filled per species | type=“haul” + zero-fill across species | CPUE index, stock assessment |
-| All caught species (even unmeasured) | type=“haul” species list | ecosystem analysis |
+| Length structure, zero-filled per haul | `filter(type=="length")` → `dr_expand_length(hh)` | ALK, maturity ogive |
+| Haul-level CPUE, zero-filled per species | `filter(type=="length")` → `dr_catch_by_haul(hh)` | CPUE index, stock assessment |
+| Haul totals with weight | `filter(type=="haul")` | biomass index |
+| Sex composition at length | `filter(type=="length")` → use `p_females` | sex-ratio at size — see [Catch products](https://einarhjorleifsson.github.io/obus/articles/catch_products.qmd) |
+| All caught species (even unmeasured) | `filter(type=="haul")` species list | ecosystem analysis |
 | Know which fish went unmeasured | rejoin to raw HL | detailed QA/QC |
 
 ## Sampling protocol flags
@@ -334,12 +268,13 @@ NumberAtLength, TotalNumber, etc.) - `species`: species lookup (defaults
 to `dr_con("species")`) - `haulval`: optional haul validity filter
 (e.g. `"V"` only)
 
-Output: lazy DuckDB table with 18 columns and two row types. Can be
+Output: lazy DuckDB table with 19 columns and two row types. Can be
 written to parquet:
 
 ``` r
 
-hl_std <- dr_standardize_hl(hh, hl) |>
+dr_standardize_hl(hh, hl) |>
+  dplyr::collect() |>
   arrow::write_parquet("hl_standardized.parquet")
 ```
 

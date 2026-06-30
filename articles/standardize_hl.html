@@ -88,7 +88,7 @@
 <p>Users shouldn’t need to understand these interdependencies. They should work with clean, self-contained data.</p>
 </section><section class="level2"><h2 id="the-solution-standardized-hl">The solution: standardized HL<a class="anchor" aria-label="anchor" href="#the-solution-standardized-hl"></a>
 </h2>
-<p><code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code> creates a <strong>semantic layer</strong> — a parquet file that is designed to be written once and reused across many analyses. For <strong>interactive work</strong> — quick CPUE indices, length distributions, zero-filling handled automatically — the <a href="catch_products.qmd">Catch products</a> pipeline (<code><a href="../reference/dr_catch_by_length.html">dr_catch_by_length()</a></code> → <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> / <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code>) is more ergonomic. The two approaches are complementary: the <code>catch_products</code> functions are convenient but do not expose protocol metadata; <code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code> carries <code>StandardSpeciesCode</code> and <code>BycatchSpeciesCode</code> through so protocol-aware filtering is possible.</p>
+<p><code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code> creates a <strong>semantic layer</strong> — a parquet file that is designed to be written once and reused across many analyses. It is also the recommended starting point for interactive work: <code>filter(type == "length")</code> output feeds directly into <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> and <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> for zero-filling, while <code>filter(type == "haul")</code> gives haul-level numbers and weights with protocol metadata (<code>StandardSpeciesCode</code>, <code>BycatchSpeciesCode</code>) attached. See <a href="catch_products.qmd">Catch products</a> for worked zero-fill examples.</p>
 <p>The standardized HL is a parquet file that is:</p>
 <ul>
 <li>
@@ -104,9 +104,7 @@
 <div class="sourceCode cell-code" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://einarhjorleifsson.github.io/obus/">obus</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://hbiostat.org/R/Hmisc/" class="external-link">Hmisc</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">hh</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HH"</span><span class="op">)</span></span>
 <span><span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span></span>
@@ -119,7 +117,7 @@
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Standardized HL rows:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">hl_std</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Standardized HL rows: 2139 </code></pre>
+<pre><code>Standardized HL rows: 2106 </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Type breakdown:\n"</span><span class="op">)</span></span></code></pre></div>
@@ -131,7 +129,7 @@
 <div class="cell-output cell-output-stdout">
 <pre><code>
   haul length
-   266   1873 </code></pre>
+   266   1840 </code></pre>
 </div>
 </div>
 </section><section class="level2"><h2 id="two-row-types-one-table">Two row types, one table<a class="anchor" aria-label="anchor" href="#two-row-types-one-table"></a>
@@ -145,14 +143,14 @@
 <pre><code>Type='length' rows — length-frequency measurements:</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">length_rows</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span>, <span class="va">length_mm</span>, <span class="va">n_haul</span>, <span class="va">n_hour</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">length_rows</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span>, <span class="va">length_mm</span>, <span class="va">n_haul</span>, <span class="va">n_hour</span>, <span class="va">p_females</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 3 × 5
-  .id                                  species           length_mm n_haul n_hour
-  &lt;chr&gt;                                &lt;chr&gt;                 &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;
-1 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 blue whiting            170      1      2
-2 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 grey gurnard            270     19     38
-3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Corbin's sand eel       280      1      2</code></pre>
+<pre><code># A tibble: 3 × 6
+  .id                                  species length_mm n_haul n_hour p_females
+  &lt;chr&gt;                                &lt;chr&gt;       &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt;
+1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlant…       140      3      6        NA
+2 NS-IBTS:2015:1:GB-SCT:748S:GOV:9:9   bib           220      1      2        NA
+3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlant…       190      1      2        NA</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">haul_rows</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"haul"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span></span>
@@ -162,16 +160,21 @@
 Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">haul_rows</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span>, <span class="va">n_haul</span>, <span class="va">w_haul</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">haul_rows</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span>, <span class="va">n_haul</span>, <span class="va">w_haul</span>, <span class="va">p_females</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 3 × 4
-  .id                                  species                 n_haul w_haul
-  &lt;chr&gt;                                &lt;chr&gt;                    &lt;dbl&gt;  &lt;dbl&gt;
-1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 American plaice            161   4945
-2 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic horse mackerel      9    160
-3 NS-IBTS:2015:1:GB-SCT:748S:GOV:6:6   flet                         1    198</code></pre>
+<pre><code># A tibble: 3 × 5
+  .id                                  species           n_haul w_haul p_females
+  &lt;chr&gt;                                &lt;chr&gt;              &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt;
+1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 blue whiting          15    360        NA
+2 NS-IBTS:2015:1:GB-SCT:748S:GOV:7:7   grey gurnard         539  18110        NA
+3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Corbin's sand eel      1     36        NA</code></pre>
 </div>
 </div>
+<p><code>p_females</code> encodes sex composition as a single proportion: <code>n_F / (n_F + n_M)</code> computed from fish with recorded sex (<code>sex</code> ∈ <code>{"F", "M"}</code>). It is <code>NA</code> when no fish in the group were sexed (unsexed catches, <code>"B"</code>, <code>"U"</code>). Males and females can be recovered downstream:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"length"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_females <span class="op">=</span> <span class="va">n_haul</span> <span class="op">*</span> <span class="va">p_females</span>,</span>
+<span>         n_males   <span class="op">=</span> <span class="va">n_haul</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">p_females</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Why two types in one table?</strong></p>
 <ol type="1">
 <li>
@@ -181,83 +184,10 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <li>
 <strong>Completeness</strong>: preserves all caught species (even those not measured at length)</li>
 <li>
-<strong>Zero-fill</strong>: haul-type rows define the species grid for zero-filling</li>
-</ol></section><section class="level2"><h2 id="example-workflows">Example workflows<a class="anchor" aria-label="anchor" href="#example-workflows"></a>
-</h2>
-<section class="level3"><h3 id="length-structured-index">Length-structured index<a class="anchor" aria-label="anchor" href="#length-structured-index"></a>
-</h3>
-<p>For stock assessment, use type=“length” rows:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Haddock length distribution across all hauls</span></span>
-<span><span class="va">haddock_lf</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"length"</span>, <span class="va">species</span> <span class="op">==</span> <span class="st">"haddock"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Haddock length records:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">haddock_lf</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Haddock length records: 252 </code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Mean CPUE by 10cm bin:\n"</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Mean CPUE by 10cm bin:</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">haddock_lf</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>bin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">floor</a></span><span class="op">(</span><span class="va">length_cm</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span> <span class="op">*</span> <span class="fl">10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">bin</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>mean_cpue <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">n_hour</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 5 × 2
-    bin mean_cpue
-  &lt;dbl&gt;     &lt;dbl&gt;
-1    10     115.
-2    20      35.4
-3    30      27.7
-4    40      13.6
-5    50       2  </code></pre>
-</div>
-</div>
-</section><section class="level3"><h3 id="haul-level-cpue-with-zero-fill">Haul-level CPUE with zero-fill<a class="anchor" aria-label="anchor" href="#haul-level-cpue-with-zero-fill"></a>
-</h3>
-<p>For indices, use type=“haul” rows and add zero hauls:</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># All hauls in the SYQ (collect to work with expand_grid)</span></span>
-<span><span class="va">all_hauls</span> <span class="op">&lt;-</span> <span class="va">hh</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2015</span>, <span class="va">HaulValidity</span> <span class="op">==</span> <span class="st">"V"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="va">.id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">.id</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Species that were caught (from haul-type rows)</span></span>
-<span><span class="va">caught_species</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"haul"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">species</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Build zero-filled CPUE (collect haul rows for join)</span></span>
-<span><span class="va">haul_cpue</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"haul"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span>, <span class="va">n_haul</span>, <span class="va">n_hour</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Add zeros (expand_grid works on in-memory data)</span></span>
-<span><span class="va">zero_rows</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tidyr.tidyverse.org/reference/expand_grid.html" class="external-link">expand_grid</a></span><span class="op">(</span></span>
-<span>  .id <span class="op">=</span> <span class="va">all_hauls</span>,</span>
-<span>  species <span class="op">=</span> <span class="va">caught_species</span></span>
-<span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter-joins.html" class="external-link">anti_join</a></span><span class="op">(</span><span class="va">haul_cpue</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span><span class="op">)</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">".id"</span>, <span class="st">"species"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_haul <span class="op">=</span> <span class="fl">0</span>, n_hour <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">cpue_complete</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">haul_cpue</span>, <span class="va">zero_rows</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"CPUE grid:"</span>, <span class="fu"><a href="https://dplyr.tidyverse.org/reference/n_distinct.html" class="external-link">n_distinct</a></span><span class="op">(</span><span class="va">cpue_complete</span><span class="op">$</span><span class="va">.id</span><span class="op">)</span>, <span class="st">"×"</span>,</span>
-<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/n_distinct.html" class="external-link">n_distinct</a></span><span class="op">(</span><span class="va">cpue_complete</span><span class="op">$</span><span class="va">species</span><span class="op">)</span>, <span class="st">"="</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">cpue_complete</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>CPUE grid: 378 × 51 = 19286 </code></pre>
-</div>
-</div>
-</section></section><section class="level2"><h2 id="design-rationale-and-trade-offs">Design rationale and trade-offs<a class="anchor" aria-label="anchor" href="#design-rationale-and-trade-offs"></a>
+<strong>Zero-fill</strong>: type=“length” feeds <code><a href="../reference/dr_catch_by_haul.html">dr_catch_by_haul()</a></code> and <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> unchanged</li>
+</ol>
+<p>For worked examples that build survey indices on top of these two row types — CPUE, length distributions, sex-specific indices using <code>p_females</code> — see <a href="catch_products.qmd">Catch products</a>.</p>
+</section><section class="level2"><h2 id="design-rationale-and-trade-offs">Design rationale and trade-offs<a class="anchor" aria-label="anchor" href="#design-rationale-and-trade-offs"></a>
 </h2>
 <section class="level3"><h3 id="why-this-approach">Why this approach?<a class="anchor" aria-label="anchor" href="#why-this-approach"></a>
 </h3>
@@ -274,7 +204,7 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 </h3>
 <p><strong>Length rows don’t sum to haul rows.</strong> This is <strong>not a bug</strong>; it’s revealing:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">length_total</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"length"</span>, <span class="va">.id</span> <span class="op">==</span> <span class="va">hl_std</span><span class="op">$</span><span class="va">.id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -289,17 +219,17 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>Sample comparison (may not match):</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 5 × 4
   .id                                  species         n_haul_from_length n_haul
   &lt;chr&gt;                                &lt;chr&gt;                        &lt;dbl&gt;  &lt;dbl&gt;
-1 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 American plaice                 21     21
-2 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic cod                    47     47
-3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic herri…                  1      1
-4 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic horse…                 20     20
-5 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Atlantic macke…                  1      1</code></pre>
+1 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 American plaice                161    161
+2 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic cod                     4      4
+3 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic herri…                  3      3
+4 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic horse…                  9      9
+5 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic macke…                  2      2</code></pre>
 </div>
 </div>
 <p><strong>Why they differ:</strong></p>
@@ -324,11 +254,6 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 </ol></section></section><section class="level2"><h2 id="when-to-use-each-type">When to use each type<a class="anchor" aria-label="anchor" href="#when-to-use-each-type"></a>
 </h2>
 <table class="table caption-top">
-<colgroup>
-<col style="width: 30%">
-<col style="width: 25%">
-<col style="width: 45%">
-</colgroup>
 <thead><tr class="header">
 <th>Need</th>
 <th>Use</th>
@@ -337,17 +262,35 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <tbody>
 <tr class="odd">
 <td>Length structure, zero-filled per haul</td>
-<td>expand type=“length” to full length×haul grid</td>
+<td>
+<code>filter(type=="length")</code> → <code>dr_expand_length(hh)</code>
+</td>
 <td>ALK, maturity ogive</td>
 </tr>
 <tr class="even">
 <td>Haul-level CPUE, zero-filled per species</td>
-<td>type=“haul” + zero-fill across species</td>
+<td>
+<code>filter(type=="length")</code> → <code>dr_catch_by_haul(hh)</code>
+</td>
 <td>CPUE index, stock assessment</td>
 </tr>
 <tr class="odd">
+<td>Haul totals with weight</td>
+<td><code>filter(type=="haul")</code></td>
+<td>biomass index</td>
+</tr>
+<tr class="even">
+<td>Sex composition at length</td>
+<td>
+<code>filter(type=="length")</code> → use <code>p_females</code>
+</td>
+<td>sex-ratio at size — see <a href="catch_products.qmd">Catch products</a>
+</td>
+</tr>
+<tr class="odd">
 <td>All caught species (even unmeasured)</td>
-<td>type=“haul” species list</td>
+<td>
+<code>filter(type=="haul")</code> species list</td>
 <td>ecosystem analysis</td>
 </tr>
 <tr class="even">
@@ -361,7 +304,7 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <p>The output carries two haul-level flags, <code>StandardSpeciesCode</code> and <code>BycatchSpeciesCode</code>, that document what the vessel was required to record. These can substantially affect any analysis that depends on species presence or zero-hauls. See the <a href="https://einarhjorleifsson.github.io/imbus/DATRAS/sampling_protocol.html" class="external-link">Sampling protocols</a> article in the IMBUS documentation for a detailed treatment, including examples of how ignoring these flags leads to phantom zeros and biased CPUE indices.</p>
 <p>To exclude hauls with incomplete recording before zero-filling:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_standardize_hl.html">dr_standardize_hl</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">complete_hauls</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
@@ -372,10 +315,11 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 </section><section class="level2"><h2 id="implementation">Implementation<a class="anchor" aria-label="anchor" href="#implementation"></a>
 </h2>
 <p><code>dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)</code> takes: - <code>hh</code>: haul header table (with DataType, HaulDuration, StandardSpeciesCode, BycatchSpeciesCode) - <code>hl</code>: length table (with NumberAtLength, TotalNumber, etc.) - <code>species</code>: species lookup (defaults to <code>dr_con("species")</code>) - <code>haulval</code>: optional haul validity filter (e.g. <code>"V"</code> only)</p>
-<p>Output: lazy DuckDB table with 18 columns and two row types. Can be written to parquet:</p>
+<p>Output: lazy DuckDB table with 19 columns and two row types. Can be written to parquet:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">hl_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_standardize_hl.html">dr_standardize_hl</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/dr_standardize_hl.html">dr_standardize_hl</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">arrow</span><span class="fu">::</span><span class="fu"><a href="https://arrow.apache.org/docs/r/reference/write_parquet.html" class="external-link">write_parquet</a></span><span class="op">(</span><span class="st">"hl_standardized.parquet"</span><span class="op">)</span></span></code></pre></div>
 </div>
 </section><section class="level2"><h2 id="why-now">Why now?<a class="anchor" aria-label="anchor" href="#why-now"></a>

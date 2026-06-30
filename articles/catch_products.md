@@ -11,18 +11,19 @@ article.
 
 | Function | Input | Output | Zero-fill |
 |----|----|----|----|
-| [`dr_catch_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.md) | raw HH + HL | one row per haul × species × length bin | no |
+| [`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md) | raw HH + HL | one row per haul × species × length bin (type=“length”) | no |
 | [`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md) | output of above | one row per haul × species | yes |
 | [`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md) | output of above | one row per haul × species × length bin | yes |
 
 The typical pipeline is:
 
-    dr_catch_by_length(hh, hl)  →  filter  →  dr_catch_by_haul(hh)
-                                            ↘  dr_expand_length(hh)
+    dr_standardize_hl(hh, hl) |> filter(type == "length")  →  dr_catch_by_haul(hh)
+                                                             ↘  dr_expand_length(hh)
 
-[`dr_catch_by_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.md)
+[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
 reads the `NumberAtLength` field and applies DataType-aware subsampling
-corrections. It returns only observed rows — no zeros. The downstream
+corrections. It returns only observed rows — no zeros — with species
+names, length units, and protocol flags pre-attached. The downstream
 functions add the zero hauls needed for unbiased CPUE estimation.
 
 ``` r
@@ -36,7 +37,8 @@ hh  <- dr_con("HH")
 hl  <- dr_con("HL")
 
 # Build the base catch table once (lazy); filter downstream
-cbl <- dr_catch_by_length(hh, hl, haulval = "V")
+# Previously: cbl <- dr_catch_by_length(hh, hl, haulval = "V")
+cbl <- dr_standardize_hl(hh, hl, haulval = "V") |> filter(type == "length")
 
 # Ensure DuckDB can write temp files for large spill-to-disk queries
 local({
@@ -215,6 +217,86 @@ cbl |>
 
 ![](catch_products_files/figure-html/ns_ibts_juvenile-1.png)
 
+### Sex-specific length indices — *Nephrops norvegicus*
+
+[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
+carries a `p_females` column — the proportion female among sexed
+individuals at each length (see [Standardized
+HL](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.qmd#two-row-types-one-table)
+for the formula and its `NA` semantics). Splitting `n_haul`/`n_hour`
+into female and male components with `p_females`, then zero-filling each
+component separately with
+[`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md),
+gives a sex-specific length index — each sex is treated as its own
+number-at-length series, so the existing zero-fill machinery applies
+unchanged.
+
+*Nephrops norvegicus* (Dublin Bay lobster) is a good candidate: males
+and females are distinguished visually by claw and abdomen shape, so
+`p_females` is non-missing for over 90% of its NS-IBTS length records.
+
+> **`p_females`-derived counts assume the catch is fully sexed**
+>
+> `n_haul * p_females` only equals the true female count when
+> essentially all individuals at that length/haul were sexed (no
+> `"B"`/`"U"`/unsexed catch). For Nephrops, with \> 90% sexing coverage,
+> this is a safe approximation. For species recorded with substantial
+> unsexed bycatch, treat the derived counts as indicative, not exact.
+
+``` r
+
+nephrops_2015 <- cbl |>
+  filter(species == "Dublin Bay lobster",
+         Survey == "NS-IBTS", Quarter == 1, Year == 2015,
+         # carapace length in cm; a minority of records use a different
+         # length convention (likely total length) and are excluded here
+         length_cm <= 6, !is.na(p_females)) |>
+  collect() |>
+  mutate(n_females = n_haul * p_females, n_males = n_haul * (1 - p_females),
+         h_females = n_hour * p_females, h_males   = n_hour * (1 - p_females))
+
+hh_2015 <- hh |>
+  filter(Survey == "NS-IBTS", Quarter == 1, Year == 2015, HaulValidity == "V") |>
+  collect()
+
+female_lf <- nephrops_2015 |>
+  mutate(n_haul = n_females, n_hour = h_females) |>
+  select(.id, Survey, Year, Quarter, aphia, latin, species,
+         length_mm, length_cm, accuracy, n_haul, n_hour, SpeciesValidity) |>
+  dr_expand_length(hh_2015) |>
+  mutate(sex = "female")
+
+male_lf <- nephrops_2015 |>
+  mutate(n_haul = n_males, n_hour = h_males) |>
+  select(.id, Survey, Year, Quarter, aphia, latin, species,
+         length_mm, length_cm, accuracy, n_haul, n_hour, SpeciesValidity) |>
+  dr_expand_length(hh_2015) |>
+  mutate(sex = "male")
+
+bind_rows(female_lf, male_lf) |>
+  group_by(sex, length_cm) |>
+  summarise(mean_n_hour = mean(n_hour, na.rm = TRUE), .groups = "drop") |>
+  ggplot(aes(length_cm, mean_n_hour, colour = sex)) +
+  geom_line(linewidth = 0.9) +
+  scale_colour_manual(values = c(female = "#d73027", male = "#2166ac")) +
+  labs(x = "Carapace length (cm)", y = "Numbers per hour (mean)",
+       colour = NULL,
+       title = "NS-IBTS Q1 2015 — Nephrops norvegicus length index by sex") +
+  theme_bw()
+```
+
+![](catch_products_files/figure-html/nephrops_sex_index-1.png)
+
+Female and male numbers track closely up to ~4 cm, then female numbers
+fall off sharply while male numbers persist into larger size classes.
+*Nephrops* is dioecious — every individual is male or female for life,
+there is no sex change. The divergence is driven by **differential
+growth**: after females mature, their growth rate slows relative to
+males (linked to less frequent moulting, since egg-brooding females skip
+moult cycles), so males increasingly outpace females in length at a
+given age. At any fixed length class, the larger sizes are then
+progressively dominated by males simply because males got there faster.
+
 ------------------------------------------------------------------------
 
 ## BTS Q3 — Southern North Sea flatfish survey
@@ -308,7 +390,7 @@ t <- system.time(
 cat(sprintf("10 species, all NS-IBTS Q1 years: %.1f s\n", t["elapsed"]))
 ```
 
-    10 species, all NS-IBTS Q1 years: 4.1 s
+    10 species, all NS-IBTS Q1 years: 5.9 s
 
 ``` r
 
@@ -348,7 +430,7 @@ cat(sprintf("10 species: %s rows — %.1f s\n",
             format(nrow(res10), big.mark = ","), t10["elapsed"]))
 ```
 
-    10 species: 14,677,149 rows — 11.2 s
+    10 species: 14,677,149 rows — 13.2 s
 
 Running the same pipeline over all species in NS-IBTS Q1 — every year,
 every species — takes tens of seconds and produces millions of rows. The

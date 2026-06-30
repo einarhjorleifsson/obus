@@ -17,9 +17,12 @@ dr_catch_by_haul(catch, hh)
 
 - catch:
 
-  Output of
+  A length-frequency catch table — typically
+  `dr_standardize_hl(...) |> dplyr::filter(type == "length")`, or the
+  deprecated
   [`dr_catch_by_length`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.md)
-  (or a filtered subset).
+  output. Must carry columns `.id`, `Survey`, `Year`, `Quarter`,
+  `aphia`, `latin`, `species`, `n_haul`, `n_hour`.
 
 - hh:
 
@@ -34,5 +37,5 @@ A lazy DuckDB table with one row per `.id` \\\times\\ `aphia`: `.id`,
 
 ## See also
 
-[`dr_catch_by_length`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_length.md),
+[`dr_standardize_hl`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md),
 [`dr_expand_length`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)

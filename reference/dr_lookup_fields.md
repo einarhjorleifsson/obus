@@ -14,7 +14,7 @@ dr_lookup_fields
 ## Format
 
 An object of class `tbl_df` (inherits from `tbl`, `data.frame`) with 333
-rows and 5 columns.
+rows and 6 columns.
 
 ## Source
 

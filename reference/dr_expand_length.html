@@ -63,7 +63,12 @@ to a single species before calling to keep the result manageable.</p>
 
 
 <dl><dt id="arg-catch">catch<a class="anchor" aria-label="anchor" href="#arg-catch"></a></dt>
-<dd><p>Output of <code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code> (or a filtered subset).</p></dd>
+<dd><p>A length-frequency catch table — typically
+<code>dr_standardize_hl(...) |&gt; dplyr::filter(type == "length")</code>, or the
+deprecated <code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code> output. Must carry columns
+<code>.id</code>, <code>Survey</code>, <code>Year</code>, <code>Quarter</code>, <code>aphia</code>,
+<code>latin</code>, <code>species</code>, <code>length_mm</code>, <code>length_cm</code>,
+<code>accuracy</code>, <code>n_haul</code>, <code>n_hour</code>, <code>SpeciesValidity</code>.</p></dd>
 
 
 <dt id="arg-hh">hh<a class="anchor" aria-label="anchor" href="#arg-hh"></a></dt>
@@ -74,13 +79,13 @@ columns: <code>.id</code>, <code>Survey</code>, <code>Year</code>, <code>Quarter
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A lazy DuckDB table with one row per <code>.id</code> \(\times\)
-<code>aphia</code> \(\times\) <code>length_mm</code>: same columns as
-<code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code>. <code>n_haul</code> and <code>n_hour</code> are
-<code>0</code> and <code>SpeciesValidity</code> is <code>NA</code> for zero rows.</p>
+<code>aphia</code> \(\times\) <code>length_mm</code>. <code>n_haul</code> and
+<code>n_hour</code> are <code>0</code> and <code>SpeciesValidity</code> is <code>NA</code> for
+zero rows.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code>, <code><a href="dr_catch_by_haul.html">dr_catch_by_haul</a></code></p></div>
+    <div class="dont-index"><p><code><a href="dr_standardize_hl.html">dr_standardize_hl</a></code>, <code><a href="dr_catch_by_haul.html">dr_catch_by_haul</a></code></p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

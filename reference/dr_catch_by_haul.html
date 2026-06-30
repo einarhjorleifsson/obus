@@ -60,7 +60,11 @@ in that SQY where it was absent. Works with one or more species.</p>
 
 
 <dl><dt id="arg-catch">catch<a class="anchor" aria-label="anchor" href="#arg-catch"></a></dt>
-<dd><p>Output of <code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code> (or a filtered subset).</p></dd>
+<dd><p>A length-frequency catch table — typically
+<code>dr_standardize_hl(...) |&gt; dplyr::filter(type == "length")</code>, or the
+deprecated <code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code> output. Must carry columns
+<code>.id</code>, <code>Survey</code>, <code>Year</code>, <code>Quarter</code>, <code>aphia</code>,
+<code>latin</code>, <code>species</code>, <code>n_haul</code>, <code>n_hour</code>.</p></dd>
 
 
 <dt id="arg-hh">hh<a class="anchor" aria-label="anchor" href="#arg-hh"></a></dt>
@@ -77,7 +81,7 @@ columns: <code>.id</code>, <code>Survey</code>, <code>Year</code>, <code>Quarter
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="dr_catch_by_length.html">dr_catch_by_length</a></code>, <code><a href="dr_expand_length.html">dr_expand_length</a></code></p></div>
+    <div class="dont-index"><p><code><a href="dr_standardize_hl.html">dr_standardize_hl</a></code>, <code><a href="dr_expand_length.html">dr_expand_length</a></code></p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

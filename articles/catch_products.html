@@ -85,9 +85,9 @@
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code><a href="../reference/dr_catch_by_length.html">dr_catch_by_length()</a></code></td>
+<td><code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code></td>
 <td>raw HH + HL</td>
-<td>one row per haul × species × length bin</td>
+<td>one row per haul × species × length bin (type=“length”)</td>
 <td>no</td>
 </tr>
 <tr class="even">
@@ -105,9 +105,9 @@
 </tbody>
 </table>
 <p>The typical pipeline is:</p>
-<pre><code>dr_catch_by_length(hh, hl)  →  filter  →  dr_catch_by_haul(hh)
-                                        ↘  dr_expand_length(hh)</code></pre>
-<p><code><a href="../reference/dr_catch_by_length.html">dr_catch_by_length()</a></code> reads the <code>NumberAtLength</code> field and applies DataType-aware subsampling corrections. It returns only observed rows — no zeros. The downstream functions add the zero hauls needed for unbiased CPUE estimation.</p>
+<pre><code>dr_standardize_hl(hh, hl) |&gt; filter(type == "length")  →  dr_catch_by_haul(hh)
+                                                         ↘  dr_expand_length(hh)</code></pre>
+<p><code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code> reads the <code>NumberAtLength</code> field and applies DataType-aware subsampling corrections. It returns only observed rows — no zeros — with species names, length units, and protocol flags pre-attached. The downstream functions add the zero hauls needed for unbiased CPUE estimation.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://einarhjorleifsson.github.io/obus/">obus</a></span><span class="op">)</span></span>
@@ -119,7 +119,8 @@
 <span><span class="va">hl</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Build the base catch table once (lazy); filter downstream</span></span>
-<span><span class="va">cbl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_catch_by_length.html">dr_catch_by_length</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span>, haulval <span class="op">=</span> <span class="st">"V"</span><span class="op">)</span></span>
+<span><span class="co"># Previously: cbl &lt;- dr_catch_by_length(hh, hl, haulval = "V")</span></span>
+<span><span class="va">cbl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_standardize_hl.html">dr_standardize_hl</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span>, haulval <span class="op">=</span> <span class="st">"V"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"length"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Ensure DuckDB can write temp files for large spill-to-disk queries</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/eval.html" class="external-link">local</a></span><span class="op">(</span><span class="op">{</span></span>
@@ -278,11 +279,70 @@
 </div>
 </div>
 </div>
+</section><section class="level3"><h3 id="sex-specific-length-indices-nephrops-norvegicus">Sex-specific length indices — <em>Nephrops norvegicus</em>
+<a class="anchor" aria-label="anchor" href="#sex-specific-length-indices-nephrops-norvegicus"></a>
+</h3>
+<p><code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code> carries a <code>p_females</code> column — the proportion female among sexed individuals at each length (see <a href="standardize_hl.qmd#two-row-types-one-table">Standardized HL</a> for the formula and its <code>NA</code> semantics). Splitting <code>n_haul</code>/<code>n_hour</code> into female and male components with <code>p_females</code>, then zero-filling each component separately with <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code>, gives a sex-specific length index — each sex is treated as its own number-at-length series, so the existing zero-fill machinery applies unchanged.</p>
+<p><em>Nephrops norvegicus</em> (Dublin Bay lobster) is a good candidate: males and females are distinguished visually by claw and abdomen shape, so <code>p_females</code> is non-missing for over 90% of its NS-IBTS length records.</p>
+<div>
+<blockquote>
+<p><strong><code>p_females</code>-derived counts assume the catch is fully sexed</strong></p>
+<p><code>n_haul * p_females</code> only equals the true female count when essentially all individuals at that length/haul were sexed (no <code>"B"</code>/<code>"U"</code>/unsexed catch). For Nephrops, with &gt; 90% sexing coverage, this is a safe approximation. For species recorded with substantial unsexed bycatch, treat the derived counts as indicative, not exact.</p>
+</blockquote>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">nephrops_2015</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">species</span> <span class="op">==</span> <span class="st">"Dublin Bay lobster"</span>,</span>
+<span>         <span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2015</span>,</span>
+<span>         <span class="co"># carapace length in cm; a minority of records use a different</span></span>
+<span>         <span class="co"># length convention (likely total length) and are excluded here</span></span>
+<span>         <span class="va">length_cm</span> <span class="op">&lt;=</span> <span class="fl">6</span>, <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">p_females</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_females <span class="op">=</span> <span class="va">n_haul</span> <span class="op">*</span> <span class="va">p_females</span>, n_males <span class="op">=</span> <span class="va">n_haul</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">p_females</span><span class="op">)</span>,</span>
+<span>         h_females <span class="op">=</span> <span class="va">n_hour</span> <span class="op">*</span> <span class="va">p_females</span>, h_males   <span class="op">=</span> <span class="va">n_hour</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">-</span> <span class="va">p_females</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">hh_2015</span> <span class="op">&lt;-</span> <span class="va">hh</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">Year</span> <span class="op">==</span> <span class="fl">2015</span>, <span class="va">HaulValidity</span> <span class="op">==</span> <span class="st">"V"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">female_lf</span> <span class="op">&lt;-</span> <span class="va">nephrops_2015</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_haul <span class="op">=</span> <span class="va">n_females</span>, n_hour <span class="op">=</span> <span class="va">h_females</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">Survey</span>, <span class="va">Year</span>, <span class="va">Quarter</span>, <span class="va">aphia</span>, <span class="va">latin</span>, <span class="va">species</span>,</span>
+<span>         <span class="va">length_mm</span>, <span class="va">length_cm</span>, <span class="va">accuracy</span>, <span class="va">n_haul</span>, <span class="va">n_hour</span>, <span class="va">SpeciesValidity</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh_2015</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>sex <span class="op">=</span> <span class="st">"female"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">male_lf</span> <span class="op">&lt;-</span> <span class="va">nephrops_2015</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_haul <span class="op">=</span> <span class="va">n_males</span>, n_hour <span class="op">=</span> <span class="va">h_males</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">Survey</span>, <span class="va">Year</span>, <span class="va">Quarter</span>, <span class="va">aphia</span>, <span class="va">latin</span>, <span class="va">species</span>,</span>
+<span>         <span class="va">length_mm</span>, <span class="va">length_cm</span>, <span class="va">accuracy</span>, <span class="va">n_haul</span>, <span class="va">n_hour</span>, <span class="va">SpeciesValidity</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/dr_expand_length.html">dr_expand_length</a></span><span class="op">(</span><span class="va">hh_2015</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>sex <span class="op">=</span> <span class="st">"male"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">female_lf</span>, <span class="va">male_lf</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">sex</span>, <span class="va">length_cm</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>mean_n_hour <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">n_hour</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">length_cm</span>, <span class="va">mean_n_hour</span>, colour <span class="op">=</span> <span class="va">sex</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>female <span class="op">=</span> <span class="st">"#d73027"</span>, male <span class="op">=</span> <span class="st">"#2166ac"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Carapace length (cm)"</span>, y <span class="op">=</span> <span class="st">"Numbers per hour (mean)"</span>,</span>
+<span>       colour <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>       title <span class="op">=</span> <span class="st">"NS-IBTS Q1 2015 — Nephrops norvegicus length index by sex"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="cell-output-display">
+<div>
+<figure><p><img src="catch_products_files/figure-html/nephrops_sex_index-1.png" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Female and male numbers track closely up to ~4 cm, then female numbers fall off sharply while male numbers persist into larger size classes. <em>Nephrops</em> is dioecious — every individual is male or female for life, there is no sex change. The divergence is driven by <strong>differential growth</strong>: after females mature, their growth rate slows relative to males (linked to less frequent moulting, since egg-brooding females skip moult cycles), so males increasingly outpace females in length at a given age. At any fixed length class, the larger sizes are then progressively dominated by males simply because males got there faster.</p>
 <hr></section></section><section class="level2"><h2 id="bts-q3-southern-north-sea-flatfish-survey">BTS Q3 — Southern North Sea flatfish survey<a class="anchor" aria-label="anchor" href="#bts-q3-southern-north-sea-flatfish-survey"></a>
 </h2>
 <p>BTS covers the Dutch, Belgian and English coastal waters in summer. Common dab and plaice dominate; this survey also records seahorses consistently.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">species_bts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"common dab"</span>, <span class="st">"European plaice"</span>, <span class="st">"common sole"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">cbl</span> <span class="op">|&gt;</span></span>
@@ -308,7 +368,7 @@
 </h3>
 <p>Seahorses (<em>Hippocampus</em> spp.) are rarely caught but their occurrence in trawl surveys is used as an indicator of seagrass habitat condition. BTS has the most consistent records in DATRAS.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">seahorse_aphia</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"BTS"</span>, <span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grepl</a></span><span class="op">(</span><span class="st">"Hippocampus"</span>, <span class="va">latin</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="va">aphia</span>, <span class="va">latin</span>, <span class="va">species</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -346,7 +406,7 @@
 </h2>
 <p>Ten of the most common NS-IBTS Q1 species — full CPUE pipeline from raw exchange data through to a collected data frame, timed with <code><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time()</a></code>.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">species_10</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Atlantic herring"</span>, <span class="st">"European sprat"</span>, <span class="st">"Norway pout"</span>,</span>
 <span>  <span class="st">"whiting"</span>, <span class="st">"haddock"</span>, <span class="st">"common dab"</span>,</span>
@@ -363,11 +423,11 @@
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"10 species, all NS-IBTS Q1 years: %.1f s\n"</span>, <span class="va">t</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>10 species, all NS-IBTS Q1 years: 4.1 s</code></pre>
+<pre><code>10 species, all NS-IBTS Q1 years: 5.9 s</code></pre>
 </div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cpue_10</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>species <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">species</span>, levels <span class="op">=</span> <span class="va">species_10</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">Year</span>, <span class="va">n_hour</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -388,7 +448,7 @@
 </h2>
 <p><code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code> builds a <strong>complete haul × species × length-bin grid</strong>, so output size grows as <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mtext mathvariant="normal">hauls</mtext></msub><mo>×</mo><msub><mi>N</mi><mtext mathvariant="normal">species</mtext></msub><mo>×</mo><msub><mi>N</mi><mtext mathvariant="normal">length bins</mtext></msub></mrow><annotation encoding="application/x-tex">N_\text{hauls} \times N_\text{species} \times N_\text{length bins}</annotation></semantics></math>. Even so, the DuckDB backend handles surprisingly large jobs efficiently.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t10</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span>  <span class="va">res10</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span>, <span class="va">species</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">species_10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -399,12 +459,12 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"10 species: %s rows — %.1f s\n"</span>,</span>
 <span>            <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">res10</span><span class="op">)</span>, big.mark <span class="op">=</span> <span class="st">","</span><span class="op">)</span>, <span class="va">t10</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>10 species: 14,677,149 rows — 11.2 s</code></pre>
+<pre><code>10 species: 14,677,149 rows — 13.2 s</code></pre>
 </div>
 </div>
 <p>Running the same pipeline over all species in NS-IBTS Q1 — every year, every species — takes tens of seconds and produces millions of rows. The only real limit is R memory: the lazy query is always safe, but <code><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect()</a></code> across multiple surveys simultaneously may exceed available RAM.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t_all</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span>  <span class="va">res_all</span> <span class="op">&lt;-</span> <span class="va">cbl</span> <span class="op">|&gt;</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Survey</span> <span class="op">==</span> <span class="st">"NS-IBTS"</span>, <span class="va">Quarter</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
