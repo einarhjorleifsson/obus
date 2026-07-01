@@ -16,9 +16,9 @@ dr_con(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
 
   A character string specifying the table. One of `"HH"`, `"HL"`,
   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`,
-  `"species"`, `"catch_by_length"` (standardised catch-only table per
-  length class per haul, from `dr_hl_length()`), or `"catch_by_haul"`
-  (haul-level catch totals, from `.dr_cpue_by_haul()`).
+  `"species"`, or `"HL_standardised"` (pre-computed standardized HL
+  table, from
+  [`dr_HL_standardised`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md)).
 
 - url:
 

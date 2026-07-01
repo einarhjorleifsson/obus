@@ -21,18 +21,18 @@ file with unambiguous columns and protocol metadata attached — see the
 
 | Function | Input | Output | Zero-fill |
 |---|---|---|---|
-| `dr_standardize_hl()` | raw HH + HL | one row per haul × species × length bin (type="length") | no |
+| `dr_HL_standardised()` | raw HH + HL | one row per haul × species × length bin (type="length") | no |
 | `dr_catch_by_haul()` | output of above | one row per haul × species | yes |
 | `dr_expand_length()` | output of above | one row per haul × species × length bin | yes |
 
 The typical pipeline is:
 
 ```
-dr_standardize_hl(hh, hl) |> filter(type == "length")  →  dr_catch_by_haul(hh)
+dr_HL_standardised(hh, hl) |> filter(type == "length")  →  dr_catch_by_haul(hh)
                                                          ↘  dr_expand_length(hh)
 ```
 
-`dr_standardize_hl()` reads the `NumberAtLength` field and applies
+`dr_HL_standardised()` reads the `NumberAtLength` field and applies
 DataType-aware subsampling corrections. It returns only observed rows — no
 zeros — with species names, length units, and protocol flags pre-attached.
 The downstream functions add the zero hauls needed for unbiased CPUE
@@ -49,7 +49,7 @@ hl  <- dr_con("HL")
 
 # Build the base catch table once (lazy); filter downstream
 # Previously: cbl <- dr_catch_by_length(hh, hl, haulval = "V")
-cbl <- dr_standardize_hl(hh, hl, haulval = "V") |> filter(type == "length")
+cbl <- dr_HL_standardised(hh, hl, haulval = "V") |> filter(type == "length")
 
 # Ensure DuckDB can write temp files for large spill-to-disk queries
 local({
@@ -142,12 +142,12 @@ contribute to a species-specific index —
 obus doesn't implement this haul-selection step yet — `dr_catch_by_haul()`
 and `dr_expand_length()` zero-fill the CPUE-product way (above) and stop
 there. That's also why `StandardSpeciesCode`/`BycatchSpeciesCode` aren't
-carried through `dr_standardize_hl()`'s output (see
+carried through `dr_HL_standardised()`'s output (see
 [Standardized HL](standardize_hl.qmd) for that design decision) — but
 they're one join away from `hh` if you want to build this filter yourself:
 
 ```{r eval=FALSE}
-complete_hauls <- dr_standardize_hl(hh, hl, haulval = "V") |>
+complete_hauls <- dr_HL_standardised(hh, hl, haulval = "V") |>
   filter(type == "haul") |>
   dplyr::left_join(dplyr::select(hh, .id, StandardSpeciesCode, BycatchSpeciesCode), by = ".id") |>
   filter(StandardSpeciesCode == "1",   # full standard species list
@@ -178,12 +178,14 @@ onward — a real, if modest, systematic gap rather than sampling noise.
 
 ```{r cpue_two_paths, fig.height = 7}
 species_cmp <- c("common dab", "haddock")
-cmp_std <- dr_standardize_hl(hh, hl, haulval = "V") |>
+hh_ns1 <- hh |> filter(Survey == "NS-IBTS", Quarter == 1)
+hl_ns1 <- hl |> filter(Survey == "NS-IBTS", Quarter == 1)
+cmp_std <- dr_HL_standardised(hh_ns1, hl_ns1, haulval = "V") |>
   filter(species %in% species_cmp, Year >= 2010)
 
-length_cpue <- cmp_std |> filter(type == "length") |> dr_catch_by_haul(hh) |> collect() |>
+length_cpue <- cmp_std |> filter(type == "length") |> dr_catch_by_haul(hh_ns1) |> collect() |>
   mutate(source = "type = \"length\" (NumberAtLength)")
-haul_cpue   <- cmp_std |> filter(type == "haul")   |> dr_catch_by_haul(hh) |> collect() |>
+haul_cpue   <- cmp_std |> filter(type == "haul")   |> dr_catch_by_haul(hh_ns1) |> collect() |>
   mutate(source = "type = \"haul\" (TotalNumber)")
 
 bind_rows(length_cpue, haul_cpue) |>
@@ -202,7 +204,8 @@ bind_rows(length_cpue, haul_cpue) |>
   theme(legend.position = "bottom")
 ```
 
-Haddock's gap traces to a specific, real submission pattern, not
+The reason that that dab data is in more than the haddock is likely associated with
+species distribution in relation to Platform protocol. Haddock's gap traces to a specific, real submission pattern, not
 measurement coverage: restricting the comparison to only the hauls where
 haddock *was* individually measured (so `type == "length"` exists at all)
 still shows the same gap concentrated from 2017 onward, concentrated in
@@ -328,7 +331,7 @@ cbl |>
 
 ### Sex-specific length indices — *Nephrops norvegicus*
 
-`dr_standardize_hl()` carries a `p_females` column — the proportion female
+`dr_HL_standardised()` carries a `p_females` column — the proportion female
 among sexed individuals at each length (see [Standardized HL](standardize_hl.qmd#two-row-types-one-table)
 for the formula and its `NA` semantics). Splitting `n_haul`/`n_hour` into
 female and male components with `p_females`, then zero-filling each

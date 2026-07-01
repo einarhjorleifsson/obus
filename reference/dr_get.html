@@ -81,7 +81,9 @@ Legacy column names are translated to standard names before returning.</p></li>
 <dd><p>A string specifying the record type: <code>"HH"</code>, <code>"HL"</code>, <code>"CA"</code>,
 <code>"FL"</code> (flex file), <code>"LT"</code> (litter assessment), <code>"CPUEL"</code> (CPUE per length
 per haul per hour), <code>"CPUEA"</code> (CPUE per age per haul per hour), <code>"CW"</code>
-(catch weight by species and haul), or <code>"IDX"</code> (age-based survey indices).</p></dd>
+(catch weight by species and haul), <code>"IDX"</code> (age-based survey indices), or
+<code>"HL_standardised"</code> (pre-computed standardized HL table; parquet-only,
+see <code><a href="dr_HL_standardised.html">dr_HL_standardised</a></code>).</p></dd>
 
 
 <dt id="arg-surveys">surveys<a class="anchor" aria-label="anchor" href="#arg-surveys"></a></dt>
@@ -105,7 +107,8 @@ herring (126417).</p></dd>
 
 <dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
 <dd><p>String specifying the data source for HH/HL/CA: <code>"parquet"</code>
-(default) or <code>"xml"</code>. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.</p></dd>
+(default) or <code>"xml"</code>. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX. Must be
+<code>"parquet"</code> for <code>"HL_standardised"</code>.</p></dd>
 
 
 <dt id="arg-dictionary">dictionary<a class="anchor" aria-label="anchor" href="#arg-dictionary"></a></dt>
@@ -127,6 +130,10 @@ automatically from <a href="dr_lookup_fields.html">dr_lookup_fields</a>.</p></dd
     <p>All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
 dedicated ICES API functions; the <code>source</code> argument is ignored for these.
 Their legacy column names are translated to standard names before returning.</p>
+<p><code>"HL_standardised"</code> is an obus-derived product (the output of
+<code><a href="dr_HL_standardised.html">dr_HL_standardised</a></code>, pre-computed and hosted as a parquet
+file) rather than a raw ICES record type. It is parquet-only; there is no
+<code>"xml"</code> source for it.</p>
 <p>Translation is performed by <code><a href="dr_translate.html">dr_translate()</a></code> using the <code>dictionary</code> argument.
 Supply a custom data frame with columns <code>old</code> and <code>new</code> to override the
 default mapping built from <a href="dr_lookup_fields.html">dr_lookup_fields</a>.</p>

@@ -6,7 +6,7 @@ two row types controlled by the `type` column:
 ## Usage
 
 ``` r
-dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)
+dr_HL_standardised(hh, hl, species = NULL, haulval = NULL)
 ```
 
 ## Arguments

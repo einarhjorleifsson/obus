@@ -11,16 +11,16 @@ article.
 
 | Function | Input | Output | Zero-fill |
 |----|----|----|----|
-| [`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md) | raw HH + HL | one row per haul × species × length bin (type=“length”) | no |
+| [`dr_HL_standardised()`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md) | raw HH + HL | one row per haul × species × length bin (type=“length”) | no |
 | [`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md) | output of above | one row per haul × species | yes |
 | [`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md) | output of above | one row per haul × species × length bin | yes |
 
 The typical pipeline is:
 
-    dr_standardize_hl(hh, hl) |> filter(type == "length")  →  dr_catch_by_haul(hh)
+    dr_HL_standardised(hh, hl) |> filter(type == "length")  →  dr_catch_by_haul(hh)
                                                              ↘  dr_expand_length(hh)
 
-[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
+[`dr_HL_standardised()`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md)
 reads the `NumberAtLength` field and applies DataType-aware subsampling
 corrections. It returns only observed rows — no zeros — with species
 names, length units, and protocol flags pre-attached. The downstream
@@ -38,7 +38,7 @@ hl  <- dr_con("HL")
 
 # Build the base catch table once (lazy); filter downstream
 # Previously: cbl <- dr_catch_by_length(hh, hl, haulval = "V")
-cbl <- dr_standardize_hl(hh, hl, haulval = "V") |> filter(type == "length")
+cbl <- dr_HL_standardised(hh, hl, haulval = "V") |> filter(type == "length")
 
 # Ensure DuckDB can write temp files for large spill-to-disk queries
 local({
@@ -145,7 +145,7 @@ and
 [`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)
 zero-fill the CPUE-product way (above) and stop there. That’s also why
 `StandardSpeciesCode`/`BycatchSpeciesCode` aren’t carried through
-[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)’s
+[`dr_HL_standardised()`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md)’s
 output (see [Standardized
 HL](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.qmd)
 for that design decision) — but they’re one join away from `hh` if you
@@ -153,7 +153,7 @@ want to build this filter yourself:
 
 ``` r
 
-complete_hauls <- dr_standardize_hl(hh, hl, haulval = "V") |>
+complete_hauls <- dr_HL_standardised(hh, hl, haulval = "V") |>
   filter(type == "haul") |>
   dplyr::left_join(dplyr::select(hh, .id, StandardSpeciesCode, BycatchSpeciesCode), by = ".id") |>
   filter(StandardSpeciesCode == "1",   # full standard species list
@@ -186,12 +186,14 @@ sampling noise.
 ``` r
 
 species_cmp <- c("common dab", "haddock")
-cmp_std <- dr_standardize_hl(hh, hl, haulval = "V") |>
+hh_ns1 <- hh |> filter(Survey == "NS-IBTS", Quarter == 1)
+hl_ns1 <- hl |> filter(Survey == "NS-IBTS", Quarter == 1)
+cmp_std <- dr_HL_standardised(hh_ns1, hl_ns1, haulval = "V") |>
   filter(species %in% species_cmp, Year >= 2010)
 
-length_cpue <- cmp_std |> filter(type == "length") |> dr_catch_by_haul(hh) |> collect() |>
+length_cpue <- cmp_std |> filter(type == "length") |> dr_catch_by_haul(hh_ns1) |> collect() |>
   mutate(source = "type = \"length\" (NumberAtLength)")
-haul_cpue   <- cmp_std |> filter(type == "haul")   |> dr_catch_by_haul(hh) |> collect() |>
+haul_cpue   <- cmp_std |> filter(type == "haul")   |> dr_catch_by_haul(hh_ns1) |> collect() |>
   mutate(source = "type = \"haul\" (TotalNumber)")
 
 bind_rows(length_cpue, haul_cpue) |>
@@ -212,6 +214,8 @@ bind_rows(length_cpue, haul_cpue) |>
 
 ![](catch_products_files/figure-html/cpue_two_paths-1.png)
 
+The reason that that dab data is in more than the haddock is likely
+associated with species distribution in relation to Platform protocol.
 Haddock’s gap traces to a specific, real submission pattern, not
 measurement coverage: restricting the comparison to only the hauls where
 haddock *was* individually measured (so `type == "length"` exists at
@@ -351,7 +355,7 @@ cbl |>
 
 ### Sex-specific length indices — *Nephrops norvegicus*
 
-[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
+[`dr_HL_standardised()`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md)
 carries a `p_females` column — the proportion female among sexed
 individuals at each length (see [Standardized
 HL](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.qmd#two-row-types-one-table)
@@ -516,7 +520,7 @@ t <- system.time(
 cat(sprintf("10 species, all NS-IBTS Q1 years: %.1f s\n", t["elapsed"]))
 ```
 
-    10 species, all NS-IBTS Q1 years: 5.2 s
+    10 species, all NS-IBTS Q1 years: 6.1 s
 
 ``` r
 
@@ -556,7 +560,7 @@ cat(sprintf("10 species: %s rows - %.1f s\n",
             format(nrow(res10), big.mark = ","), t10["elapsed"]))
 ```
 
-    10 species: 14,677,149 rows - 12.5 s
+    10 species: 14,677,149 rows - 12.9 s
 
 Running the same pipeline over all species in NS-IBTS Q1 — every year,
 every species — takes tens of seconds and produces millions of rows. The

@@ -92,7 +92,7 @@
 <span>  <span class="va">ca</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_get.html">dr_get</a></span><span class="op">(</span><span class="st">"CA"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   9.934   1.927  25.813</span></span></code></pre></div>
+<span><span class="co">#&gt;  11.032   1.943  29.990</span></span></code></pre></div>
 <table class="table">
 <thead><tr>
 <th align="left">type</th>
@@ -102,17 +102,17 @@
 <tbody>
 <tr>
 <td align="left">HH</td>
-<td align="right">150261</td>
+<td align="right">150256</td>
 <td align="right">70</td>
 </tr>
 <tr>
 <td align="left">HL</td>
-<td align="right">14397334</td>
+<td align="right">14397130</td>
 <td align="right">30</td>
 </tr>
 <tr>
 <td align="left">CA</td>
-<td align="right">5964714</td>
+<td align="right">5964646</td>
 <td align="right">35</td>
 </tr>
 </tbody>
@@ -121,20 +121,20 @@
 <p>All tables use standard column names and correct variable types. If your downstream code depends on the old DATRAS column names, revert with:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/dr_translate.html">dr_translate</a></span><span class="op">(</span>from <span class="op">=</span> <span class="st">"new"</span>, to <span class="op">=</span> <span class="st">"old"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # A tibble: 14,397,334 × 30</span></span>
+<span><span class="co">#&gt; # A tibble: 14,397,130 × 30</span></span>
 <span><span class="co">#&gt;    RecordType `-`    Quarter Country Ship  Gear  SweepLngt GearEx DoorType StNo </span></span>
 <span><span class="co">#&gt;    &lt;chr&gt;      &lt;chr&gt;    &lt;int&gt; &lt;chr&gt;   &lt;chr&gt; &lt;chr&gt;     &lt;int&gt; &lt;chr&gt;  &lt;chr&gt;    &lt;chr&gt;</span></span>
-<span><span class="co">#&gt;  1 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     1    </span></span>
-<span><span class="co">#&gt;  2 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  3 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  4 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  5 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  6 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  7 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  8 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt;  9 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt; 10 HL         NS-IB…       1 NL      64WB  DHT          45 &lt;NA&gt;   &lt;NA&gt;     2    </span></span>
-<span><span class="co">#&gt; # ℹ 14,397,324 more rows</span></span>
+<span><span class="co">#&gt;  1 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        550  </span></span>
+<span><span class="co">#&gt;  2 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        578  </span></span>
+<span><span class="co">#&gt;  3 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        548  </span></span>
+<span><span class="co">#&gt;  4 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        571  </span></span>
+<span><span class="co">#&gt;  5 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        539  </span></span>
+<span><span class="co">#&gt;  6 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        543  </span></span>
+<span><span class="co">#&gt;  7 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        543  </span></span>
+<span><span class="co">#&gt;  8 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        543  </span></span>
+<span><span class="co">#&gt;  9 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        543  </span></span>
+<span><span class="co">#&gt; 10 HL         SWC-I…       4 GB-SCT  749S  GOV          60 &lt;NA&gt;   P        537  </span></span>
+<span><span class="co">#&gt; # ℹ 14,397,120 more rows</span></span>
 <span><span class="co">#&gt; # ℹ 20 more variables: HaulNo &lt;int&gt;, SpecCodeType &lt;chr&gt;, SpecCode &lt;chr&gt;,</span></span>
 <span><span class="co">#&gt; #   SpecVal &lt;chr&gt;, Sex &lt;chr&gt;, TotalNo &lt;dbl&gt;, CatIdentifier &lt;int&gt;, NoMeas &lt;int&gt;,</span></span>
 <span><span class="co">#&gt; #   SubFactor &lt;dbl&gt;, SubWgt &lt;int&gt;, CatCatchWgt &lt;int&gt;, LngtCode &lt;chr&gt;,</span></span>
@@ -152,7 +152,7 @@
 <span>  <span class="va">hl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/dr_con.html">dr_con</a></span><span class="op">(</span><span class="st">"HL"</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.077   0.011   0.281</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.155   0.024   1.204</span></span></code></pre></div>
 <p>The connection is nearly instant — DuckDB reads only the file index, not the data. You then use ordinary <a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a> verbs to filter, join, and compute; DuckDB translates them to SQL and executes against the remote file. Only the rows and columns you actually need travel over the wire:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
@@ -168,19 +168,19 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;    user  system elapsed </span></span>
-<span><span class="co">#&gt;   0.437   0.058   0.468</span></span>
+<span><span class="co">#&gt;   0.543   0.051   0.946</span></span>
 <span><span class="fu"><a href="https://pillar.r-lib.org/reference/glimpse.html" class="external-link">glimpse</a></span><span class="op">(</span><span class="va">cod</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Rows: 152,918</span></span>
 <span><span class="co">#&gt; Columns: 9</span></span>
-<span><span class="co">#&gt; $ .id       &lt;chr&gt; "NS-IBTS:1986:1:NO:58EJ:GOV:60041:41", "NS-IBTS:1986:1:NO:58…</span></span>
+<span><span class="co">#&gt; $ .id       &lt;chr&gt; "NS-IBTS:1990:1:NO:58EJ:GOV:0046:46", "NS-IBTS:1990:1:NO:58E…</span></span>
 <span><span class="co">#&gt; $ Survey    &lt;chr&gt; "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…</span></span>
-<span><span class="co">#&gt; $ Year      &lt;dbl&gt; 1986, 1986, 1986, 1986, 1986, 1986, 1986, 1986, 1986, 1986, …</span></span>
-<span><span class="co">#&gt; $ lon       &lt;dbl&gt; 7.6833, 7.6833, 7.6833, 7.6833, 7.6833, 7.6833, 7.6833, 7.68…</span></span>
-<span><span class="co">#&gt; $ lat       &lt;dbl&gt; 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, 54.4, …</span></span>
+<span><span class="co">#&gt; $ Year      &lt;dbl&gt; 1990, 1990, 1990, 1990, 1990, 1990, 1990, 1990, 1990, 1990, …</span></span>
+<span><span class="co">#&gt; $ lon       &lt;dbl&gt; 2.5000, 2.5000, 2.5000, 2.5000, 3.1333, 2.6333, 2.6333, 2.63…</span></span>
+<span><span class="co">#&gt; $ lat       &lt;dbl&gt; 60.3333, 60.3333, 60.3333, 60.3333, 60.1167, 59.8667, 59.866…</span></span>
 <span><span class="co">#&gt; $ latin     &lt;chr&gt; "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…</span></span>
-<span><span class="co">#&gt; $ length_cm &lt;dbl&gt; 16, 17, 20, 22, 27, 30, 31, 35, 36, 38, 39, 48, 53, 69, 71, …</span></span>
-<span><span class="co">#&gt; $ n_haul    &lt;dbl&gt; 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, …</span></span>
-<span><span class="co">#&gt; $ n_hour    &lt;dbl&gt; 2, 2, 4, 4, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, …</span></span></code></pre></div>
+<span><span class="co">#&gt; $ length_cm &lt;dbl&gt; 36, 40, 42, 48, 54, 26, 29, 31, 34, 36, 37, 38, 41, 42, 49, …</span></span>
+<span><span class="co">#&gt; $ n_haul    &lt;dbl&gt; 1.0, 1.0, 2.0, 1.0, 1.0, 1.0, 6.0, 1.0, 3.0, 1.0, 2.0, 2.0, …</span></span>
+<span><span class="co">#&gt; $ n_hour    &lt;dbl&gt; 2, 2, 4, 2, 2, 2, 12, 2, 6, 2, 4, 4, 2, 2, 2, 2, 2, 4, 3, 3,…</span></span></code></pre></div>
 <p><strong>The same pipeline works unchanged whether <code>hh</code> and <code>hl</code> are DuckDB connections or plain R data frames.</strong> You can mix and match — switch to <code><a href="reference/dr_get.html">dr_get()</a></code> when you need the full table in memory, use <code><a href="reference/dr_con.html">dr_con()</a></code> when you want lazy filtering. The <code>dr_add_*()</code> functions handle both transparently.</p>
 <p>For local parquet files, skip <code><a href="reference/dr_con.html">dr_con()</a></code> and use <code><a href="https://cboettig.github.io/duckdbfs/reference/open_dataset.html" class="external-link">duckdbfs::open_dataset()</a></code> directly — the result is identical:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
@@ -200,60 +200,60 @@
 <span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="co">#&gt;  collate  en_US.UTF-8</span></span>
 <span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a><span class="co">#&gt;  ctype    en_US.UTF-8</span></span>
 <span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a><span class="co">#&gt;  tz       Atlantic/Reykjavik</span></span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co">#&gt;  date     2026-06-29</span></span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a><span class="co">#&gt;  date     2026-07-01</span></span>
 <span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a><span class="co">#&gt;  pandoc   3.9.0.2 @ /opt/homebrew/bin/ (via rmarkdown)</span></span>
 <span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a><span class="co">#&gt;  quarto   1.8.26 @ /usr/local/bin/quarto</span></span>
 <span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="co">#&gt; ─ Packages ───────────────────────────────────────────────────────────────────</span></span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a><span class="co">#&gt;  package     * version    date (UTC) lib source</span></span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="co">#&gt;  blob          1.3.0      2026-01-14 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="co">#&gt;  cachem        1.1.0      2024-05-16 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a><span class="co">#&gt;  cli           3.6.6      2026-04-09 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co">#&gt;  curl          7.1.0      2026-04-22 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="co">#&gt;  data.table    1.18.4     2026-05-06 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="co">#&gt;  DBI           1.3.0      2026-02-25 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt;  dbplyr        2.6.0      2026-06-17 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt;  devtools      2.5.2      2026-04-30 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt;  digest        0.6.39     2025-11-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt;  dplyr       * 1.2.1      2026-04-03 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt;  duckdb        1.5.4      2026-06-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt;  duckdbfs      0.1.2.99   2026-04-28 [2] Github (cboettig/duckdbfs@0b48916)</span></span>
-<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt;  ellipsis      0.3.3      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt;  evaluate      1.0.5      2025-08-27 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt;  fastmap       1.2.0      2024-05-15 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt;  fs            2.1.0      2026-04-18 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt;  generics      0.1.4      2025-05-09 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt;  glue          1.8.1      2026-04-17 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a><span class="co">#&gt;  htmltools     0.5.9      2025-12-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="co">#&gt;  httr2         1.2.3      2026-06-23 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a><span class="co">#&gt;  icesDatras    1.5.1      2026-05-10 [2] Github (einarhjorleifsson/icesDatras@870daf6)</span></span>
-<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a><span class="co">#&gt;  knitr         1.51       2025-12-20 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a><span class="co">#&gt;  lifecycle     1.0.5      2026-01-08 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-40"><a href="#cb9-40" tabindex="-1"></a><span class="co">#&gt;  magrittr      2.0.5      2026-04-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-41"><a href="#cb9-41" tabindex="-1"></a><span class="co">#&gt;  memoise       2.0.1      2021-11-26 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-42"><a href="#cb9-42" tabindex="-1"></a><span class="co">#&gt;  obus        * 2026.06.23 2026-06-29 [1] local</span></span>
-<span id="cb9-43"><a href="#cb9-43" tabindex="-1"></a><span class="co">#&gt;  otel          0.2.0      2025-08-29 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-44"><a href="#cb9-44" tabindex="-1"></a><span class="co">#&gt;  pillar        1.11.1     2025-09-17 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-45"><a href="#cb9-45" tabindex="-1"></a><span class="co">#&gt;  pkgbuild      1.4.8      2025-05-26 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-46"><a href="#cb9-46" tabindex="-1"></a><span class="co">#&gt;  pkgconfig     2.0.3      2019-09-22 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-47"><a href="#cb9-47" tabindex="-1"></a><span class="co">#&gt;  pkgload       1.5.3      2026-06-15 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-48"><a href="#cb9-48" tabindex="-1"></a><span class="co">#&gt;  purrr         1.2.2      2026-04-10 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-49"><a href="#cb9-49" tabindex="-1"></a><span class="co">#&gt;  R6            2.6.1      2025-02-15 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-50"><a href="#cb9-50" tabindex="-1"></a><span class="co">#&gt;  rappdirs      0.3.4      2026-01-17 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-51"><a href="#cb9-51" tabindex="-1"></a><span class="co">#&gt;  rlang         1.2.0      2026-04-06 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-52"><a href="#cb9-52" tabindex="-1"></a><span class="co">#&gt;  rmarkdown     2.31       2026-03-26 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-53"><a href="#cb9-53" tabindex="-1"></a><span class="co">#&gt;  rstudioapi    0.19.0     2026-06-11 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-54"><a href="#cb9-54" tabindex="-1"></a><span class="co">#&gt;  sessioninfo   1.2.4      2026-06-04 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-55"><a href="#cb9-55" tabindex="-1"></a><span class="co">#&gt;  tibble        3.3.1      2026-01-11 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-56"><a href="#cb9-56" tabindex="-1"></a><span class="co">#&gt;  tidyselect    1.2.1      2024-03-11 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-57"><a href="#cb9-57" tabindex="-1"></a><span class="co">#&gt;  usethis       3.2.1      2025-09-06 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-58"><a href="#cb9-58" tabindex="-1"></a><span class="co">#&gt;  utf8          1.2.6      2025-06-08 [2] CRAN (R 4.5.0)</span></span>
-<span id="cb9-59"><a href="#cb9-59" tabindex="-1"></a><span class="co">#&gt;  vctrs         0.7.3      2026-04-11 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-60"><a href="#cb9-60" tabindex="-1"></a><span class="co">#&gt;  withr         3.0.3      2026-06-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-61"><a href="#cb9-61" tabindex="-1"></a><span class="co">#&gt;  xfun          0.59       2026-06-19 [2] CRAN (R 4.5.2)</span></span>
-<span id="cb9-62"><a href="#cb9-62" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12     2025-12-10 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a><span class="co">#&gt;  package     * version  date (UTC) lib source</span></span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a><span class="co">#&gt;  blob          1.3.0    2026-01-14 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a><span class="co">#&gt;  cachem        1.1.0    2024-05-16 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a><span class="co">#&gt;  cli           3.6.6    2026-04-09 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co">#&gt;  curl          7.1.0    2026-04-22 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a><span class="co">#&gt;  data.table    1.18.4   2026-05-06 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a><span class="co">#&gt;  DBI           1.3.0    2026-02-25 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a><span class="co">#&gt;  dbplyr        2.6.0    2026-06-17 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a><span class="co">#&gt;  devtools      2.5.2    2026-04-30 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a><span class="co">#&gt;  digest        0.6.39   2025-11-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-26"><a href="#cb9-26" tabindex="-1"></a><span class="co">#&gt;  dplyr       * 1.2.1    2026-04-03 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-27"><a href="#cb9-27" tabindex="-1"></a><span class="co">#&gt;  duckdb        1.5.4    2026-06-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-28"><a href="#cb9-28" tabindex="-1"></a><span class="co">#&gt;  duckdbfs      0.1.2.99 2026-04-28 [2] Github (cboettig/duckdbfs@0b48916)</span></span>
+<span id="cb9-29"><a href="#cb9-29" tabindex="-1"></a><span class="co">#&gt;  ellipsis      0.3.3    2026-04-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-30"><a href="#cb9-30" tabindex="-1"></a><span class="co">#&gt;  evaluate      1.0.5    2025-08-27 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-31"><a href="#cb9-31" tabindex="-1"></a><span class="co">#&gt;  fastmap       1.2.0    2024-05-15 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-32"><a href="#cb9-32" tabindex="-1"></a><span class="co">#&gt;  fs            2.1.0    2026-04-18 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-33"><a href="#cb9-33" tabindex="-1"></a><span class="co">#&gt;  generics      0.1.4    2025-05-09 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-34"><a href="#cb9-34" tabindex="-1"></a><span class="co">#&gt;  glue          1.8.1    2026-04-17 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-35"><a href="#cb9-35" tabindex="-1"></a><span class="co">#&gt;  htmltools     0.5.9    2025-12-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-36"><a href="#cb9-36" tabindex="-1"></a><span class="co">#&gt;  httr2         1.2.3    2026-06-23 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-37"><a href="#cb9-37" tabindex="-1"></a><span class="co">#&gt;  icesDatras    1.5.1    2026-05-10 [2] Github (einarhjorleifsson/icesDatras@870daf6)</span></span>
+<span id="cb9-38"><a href="#cb9-38" tabindex="-1"></a><span class="co">#&gt;  knitr         1.51     2025-12-20 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-39"><a href="#cb9-39" tabindex="-1"></a><span class="co">#&gt;  lifecycle     1.0.5    2026-01-08 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-40"><a href="#cb9-40" tabindex="-1"></a><span class="co">#&gt;  magrittr      2.0.5    2026-04-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-41"><a href="#cb9-41" tabindex="-1"></a><span class="co">#&gt;  memoise       2.0.1    2021-11-26 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-42"><a href="#cb9-42" tabindex="-1"></a><span class="co">#&gt;  obus        * 2026.07  2026-07-01 [1] local</span></span>
+<span id="cb9-43"><a href="#cb9-43" tabindex="-1"></a><span class="co">#&gt;  otel          0.2.0    2025-08-29 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-44"><a href="#cb9-44" tabindex="-1"></a><span class="co">#&gt;  pillar        1.11.1   2025-09-17 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-45"><a href="#cb9-45" tabindex="-1"></a><span class="co">#&gt;  pkgbuild      1.4.8    2025-05-26 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-46"><a href="#cb9-46" tabindex="-1"></a><span class="co">#&gt;  pkgconfig     2.0.3    2019-09-22 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-47"><a href="#cb9-47" tabindex="-1"></a><span class="co">#&gt;  pkgload       1.5.3    2026-06-15 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-48"><a href="#cb9-48" tabindex="-1"></a><span class="co">#&gt;  purrr         1.2.2    2026-04-10 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-49"><a href="#cb9-49" tabindex="-1"></a><span class="co">#&gt;  R6            2.6.1    2025-02-15 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-50"><a href="#cb9-50" tabindex="-1"></a><span class="co">#&gt;  rappdirs      0.3.4    2026-01-17 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-51"><a href="#cb9-51" tabindex="-1"></a><span class="co">#&gt;  rlang         1.2.0    2026-04-06 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-52"><a href="#cb9-52" tabindex="-1"></a><span class="co">#&gt;  rmarkdown     2.31     2026-03-26 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-53"><a href="#cb9-53" tabindex="-1"></a><span class="co">#&gt;  rstudioapi    0.19.0   2026-06-11 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-54"><a href="#cb9-54" tabindex="-1"></a><span class="co">#&gt;  sessioninfo   1.2.4    2026-06-04 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-55"><a href="#cb9-55" tabindex="-1"></a><span class="co">#&gt;  tibble        3.3.1    2026-01-11 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-56"><a href="#cb9-56" tabindex="-1"></a><span class="co">#&gt;  tidyselect    1.2.1    2024-03-11 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-57"><a href="#cb9-57" tabindex="-1"></a><span class="co">#&gt;  usethis       3.2.1    2025-09-06 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-58"><a href="#cb9-58" tabindex="-1"></a><span class="co">#&gt;  utf8          1.2.6    2025-06-08 [2] CRAN (R 4.5.0)</span></span>
+<span id="cb9-59"><a href="#cb9-59" tabindex="-1"></a><span class="co">#&gt;  vctrs         0.7.3    2026-04-11 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-60"><a href="#cb9-60" tabindex="-1"></a><span class="co">#&gt;  withr         3.0.3    2026-06-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-61"><a href="#cb9-61" tabindex="-1"></a><span class="co">#&gt;  xfun          0.59     2026-06-19 [2] CRAN (R 4.5.2)</span></span>
+<span id="cb9-62"><a href="#cb9-62" tabindex="-1"></a><span class="co">#&gt;  yaml          2.3.12   2025-12-10 [2] CRAN (R 4.5.2)</span></span>
 <span id="cb9-63"><a href="#cb9-63" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb9-64"><a href="#cb9-64" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpYwE8hx/temp_libpath61fe6b7395c1</span></span>
+<span id="cb9-64"><a href="#cb9-64" tabindex="-1"></a><span class="co">#&gt;  [1] /private/var/folders/14/1_h9q5hn2h93byhrkzp8jfj00000gp/T/RtmpjiEUCC/temp_libpatha79b47c5350c</span></span>
 <span id="cb9-65"><a href="#cb9-65" tabindex="-1"></a><span class="co">#&gt;  [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library</span></span>
 <span id="cb9-66"><a href="#cb9-66" tabindex="-1"></a><span class="co">#&gt;  * ── Packages attached to the search path.</span></span>
 <span id="cb9-67"><a href="#cb9-67" tabindex="-1"></a><span class="co">#&gt; </span></span>

@@ -182,7 +182,7 @@ library(dplyr)
 hh <- dr_con("HH")
 hl <- dr_con("HL")
 
-hl_std <- dr_standardize_hl(
+hl_std <- dr_HL_standardised(
   hh |> filter(Survey == "NS-IBTS", Quarter == 1, Year == 2015, HaulValidity == "V") |> head(10),
   hl |> filter(Survey == "NS-IBTS", Quarter == 1, Year == 2015)
 ) |> collect()
@@ -264,9 +264,9 @@ at the cost of the one-table simplicity described above. That trade was
 made deliberately, but it is a trade, not a free win, and feedback on
 whether it’s the right one is welcome.
 
-## Using `dr_standardize_hl()`
+## Using `dr_HL_standardised()`
 
-`dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)` implements
+`dr_HL_standardised(hh, hl, species = NULL, haulval = NULL)` implements
 the design above from raw HH and HL:
 
 - `hh`: haul header table (with `DataType`, `HaulDuration`)
@@ -324,7 +324,7 @@ typically written to disk rather than recomputed per analysis:
 
 ``` r
 
-dr_standardize_hl(hh, hl) |>
+dr_HL_standardised(hh, hl) |>
   dplyr::collect() |>
   arrow::write_parquet("hl_standardized.parquet")
 ```

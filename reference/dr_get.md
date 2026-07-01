@@ -33,8 +33,10 @@ dr_get(
   A string specifying the record type: `"HH"`, `"HL"`, `"CA"`, `"FL"`
   (flex file), `"LT"` (litter assessment), `"CPUEL"` (CPUE per length
   per haul per hour), `"CPUEA"` (CPUE per age per haul per hour), `"CW"`
-  (catch weight by species and haul), or `"IDX"` (age-based survey
-  indices).
+  (catch weight by species and haul), `"IDX"` (age-based survey
+  indices), or `"HL_standardised"` (pre-computed standardized HL table;
+  parquet-only, see
+  [`dr_HL_standardised`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md)).
 
 - surveys:
 
@@ -59,7 +61,8 @@ dr_get(
 - source:
 
   String specifying the data source for HH/HL/CA: `"parquet"` (default)
-  or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
+  or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX. Must be
+  `"parquet"` for `"HL_standardised"`.
 
 - dictionary:
 
@@ -82,6 +85,11 @@ All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
 dedicated ICES API functions; the `source` argument is ignored for
 these. Their legacy column names are translated to standard names before
 returning.
+
+`"HL_standardised"` is an obus-derived product (the output of
+[`dr_HL_standardised`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md),
+pre-computed and hosted as a parquet file) rather than a raw ICES record
+type. It is parquet-only; there is no `"xml"` source for it.
 
 Translation is performed by
 [`dr_translate()`](https://einarhjorleifsson.github.io/obus/reference/dr_translate.md)

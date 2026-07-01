@@ -8,6 +8,10 @@
 - [`.dr_row_classifier()`](https://einarhjorleifsson.github.io/obus/reference/dot-dr_row_classifier.md)
   : Row-Wise Value Classifier
 
+- [`dr_HL_standardised()`](https://einarhjorleifsson.github.io/obus/reference/dr_HL_standardised.md)
+  : Standardize HL into a clean catch foundation (length and haul
+  summaries)
+
 - [`dr_add_date()`](https://einarhjorleifsson.github.io/obus/reference/dr_add_date.md)
   :
 
@@ -102,10 +106,6 @@
 
 - [`dr_settypes()`](https://einarhjorleifsson.github.io/obus/reference/dr_settypes.md)
   : Set column types from the dr_lookup_fields specification
-
-- [`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)
-  : Standardize HL into a clean catch foundation (length and haul
-  summaries)
 
 - [`dr_translate()`](https://einarhjorleifsson.github.io/obus/reference/dr_translate.md)
   : Translate column names of a data.frame or lazy tibble using a
