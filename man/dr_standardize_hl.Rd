@@ -9,9 +9,8 @@ dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)
 \arguments{
 \item{hh}{DATRAS HH table (standard column names, \code{.id} present).
 Required columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter},
-\code{DataType}, \code{HaulDuration}, \code{StandardSpeciesCode},
-\code{BycatchSpeciesCode}. Optional: \code{HaulValidity} (used when
-\code{haulval} is set).}
+\code{DataType}, \code{HaulDuration}. Optional: \code{HaulValidity} (used
+when \code{haulval} is set).}
 
 \item{hl}{DATRAS HL table (standard column names, \code{.id} present).
 Required for \code{type = "length"}: \code{.id}, \code{aphia},
@@ -35,8 +34,7 @@ A lazy DuckDB table with columns:
 \code{n_haul}, \code{n_hour},
 \code{w_haul}, \code{w_hour}
 (\code{NA} for \code{type = "length"}),
-\code{p_females}, \code{SpeciesValidity},
-\code{StandardSpeciesCode}, \code{BycatchSpeciesCode}.
+\code{p_females}, \code{SpeciesValidity}.
 }
 \description{
 Produces a unified catch table from raw HH and HL exchange tables with two

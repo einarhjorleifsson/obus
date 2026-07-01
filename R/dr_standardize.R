@@ -26,9 +26,8 @@
 #'
 #' @param hh DATRAS HH table (standard column names, \code{.id} present).
 #'   Required columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter},
-#'   \code{DataType}, \code{HaulDuration}, \code{StandardSpeciesCode},
-#'   \code{BycatchSpeciesCode}. Optional: \code{HaulValidity} (used when
-#'   \code{haulval} is set).
+#'   \code{DataType}, \code{HaulDuration}. Optional: \code{HaulValidity} (used
+#'   when \code{haulval} is set).
 #' @param hl DATRAS HL table (standard column names, \code{.id} present).
 #'   Required for \code{type = "length"}: \code{.id}, \code{aphia},
 #'   \code{NumberAtLength}, \code{LengthClass}, \code{LengthCode},
@@ -48,8 +47,7 @@
 #'   \code{n_haul}, \code{n_hour},
 #'   \code{w_haul}, \code{w_hour}
 #'     (\code{NA} for \code{type = "length"}),
-#'   \code{p_females}, \code{SpeciesValidity},
-#'   \code{StandardSpeciesCode}, \code{BycatchSpeciesCode}.
+#'   \code{p_females}, \code{SpeciesValidity}.
 #'
 #' @seealso \code{\link{dr_catch_by_haul}}, \code{\link{dr_expand_length}}
 #' @export
@@ -59,8 +57,7 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
   }
   if (!is.null(haulval)) hh <- dplyr::filter(hh, HaulValidity %in% haulval)
 
-  hh_cols <- dplyr::select(hh, .id, Survey, Year, Quarter, DataType, HaulDuration,
-                            StandardSpeciesCode, BycatchSpeciesCode)
+  hh_cols <- dplyr::select(hh, .id, Survey, Year, Quarter, DataType, HaulDuration)
 
   # ---- type = "length": NumberAtLength path, sex collapsed to p_females ----
   hl_length <- hl |>
@@ -80,8 +77,7 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
     # column shadow the original input column for later expressions).
     dplyr::mutate(n_haul_raw = n_haul, n_hour_raw = n_hour) |>
     dplyr::group_by(.id, Survey, Year, Quarter, aphia, latin, species,
-                    length_mm, length_cm, accuracy, SpeciesValidity,
-                    StandardSpeciesCode, BycatchSpeciesCode) |>
+                    length_mm, length_cm, accuracy, SpeciesValidity) |>
     dplyr::summarise(
       n_haul = sum(n_haul_raw, na.rm = TRUE),
       n_hour = sum(n_hour_raw, na.rm = TRUE),
@@ -96,8 +92,7 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::select(
       .id, Survey, Year, Quarter, aphia, latin, species,
       length_mm, length_cm, accuracy,
-      n_haul, n_hour, p_females, SpeciesValidity,
-      StandardSpeciesCode, BycatchSpeciesCode
+      n_haul, n_hour, p_females, SpeciesValidity
     ) |>
     dplyr::mutate(type = "length",
                   w_haul = NA_real_, w_hour = NA_real_)
@@ -128,8 +123,7 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
         TRUE            ~ SpeciesCategoryWeight / HaulDuration * 60
       )
     ) |>
-    dplyr::group_by(.id, Survey, Year, Quarter, aphia, SpeciesValidity,
-                    StandardSpeciesCode, BycatchSpeciesCode) |>
+    dplyr::group_by(.id, Survey, Year, Quarter, aphia, SpeciesValidity) |>
     dplyr::summarise(
       n_haul = sum(n_haul_raw, na.rm = TRUE),
       n_hour = sum(n_hour_raw, na.rm = TRUE),
@@ -147,8 +141,7 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
     dr_add_species(species) |>
     dplyr::select(
       .id, Survey, Year, Quarter, aphia, latin, species,
-      n_haul, n_hour, w_haul, w_hour, p_females, SpeciesValidity,
-      StandardSpeciesCode, BycatchSpeciesCode
+      n_haul, n_hour, w_haul, w_hour, p_females, SpeciesValidity
     ) |>
     dplyr::mutate(type = "haul",
                   length_mm = NA_integer_, length_cm = NA_real_, accuracy = NA_real_)
@@ -157,9 +150,9 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
   dplyr::union_all(
     dplyr::select(hl_length, .id, Survey, Year, Quarter, aphia, latin, species, type,
                   length_mm, length_cm, accuracy, n_haul, n_hour, w_haul, w_hour,
-                  p_females, SpeciesValidity, StandardSpeciesCode, BycatchSpeciesCode),
+                  p_females, SpeciesValidity),
     dplyr::select(hl_haul,   .id, Survey, Year, Quarter, aphia, latin, species, type,
                   length_mm, length_cm, accuracy, n_haul, n_hour, w_haul, w_hour,
-                  p_females, SpeciesValidity, StandardSpeciesCode, BycatchSpeciesCode)
+                  p_females, SpeciesValidity)
   )
 }

@@ -39,8 +39,7 @@ utils::globalVariables(
     "dr_lookup_areas",
     "SubsampleWeight", "AreaCode",
     "LengthClass", "NumberAtLength", "accuracy", "sex",
-    "BycatchSpeciesCode", "StandardSpeciesCode", "n_f",
-    "n_haul_raw", "n_hour_raw", "n_m",
+    "n_f", "n_haul_raw", "n_hour_raw", "n_m",
     "p_females", "w_haul_raw", "w_hour_raw",
     "dr_lookup_species"
   )
