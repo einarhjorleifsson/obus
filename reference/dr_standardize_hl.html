@@ -112,10 +112,12 @@ Sex composition summarised as <code>p_females</code>. Replaces
 <code><a href="dr_catch_by_haul.html">dr_catch_by_haul</a></code> for zero-filling.</p></dd>
 
 
-</dl><p><strong>Note:</strong> <code>n_haul</code> from <code>type = "haul"</code> may differ from the
-sum of <code>n_haul</code> across <code>type = "length"</code> rows for the same haul
-and species. The haul path uses <code>TotalNumber</code> which counts all fish
-including those counted but not measured at length.</p>
+</dl><p><strong>Note:</strong> <code>n_haul</code> from <code>type = "haul"</code> (<code>TotalNumber</code>)
+and the haul/species sum of <code>n_haul</code> across <code>type = "length"</code>
+rows (subsampling-corrected <code>NumberAtLength</code>) represent the same
+count and should match within rounding. A persistent mismatch indicates
+an inconsistency in the original DATRAS submission, not a structural
+feature of the data; see <code><a href="dr_check_totalno.html">dr_check_totalno</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

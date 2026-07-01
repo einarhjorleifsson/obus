@@ -19,8 +19,15 @@ dr_add_species(x, species = NULL)
 - species:
 
   Species lookup table with columns `aphia`, `latin`, and `species`.
-  Defaults to `dr_con("species")`, a lazy DuckDB connection to the
-  species parquet on the obus server.
+  Defaults to matching `x`'s backend: the bundled
+  [`dr_lookup_species`](https://einarhjorleifsson.github.io/obus/reference/dr_lookup_species.md)
+  data frame when `x` is an eager data frame (e.g. from
+  [`dr_get`](https://einarhjorleifsson.github.io/obus/reference/dr_get.md)),
+  or `dr_con("species")` (a lazy DuckDB connection) when `x` is a lazy
+  table (e.g. from
+  [`dr_con`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md))
+  – avoids an "x and y must share the same src" error from joining an
+  eager table against a lazy one.
 
 ## Value
 

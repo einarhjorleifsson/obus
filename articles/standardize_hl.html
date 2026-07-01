@@ -170,7 +170,7 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 3 NS-IBTS:2015:1:GB-SCT:748S:GOV:13:13 Corbin's sand eel      1     36        NA</code></pre>
 </div>
 </div>
-<p><code>p_females</code> encodes sex composition as a single proportion: <code>n_F / (n_F + n_M)</code> computed from fish with recorded sex (<code>sex</code> ∈ <code>{"F", "M"}</code>). It is <code>NA</code> when no fish in the group were sexed (unsexed catches, <code>"B"</code>, <code>"U"</code>). Males and females can be recovered downstream:</p>
+<p><code>p_females</code> encodes sex composition as a single proportion: <code>n_F / (n_F + n_M)</code> computed from fish with recorded sex (<code>sex</code> ∈ <code>{"F", "M", "B"}</code> — <code>"B"</code>, Berried/egg-bearing, is a known-female state and counts as female). It is <code>NA</code> when no fish in the group were sexed (unsexed catches, <code>"U"</code>). Males and females can be recovered downstream:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"length"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>n_females <span class="op">=</span> <span class="va">n_haul</span> <span class="op">*</span> <span class="va">p_females</span>,</span>
@@ -200,9 +200,9 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <strong>Reproducibility</strong>: everyone works from the same standardized source</li>
 <li>
 <strong>Self-documenting</strong>: the type flag makes the contract explicit</li>
-</ol></section><section class="level3"><h3 id="expected-mismatches">Expected mismatches<a class="anchor" aria-label="anchor" href="#expected-mismatches"></a>
+</ol></section><section class="level3"><h3 id="length-totals-vs--haul-totals-should-match">Length totals vs. haul totals should match<a class="anchor" aria-label="anchor" href="#length-totals-vs--haul-totals-should-match"></a>
 </h3>
-<p><strong>Length rows don’t sum to haul rows.</strong> This is <strong>not a bug</strong>; it’s revealing:</p>
+<p><code>n_haul</code> summed across <code>type="length"</code> rows (subsampling-corrected <code>NumberAtLength</code>) and <code>n_haul</code> from the matching <code>type="haul"</code> row (<code>TotalNumber</code>) represent the same count and should agree within rounding:</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">length_total</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
@@ -214,13 +214,8 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"haul"</span>, <span class="va">.id</span> <span class="op">==</span> <span class="va">hl_std</span><span class="op">$</span><span class="va">.id</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">.id</span>, <span class="va">species</span>, <span class="va">n_haul</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">full_join</a></span><span class="op">(</span><span class="va">length_total</span>, <span class="va">haul_total</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">".id"</span>, <span class="st">"species"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Sample comparison (may not match):\n"</span><span class="op">)</span></span></code></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Sample comparison (may not match):</code></pre>
-</div>
-<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">full_join</a></span><span class="op">(</span><span class="va">length_total</span>, <span class="va">haul_total</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">".id"</span>, <span class="st">"species"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 5 × 4
   .id                                  species         n_haul_from_length n_haul
@@ -232,16 +227,7 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 5 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic macke…                  2      2</code></pre>
 </div>
 </div>
-<p><strong>Why they differ:</strong></p>
-<ul>
-<li>
-<strong><code>NumberAtLength</code></strong> (length rows) = individuals actually measured at length</li>
-<li>
-<strong><code>TotalNumber</code></strong> (haul rows) = total individuals caught, regardless of length measurement</li>
-<li>
-<strong>Not all fish are measured</strong> — some are too small, damaged, or unmeasurable</li>
-</ul>
-<p>This is <strong>expected behavior in real DATRAS data</strong>, not an error.</p>
+<p>A persistent, non-trivial mismatch is not a feature of the data design — it points to an inconsistency in the original DATRAS submission for that haul (<code>TotalNumber</code> not reconciled with the underlying length measurements). <code><a href="../reference/dr_check_totalno.html">dr_check_totalno()</a></code> flags this directly; in practice it affects roughly 1% of records, almost all small rounding differences under DataType C.</p>
 </section><section class="level3"><h3 id="weaknesses">Weaknesses<a class="anchor" aria-label="anchor" href="#weaknesses"></a>
 </h3>
 <ol type="1">
@@ -304,7 +290,7 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <p>The output carries two haul-level flags, <code>StandardSpeciesCode</code> and <code>BycatchSpeciesCode</code>, that document what the vessel was required to record. These can substantially affect any analysis that depends on species presence or zero-hauls. See the <a href="https://einarhjorleifsson.github.io/imbus/DATRAS/sampling_protocol.html" class="external-link">Sampling protocols</a> article in the IMBUS documentation for a detailed treatment, including examples of how ignoring these flags leads to phantom zeros and biased CPUE indices.</p>
 <p>To exclude hauls with incomplete recording before zero-filling:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hl_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dr_standardize_hl.html">dr_standardize_hl</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">complete_hauls</span> <span class="op">&lt;-</span> <span class="va">hl_std</span> <span class="op">|&gt;</span></span>
@@ -317,7 +303,7 @@ Type='haul' rows — haul-level bookkeeping (deduplicated):</code></pre>
 <p><code>dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)</code> takes: - <code>hh</code>: haul header table (with DataType, HaulDuration, StandardSpeciesCode, BycatchSpeciesCode) - <code>hl</code>: length table (with NumberAtLength, TotalNumber, etc.) - <code>species</code>: species lookup (defaults to <code>dr_con("species")</code>) - <code>haulval</code>: optional haul validity filter (e.g. <code>"V"</code> only)</p>
 <p>Output: lazy DuckDB table with 19 columns and two row types. Can be written to parquet:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode cell-code" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/dr_standardize_hl.html">dr_standardize_hl</a></span><span class="op">(</span><span class="va">hh</span>, <span class="va">hl</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/compute.html" class="external-link">collect</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">arrow</span><span class="fu">::</span><span class="fu"><a href="https://arrow.apache.org/docs/r/reference/write_parquet.html" class="external-link">write_parquet</a></span><span class="op">(</span><span class="st">"hl_standardized.parquet"</span><span class="op">)</span></span></code></pre></div>

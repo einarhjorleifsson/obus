@@ -231,9 +231,9 @@ gives a sex-specific length index — each sex is treated as its own
 number-at-length series, so the existing zero-fill machinery applies
 unchanged.
 
-*Nephrops norvegicus* (Dublin Bay lobster) is a good candidate: males
-and females are distinguished visually by claw and abdomen shape, so
-`p_females` is non-missing for over 90% of its NS-IBTS length records.
+*Nephrops norvegicus* (Dublin Bay lobster) is a good candidate: it is
+reliably sexed during sampling, so `p_females` is non-missing for over
+90% of its NS-IBTS length records.
 
 > **`p_females`-derived counts assume the catch is fully sexed**
 >
@@ -288,14 +288,8 @@ bind_rows(female_lf, male_lf) |>
 ![](catch_products_files/figure-html/nephrops_sex_index-1.png)
 
 Female and male numbers track closely up to ~4 cm, then female numbers
-fall off sharply while male numbers persist into larger size classes.
-*Nephrops* is dioecious — every individual is male or female for life,
-there is no sex change. The divergence is driven by **differential
-growth**: after females mature, their growth rate slows relative to
-males (linked to less frequent moulting, since egg-brooding females skip
-moult cycles), so males increasingly outpace females in length at a
-given age. At any fixed length class, the larger sizes are then
-progressively dominated by males simply because males got there faster.
+fall off sharply while male numbers persist into larger size classes —
+males reach larger sizes than females in this species.
 
 ------------------------------------------------------------------------
 
@@ -390,7 +384,7 @@ t <- system.time(
 cat(sprintf("10 species, all NS-IBTS Q1 years: %.1f s\n", t["elapsed"]))
 ```
 
-    10 species, all NS-IBTS Q1 years: 5.9 s
+    10 species, all NS-IBTS Q1 years: 6.0 s
 
 ``` r
 

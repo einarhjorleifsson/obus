@@ -2,9 +2,9 @@
 
 Retrieves DATRAS trawl survey data from two sources:
 
-- `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
-  survey/year/quarter filtering). Returns standard column names
-  directly.
+- `"parquet"`: Reads from URL-hosted Parquet files, filtered by
+  `surveys`, `years`, and `quarters` before download. Returns standard
+  column names directly.
 
 - `"xml"`: Retrieves data via the legacy
   [`icesDatras::getDATRAS`](https://rdrr.io/pkg/icesDatras/man/getDATRAS.html)

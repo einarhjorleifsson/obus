@@ -67,10 +67,13 @@ A lazy DuckDB table with columns: `.id`, `Survey`, `Year`, `Quarter`,
   [`dr_catch_by_haul`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md)
   for zero-filling.
 
-**Note:** `n_haul` from `type = "haul"` may differ from the sum of
-`n_haul` across `type = "length"` rows for the same haul and species.
-The haul path uses `TotalNumber` which counts all fish including those
-counted but not measured at length.
+**Note:** `n_haul` from `type = "haul"` (`TotalNumber`) and the
+haul/species sum of `n_haul` across `type = "length"` rows
+(subsampling-corrected `NumberAtLength`) represent the same count and
+should match within rounding. A persistent mismatch indicates an
+inconsistency in the original DATRAS submission, not a structural
+feature of the data; see
+[`dr_check_totalno`](https://einarhjorleifsson.github.io/obus/reference/dr_check_totalno.md).
 
 ## See also
 

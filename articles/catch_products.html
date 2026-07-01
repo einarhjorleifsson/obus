@@ -283,7 +283,7 @@
 <a class="anchor" aria-label="anchor" href="#sex-specific-length-indices-nephrops-norvegicus"></a>
 </h3>
 <p><code><a href="../reference/dr_standardize_hl.html">dr_standardize_hl()</a></code> carries a <code>p_females</code> column — the proportion female among sexed individuals at each length (see <a href="standardize_hl.qmd#two-row-types-one-table">Standardized HL</a> for the formula and its <code>NA</code> semantics). Splitting <code>n_haul</code>/<code>n_hour</code> into female and male components with <code>p_females</code>, then zero-filling each component separately with <code><a href="../reference/dr_expand_length.html">dr_expand_length()</a></code>, gives a sex-specific length index — each sex is treated as its own number-at-length series, so the existing zero-fill machinery applies unchanged.</p>
-<p><em>Nephrops norvegicus</em> (Dublin Bay lobster) is a good candidate: males and females are distinguished visually by claw and abdomen shape, so <code>p_females</code> is non-missing for over 90% of its NS-IBTS length records.</p>
+<p><em>Nephrops norvegicus</em> (Dublin Bay lobster) is a good candidate: it is reliably sexed during sampling, so <code>p_females</code> is non-missing for over 90% of its NS-IBTS length records.</p>
 <div>
 <blockquote>
 <p><strong><code>p_females</code>-derived counts assume the catch is fully sexed</strong></p>
@@ -337,7 +337,7 @@
 </div>
 </div>
 </div>
-<p>Female and male numbers track closely up to ~4 cm, then female numbers fall off sharply while male numbers persist into larger size classes. <em>Nephrops</em> is dioecious — every individual is male or female for life, there is no sex change. The divergence is driven by <strong>differential growth</strong>: after females mature, their growth rate slows relative to males (linked to less frequent moulting, since egg-brooding females skip moult cycles), so males increasingly outpace females in length at a given age. At any fixed length class, the larger sizes are then progressively dominated by males simply because males got there faster.</p>
+<p>Female and male numbers track closely up to ~4 cm, then female numbers fall off sharply while male numbers persist into larger size classes — males reach larger sizes than females in this species.</p>
 <hr></section></section><section class="level2"><h2 id="bts-q3-southern-north-sea-flatfish-survey">BTS Q3 — Southern North Sea flatfish survey<a class="anchor" aria-label="anchor" href="#bts-q3-southern-north-sea-flatfish-survey"></a>
 </h2>
 <p>BTS covers the Dutch, Belgian and English coastal waters in summer. Common dab and plaice dominate; this survey also records seahorses consistently.</p>
@@ -423,7 +423,7 @@
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"10 species, all NS-IBTS Q1 years: %.1f s\n"</span>, <span class="va">t</span><span class="op">[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>10 species, all NS-IBTS Q1 years: 5.9 s</code></pre>
+<pre><code>10 species, all NS-IBTS Q1 years: 6.0 s</code></pre>
 </div>
 </div>
 <div class="cell">

@@ -58,8 +58,8 @@ DataType C:          TotalNumber ~= sum(NumberAtLength)
 <span>  TotalNumber <span class="op">=</span> <span class="va">TotalNumber</span>,</span>
 <span>  SubsamplingFactor <span class="op">=</span> <span class="va">SubsamplingFactor</span>,</span>
 <span>  NumberAtLength <span class="op">=</span> <span class="va">NumberAtLength</span>,</span>
-<span>  Species <span class="op">=</span> <span class="va">ValidAphiaID</span>,</span>
-<span>  Sex <span class="op">=</span> <span class="va">SpeciesSex</span>,</span>
+<span>  Species <span class="op">=</span> <span class="va">aphia</span>,</span>
+<span>  Sex <span class="op">=</span> <span class="va">sex</span>,</span>
 <span>  SpeciesCategory <span class="op">=</span> <span class="va">SpeciesCategory</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  flag <span class="op">=</span> <span class="cn">FALSE</span></span>
@@ -73,16 +73,15 @@ DataType C:          TotalNumber ~= sum(NumberAtLength)
 <dl><dt id="arg-hl">hl<a class="anchor" aria-label="anchor" href="#arg-hl"></a></dt>
 <dd><p>HL exchange table. Must contain <code>DataType</code>, <code>TotalNumber</code>,
 <code>SubsamplingFactor</code>, <code>NumberAtLength</code>, <code>.id</code>, and the grouping fields
-<code>ValidAphiaID</code>, <code>SpeciesSex</code>, <code>SpeciesCategory</code> (or the column names
-supplied below). Join HH for <code>DataType</code> if it is not present.
+<code>aphia</code>, <code>sex</code>, <code>SpeciesCategory</code> (or the column names supplied below).
+Join HH for <code>DataType</code> if it is not present.
 Note: <code>.id</code> must be present (call <code><a href="dr_add_id.html">dr_add_id()</a></code> first if needed).</p></dd>
 
 
 <dt id="arg-datatype-totalnumber-subsamplingfactor-numberatlength-species-sex-speciescategory">DataType, TotalNumber, SubsamplingFactor, NumberAtLength, Species, Sex, SpeciesCategory<a class="anchor" aria-label="anchor" href="#arg-datatype-totalnumber-subsamplingfactor-numberatlength-species-sex-speciescategory"></a></dt>
 <dd><p>Unquoted column names. New-style defaults shown. For old-style tables from
 <code>dr_con_raw()</code> or <code>dr_get(from = "old")</code> use:
-<code>TotalNo</code>, <code>SubFactor</code>, <code>HLNoAtLngt</code>, <code>Valid_Aphia</code>, <code>Sex</code>, <code>CatIdentifier</code>.
-Note: <code>Sex</code> in HL (new-style) is <code>SpeciesSex</code>; in CA it is <code>IndividualSex</code>.</p></dd>
+<code>TotalNo</code>, <code>SubFactor</code>, <code>HLNoAtLngt</code>, <code>Valid_Aphia</code>, <code>Sex</code>, <code>CatIdentifier</code>.</p></dd>
 
 
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>

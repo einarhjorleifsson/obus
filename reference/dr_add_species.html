@@ -62,8 +62,12 @@ match are retained with <code>NA</code> in the new columns.</p>
 
 <dt id="arg-species">species<a class="anchor" aria-label="anchor" href="#arg-species"></a></dt>
 <dd><p>Species lookup table with columns <code>aphia</code>, <code>latin</code>,
-and <code>species</code>. Defaults to <code>dr_con("species")</code>, a lazy DuckDB
-connection to the species parquet on the obus server.</p></dd>
+and <code>species</code>. Defaults to matching <code>x</code>'s backend: the bundled
+<code><a href="dr_lookup_species.html">dr_lookup_species</a></code> data frame when <code>x</code> is an eager data
+frame (e.g. from <code><a href="dr_get.html">dr_get</a></code>), or <code>dr_con("species")</code> (a
+lazy DuckDB connection) when <code>x</code> is a lazy table (e.g. from
+<code><a href="dr_con.html">dr_con</a></code>) – avoids an "x and y must share the same src"
+error from joining an eager table against a lazy one.</p></dd>
 
 </dl></div>
     <div class="section level2">

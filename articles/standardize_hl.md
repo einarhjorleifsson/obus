@@ -131,8 +131,9 @@ print(haul_rows |> select(.id, species, n_haul, w_haul, p_females))
 
 `p_females` encodes sex composition as a single proportion:
 `n_F / (n_F + n_M)` computed from fish with recorded sex (`sex` ∈
-`{"F", "M"}`). It is `NA` when no fish in the group were sexed (unsexed
-catches, `"B"`, `"U"`). Males and females can be recovered downstream:
+`{"F", "M", "B"}` — `"B"`, Berried/egg-bearing, is a known-female state
+and counts as female). It is `NA` when no fish in the group were sexed
+(unsexed catches, `"U"`). Males and females can be recovered downstream:
 
 ``` r
 
@@ -169,10 +170,12 @@ products](https://einarhjorleifsson.github.io/obus/articles/catch_products.qmd).
     source
 4.  **Self-documenting**: the type flag makes the contract explicit
 
-### Expected mismatches
+### Length totals vs. haul totals should match
 
-**Length rows don’t sum to haul rows.** This is **not a bug**; it’s
-revealing:
+`n_haul` summed across `type="length"` rows (subsampling-corrected
+`NumberAtLength`) and `n_haul` from the matching `type="haul"` row
+(`TotalNumber`) represent the same count and should agree within
+rounding:
 
 ``` r
 
@@ -185,15 +188,8 @@ haul_total <- hl_std |>
   filter(type == "haul", .id == hl_std$.id[1]) |>
   select(.id, species, n_haul)
 
-comparison <- full_join(length_total, haul_total, by = c(".id", "species"))
-cat("Sample comparison (may not match):\n")
-```
-
-    Sample comparison (may not match):
-
-``` r
-
-print(head(comparison, 5))
+full_join(length_total, haul_total, by = c(".id", "species")) |>
+  head(5)
 ```
 
     # A tibble: 5 × 4
@@ -205,16 +201,13 @@ print(head(comparison, 5))
     4 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic horse…                  9      9
     5 NS-IBTS:2015:1:GB-SCT:748S:GOV:12:12 Atlantic macke…                  2      2
 
-**Why they differ:**
-
-- **`NumberAtLength`** (length rows) = individuals actually measured at
-  length
-- **`TotalNumber`** (haul rows) = total individuals caught, regardless
-  of length measurement
-- **Not all fish are measured** — some are too small, damaged, or
-  unmeasurable
-
-This is **expected behavior in real DATRAS data**, not an error.
+A persistent, non-trivial mismatch is not a feature of the data design —
+it points to an inconsistency in the original DATRAS submission for that
+haul (`TotalNumber` not reconciled with the underlying length
+measurements).
+[`dr_check_totalno()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_totalno.md)
+flags this directly; in practice it affects roughly 1% of records,
+almost all small rounding differences under DataType C.
 
 ### Weaknesses
 
