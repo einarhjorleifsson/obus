@@ -165,7 +165,7 @@ system.time({
 ```
 
        user  system elapsed
-      1.364   0.070   4.256 
+      1.295   0.057   3.893 
 
 ``` r
 
@@ -175,7 +175,7 @@ system.time({
 ```
 
        user  system elapsed
-     10.533   0.860  30.361 
+     10.471   0.876  26.323 
 
 The difference is what has actually happened.
 [`dr_con()`](https://einarhjorleifsson.github.io/obus/reference/dr_con.md)
@@ -251,7 +251,7 @@ q |> show_query()
 
     <SQL>
     SELECT *
-    FROM plovphbmjpsthon
+    FROM ucvevdzoyzfdmrd
     WHERE (Survey = 'NS-IBTS') AND ("Year" = 2026.0) AND ("Quarter" = 1.0)
 
 Nothing has been downloaded yet. The filter is encoded as a `WHERE`
@@ -295,7 +295,7 @@ q |> show_query()
     WHEN (LengthCode IN ('1', '2', '5')) THEN LengthClass
     ELSE NULL
     END AS length_cm
-      FROM plovphbmjpsthon
+      FROM ucvevdzoyzfdmrd
     ) AS q01
     WHERE (Survey = 'NS-IBTS') AND ("Quarter" = 1.0) AND (NOT((LengthCode IS NULL)))
 
@@ -319,7 +319,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.905   0.048   6.181 
+      0.772   0.046   3.791 
 
 ``` r
 
@@ -405,17 +405,17 @@ q |> show_query()
     END AS length_cm
           FROM (
             SELECT
-              plovphbmjpsthon.*,
+              ucvevdzoyzfdmrd.*,
               HaulValidity,
               DataType,
               HaulDuration,
               latin,
               species
-            FROM plovphbmjpsthon
-            INNER JOIN atkarcbbtcppmkf
-              ON (plovphbmjpsthon.".id" = atkarcbbtcppmkf.".id")
-            INNER JOIN avqfswhoxpfyeiy
-              ON (plovphbmjpsthon.aphia = avqfswhoxpfyeiy.aphia)
+            FROM ucvevdzoyzfdmrd
+            INNER JOIN hlowudpxqpsdjyx
+              ON (ucvevdzoyzfdmrd.".id" = hlowudpxqpsdjyx.".id")
+            INNER JOIN lzgnaemyxgnuiuh
+              ON (ucvevdzoyzfdmrd.aphia = lzgnaemyxgnuiuh.aphia)
           ) AS q01
         ) AS q01
       ) AS q01
@@ -434,7 +434,7 @@ system.time(
 ```
 
        user  system elapsed
-      0.667   0.030  11.167 
+      0.690   0.035   8.752 
 
 ``` r
 
@@ -443,13 +443,13 @@ glimpse(cod)
 
     Rows: 152,918
     Columns: 7
-    $ .id       <chr> "NS-IBTS:1980:1:DE:06DA:H18:000081:60", "NS-IBTS:1980:1:DE:0…
+    $ .id       <chr> "NS-IBTS:1974:1:SE:77TH:FOT:16", "NS-IBTS:1974:1:SE:77TH:FOT…
     $ Survey    <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-I…
-    $ Year      <dbl> 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, 1980, …
+    $ Year      <dbl> 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, 1974, …
     $ latin     <chr> "Gadus morhua", "Gadus morhua", "Gadus morhua", "Gadus morhu…
-    $ length_cm <dbl> 31, 32, 45, 52, 55, 63, 68, 73, 42, 51, 41, 43, 44, 45, 46, …
-    $ n_haul    <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, …
-    $ n_hour    <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, …
+    $ length_cm <dbl> 44, 53, 56, 45, 46, 49, 55, 66, 72, 73, 11, 37, 48, 10, 12, …
+    $ n_haul    <dbl> 1.00, 1.00, 1.00, 1.25, 2.50, 2.50, 1.25, 1.25, 2.50, 1.25, …
+    $ n_hour    <dbl> 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 6, 2, 2, 2, 6, …
 
 Three Parquet files joined, filtered, and computed — all in DuckDB,
 before a single row enters R memory.

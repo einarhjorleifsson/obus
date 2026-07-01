@@ -15,8 +15,7 @@ dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)
 
   DATRAS HH table (standard column names, `.id` present). Required
   columns: `.id`, `Survey`, `Year`, `Quarter`, `DataType`,
-  `HaulDuration`, `StandardSpeciesCode`, `BycatchSpeciesCode`. Optional:
-  `HaulValidity` (used when `haulval` is set).
+  `HaulDuration`. Optional: `HaulValidity` (used when `haulval` is set).
 
 - hl:
 
@@ -41,8 +40,7 @@ dr_standardize_hl(hh, hl, species = NULL, haulval = NULL)
 A lazy DuckDB table with columns: `.id`, `Survey`, `Year`, `Quarter`,
 `aphia`, `latin`, `species`, `type`, `length_mm`, `length_cm`,
 `accuracy` (`NA` for `type = "haul"`), `n_haul`, `n_hour`, `w_haul`,
-`w_hour` (`NA` for `type = "length"`), `p_females`, `SpeciesValidity`,
-`StandardSpeciesCode`, `BycatchSpeciesCode`.
+`w_hour` (`NA` for `type = "length"`), `p_females`, `SpeciesValidity`.
 
 ## Details
 

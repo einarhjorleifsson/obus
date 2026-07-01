@@ -88,14 +88,146 @@ bind_rows(
   facet_wrap(~species, scales = "free_y") +
   scale_colour_manual(values = c("with zero hauls"    = "#2166ac",
                                  "without zero hauls" = "#d73027")) +
-  labs(y = "Numbers per hour (mean ± 95 % boot CI)",
+  labs(y = "Numbers per hour (mean, 95% boot CI)",
        x = NULL, colour = NULL,
-       title = "NS-IBTS Q1 — effect of zero-haul inclusion on CPUE") +
+       title = "NS-IBTS Q1 - effect of zero-haul inclusion on CPUE") +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
 
 ![](catch_products_files/figure-html/ns_ibts_zero_demo-1.png)
+
+### Which hauls get a zero row?
+
+[`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md)
+and
+[`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)
+build their zero-fill species list by pooling across every haul in the
+same Survey/Year/Quarter — a species gets a zero row in a haul if it was
+caught *anywhere else* in that survey-year-quarter, regardless of
+whether that particular haul was actually required to record it. This is
+a deliberate match to how DATRAS’s own CPUE data products do it:
+
+> “Information for a species in data products for the given year and
+> quarter can only be found if at least one data submitter observed the
+> species and reported it to DATRAS. Then 0-records will be
+> automatically added to all hauls in the given year and quarter.”
+>
+> — ICES Data Centre, [*DATRAS
+> FAQs*](https://www.ices.dk/data/Documents/DATRAS/DATRAS_FAQs.pdf)
+> (DATRAS Guidelines Document, “ICES DATRAS FAQ For Data Users”, version
+> 3, 2014)
+
+This pooled rule matches the official DATRAS convention, but it can
+still produce **phantom zeros**: if a haul was never required to record
+a species at all, a “zero” there doesn’t distinguish “confirmed absent”
+from “never checked.” Two HH columns exist for exactly this —
+`StandardSpeciesCode` and `BycatchSpeciesCode`, documenting what a
+vessel was required to record for that haul. ICES’s own
+index-calculation methodology uses them for a further haul-*selection*
+step: restricting which hauls are eligible to contribute to a
+species-specific index —
+
+> “If Bycatch species recording codes exist for a species then only
+> hauls with all species reported or the selected species record is
+> \[selected\]… If there is standard species then take only haul which
+> has data of that standard species.”
+>
+> — ICES Data Centre, [*NS-IBTS Indices Calculation
+> Procedure*](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_IBTS.pdf)
+> (DATRAS Procedure Document, 2022) and [*BITS Indices Calculation
+> Procedure*](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_BITS.pdf)
+> (DATRAS Procedure Document, 2013)
+
+obus doesn’t implement this haul-selection step yet —
+[`dr_catch_by_haul()`](https://einarhjorleifsson.github.io/obus/reference/dr_catch_by_haul.md)
+and
+[`dr_expand_length()`](https://einarhjorleifsson.github.io/obus/reference/dr_expand_length.md)
+zero-fill the CPUE-product way (above) and stop there. That’s also why
+`StandardSpeciesCode`/`BycatchSpeciesCode` aren’t carried through
+[`dr_standardize_hl()`](https://einarhjorleifsson.github.io/obus/reference/dr_standardize_hl.md)’s
+output (see [Standardized
+HL](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.qmd)
+for that design decision) — but they’re one join away from `hh` if you
+want to build this filter yourself:
+
+``` r
+
+complete_hauls <- dr_standardize_hl(hh, hl, haulval = "V") |>
+  filter(type == "haul") |>
+  dplyr::left_join(dplyr::select(hh, .id, StandardSpeciesCode, BycatchSpeciesCode), by = ".id") |>
+  filter(StandardSpeciesCode == "1",   # full standard species list
+         BycatchSpeciesCode  != "0")   # some bycatch recording done
+```
+
+There’s also a separate, independent complication: the species codes
+referenced by `StandardSpeciesCode`/`BycatchSpeciesCode` are
+survey-specific, and which species each code actually covers — and
+whether that list has changed over time within a survey — is not
+something obus currently encodes. See the [Sampling
+protocols](https://einarhjorleifsson.github.io/imbus/DATRAS/sampling_protocol.html)
+article in the IMBUS documentation for a detailed treatment, including
+examples of how ignoring these flags leads to phantom zeros and biased
+CPUE indices.
+
+### CPUE from the two counting paths — when do they agree?
+
+`type == "length"` and `type == "haul"` give two independent CPUE series
+for the same species — one from summed length-frequency counts, one from
+the haul-level `TotalNumber`. They should track each other closely; a
+persistent gap is a real signal, not noise (see [Standardized
+HL](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.qmd#length-totals-vs-haul-totals-should-match)).
+Comparing the two on recent NS-IBTS years shows both cases: common dab’s
+two series overlap almost exactly every year, while haddock’s
+haul-derived CPUE sits consistently above its length-derived CPUE from
+around 2020 onward — a real, if modest, systematic gap rather than
+sampling noise.
+
+``` r
+
+species_cmp <- c("common dab", "haddock")
+cmp_std <- dr_standardize_hl(hh, hl, haulval = "V") |>
+  filter(species %in% species_cmp, Year >= 2010)
+
+length_cpue <- cmp_std |> filter(type == "length") |> dr_catch_by_haul(hh) |> collect() |>
+  mutate(source = "type = \"length\" (NumberAtLength)")
+haul_cpue   <- cmp_std |> filter(type == "haul")   |> dr_catch_by_haul(hh) |> collect() |>
+  mutate(source = "type = \"haul\" (TotalNumber)")
+
+bind_rows(length_cpue, haul_cpue) |>
+  filter(!is.na(n_hour)) |>
+  mutate(species = factor(species, levels = species_cmp)) |>
+  ggplot(aes(Year, n_hour, colour = source)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange", size = 0.3,
+               position = position_dodge(0.6)) +
+  facet_wrap(~species, scales = "free_y", ncol = 1) +
+  scale_colour_manual(values = c(
+    "type = \"length\" (NumberAtLength)" = "#2166ac",
+    "type = \"haul\" (TotalNumber)"      = "#d73027")) +
+  labs(y = "Numbers per hour (mean, 95% boot CI)", x = NULL, colour = NULL,
+       title = "NS-IBTS Q1, 2010-2026 - CPUE from the two counting paths") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+![](catch_products_files/figure-html/cpue_two_paths-1.png)
+
+Haddock’s gap traces to a specific, real submission pattern, not
+measurement coverage: restricting the comparison to only the hauls where
+haddock *was* individually measured (so `type == "length"` exists at
+all) still shows the same gap concentrated from 2017 onward,
+concentrated in `DataType == "P"` records. One 2024 haul illustrates the
+mechanism directly — `TotalNumber = 2844` is reported identically across
+three different `SpeciesCategory` strata (11, 12, 13) for the same haul
+and species. The haul-path sums `TotalNumber` across strata (correctly,
+per the DATRAS spec — different strata are meant to hold different
+counts), so a repeated value here triples the haul-derived total for
+that haul. This is exactly the kind of inconsistency
+[`dr_check_totalno()`](https://einarhjorleifsson.github.io/obus/reference/dr_check_totalno.md)
+is designed to flag (see [Standardized
+HL](https://einarhjorleifsson.github.io/obus/articles/standardize_hl.qmd#length-totals-vs-haul-totals-should-match))
+— a genuine data-submission issue, not a coverage gap like the one seen
+for species that are rarely individually measured.
 
 ### Spatial distribution — catch per haul
 
@@ -123,7 +255,7 @@ ggplot(cod_hauls_2015,
   scale_size_area(max_size = 10, name = "Numbers per haul") +
   coord_sf(xlim = c(-4, 13), ylim = c(49, 62)) +
   labs(x = NULL, y = NULL,
-       title = "NS-IBTS Q1 2015 — Atlantic cod catch per haul") +
+       title = "NS-IBTS Q1 2015 - Atlantic cod catch per haul") +
   theme_bw() +
   theme(legend.position = "right")
 ```
@@ -156,9 +288,9 @@ cbl |>
   #scale_fill_manual(values   = c(Q1 = "#2166ac", Q3 = "#d73027")) +
   #scale_colour_manual(values = c(Q1 = "#2166ac", Q3 = "#d73027")) +
   facet_grid(YQ ~ .) +
-  labs(x = "Length (cm)", y = "Numbers per hour (mean ± 95 % boot CI)",
+  labs(x = "Length (cm)", y = "Numbers per hour (mean, 95% boot CI)",
        fill = NULL, colour = NULL,
-       title = "NS-IBTS Q1 & Q3 — haddock length distribution 2000–2002") +
+       title = "NS-IBTS Q1 & Q3 - haddock length distribution 2000-2002") +
   theme_bw() +
   theme(legend.position = "bottom") +
   coord_cartesian(xlim = c(5, 45))
@@ -208,9 +340,9 @@ cbl |>
                size = 0.3, position = position_dodge(0.4)) +
   scale_colour_manual(values = c("Q1 (<= 22 cm, age ~10 months)" = "#2166ac",
                                  "Q3 (<= 15 cm, age ~4 months)"  = "#d73027")) +
-  labs(y = "Numbers per hour (mean ± 95 % boot CI)",
+  labs(y = "Numbers per hour (mean, 95% boot CI)",
        x = "Year-class", colour = NULL,
-       title = "NS-IBTS — haddock year-class strength index") +
+       title = "NS-IBTS - haddock year-class strength index") +
   theme_bw() +
   theme(legend.position = "bottom")
 ```
@@ -281,7 +413,7 @@ bind_rows(female_lf, male_lf) |>
   scale_colour_manual(values = c(female = "#d73027", male = "#2166ac")) +
   labs(x = "Carapace length (cm)", y = "Numbers per hour (mean)",
        colour = NULL,
-       title = "NS-IBTS Q1 2015 — Nephrops norvegicus length index by sex") +
+       title = "NS-IBTS Q1 2015 - Nephrops norvegicus length index by sex") +
   theme_bw()
 ```
 
@@ -311,9 +443,9 @@ cbl |>
   stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
                colour = "#1b7837", size = 0.3) +
   facet_wrap(~species, scales = "free_y") +
-  labs(y = "Numbers per hour (mean ± 95 % boot CI)",
+  labs(y = "Numbers per hour (mean, 95% boot CI)",
        x = NULL,
-       title = "BTS Q3 — flatfish CPUE indices") +
+       title = "BTS Q3 - flatfish CPUE indices") +
   theme_bw()
 ```
 
@@ -351,7 +483,7 @@ cbl |>
     sec.axis = sec_axis(~ . * 1, name = "Scaled mean CPUE (line)")
   ) +
   labs(x = NULL,
-       title = "BTS Q3 — seahorse prevalence and relative CPUE") +
+       title = "BTS Q3 - seahorse prevalence and relative CPUE") +
   theme_bw()
 ```
 
@@ -384,7 +516,7 @@ t <- system.time(
 cat(sprintf("10 species, all NS-IBTS Q1 years: %.1f s\n", t["elapsed"]))
 ```
 
-    10 species, all NS-IBTS Q1 years: 6.0 s
+    10 species, all NS-IBTS Q1 years: 5.2 s
 
 ``` r
 
@@ -394,8 +526,8 @@ cpue_10 |>
   stat_summary(fun.data = "mean_cl_boot", geom = "pointrange",
                colour = "#2166ac", size = 0.2) +
   facet_wrap(~species, scales = "free_y", ncol = 2) +
-  labs(y = "Numbers per hour (mean ± 95 % boot CI)", x = NULL,
-       title = "NS-IBTS Q1 — ten species CPUE indices") +
+  labs(y = "Numbers per hour (mean, 95% boot CI)", x = NULL,
+       title = "NS-IBTS Q1 - ten species CPUE indices") +
   theme_bw()
 ```
 
@@ -420,11 +552,11 @@ t10 <- system.time(
     collect()
 )
 
-cat(sprintf("10 species: %s rows — %.1f s\n",
+cat(sprintf("10 species: %s rows - %.1f s\n",
             format(nrow(res10), big.mark = ","), t10["elapsed"]))
 ```
 
-    10 species: 14,677,149 rows — 13.2 s
+    10 species: 14,677,149 rows - 12.5 s
 
 Running the same pipeline over all species in NS-IBTS Q1 — every year,
 every species — takes tens of seconds and produces millions of rows. The
@@ -441,7 +573,7 @@ t_all <- system.time(
     collect()
 )
 
-cat(sprintf("all species: %s rows — %.1f s\n",
+cat(sprintf("all species: %s rows - %.1f s\n",
             format(nrow(res_all), big.mark = ","), t_all["elapsed"]))
 ```
 
