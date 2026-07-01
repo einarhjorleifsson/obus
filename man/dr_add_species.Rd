@@ -10,8 +10,12 @@ dr_add_species(x, species = NULL)
 \item{x}{A data frame or DuckDB lazy table with an \code{aphia} column.}
 
 \item{species}{Species lookup table with columns \code{aphia}, \code{latin},
-and \code{species}. Defaults to \code{dr_con("species")}, a lazy DuckDB
-connection to the species parquet on the obus server.}
+and \code{species}. Defaults to matching \code{x}'s backend: the bundled
+\code{\link{dr_lookup_species}} data frame when \code{x} is an eager data
+frame (e.g. from \code{\link{dr_get}}), or \code{dr_con("species")} (a
+lazy DuckDB connection) when \code{x} is a lazy table (e.g. from
+\code{\link{dr_con}}) -- avoids an "x and y must share the same src"
+error from joining an eager table against a lazy one.}
 }
 \value{
 \code{x} with two additional columns:

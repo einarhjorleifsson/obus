@@ -45,7 +45,9 @@ dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
   .Deprecated("dr_standardize_hl",
               msg = paste0("'dr_catch_by_length()' is deprecated. ",
                            "Use dr_standardize_hl() and filter(type == 'length') instead."))
-  if (is.null(species)) species <- dr_con("species")
+  if (is.null(species)) {
+    species <- if (inherits(hl, "tbl_lazy")) dr_con("species") else dr_lookup_species
+  }
   if (!is.null(haulval)) hh <- dplyr::filter(hh, HaulValidity %in% haulval)
 
   hl |>
@@ -256,7 +258,9 @@ dr_catch_total <- function(hh = NULL, hl = NULL, species = NULL) {
                            "pipe to dr_catch_by_haul() for zero-filling."))
   if (is.null(hh))      hh      <- dr_con("HH")
   if (is.null(hl))      hl      <- dr_con("HL")
-  if (is.null(species)) species <- dr_con("species")
+  if (is.null(species)) {
+    species <- if (inherits(hl, "tbl_lazy")) dr_con("species") else dr_lookup_species
+  }
 
   # --- deduplicate to one row per haul × species × sex × SpeciesCategory ----
   # TotalNumber and SpeciesCategoryWeight are repeated across all length rows

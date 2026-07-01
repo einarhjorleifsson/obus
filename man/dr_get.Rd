@@ -47,8 +47,9 @@ A data frame with standard column names.
 \description{
 Retrieves DATRAS trawl survey data from two sources:
 \itemize{
-\item \code{"parquet"}: Reads the full dataset from URL-hosted Parquet files (no
-survey/year/quarter filtering). Returns standard column names directly.
+\item \code{"parquet"}: Reads from URL-hosted Parquet files, filtered by \code{surveys},
+\code{years}, and \code{quarters} before download. Returns standard column names
+directly.
 \item \code{"xml"}: Retrieves data via the legacy \code{icesDatras::getDATRAS} function.
 Legacy column names are translated to standard names before returning.
 }

@@ -441,8 +441,12 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
 #'
 #' @param x A data frame or DuckDB lazy table with an \code{aphia} column.
 #' @param species Species lookup table with columns \code{aphia}, \code{latin},
-#'   and \code{species}. Defaults to \code{dr_con("species")}, a lazy DuckDB
-#'   connection to the species parquet on the obus server.
+#'   and \code{species}. Defaults to matching \code{x}'s backend: the bundled
+#'   \code{\link{dr_lookup_species}} data frame when \code{x} is an eager data
+#'   frame (e.g. from \code{\link{dr_get}}), or \code{dr_con("species")} (a
+#'   lazy DuckDB connection) when \code{x} is a lazy table (e.g. from
+#'   \code{\link{dr_con}}) -- avoids an "x and y must share the same src"
+#'   error from joining an eager table against a lazy one.
 #'
 #' @return \code{x} with two additional columns:
 #'   \describe{
@@ -460,6 +464,8 @@ dr_add_n_and_cpue <- function(d, NumberAtLength = NumberAtLength, HaulDuration =
 #' hl |> dr_add_species()
 #' }
 dr_add_species <- function(x, species = NULL) {
-  if (is.null(species)) species <- dr_con("species")
+  if (is.null(species)) {
+    species <- if (inherits(x, "tbl_lazy")) dr_con("species") else dr_lookup_species
+  }
   dplyr::left_join(x, species, by = dplyr::join_by(aphia == aphia))
 }

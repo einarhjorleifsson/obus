@@ -10,8 +10,8 @@ dr_check_totalno(
   TotalNumber = TotalNumber,
   SubsamplingFactor = SubsamplingFactor,
   NumberAtLength = NumberAtLength,
-  Species = ValidAphiaID,
-  Sex = SpeciesSex,
+  Species = aphia,
+  Sex = sex,
   SpeciesCategory = SpeciesCategory,
   tol = 0.5,
   flag = FALSE
@@ -20,14 +20,13 @@ dr_check_totalno(
 \arguments{
 \item{hl}{HL exchange table. Must contain \code{DataType}, \code{TotalNumber},
 \code{SubsamplingFactor}, \code{NumberAtLength}, \code{.id}, and the grouping fields
-\code{ValidAphiaID}, \code{SpeciesSex}, \code{SpeciesCategory} (or the column names
-supplied below). Join HH for \code{DataType} if it is not present.
+\code{aphia}, \code{sex}, \code{SpeciesCategory} (or the column names supplied below).
+Join HH for \code{DataType} if it is not present.
 Note: \code{.id} must be present (call \code{\link[=dr_add_id]{dr_add_id()}} first if needed).}
 
 \item{DataType, TotalNumber, SubsamplingFactor, NumberAtLength, Species, Sex, SpeciesCategory}{Unquoted column names. New-style defaults shown. For old-style tables from
 \code{dr_con_raw()} or \code{dr_get(from = "old")} use:
-\code{TotalNo}, \code{SubFactor}, \code{HLNoAtLngt}, \code{Valid_Aphia}, \code{Sex}, \code{CatIdentifier}.
-Note: \code{Sex} in HL (new-style) is \code{SpeciesSex}; in CA it is \code{IndividualSex}.}
+\code{TotalNo}, \code{SubFactor}, \code{HLNoAtLngt}, \code{Valid_Aphia}, \code{Sex}, \code{CatIdentifier}.}
 
 \item{tol}{Numeric tolerance in number of fish. Default \code{0.5}.}
 

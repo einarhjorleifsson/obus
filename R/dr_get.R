@@ -30,9 +30,11 @@
 }
 
 
-.dr_fetch_parquet <- function(recordtype) {
+.dr_fetch_parquet <- function(recordtype, surveys, years, quarters) {
   url <- paste0("https://heima.hafro.is/~einarhj/datras/", recordtype, ".parquet")
-  duckdbfs::open_dataset(url) |> dplyr::collect()
+  duckdbfs::open_dataset(url) |>
+    dplyr::filter(Survey %in% surveys, Year %in% years, Quarter %in% quarters) |>
+    dplyr::collect()
 }
 
 .dr_fetch_xml <- function(recordtype, surveys, years, quarters, quiet) {
@@ -252,8 +254,9 @@
 #' Download and Import DATRAS Data
 #'
 #' Retrieves DATRAS trawl survey data from two sources:
-#' - `"parquet"`: Reads the full dataset from URL-hosted Parquet files (no
-#'   survey/year/quarter filtering). Returns standard column names directly.
+#' - `"parquet"`: Reads from URL-hosted Parquet files, filtered by `surveys`,
+#'   `years`, and `quarters` before download. Returns standard column names
+#'   directly.
 #' - `"xml"`: Retrieves data via the legacy `icesDatras::getDATRAS` function.
 #'   Legacy column names are translated to standard names before returning.
 #'
@@ -329,7 +332,7 @@ dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4
       return(.tr(.dr_fetch_indices(surveys, years, quarters, aphia, quiet)))
   }
 
-  if (source == "parquet") return(.dr_fetch_parquet(recordtype))
+  if (source == "parquet") return(.dr_fetch_parquet(recordtype, surveys, years, quarters))
   if (source == "xml")     return(.tr(.dr_fetch_xml(recordtype, surveys, years, quarters, quiet)))
 
   stop("Unknown 'source' value: '", source, "'. Use 'parquet' or 'xml'.")

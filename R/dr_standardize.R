@@ -17,10 +17,12 @@
 #'     \code{\link{dr_catch_by_haul}} for zero-filling.}
 #' }
 #'
-#' \strong{Note:} \code{n_haul} from \code{type = "haul"} may differ from the
-#' sum of \code{n_haul} across \code{type = "length"} rows for the same haul
-#' and species. The haul path uses \code{TotalNumber} which counts all fish
-#' including those counted but not measured at length.
+#' \strong{Note:} \code{n_haul} from \code{type = "haul"} (\code{TotalNumber})
+#' and the haul/species sum of \code{n_haul} across \code{type = "length"}
+#' rows (subsampling-corrected \code{NumberAtLength}) represent the same
+#' count and should match within rounding. A persistent mismatch indicates
+#' an inconsistency in the original DATRAS submission, not a structural
+#' feature of the data; see \code{\link{dr_check_totalno}}.
 #'
 #' @param hh DATRAS HH table (standard column names, \code{.id} present).
 #'   Required columns: \code{.id}, \code{Survey}, \code{Year}, \code{Quarter},
@@ -52,7 +54,9 @@
 #' @seealso \code{\link{dr_catch_by_haul}}, \code{\link{dr_expand_length}}
 #' @export
 dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
-  if (is.null(species)) species <- dr_con("species")
+  if (is.null(species)) {
+    species <- if (inherits(hl, "tbl_lazy")) dr_con("species") else dr_lookup_species
+  }
   if (!is.null(haulval)) hh <- dplyr::filter(hh, HaulValidity %in% haulval)
 
   hh_cols <- dplyr::select(hh, .id, Survey, Year, Quarter, DataType, HaulDuration,
@@ -68,14 +72,22 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
     dr_add_length_cm() |>
     dr_add_n_and_cpue() |>
     dr_add_species(species) |>
+    # Rename to distinct per-row names before summarise(): referencing
+    # `n_haul`/`n_hour` again inside n_f/n_m would otherwise be ambiguous
+    # with the aggregate of the same name being computed in the same call
+    # (resolves correctly in SQL/dbplyr, but silently wrong on local
+    # data frames, since dplyr's summarise() lets an already-defined output
+    # column shadow the original input column for later expressions).
+    dplyr::mutate(n_haul_raw = n_haul, n_hour_raw = n_hour) |>
     dplyr::group_by(.id, Survey, Year, Quarter, aphia, latin, species,
                     length_mm, length_cm, accuracy, SpeciesValidity,
                     StandardSpeciesCode, BycatchSpeciesCode) |>
     dplyr::summarise(
-      n_haul = sum(n_haul, na.rm = TRUE),
-      n_hour = sum(n_hour, na.rm = TRUE),
-      n_f    = sum(dplyr::if_else(sex == "F", n_haul, 0), na.rm = TRUE),
-      n_m    = sum(dplyr::if_else(sex == "M", n_haul, 0), na.rm = TRUE),
+      n_haul = sum(n_haul_raw, na.rm = TRUE),
+      n_hour = sum(n_hour_raw, na.rm = TRUE),
+      # "B" (Berried, egg-bearing) is a known-female state; counted as female.
+      n_f    = sum(dplyr::if_else(sex %in% c("F", "B"), n_haul_raw, 0), na.rm = TRUE),
+      n_m    = sum(dplyr::if_else(sex == "M", n_haul_raw, 0), na.rm = TRUE),
       .groups = "drop"
     ) |>
     dplyr::mutate(
@@ -123,7 +135,8 @@ dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
       n_hour = sum(n_hour_raw, na.rm = TRUE),
       w_haul = sum(w_haul_raw, na.rm = TRUE),
       w_hour = sum(w_hour_raw, na.rm = TRUE),
-      n_f    = sum(dplyr::if_else(sex == "F", n_haul_raw, 0), na.rm = TRUE),
+      # "B" (Berried, egg-bearing) is a known-female state; counted as female.
+      n_f    = sum(dplyr::if_else(sex %in% c("F", "B"), n_haul_raw, 0), na.rm = TRUE),
       n_m    = sum(dplyr::if_else(sex == "M", n_haul_raw, 0), na.rm = TRUE),
       .groups = "drop"
     ) |>

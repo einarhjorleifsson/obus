@@ -57,10 +57,12 @@ Sex composition summarised as \code{p_females}. Replaces
 \code{\link{dr_catch_by_haul}} for zero-filling.}
 }
 
-\strong{Note:} \code{n_haul} from \code{type = "haul"} may differ from the
-sum of \code{n_haul} across \code{type = "length"} rows for the same haul
-and species. The haul path uses \code{TotalNumber} which counts all fish
-including those counted but not measured at length.
+\strong{Note:} \code{n_haul} from \code{type = "haul"} (\code{TotalNumber})
+and the haul/species sum of \code{n_haul} across \code{type = "length"}
+rows (subsampling-corrected \code{NumberAtLength}) represent the same
+count and should match within rounding. A persistent mismatch indicates
+an inconsistency in the original DATRAS submission, not a structural
+feature of the data; see \code{\link{dr_check_totalno}}.
 }
 \seealso{
 \code{\link{dr_catch_by_haul}}, \code{\link{dr_expand_length}}

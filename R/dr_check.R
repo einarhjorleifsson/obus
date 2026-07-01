@@ -130,14 +130,13 @@ dr_check_subfactor <- function(hl,
 #'
 #' @param hl HL exchange table. Must contain `DataType`, `TotalNumber`,
 #'   `SubsamplingFactor`, `NumberAtLength`, `.id`, and the grouping fields
-#'   `ValidAphiaID`, `SpeciesSex`, `SpeciesCategory` (or the column names
-#'   supplied below). Join HH for `DataType` if it is not present.
+#'   `aphia`, `sex`, `SpeciesCategory` (or the column names supplied below).
+#'   Join HH for `DataType` if it is not present.
 #'   Note: `.id` must be present (call [dr_add_id()] first if needed).
 #' @param DataType,TotalNumber,SubsamplingFactor,NumberAtLength,Species,Sex,SpeciesCategory
 #'   Unquoted column names. New-style defaults shown. For old-style tables from
 #'   `dr_con_raw()` or `dr_get(from = "old")` use:
 #'   `TotalNo`, `SubFactor`, `HLNoAtLngt`, `Valid_Aphia`, `Sex`, `CatIdentifier`.
-#'   Note: `Sex` in HL (new-style) is `SpeciesSex`; in CA it is `IndividualSex`.
 #' @param tol Numeric tolerance in number of fish. Default `0.5`.
 #' @param flag Logical. If `FALSE` (default) return a one-row summary tibble.
 #'   If `TRUE` return the input data with a `.pass` column added (`TRUE` =
@@ -150,8 +149,8 @@ dr_check_totalno <- function(hl,
                              TotalNumber       = TotalNumber,
                              SubsamplingFactor = SubsamplingFactor,
                              NumberAtLength    = NumberAtLength,
-                             Species           = ValidAphiaID,
-                             Sex               = SpeciesSex,
+                             Species           = aphia,
+                             Sex               = sex,
                              SpeciesCategory   = SpeciesCategory,
                              tol               = 0.5,
                              flag              = FALSE) {
@@ -180,14 +179,14 @@ dr_check_totalno <- function(hl,
     dplyr::group_by(.id,
                     .sp  = {{ Species }},
                     .sx  = {{ Sex }},
-                    .cat = {{ CatIdentifier }},
+                    .cat = {{ SpeciesCategory }},
                     .dt  = {{ DataType }}) |>
     dplyr::summarise(
-      .tn      = dplyr::first({{ TotalNo }}),
-      .sf      = dplyr::first({{ SubFactor }}),
-      .sum     = sum({{ HLNoAtLngt }}, na.rm = TRUE),
-      .has_len = any(!is.na({{ HLNoAtLngt }})),
-      .na      = any(is.na({{ TotalNo }}) | is.na({{ SubFactor }})),
+      .tn      = dplyr::first({{ TotalNumber }}),
+      .sf      = dplyr::first({{ SubsamplingFactor }}),
+      .sum     = sum({{ NumberAtLength }}, na.rm = TRUE),
+      .has_len = any(!is.na({{ NumberAtLength }})),
+      .na      = any(is.na({{ TotalNumber }}) | is.na({{ SubsamplingFactor }})),
       .groups  = "drop"
     ) |>
     # Restrict to groups with at least one length measurement; groups where
