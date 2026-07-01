@@ -42,9 +42,9 @@
 #' @export
 
 dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
-  .Deprecated("dr_standardize_hl",
+  .Deprecated("dr_HL_standardised",
               msg = paste0("'dr_catch_by_length()' is deprecated. ",
-                           "Use dr_standardize_hl() and filter(type == 'length') instead."))
+                           "Use dr_HL_standardised() and filter(type == 'length') instead."))
   if (is.null(species)) {
     species <- if (inherits(hl, "tbl_lazy")) dr_con("species") else dr_lookup_species
   }
@@ -75,7 +75,7 @@ dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' in that SQY where it was absent. Works with one or more species.
 #'
 #' @param catch A length-frequency catch table — typically
-#'   \code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+#'   \code{dr_HL_standardised(...) |> dplyr::filter(type == "length")}, or the
 #'   deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
 #'   \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
 #'   \code{latin}, \code{species}, \code{n_haul}, \code{n_hour}.
@@ -87,7 +87,7 @@ dr_catch_by_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #'   \code{aphia}, \code{latin}, \code{species}, \code{n_haul}, \code{n_hour}.
 #'   \code{n_haul} and \code{n_hour} are \code{0} for zero rows.
 #'
-#' @seealso \code{\link{dr_standardize_hl}}, \code{\link{dr_expand_length}}
+#' @seealso \code{\link{dr_HL_standardised}}, \code{\link{dr_expand_length}}
 #' @export
 
 dr_catch_by_haul <- function(catch, hh) {
@@ -124,7 +124,7 @@ dr_catch_by_haul <- function(catch, hh) {
 #' to a single species before calling to keep the result manageable.
 #'
 #' @param catch A length-frequency catch table — typically
-#'   \code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+#'   \code{dr_HL_standardised(...) |> dplyr::filter(type == "length")}, or the
 #'   deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
 #'   \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
 #'   \code{latin}, \code{species}, \code{length_mm}, \code{length_cm},
@@ -137,7 +137,7 @@ dr_catch_by_haul <- function(catch, hh) {
 #'   \code{n_hour} are \code{0} and \code{SpeciesValidity} is \code{NA} for
 #'   zero rows.
 #'
-#' @seealso \code{\link{dr_standardize_hl}}, \code{\link{dr_catch_by_haul}}
+#' @seealso \code{\link{dr_HL_standardised}}, \code{\link{dr_catch_by_haul}}
 #' @export
 
 dr_expand_length <- function(catch, hh) {
@@ -162,28 +162,6 @@ dr_expand_length <- function(catch, hh) {
     dplyr::select(zero_rows, .id, Survey, Year, Quarter, aphia, latin, species,
                   length_mm, length_cm, accuracy, n_haul, n_hour, SpeciesValidity)
   )
-}
-
-
-# Write by_length.parquet sorted for efficient HTTP byte-range queries.
-# Rows are ordered by .id (which encodes Survey:Year:...) then aphia and
-# length_mm so that row group min/max statistics are tight enough for DuckDB
-# to skip irrelevant groups when filtering over HTTPS.
-.write_catch_by_length <- function(hh, hl, path, species = NULL, haulval = NULL,
-                              row_group_size = 100000L) {
-  result <- dr_catch_by_length(hh, hl, species = species, haulval = haulval) |>
-    dplyr::arrange(.id, aphia, length_mm)
-
-  DBI::dbExecute(
-    dbplyr::remote_con(result),
-    sprintf(
-      "COPY (%s) TO '%s' (FORMAT PARQUET, ROW_GROUP_SIZE %d)",
-      dbplyr::sql_render(result),
-      normalizePath(path, mustWork = FALSE),
-      as.integer(row_group_size)
-    )
-  )
-  invisible(path)
 }
 
 
@@ -251,10 +229,10 @@ dr_expand_length <- function(catch, hh) {
 #'
 #' @export
 dr_catch_total <- function(hh = NULL, hl = NULL, species = NULL) {
-  .Deprecated("dr_standardize_hl",
+  .Deprecated("dr_HL_standardised",
               msg = paste0("'dr_catch_total()' is deprecated. ",
-                           "Use dr_standardize_hl() and filter(type == 'haul') instead. ",
-                           "Note: dr_standardize_hl() does not zero-fill; ",
+                           "Use dr_HL_standardised() and filter(type == 'haul') instead. ",
+                           "Note: dr_HL_standardised() does not zero-fill; ",
                            "pipe to dr_catch_by_haul() for zero-filling."))
   if (is.null(hh))      hh      <- dr_con("HH")
   if (is.null(hl))      hl      <- dr_con("HL")

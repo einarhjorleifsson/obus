@@ -164,6 +164,12 @@ add_lt <- tribble(
   "LT",  "HaulLongitude",        "HaulLong",       "dbl",
   "LT",  "OSPARArea",            "OSPARArea",      "chr",
   "LT",  "MSFDArea",             "MSFDArea",       "chr",
+  # icesDatras::getLTassessment() returns both "BottomDepth" and "Depth" raw
+  # columns, byte-for-byte identical (confirmed empirically); ICES's own field
+  # list has no LT depth field at all and lists "Depth" only as the legacy
+  # name for HH's "BottomDepth". Map only "BottomDepth" here; leave "Depth"
+  # unmapped (dr_translate() then leaves it untouched, harmless duplicate) --
+  # do NOT also map "Depth" -> "BottomDepth", that collides at rename time.
   "LT",  "BottomDepth",          "BottomDepth",    "int",
   "LT",  "Distance",             "Distance",       "dbl",
   "LT",  "DoorSpread",           "DoorSpread",     "dbl",
@@ -186,7 +192,6 @@ add_lt <- tribble(
   "LT",  "StartTime",            "TimeShot",       "chr",
   "LT",  "HaulDuration",         "HaulDur",        "int",
   "LT",  "StatisticalRectangle", "StatRec",        "chr",
-  "LT",  "BottomDepth",          "Depth",          "int",
   "LT",  "HaulValidity",         "HaulVal",        "chr",
   "LT",  "DataType",             "DataType",       "chr",
   "LT",  "NetOpening",           "Netopening",     "dbl",

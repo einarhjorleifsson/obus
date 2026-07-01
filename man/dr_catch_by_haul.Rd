@@ -8,7 +8,7 @@ dr_catch_by_haul(catch, hh)
 }
 \arguments{
 \item{catch}{A length-frequency catch table — typically
-\code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+\code{dr_HL_standardised(...) |> dplyr::filter(type == "length")}, or the
 deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
 \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
 \code{latin}, \code{species}, \code{n_haul}, \code{n_hour}.}
@@ -29,5 +29,5 @@ anywhere in a Survey/Year/Quarter gets an explicit zero row for each haul
 in that SQY where it was absent. Works with one or more species.
 }
 \seealso{
-\code{\link{dr_standardize_hl}}, \code{\link{dr_expand_length}}
+\code{\link{dr_HL_standardised}}, \code{\link{dr_expand_length}}
 }

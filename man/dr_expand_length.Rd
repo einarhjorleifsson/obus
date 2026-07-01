@@ -8,7 +8,7 @@ dr_expand_length(catch, hh)
 }
 \arguments{
 \item{catch}{A length-frequency catch table — typically
-\code{dr_standardize_hl(...) |> dplyr::filter(type == "length")}, or the
+\code{dr_HL_standardised(...) |> dplyr::filter(type == "length")}, or the
 deprecated \code{\link{dr_catch_by_length}} output. Must carry columns
 \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
 \code{latin}, \code{species}, \code{length_mm}, \code{length_cm},
@@ -31,5 +31,5 @@ that SQY, with zeros where absent. Works with one or more species; filter
 to a single species before calling to keep the result manageable.
 }
 \seealso{
-\code{\link{dr_standardize_hl}}, \code{\link{dr_catch_by_haul}}
+\code{\link{dr_HL_standardised}}, \code{\link{dr_catch_by_haul}}
 }

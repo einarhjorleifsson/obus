@@ -51,7 +51,7 @@
 #'
 #' @seealso \code{\link{dr_catch_by_haul}}, \code{\link{dr_expand_length}}
 #' @export
-dr_standardize_hl <- function(hh, hl, species = NULL, haulval = NULL) {
+dr_HL_standardised <- function(hh, hl, species = NULL, haulval = NULL) {
   if (is.null(species)) {
     species <- if (inherits(hl, "tbl_lazy")) dr_con("species") else dr_lookup_species
   }

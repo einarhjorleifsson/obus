@@ -6,8 +6,8 @@
 #'
 #' @param type A character string specifying the table. One of `"HH"`, `"HL"`,
 #'   `"CA"`, `"FL"`, `"LT"`, `"CPUEL"`, `"CPUEA"`, `"CW"`, `"IDX"`, `"species"`,
-#'   `"catch_by_length"` (standardised catch-only table per length class per haul, from `dr_hl_length()`),
-#'   or `"catch_by_haul"` (haul-level catch totals, from `.dr_cpue_by_haul()`).
+#'   or `"HL_standardised"` (pre-computed standardized HL table, from
+#'   \code{\link{dr_HL_standardised}}).
 #' @param url Base URL of the parquet directory on the obus server.
 #' @param quiet Logical. If `TRUE` (default), suppresses messages.
 #'
@@ -40,7 +40,7 @@
 dr_con <- function(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE) {
 
   valid_types <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX", "species",
-                   "by_length", "by_haul")
+                   "HL_standardised")
 
   if (!type %in% valid_types) {
     stop(sprintf("Invalid type '%s'. Valid types are: %s",

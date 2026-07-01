@@ -264,6 +264,11 @@
 #' dedicated ICES API functions; the `source` argument is ignored for these.
 #' Their legacy column names are translated to standard names before returning.
 #'
+#' `"HL_standardised"` is an obus-derived product (the output of
+#' \code{\link{dr_HL_standardised}}, pre-computed and hosted as a parquet
+#' file) rather than a raw ICES record type. It is parquet-only; there is no
+#' `"xml"` source for it.
+#'
 #' Translation is performed by [dr_translate()] using the `dictionary` argument.
 #' Supply a custom data frame with columns `old` and `new` to override the
 #' default mapping built from [dr_lookup_fields].
@@ -271,7 +276,9 @@
 #' @param recordtype A string specifying the record type: `"HH"`, `"HL"`, `"CA"`,
 #'   `"FL"` (flex file), `"LT"` (litter assessment), `"CPUEL"` (CPUE per length
 #'   per haul per hour), `"CPUEA"` (CPUE per age per haul per hour), `"CW"`
-#'   (catch weight by species and haul), or `"IDX"` (age-based survey indices).
+#'   (catch weight by species and haul), `"IDX"` (age-based survey indices), or
+#'   `"HL_standardised"` (pre-computed standardized HL table; parquet-only,
+#'   see \code{\link{dr_HL_standardised}}).
 #' @param surveys A character vector of survey IDs. If `NULL` (default), all
 #'   ICES surveys excluding test surveys are used (via `icesDatras::getSurveyList()`).
 #' @param years An integer vector of years (e.g. `1965:2030`).
@@ -280,7 +287,8 @@
 #'   and `"IDX"`. If `NULL`, defaults to cod (126436), haddock (126437), and
 #'   herring (126417).
 #' @param source String specifying the data source for HH/HL/CA: `"parquet"`
-#'   (default) or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.
+#'   (default) or `"xml"`. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX. Must be
+#'   `"parquet"` for `"HL_standardised"`.
 #' @param dictionary A data frame with columns `old` and `new` used to translate
 #'   legacy ICES column names to standard names. If `NULL` (default), built
 #'   automatically from [dr_lookup_fields].
@@ -297,6 +305,18 @@
 #' @export
 dr_get <- function(recordtype, surveys = NULL, years = 1965:2030, quarters = 1:4,
                    aphia = NULL, source = "parquet", dictionary = NULL, quiet = TRUE) {
+
+  valid_recordtypes <- c("HH", "HL", "CA", "FL", "LT", "CPUEL", "CPUEA", "CW", "IDX",
+                         "HL_standardised")
+  if (!recordtype %in% valid_recordtypes) {
+    stop(sprintf("Invalid recordtype '%s'. Valid recordtypes are: %s",
+                 recordtype, paste(valid_recordtypes, collapse = ", ")), call. = FALSE)
+  }
+  if (recordtype == "HL_standardised" && source == "xml") {
+    stop("'HL_standardised' is an obus-derived product, parquet-only; ",
+         "it has no ICES API equivalent, so source = 'xml' is not supported.",
+         call. = FALSE)
+  }
 
   # Build default old -> new translation dictionary, scoped to this record type.
   # Pass dictionary = FALSE to skip translation entirely (raw legacy names returned).

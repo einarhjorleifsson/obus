@@ -9,8 +9,8 @@ dr_con(type, url = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
 \arguments{
 \item{type}{A character string specifying the table. One of \code{"HH"}, \code{"HL"},
 \code{"CA"}, \code{"FL"}, \code{"LT"}, \code{"CPUEL"}, \code{"CPUEA"}, \code{"CW"}, \code{"IDX"}, \code{"species"},
-\code{"catch_by_length"} (standardised catch-only table per length class per haul, from \code{dr_hl_length()}),
-or \code{"catch_by_haul"} (haul-level catch totals, from \code{.dr_cpue_by_haul()}).}
+or \code{"HL_standardised"} (pre-computed standardized HL table, from
+\code{\link{dr_HL_standardised}}).}
 
 \item{url}{Base URL of the parquet directory on the obus server.}
 

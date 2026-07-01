@@ -19,7 +19,9 @@ dr_get(
 \item{recordtype}{A string specifying the record type: \code{"HH"}, \code{"HL"}, \code{"CA"},
 \code{"FL"} (flex file), \code{"LT"} (litter assessment), \code{"CPUEL"} (CPUE per length
 per haul per hour), \code{"CPUEA"} (CPUE per age per haul per hour), \code{"CW"}
-(catch weight by species and haul), or \code{"IDX"} (age-based survey indices).}
+(catch weight by species and haul), \code{"IDX"} (age-based survey indices), or
+\code{"HL_standardised"} (pre-computed standardized HL table; parquet-only,
+see \code{\link{dr_HL_standardised}}).}
 
 \item{surveys}{A character vector of survey IDs. If \code{NULL} (default), all
 ICES surveys excluding test surveys are used (via \code{icesDatras::getSurveyList()}).}
@@ -33,7 +35,8 @@ and \code{"IDX"}. If \code{NULL}, defaults to cod (126436), haddock (126437), an
 herring (126417).}
 
 \item{source}{String specifying the data source for HH/HL/CA: \code{"parquet"}
-(default) or \code{"xml"}. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX.}
+(default) or \code{"xml"}. Ignored for FL, LT, CPUEL, CPUEA, CW, IDX. Must be
+\code{"parquet"} for \code{"HL_standardised"}.}
 
 \item{dictionary}{A data frame with columns \code{old} and \code{new} used to translate
 legacy ICES column names to standard names. If \code{NULL} (default), built
@@ -58,6 +61,11 @@ Legacy column names are translated to standard names before returning.
 All other record types (FL, LT, CPUEL, CPUEA, CW, IDX) always use their
 dedicated ICES API functions; the \code{source} argument is ignored for these.
 Their legacy column names are translated to standard names before returning.
+
+\code{"HL_standardised"} is an obus-derived product (the output of
+\code{\link{dr_HL_standardised}}, pre-computed and hosted as a parquet
+file) rather than a raw ICES record type. It is parquet-only; there is no
+\code{"xml"} source for it.
 
 Translation is performed by \code{\link[=dr_translate]{dr_translate()}} using the \code{dictionary} argument.
 Supply a custom data frame with columns \code{old} and \code{new} to override the
