@@ -1,10 +1,10 @@
 ---
 title: "DATRAS conventions, and what obus does about them"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{DATRAS conventions, and what obus does about them}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+subtitle: "What the ICES exchange format specifies, and how obus reads it."
+format:
+  html:
+    toc: true
+    toc-depth: 3
 ---
 
 ```{r, include = FALSE}
