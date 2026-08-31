@@ -92,15 +92,22 @@ cmp <- smry_out |>
   dplyr::filter(!is.na(n_haul), !is.na(n_len)) |>
   dplyr::mutate(d = abs(n_haul - n_len)) |>
   dplyr::summarise(
-    groups   = dplyr::n(),
-    mismatch = sum(as.integer(d > 0.5 & d > 0.01 * n_haul), na.rm = TRUE)
+    groups  = dplyr::n(),
+    # abs > 0.5 is the comparable-to-benchmark figure: it is the same
+    # tolerance the per-sex reconciliation inside dr_HL_summary() uses, and
+    # what the retired implementation's own 3.5% was measured at. The
+    # relative variant is reported alongside because a raw count says
+    # nothing about whether a disagreement is material.
+    gt_half = sum(as.integer(d > 0.5), na.rm = TRUE),
+    gt_1pct = sum(as.integer(d > 0.5 & d > 0.01 * n_haul), na.rm = TRUE)
   ) |>
   dplyr::collect()
 
-message(sprintf("  %s comparable groups, %s disagree (%.2f%%)",
-                format(cmp$groups, big.mark = ","),
-                format(cmp$mismatch, big.mark = ","),
-                100 * cmp$mismatch / cmp$groups))
+message(sprintf("  %s comparable groups", format(cmp$groups, big.mark = ",")))
+message(sprintf("    abs > 0.5          : %s (%.2f%%)   <- benchmark: retired measured 3.5%%",
+                format(cmp$gt_half, big.mark = ","), 100 * cmp$gt_half / cmp$groups))
+message(sprintf("    and also rel > 1%%  : %s (%.2f%%)",
+                format(cmp$gt_1pct, big.mark = ","), 100 * cmp$gt_1pct / cmp$groups))
 
 message("\nPublish with:")
 for (f in c("HH", "HL_length", "HL_summary")) {
