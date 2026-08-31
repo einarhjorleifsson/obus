@@ -199,3 +199,43 @@ This is the second bug in this pass caused by R and SQL disagreeing about
 joining in these two functions should be assumed to differ between backends
 until checked both ways — the synthetic tests run eager, the build runs lazy,
 so keeping both is what catches these.
+
+## `-9` is a documented vocabulary code, and it is already gone (2026-08-31)
+
+Raised while asking whether the NA-in-joins problem should be solved by
+keeping `-9` instead. It cannot be, and the reason is worth recording as an
+opus-side question.
+
+**The raw archive contains zero `-9` values in HL** — not in the character
+join keys (`SpeciesSex`, `DevelopmentStage`, `SpeciesCategory`,
+`SpeciesValidity`, `LengthType`) and not in any numeric field
+(`TotalNumber`, `SubsamplingFactor`, `SubsampledNumber`, `SubsampleWeight`,
+`SpeciesCategoryWeight`, `LengthClass`, `NumberAtLength`, `SweepLength`).
+Every one is NULL. So the conversion happened upstream, before obus sees the
+data — either in opus's archive build or in ICES's own service.
+
+**But `-9` IS a documented code in the ICES vocabulary** for both fields that
+carry it most:
+
+    SpeciesSex        -9, B, F, M, N, T, U
+    DevelopmentStage  -9, B, E, J
+
+So `-9` is a real, intentional category in the ICES scheme, not merely a
+missing-data marker — and it has been flattened into the same NULL as "field
+absent entirely". obus can no longer tell the two apart. This is precisely
+the failure mode AGENTS.md Working Principle 3 exists to prevent (opus's own
+`HH.Tickler` incident), except it happened upstream of obus rather than in it.
+
+**Question for opus, not a change to make here:** is the `-9` -> NULL
+conversion deliberate, and is it happening in opus's archive build or in
+ICES's service? If opus's, `-9` should arguably be preserved for the fields
+whose vocabulary lists it. obus should not re-introduce it locally — it has
+no way to know which NULLs were `-9` and which were genuinely absent.
+
+**Not a reason to use `-9` as a join key even if it were available.**
+`na_matches = "na"` is exact, explicit, and renders as SQL's own
+`IS NOT DISTINCT FROM`. Substituting a sentinel to make `=` work would put a
+non-value into the value space of numeric fields that are summed
+(`TotalNumber`, `SpeciesCategoryWeight`), where it would silently corrupt
+totals rather than merely fail to match — trading a loud join bug for a quiet
+arithmetic one.
