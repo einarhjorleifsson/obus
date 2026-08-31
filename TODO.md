@@ -200,42 +200,49 @@ joining in these two functions should be assumed to differ between backends
 until checked both ways — the synthetic tests run eager, the build runs lazy,
 so keeping both is what catches these.
 
-## `-9` is a documented vocabulary code, and it is already gone (2026-08-31)
+## `-9` in HL: what it means, and why it is NULL (resolved 2026-08-31)
 
 Raised while asking whether the NA-in-joins problem should be solved by
-keeping `-9` instead. It cannot be, and the reason is worth recording as an
-opus-side question.
+keeping `-9`. It should not, and the reason turns out to be a deliberate,
+well-drawn opus policy rather than a loss.
 
-**The raw archive contains zero `-9` values in HL** — not in the character
-join keys (`SpeciesSex`, `DevelopmentStage`, `SpeciesCategory`,
-`SpeciesValidity`, `LengthType`) and not in any numeric field
-(`TotalNumber`, `SubsamplingFactor`, `SubsampledNumber`, `SubsampleWeight`,
-`SpeciesCategoryWeight`, `LengthClass`, `NumberAtLength`, `SweepLength`).
-Every one is NULL. So the conversion happened upstream, before obus sees the
-data — either in opus's archive build or in ICES's own service.
+**The meanings**, read from the dictionary embedded in the parquet footer
+(`opus::op_enums("HL", column = ...)`):
 
-**But `-9` IS a documented code in the ICES vocabulary** for both fields that
-carry it most:
+    SpeciesSex        -9 = "not sampled"      (vs U = "Unidentified")
+    DevelopmentStage  -9 = "No information"
 
-    SpeciesSex        -9, B, F, M, N, T, U
-    DevelopmentStage  -9, B, E, J
+**The raw archive contains zero `-9` in HL** — not in the character join keys
+and not in any numeric field. Every one is NULL.
 
-So `-9` is a real, intentional category in the ICES scheme, not merely a
-missing-data marker — and it has been flattened into the same NULL as "field
-absent entirely". obus can no longer tell the two apart. This is precisely
-the failure mode AGENTS.md Working Principle 3 exists to prevent (opus's own
-`HH.Tickler` incident), except it happened upstream of obus rather than in it.
+**That is opus policy, and it is principled.** `op_sentinels()` carries a
+`resolution$labels_meaning_absent` list — "not known", "not available",
+"not provided", **"not sampled"**, "missing value", **"no information"**,
+"unknown", "na" — and nulls any `-9` whose vocabulary label matches. Both HL
+labels match it literally. The complementary `resolution$keep` list preserves
+`-9` for exactly three fields, and the line between them is coherent:
 
-**Question for opus, not a change to make here:** is the `-9` -> NULL
-conversion deliberate, and is it happening in opus's archive build or in
-ICES's service? If opus's, `-9` should arguably be preserved for the fields
-whose vocabulary lists it. obus should not re-introduce it locally — it has
-no way to know which NULLs were `-9` and which were genuinely absent.
+| field | `-9` label | kept? |
+|---|---|---|
+| `HH/LT Tickler` | "No ticklers are allowed" | keep — asserts a fact about the gear |
+| `CA AgePlusGroup` | "No plus group" | keep — asserts a fact about the reading |
+| `HH/LT DataType` | "Invalid hauls" | keep — asserts a classification |
+| `HL SpeciesSex` | "not sampled" | null — asserts the *absence* of an observation |
+| `HL DevelopmentStage` | "No information" | null — asserts nothing |
 
-**Not a reason to use `-9` as a join key even if it were available.**
-`na_matches = "na"` is exact, explicit, and renders as SQL's own
-`IS NOT DISTINCT FROM`. Substituting a sentinel to make `=` work would put a
-non-value into the value space of numeric fields that are summed
-(`TotalNumber`, `SpeciesCategoryWeight`), where it would silently corrupt
-totals rather than merely fail to match — trading a loud join bug for a quiet
-arithmetic one.
+Keep a sentinel that states something; null one that states nothing. Nothing
+to raise upstream, and nothing for obus to change.
+
+**It also validates obus's own documentation.** `dr_HL_length()`'s roxygen
+says `sex` is `NA` for "never assessed" and keeps `"U"` (assessed,
+undetermined) distinct from it. Given `-9` = "not sampled" nulls to `NA`,
+that reading is exactly right — the `NA` level of the `sex` grain is a
+meaningful category, not merely missing data, which is why it earns its own
+row rather than being dropped.
+
+**Still not a reason to use `-9` as a join key.** `na_matches = "na"` is
+exact, explicit, and renders as SQL's own `IS NOT DISTINCT FROM`.
+Substituting a sentinel to make `=` work would put a non-value into the value
+space of numeric fields that are summed (`TotalNumber`,
+`SpeciesCategoryWeight`), silently corrupting totals rather than merely
+failing to match — trading a loud join bug for a quiet arithmetic one.
