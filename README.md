@@ -1,0 +1,81 @@
+
+# obus
+
+<!-- badges: start -->
+
+<!-- badges: end -->
+
+obus is the R access layer for the ICES DATRAS trawl-survey archive. It
+reads the raw exchange tables that the sibling
+[opus](https://github.com/einarhjorleifsson/opus) package stages, and
+builds the derived catch tables on top of them.
+
+Field names and types are opus’s to define; obus does not keep its own
+copy of that knowledge. What obus adds is the haul key (`.id`), the
+species lookup, and two catch tables.
+
+## Install
+
+``` r
+# install.packages("pak")
+pak::pak("einarhjorleifsson/obus")
+```
+
+## Two connections
+
+Everything is lazy: a `dr_con*()` call opens a DuckDB view over a remote
+parquet file and downloads nothing until `dplyr::collect()`.
+
+``` r
+library(obus)
+library(dplyr)
+
+# the raw opus archive -- HH, HL, CA, LT, exactly as staged
+dr_con_raw("HH")
+
+# what obus builds from it -- HH (+ .id), species, HL_length, HL_summary
+dr_con("HL_summary")
+```
+
+## The two catch tables
+
+`dr_HL_length()` is the length-frequency table: one row per haul x
+species x length x sex x measurement type, covering only species that
+were actually measured.
+
+`dr_HL_summary()` is the per-haul species roster: one row per haul x
+species x species-validity, covering *every* species recorded for the
+haul, measured or not, with numbers, weights, and how many individuals
+the numbers were built from.
+
+``` r
+dr_con("HL_summary") |>
+  filter(Survey == "NS-IBTS", Year == 2022, Quarter == 1, SpeciesValidity == "1") |>
+  select(.id, latin, species, n_haul, n_hour, w_haul, n_measured) |>
+  collect()
+```
+
+Both are published, pre-computed, on the obus server. To recompute
+either from the raw archive:
+
+``` r
+hh <- dr_con_raw("HH") |> dr_add_id()
+hl <- dr_con_raw("HL") |> dr_add_id() |>
+  rename(aphia = Valid_Aphia, sex = SpeciesSex)
+
+dr_HL_summary(hh, hl, haulval = "1")
+```
+
+Neither table filters on `HaulValidity` or `SpeciesValidity` as
+published – both are carried as columns so that the choice stays the
+caller’s.
+
+## Building the published files
+
+`data-raw/` holds the scripts that produce what the server serves. They
+are run by hand, in order, and neither one publishes anything:
+
+``` r
+source("data-raw/DATASET_species.R")   # -> to_https/species.parquet
+source("data-raw/DATASET_products.R")  # -> to_https/{HH,HL_length,HL_summary}.parquet
+```
