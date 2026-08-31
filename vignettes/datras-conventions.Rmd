@@ -174,74 +174,104 @@ the submitted data, not a defect: it is concentrated in `DataType == "C"`
 (where the reported rate and a raised sample need not match exactly) and in
 Can-Mar's documented 2021–22 historical conversion.
 
-## What the 3.37% residual actually is
+## Where the two totals disagree, and what is actually wrong
 
-"Residual" here means one specific thing: the haul x species groups where the
-two independent routes to a catch total disagree.
+Two independent routes reach the same number:
 
-- `HL_summary$n_totalnumber` — the total DATRAS *reported* (`TotalNumber`)
-- `sum(HL_length$n_haul)` — the same total *reconstructed* by raising the
-  measured length frequencies
+- `HL_summary$n_totalnumber` — the total DATRAS *reported*
+- `sum(HL_length$n_haul)` — the same total *reconstructed* from the measured
+  length frequencies
 
-The format says these are the same number (`TotalNo = SUM(HLNoAtLngt)`).
-Measured on the full archive, **64,539 of 1,912,556 comparable groups (3.37%)**
-differ by more than 0.51. Groups where either side is unavailable — a species
-never length-measured, a missing `SubsamplingFactor`, a non-positive
-`HaulDuration` — are not "residual"; they are simply not comparable and are
-excluded.
+The format says they are equal (`TotalNo = SUM(HLNoAtLngt)`). Where they are
+not, the question is not *how big* the difference is but *what kind* of
+difference it is — a magnitude threshold cannot tell arithmetic apart from a
+miscount, and picking one silently mixes them.
 
-The residual is not noise, and it is not one thing. Classified:
+**Compare in submission units.** For `DataType == "C"` both sides are scaled by
+`HaulDuration/60`, which turns whole fish into fractions: a genuine one-fish
+disagreement in a 30-minute haul appears as 0.5 and slips under any
+sub-unit tolerance. Divide the scaling out first, then the gap is in fish.
 
-| what it is | groups | share |
+### Step 1: separate arithmetic from fish
+
+Of 1,912,556 comparable groups:
+
+| gap, in submission units | groups | share | |
+|---|---|---|---|
+| exactly zero | 1,702,315 | 89.0% | reconciles |
+| less than one fish | ~138,000 | 7.2% | **arithmetic — not a data issue** |
+| one or more whole fish | 73,596 | **3.85%** | real |
+
+The sub-unit population is arithmetic and nothing else: a non-integer raising
+factor (2.91, say) applied to integer counts cannot give an integer, and the
+reported `TotalNumber` is an integer. It carries no information about the
+data and is excluded from everything below. Reporting it as part of a
+"disagreement rate" only inflates the number.
+
+The real residual is **3.85%** — gaps of at least one whole fish. Where the
+raising factor is exactly 1, which is the majority, the raised sum is a plain
+integer addition, so these differences cannot be arithmetic under any
+reading.
+
+### Step 2: the real residual is two populations, not one
+
+Splitting by gap size and asking which side is larger separates them cleanly:
+
+| gap | groups | `TotalNumber` higher |
 |---|---|---|
-| Can-Mar: raising factor lost, length under-raised | 26,056 | 40.4% |
-| `DataType == "C"`: small difference, intrinsic | 19,501 | 30.2% |
-| Non-integer `SubsamplingFactor` rounding | 7,048 | 10.9% |
-| Small difference, integer factor — **open** | 4,367 | 6.8% |
-| Can-Mar: other | 4,164 | 6.5% |
-| `DataType == "C"`: large difference | 2,311 | 3.6% |
-| Unexplained | 1,091 | 1.7% |
+| 1 fish | 22,559 | 48.5% |
+| 2 fish | 9,475 | 53.8% |
+| 3-5 | 6,995 | 62.5% |
+| 6-10 | 2,442 | **86.3%** |
+| 11-50 | 1,449 | **81.5%** |
+| >50 | 462 | 38.5% |
 
-**Can-Mar (46.8%) — a known historical conversion.** A bulk conversion of
-Can-Mar's historical data set `SubsamplingFactor` to 1 on records whose catch
-had actually been subsampled. `TotalNumber` kept its correct raised value; the
-length rows lost the factor needed to raise them. So the length sum
-under-counts, and it under-counts in one direction only: **29,668 of Can-Mar's
-30,220 mismatches (98%) have the reported total higher than the length sum**.
-The ratio between them is the factor that went missing — median 1.55, upper
-quartile 2.5. It spans both 1970-1996 (13,358) and 1997 onward (12,698). Trust
+(non-Can-Mar; Can-Mar is separated out below because it is a single known
+event)
+
+**Small gaps are symmetric; large gaps are directional.** A gap of one or two
+fish falls either way at close to a coin flip — that is two independent counts
+of the same haul disagreeing slightly, not an error in either table. A gap of
+6-50 fish points one way more than four times in five — that is systematic
+under-raising, a real defect. They are different phenomena that a median or a
+percentage over the whole set would blend into one meaningless middle.
+
+This is worth stating plainly because the obvious summary statistic is
+actively misleading here: the overall direction split is 55/45, which looks
+like noise, and it is not — it is a symmetric population and a strongly
+directional one added together.
+
+### Step 3: what each population is
+
+| population | groups | share of real residual | status |
+|---|---|---|---|
+| Can-Mar: lost raising factor | 30,214 | 41% | known, provider-side |
+| Small symmetric disagreement (1-2 fish) | 32,034 | 44% | not an error |
+| Directional under-raising, 6-50 fish | 3,891 | 5% | **open** |
+| 3-5 fish, partly directional | 6,995 | 10% | mixed |
+| Large reversed tail (>50 fish) | 462 | 0.6% | **open** |
+
+**Can-Mar (41%)** — a bulk conversion of historical data set
+`SubsamplingFactor` to 1 on records whose catch had been subsampled.
+`TotalNumber` kept its raised value; the length rows lost the factor. Median
+gap **13 fish**, and **98%** in the one predicted direction. Trust
 `n_totalnumber` here, not the length sum.
 
-**`DataType == "C"` (33.8%, mostly small) — not an error at all.** For a "C"
-submission `TotalNumber` is a directly reported catch rate, and the length
-table is a separately measured and raised sample. They are two independent
-observations of a similar quantity, not one computed from the other, so they
-need not agree exactly. The signature fits: 69% of C-type differences are
-under 1% relative, 89% under 5%, and hand-checked examples sit a couple of
-individuals apart *in either direction*. Nothing to fix, and no "true" value
-to converge on.
+**Small symmetric disagreement (44%)** — median gap under 2 fish, direction
+~50/50, and concentrated in `DataType == "C"` (36,950 groups, 56.6% one way),
+where `TotalNumber` is a reported catch rate and the length table is a
+separately measured sample. Two observations of a similar quantity that need
+not agree exactly. There is no "true" value to converge on.
 
-**Rounding (10.9%).** A non-integer `SubsamplingFactor` (2.91, say) applied to
-integer counts gives a non-integer raised sum, against an integer
-`TotalNumber`. Sub-unit differences, mechanically expected.
+**Directional under-raising, 6-50 fish (5%)** — the same signature as Can-Mar
+(80-86% `TotalNumber` higher) in surveys with no known conversion event. About
+3,900 groups. This is the part genuinely worth chasing, and it is far smaller
+and better defined than a headline "3-4% disagree" suggests.
 
-**Still open (6.8%).** Small differences where `SubsamplingFactor` is an
-integer — and in 4,330 of 4,367 cases **exactly 1**, where the arithmetic is
-pure integer multiplication and rounding cannot occur. Spread across BITS
-(1,443), SCOWCGFS (865), BTS (536), NS-IBTS (531), SCOROC (511) and EVHOE
-(466). An earlier explanation of this bucket as rounding was checked and did
-not hold. One observation worth chasing: a SCOROC haul showed the same small
-offset across five different species at once, which points at a haul-level
-rather than species-level cause.
-
-**Unexplained (1.7%).** 1,091 groups with a large difference, integer factor,
-neither Can-Mar nor "C" — mostly BTS (580) and BITS (264).
-
-So roughly **88% has a confirmed mechanism, 10% a partial one, and under 2%
-none.** The practical consequence for a user: the disagreement is
-concentrated, not spread evenly, so check which bucket your data falls in
-before treating either number as wrong. Can-Mar and `DataType == "C"` between
-them account for four-fifths of it.
+**Large reversed tail (0.6%)** — above 50 fish the direction flips: 61.5% have
+the *length sum* higher. NSSS (69 groups, 100% length-higher) and PT-IBTS (44,
+95%) stand out. Consistent with length rows submitted twice, a duplication
+pattern seen elsewhere in these data.
 
 ## `HaulDuration`
 

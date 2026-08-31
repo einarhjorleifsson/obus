@@ -204,8 +204,11 @@ length_cm x accuracy x LengthType x sex x DevelopmentStage x SpeciesValidity`
 13,829 groups sit at a difference of **exactly 0.5**, so the `> 0.5` tolerance
 `obus_retired` measured its 3.5% at lands directly on a cluster. The count
 drifts ~±10 between identical runs purely from the order DuckDB's parallel
-`sum()` adds length classes. Quote **`> 0.51`: 66,310 (3.44%)**, which is
-stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
+`sum()` adds length classes. **Superseded 2026-08-31** — the tolerance framing was itself the wrong tool.
+See "Where the two totals disagree" in `vignettes/datras-conventions.Rmd`:
+compare in submission units and count whole fish. 89.01% reconcile exactly,
+7.14% differ by less than one fish (arithmetic, excluded), and **3.85% differ
+by at least one fish** — the figure to quote.
 
 ## Open, not resolved
 
@@ -229,11 +232,10 @@ stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
       competing quantity to confuse them with.
 
 - [ ] **Can-Mar `SpeciesValidity = "5"` rows carry real length data**, unlike
-      every other survey. ICES documents this as unresolved. Can-Mar is also
-      the single largest contributor to the mismatch count (30,220 of 64,542,
-      47%), driven by its separately-documented 2021-22 historical conversion.
-      It is likewise 98% of the rows affected by the missing-SubsamplingFactor
-      change. Any serious attempt to reduce the residual starts here.
+      every other survey. ICES documents this as unresolved. Separately,
+      Can-Mar's lost raising factor is 30,214 of the 73,596 real disagreements
+      (41%), median gap 13 fish, 98% one-directional — a documented
+      provider-side conversion, not something obus can fix.
 - [x] **RESOLVED — the two tables already give both quantities; nothing to
       add.** ICES's row-level formula is fully derivable from `HL_length`:
       summing its `n_haul` over `.id x aphia x SpeciesValidity` reproduces
@@ -336,3 +338,39 @@ Substituting a sentinel to make `=` work would put a non-value into the value
 space of numeric fields that are summed (`TotalNumber`,
 `SpeciesCategoryWeight`), silently corrupting totals rather than merely
 failing to match — trading a loud join bug for a quiet arithmetic one.
+
+
+## The disagreement, properly classified (2026-08-31)
+
+Redone after the first attempt used relative-magnitude buckets — which is the
+error `obus_retired`'s own notes warn about: a summary statistic cannot tell
+arithmetic apart from a miscount. Full write-up in
+`vignettes/datras-conventions.Rmd`. Two method points that did the work:
+
+1. **Compare in submission units.** `DataType == "C"` scales both sides by
+   `HaulDuration/60`, so a real one-fish gap in a 30-minute haul reads as 0.5
+   and hides under any sub-unit tolerance. The earlier 3.37% figure was wrong
+   in both directions — it counted sub-unit arithmetic as disagreement *and*
+   missed real C-type gaps.
+2. **A sub-unit gap is arithmetic, categorically.** A non-integer raising
+   factor on integer counts cannot give an integer; the reported
+   `TotalNumber` is one. No magnitude judgment needed, and it belongs out of
+   the statistic entirely.
+
+Result: 89.01% exact, 7.14% arithmetic (excluded), **3.85% real** (73,596
+groups). And the real part is two populations, which any single statistic
+blends into a meaningless middle:
+
+- **1-2 fish, direction ~50/50** (32,034 groups, 44%) — two independent counts
+  of one haul. Not an error in either table.
+- **6-50 fish, 81-86% one-directional** (3,891 groups, 5%) — systematic
+  under-raising. **The part actually worth chasing.**
+- **Can-Mar** (30,214, 41%) — median 13 fish, 98% directional, known
+  provider-side conversion.
+- **>50 fish** (462, 0.6%) — direction *flips*, 61.5% length-sum-higher; NSSS
+  100% and PT-IBTS 95%. Consistent with duplicated length rows.
+
+- [ ] **Chase the 6-50 fish directional bucket (~3,900 groups).** Same
+      signature as Can-Mar's lost raising factor but in surveys with no known
+      conversion event. This is the real open question, and it is two orders
+      of magnitude smaller than the headline rate made it look.

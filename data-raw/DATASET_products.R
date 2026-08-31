@@ -81,43 +81,52 @@ message("\nCross-check: HL_summary n_totalnumber vs summed HL_length n_haul ..."
 len_out  <- dr_con("HL_length",  path = DR_OUT)
 smry_out <- dr_con("HL_summary", path = DR_OUT)
 
+# Compare in SUBMISSION units, and count whole fish -- not haul-scaled values
+# against a fractional tolerance.
+#
+# Two things that a magnitude threshold gets wrong, both found 2026-08-31:
+#   1. DataType "C" scales BOTH sides by HaulDuration/60, so a genuine one-fish
+#      disagreement in a 30-minute haul shows up as 0.5 and slips under any
+#      sub-unit tolerance. Dividing the scaling out first is what makes the gap
+#      mean "fish".
+#   2. A sub-unit gap is arithmetic, full stop: a non-integer SubsamplingFactor
+#      applied to integer counts cannot produce an integer, while the reported
+#      TotalNumber is one. Counting those as "disagreements" inflates the rate
+#      with something that carries no information about the data.
+#
+# So: gap < 1 fish is arithmetic and excluded; gap >= 1 fish is real.
 cmp <- smry_out |>
   dplyr::select(.id, aphia, n_totalnumber) |>
   dplyr::inner_join(
     len_out |>
       dplyr::group_by(.id, aphia) |>
       dplyr::summarise(n_len = sum(n_haul, na.rm = TRUE), .groups = "drop"),
-    by = c(".id", "aphia")
+    by = c(".id", "aphia"), na_matches = "na"
   ) |>
   dplyr::filter(!is.na(n_totalnumber), !is.na(n_len)) |>
-  dplyr::mutate(d = abs(n_totalnumber - n_len)) |>
+  dplyr::inner_join(dplyr::select(hh, .id, DataType, HaulDuration), by = ".id") |>
+  dplyr::mutate(
+    gap = abs(n_totalnumber - n_len) /
+            dplyr::if_else(DataType == "C", HaulDuration / 60, 1)
+  ) |>
   dplyr::summarise(
-    groups  = dplyr::n(),
-    # `abs > 0.5` reproduces the tolerance obus_retired measured its own 3.5%
-    # at, and is kept only for that comparison -- it is NOT a good statistic.
-    # 13,829 groups sit at a difference of *exactly* 0.5 (measured
-    # 2026-08-31), so the threshold lands on a large cluster: whether a given
-    # group falls above or below it comes down to the order DuckDB's parallel
-    # sum() happened to add the length classes in, and the count drifts by
-    # about +/-10 between identical runs. Reported as approximate for that
-    # reason.
-    #
-    # `abs > 0.51` clears the cluster and is stable run to run -- use it as
-    # the real figure. The relative variant is reported because a raw count
-    # says nothing about whether a disagreement is material.
-    gt_half  = sum(as.integer(d > 0.5), na.rm = TRUE),
-    gt_stable = sum(as.integer(d > 0.51), na.rm = TRUE),
-    gt_1pct  = sum(as.integer(d > 0.5 & d > 0.01 * n_totalnumber), na.rm = TRUE)
+    groups     = dplyr::n(),
+    exact      = sum(as.integer(gap < 1e-6), na.rm = TRUE),
+    sub_unit   = sum(as.integer(gap >= 1e-6 & gap < 0.999), na.rm = TRUE),
+    real       = sum(as.integer(gap >= 0.999), na.rm = TRUE),
+    real_big   = sum(as.integer(gap >= 5.999), na.rm = TRUE)
   ) |>
   dplyr::collect()
 
 message(sprintf("  %s comparable groups", format(cmp$groups, big.mark = ",")))
-message(sprintf("    abs > 0.51 (stable): %s (%.2f%%)   <- the figure to quote",
-                format(cmp$gt_stable, big.mark = ","), 100 * cmp$gt_stable / cmp$groups))
-message(sprintf("    abs > 0.5  (+/-10) : ~%s (%.2f%%)  <- benchmark only: retired measured 3.5%%",
-                format(cmp$gt_half, big.mark = ","), 100 * cmp$gt_half / cmp$groups))
-message(sprintf("    and also rel > 1%%  : %s (%.2f%%)",
-                format(cmp$gt_1pct, big.mark = ","), 100 * cmp$gt_1pct / cmp$groups))
+message(sprintf("    exact match          : %s (%.2f%%)",
+                format(cmp$exact, big.mark = ","), 100 * cmp$exact / cmp$groups))
+message(sprintf("    < 1 fish (arithmetic): %s (%.2f%%)  -- excluded, not a data issue",
+                format(cmp$sub_unit, big.mark = ","), 100 * cmp$sub_unit / cmp$groups))
+message(sprintf("    >= 1 fish (real)     : %s (%.2f%%)  <- the figure to quote",
+                format(cmp$real, big.mark = ","), 100 * cmp$real / cmp$groups))
+message(sprintf("      of which >= 6 fish : %s (%.2f%%)  -- the directional, systematic part",
+                format(cmp$real_big, big.mark = ","), 100 * cmp$real_big / cmp$groups))
 
 message("\nPublish with:")
 for (f in c("HH", "HL_length", "HL_summary")) {
