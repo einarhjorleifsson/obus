@@ -160,3 +160,44 @@ test_that("DevelopmentStage splits the grain rather than being summed away", {
   expect_true("DevelopmentStage" %in% names(out))
   expect_setequal(out$n_haul, c(4, 6))
 })
+
+# --- a missing SubsamplingFactor is "no information", not 1 -----------------
+# ICES makes SubsamplingFactor mandatory, defines 1 as the specific claim
+# "not subsampled", and tells submitters that a field with no information is
+# submitted as -9 (which opus nulls as a numeric sentinel). So NA means no
+# information was supplied. The DATRAS R package treats DataType "R" + NA as
+# 1; obus deliberately does not, because that asserts a fact the submission
+# does not contain.
+
+test_that("DataType 'R' with a missing SubsamplingFactor gives NA, not a coalesce to 1", {
+  hh <- data.frame(.id = 1L, Survey = "Can-Mar", Year = 1995L, Quarter = 3L,
+                   DataType = "R", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 126417L, NumberAtLength = 7, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = NA_real_,
+    sex = "F", SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = 7, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_equal(nrow(out), 1L)
+  expect_true(is.na(out$n_haul))     # NOT 7
+  expect_true(is.na(out$n_hour))
+})
+
+test_that("a present SubsamplingFactor of 1 still means 'not subsampled' and raises normally", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 126417L, NumberAtLength = 7, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1,
+    sex = "F", SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = 7, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_equal(out$n_haul, 7)
+  expect_equal(out$n_hour, 14)
+})

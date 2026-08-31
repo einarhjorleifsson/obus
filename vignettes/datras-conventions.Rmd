@@ -1,0 +1,214 @@
+---
+title: "DATRAS conventions, and what obus does about them"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{DATRAS conventions, and what obus does about them}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+Working notes on the parts of the DATRAS exchange format that shape how
+`dr_HL_length()` and `dr_HL_summary()` are built. Each entry states what the
+format says, what the archive actually contains, and what obus does — in that
+order, because the order matters.
+
+## What counts as authoritative here
+
+**Only ICES's own published documents.** For this package that means the
+primary sources kept in `~/R/Pakkar/imbus/DATRAS/external/` — principally
+`DATRAS_Field_descriptions_and_example_file_December2025.xlsx` (the field
+descriptions, with its `General Notes` sheet), the SISP survey manuals, and
+the ICES workshop and working-group reports.
+
+Derived commentary — including the authored `.qmd` documents one directory up,
+and everything in `obus_retired` — is a useful pointer to *where to look*, and
+is not evidence on its own. Several claims checked during this work turned out
+to differ from the primary source. Where this article cites a figure, it was
+measured against the full archive on 2026-08-31.
+
+## The HL record key
+
+The field descriptions define both `TotalNumber` and `SpeciesCategoryWeight`
+as totals
+
+> per category (unique combination of cruise haul, species, sex, devstage and
+> subsampling category identifier)
+
+so an HL record is keyed by **haul × species × sex × DevelopmentStage ×
+SpeciesCategory**, and the length rows add length to that.
+
+**obus:** both tables carry the full key. `HL_length` is exactly unique at
+`.id × aphia × length_mm × length_cm × accuracy × LengthType × sex ×
+DevelopmentStage × SpeciesValidity`; `HL_summary` at
+`.id × aphia × SpeciesValidity`. Verified: zero duplicated groups in either.
+
+`DevelopmentStage` is easy to overlook — it is `NA` for 99.8% of rows — but
+5,476 `HL_length` groups genuinely split on it, and dropping it would sum a
+berried or egg-bearing record together with an unstaged one.
+
+## `SpeciesValidity` is a record type, not a quality grade
+
+The field descriptions call it the
+
+> Validity of species records, e.g. to specify if species has only been
+> counted, measured, weighed, etc.
+
+The codes describe *what data is present*, not how good it is: `1` is lengths,
+numbers and weights; `4` is total number only; `5` presence/absence; `6` weight
+only; `7` numbers and weights but no lengths. There is no ordering, so there is
+no "most valid" code to collapse to.
+
+**obus:** `SpeciesValidity` is part of `HL_summary`'s grain. 1,219 of its
+groups (0.05%) carry more than one record type; the commonest pairs are
+`{1,5}` and `{4,7}`. Filtering to one code makes `.id × aphia` exactly unique.
+
+```{r}
+dr_con("HL_summary") |>
+  dplyr::filter(SpeciesValidity == "1")   # the usual starting point
+```
+
+**Can-Mar is the exception.** It puts real `LengthClass`/`NumberAtLength` data
+on `"5"` rows, where every other survey uses `"5"` for a length-free presence
+marker. Filtering to `"1"` there discards genuine length data. Treat Can-Mar
+separately; ICES documents the situation as unresolved.
+
+## `-9` means "no information", and it is already gone
+
+The `General Notes` sheet instructs submitters:
+
+> For the fields with no information but header, please submit -9
+
+So the format has no concept of "blank" — an absent value is submitted as
+`-9`. The code carries a per-field meaning where the field has a vocabulary:
+
+| field | `-9` |
+|---|---|
+| `SpeciesSex` | "not sampled" (distinct from `U`, "Unidentified") |
+| `DevelopmentStage` | "No information" |
+| `DataType` | "Invalid hauls" — a real classification |
+
+**The archive:** zero `-9` values anywhere in HL. opus resolves them when
+building the archive, nulling any whose vocabulary label means absence and
+keeping the three that assert something (`Tickler`, `AgePlusGroup`,
+`DataType`). That line — keep a sentinel that states a fact, null one that
+states nothing — is why an `NA` `sex` in obus can be read as "not sampled".
+
+**obus:** never re-introduces a sentinel. It cannot tell which `NA`s were
+`-9`, and a sentinel placed back into a numeric column would corrupt any sum
+taken over it.
+
+## `SubsamplingFactor` by `DataType`
+
+The field is **mandatory**, and the rule is per `DataType`:
+
+> If DataType is C, it should be reported as 1. If DataType is S, it is always
+> >1. If DataType is R, the SubFactor is = 1 or >1 for different species
+> depending on whether they were subsampled.
+
+So `1` is a specific claim — *this species was not subsampled* — and it is not
+the same statement as "no factor was supplied", which the format expects as
+`-9`.
+
+**obus:** a missing `SubsamplingFactor` propagates to `NA` for every
+`DataType`, including `"R"`.
+
+This is a deliberate departure from the DATRAS R package, which treats `"R"`
+plus a missing factor as 1. That convention asserts a fact the submission does
+not contain: it silently converts "the raising factor is unknown" into "the
+catch was fully measured", understating `n_haul` whenever the true factor was
+greater than 1. Following the format instead costs little — 24,298 length rows
+(0.17%), worth 0.003% of the archive's total `n_haul`, and 98% of them
+Can-Mar.
+
+## `DataType` `P` versus `R`
+
+`R` is one sub-sampling rate per species; `P` is size-stratified, with several
+`SpeciesCategory` grades each sub-sampled separately. The haul total is
+computed the same way for both — sum `NumberAtLength × SubsamplingFactor` over
+the rows — so the distinction is descriptive rather than arithmetic.
+
+It is also widely got wrong, and ICES has acknowledged why: IBTSWG 2024 §3.3
+records a 2023 intersessional group flagging `DataType` value **`P` as missing
+from the format documentation**. Submitters cannot use a code that is not
+documented, so size-stratified hauls are submitted as `R`. Measured here,
+34,531 `R` groups carry more than one `SpeciesCategory` each with its own
+rate — the shape `P` describes — across many surveys and back to at least
+2009.
+
+**obus:** unaffected, because it uses the row-level formula for every
+`DataType` and never assumes one category per species.
+
+## `TotalNumber` and the raised length sum are two different routes
+
+The field descriptions define `TotalNo = SUM(HLNoAtLngt)` — so the reported
+total and the length-frequency sum are meant to be the same number.
+
+**obus keeps both, in different tables, and names them apart:**
+
+- `HL_summary$n_totalnumber` — the reported `TotalNumber`
+- `sum(HL_length$n_haul)` — the raised length frequencies
+
+Summing `HL_length` reproduces `Σ(NumberAtLength × SubsamplingFactor)` exactly
+(1,925,444 groups, zero differing), so nothing is lost by not duplicating it
+into `HL_summary`:
+
+```{r}
+dr_con("HL_summary") |>
+  dplyr::left_join(
+    dr_con("HL_length") |>
+      dplyr::group_by(.id, aphia, SpeciesValidity) |>
+      dplyr::summarise(n_length = sum(n_haul), .groups = "drop"),
+    by = c(".id", "aphia", "SpeciesValidity")
+  )
+```
+
+`HL_summary` still needs `TotalNumber` because 16% of its rows are species
+with no length data at all, where no length-derived figure exists.
+
+The two disagree for **3.37%** of comparable groups. That is a real property of
+the submitted data, not a defect: it is concentrated in `DataType == "C"`
+(where the reported rate and a raised sample need not match exactly) and in
+Can-Mar's documented 2021–22 historical conversion.
+
+## `HaulDuration`
+
+An hourly rate needs a duration. 217 hauls report `HaulDuration == 0` and 2
+report a negative value.
+
+**obus:** where the duration is not positive, any figure that needs it is `NA`.
+The direction depends on `DataType`, because `"C"` reports a rate and derives
+the haul total, while everything else reports the haul total and derives the
+rate:
+
+| | non-`C` | `C` |
+|---|---|---|
+| hourly rate | derived — `NA` | reported — kept |
+| per-haul total | reported — kept | derived — `NA` |
+
+Without this the arithmetic produces `Inf` on one side and a plausible-looking
+`0` on the other.
+
+## An engineering note: R and SQL disagree about `NA`
+
+Not a DATRAS matter, but the single largest source of defects found while
+building these tables. obus runs the same functions eagerly (data frames, in
+the tests) and lazily (DuckDB, in the build), and the two backends differ in
+three separate ways:
+
+1. **Joining.** SQL treats `NULL = NULL` as unknown, so a lazy join drops
+   every row with an `NA` key — `sex` is `NA` in 54% of HL. Fixed with
+   `na_matches = "na"`, which renders as `IS NOT DISTINCT FROM`.
+2. **Aggregating.** `sum(x, na.rm = TRUE)` over an all-`NA` group is `0` in R
+   and `NULL` in SQL. Every aggregation here carries an explicit non-`NA`
+   counter so both return `NA`.
+3. **Self-reference in `summarise()`.** dplyr evaluates expressions in order,
+   so `n_ok = sum(!is.na(n_haul))` written after `n_haul = sum(n_haul)` sees
+   the new scalar; SQL resolves every aggregate against the source column.
+   Renaming before aggregating removes the ambiguity.
+
+Each of these produced a real, silent, wrong number. Keeping both an eager
+test suite and a lazy build is what catches them — neither does alone.

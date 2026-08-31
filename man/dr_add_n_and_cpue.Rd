@@ -20,10 +20,22 @@ hourly rate (\code{n_hour}), according to how the submission reports its
 catch (\code{DataType}).
 }
 \details{
-For \code{DataType == "R"} (data by haul) a missing
-\code{SubsamplingFactor} is treated as 1 -- absence of a subsampling factor
-means the full catch was measured. This matches the DATRAS R package's own
-convention. For every other \code{DataType} a missing
-\code{SubsamplingFactor} propagates to \code{NA}, and an invalid
-(\code{"-9"}) or missing \code{DataType} gives \code{NA} outright.
+A missing \code{SubsamplingFactor} propagates to \code{NA} for every
+\code{DataType}, including \code{"R"}. This follows ICES's own format
+documentation rather than the DATRAS R package's convention, and the
+difference is deliberate: that package treats \code{"R"} plus a missing
+factor as 1, i.e. "the whole catch was measured". ICES's field descriptions
+make \code{SubsamplingFactor} \strong{mandatory}, define \code{1} as the
+specific claim \emph{not subsampled}, and instruct submitters that "for the
+fields with no information but header, please submit -9" -- which opus nulls
+as a numeric sentinel. So an \code{NA} here means \emph{no information was
+supplied}, which is not the same statement as \code{1}, and substituting one
+for the other would assert a fact the submission does not contain.
+
+Archive-wide this affects 24,298 length rows (0.17\\%), worth 0.003\\% of
+total \code{n_haul}; 98\\% of them are Can-Mar. An invalid (\code{"-9"}) or
+missing \code{DataType} gives \code{NA} outright, as before.
+
+Per ICES: \code{"C"} must report 1, \code{"S"} is always >1, and
+\code{"R"} is 1 or >1 depending on whether the species was subsampled.
 }

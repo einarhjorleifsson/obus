@@ -89,13 +89,31 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
     dr_add_length_cm() |>
     dr_add_n_and_cpue() |>
     dr_join_species(species) |>
+    # Rename before summarising. Two reasons, both load-bearing: the guard
+    # below must read n_haul's PRE-aggregation value, and `n_haul = sum(n_haul)`
+    # in the same summarise() is resolved differently by the two backends --
+    # dplyr evaluates expressions in order, so a later one sees the new scalar,
+    # while SQL resolves every aggregate against the source column. Distinct
+    # names make the two agree by construction rather than by luck.
+    dplyr::mutate(.n_raw = n_haul, .h_raw = n_hour) |>
     dplyr::group_by(.id, Survey, Year, Quarter, aphia, latin, species, rank,
                     length_mm, length_cm, accuracy, LengthType, sex,
                     DevelopmentStage, SpeciesValidity) |>
     dplyr::summarise(
-      n_haul = sum(n_haul, na.rm = TRUE),
-      n_hour = sum(n_hour, na.rm = TRUE),
+      n_haul = sum(.n_raw, na.rm = TRUE),
+      n_hour = sum(.h_raw, na.rm = TRUE),
+      # Same all-NA guard as dr_HL_summary(): sum(x, na.rm = TRUE) over a
+      # group with nothing in it is 0 in R and NULL in SQL. Without this, a
+      # group whose raising is genuinely unknown -- a missing
+      # SubsamplingFactor, or a non-positive HaulDuration -- comes back as a
+      # confident 0 on the eager path. Caught by a test, not by review.
+      .n_ok = sum(as.integer(!is.na(.n_raw)), na.rm = TRUE),
+      .h_ok = sum(as.integer(!is.na(.h_raw)), na.rm = TRUE),
       .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      n_haul = dplyr::if_else(.n_ok == 0, NA_real_, n_haul),
+      n_hour = dplyr::if_else(.h_ok == 0, NA_real_, n_hour)
     ) |>
     dplyr::select(
       .id, Survey, Year, Quarter, aphia, latin, species, rank,
@@ -292,7 +310,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::mutate(
       raised = dplyr::case_when(
         DataType == "C" ~ NumberAtLength * SubsamplingFactor * HaulDuration / 60,
-        TRUE            ~ NumberAtLength * dplyr::coalesce(SubsamplingFactor, 1)
+        TRUE            ~ NumberAtLength * SubsamplingFactor
       )
     ) |>
     dplyr::group_by(.id, aphia, SpeciesCategory, SpeciesValidity, sex,

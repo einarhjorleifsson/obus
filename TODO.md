@@ -92,6 +92,16 @@ locally against the full archive. **Nothing is published yet.**
       candidate for opus's known-issues registry and one targeted question
       to ICES.
 
+## Official docs are the authority (standing rule, 2026-08-31)
+
+Only ICES's own published documents count as evidence for what a field means:
+`~/R/Pakkar/imbus/DATRAS/external/` — chiefly
+`DATRAS_Field_descriptions_and_example_file_December2025.xlsx` (including its
+`General Notes` sheet), the SISP manuals, and the ICES workshop/working-group
+reports. The authored `.qmd` files one directory up, and anything in
+`obus_retired`, are pointers to where to look, not evidence. Findings are
+written up in `vignettes/datras-conventions.Rmd`.
+
 ## Verification record (2026-08-31, full archive)
 
 The HL logic was re-derived from `obus_retired`'s final state and checked
@@ -111,6 +121,19 @@ against ICES primary documentation. What was done and found:
   P 60 against the retired R 44,568 / C 21,865 / S 134 / P 62.
 
 ### Bugs found and fixed in this pass
+
+0. **`DataType == "R"` + missing `SubsamplingFactor` was coalesced to 1.**
+   Inherited from the DATRAS R package. The official field descriptions make
+   the field **mandatory**, define `1` as the specific claim *not subsampled*,
+   and instruct submitters that a field with no information is submitted as
+   `-9` — so `NA` means "no information", a different statement from `1`. The
+   coalesce silently converted "raising factor unknown" into "catch fully
+   measured", understating `n_haul` wherever the true factor exceeded 1. Now
+   propagates `NA`. Costs 24,298 length rows (0.17%), 0.003% of total
+   `n_haul`; 98% Can-Mar. Note the earlier figures quoted from
+   `obus_retired`'s notes (5.35% of BTS's R rows, 2.46% of NS-IBTS's) counted
+   *all* R rows including catch-totals rows that never reach the arithmetic —
+   restricted to length rows, BTS is zero and NS-IBTS is 37 (0.00%).
 
 1. **`NULL = NULL` in the lazy reconciliation join (serious, mine).** SQL
    treats `NULL = NULL` as unknown, so every NA-`sex` row — 54% of HL — failed
