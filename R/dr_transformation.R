@@ -101,6 +101,12 @@ dr_add_n_and_cpue <- function(d) {
   d |>
     dplyr::mutate(
       n_haul = dplyr::case_when(
+        # A "C" submission reports an hourly rate, so a per-haul count is only
+        # recoverable by multiplying back up by the duration -- undefined when
+        # that duration is 0 or negative. Without this the arithmetic silently
+        # returns 0 (or a negative count), which is worse than an error: it
+        # looks like a real observation.
+        DataType == "C" & HaulDuration <= 0 ~ NA_real_,
         DataType == "C"  ~ NumberAtLength * SubsamplingFactor * HaulDuration / 60,
         DataType == "R"  ~ NumberAtLength * dplyr::coalesce(SubsamplingFactor, 1),
         DataType == "P"  ~ NumberAtLength * SubsamplingFactor,
@@ -108,7 +114,19 @@ dr_add_n_and_cpue <- function(d) {
         TRUE             ~ NA_real_
       )
     ) |>
-    dplyr::mutate(n_hour = n_haul / HaulDuration * 60)
+    dplyr::mutate(
+      n_hour = dplyr::case_when(
+        # "C" already IS an hourly rate -- it is reported, not derived, so it
+        # survives a bad duration intact and must not be discarded.
+        DataType == "C"   ~ NumberAtLength * SubsamplingFactor,
+        # Everywhere else the rate is derived by dividing by the duration,
+        # which is undefined at 0 (yields Inf) and meaningless when negative
+        # (yields a negative rate). Archive-wide: 217 hauls at 0, 2 negative
+        # (both Can-Mar 2017, already flagged HaulValidity "I").
+        HaulDuration <= 0 ~ NA_real_,
+        TRUE              ~ n_haul / HaulDuration * 60
+      )
+    )
 }
 
 #' Add species names to a table carrying `aphia`

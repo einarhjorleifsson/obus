@@ -33,6 +33,12 @@ A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
 \code{accuracy}, \code{LengthType}, \code{sex},
 \code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
 \code{SpeciesValidity}.
+
+Where \code{HaulDuration} is 0 or negative (219 hauls archive-wide),
+\code{n_hour} is \code{NA} rather than \code{Inf} -- an hourly rate is
+undefined with no time fished. \code{DataType == "C"} is the exception: it
+reports a rate directly, so there \code{n_hour} survives and \code{n_haul}
+is \code{NA} instead.
 }
 \description{
 One row per \code{.id} \eqn{\times} \code{aphia} \eqn{\times}

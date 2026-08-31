@@ -27,34 +27,39 @@ Optional: \code{HaulValidity}, used when \code{haulval} is set.}
 A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
 \eqn{\times} \code{SpeciesValidity} (see Details):
 \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
-\code{latin}, \code{species}, \code{rank}, \code{n_haul}, \code{n_hour},
-\code{w_haul}, \code{w_hour}, \code{n_measured}, \code{p_females},
-\code{SpeciesValidity}.
+\code{latin}, \code{species}, \code{rank}, \code{n_totalnumber},
+\code{n_totalnumber_hour}, \code{w_haul}, \code{w_hour},
+\code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 }
 \description{
 One row per \code{.id} \eqn{\times} \code{aphia} -- every species recorded
 in \code{hl} for that haul, whether or not it was individually measured
 (unlike \code{\link{dr_HL_length}}, which covers only the length-measured
-subset). \code{n_haul}/\code{n_hour} come from the recorded
-\code{TotalNumber}, present regardless of length data and so the one
-universal per-species haul total, rather than being reconstructed by summing
-\code{\link{dr_HL_length}}'s length classes; \code{w_haul}/\code{w_hour}
-come from \code{SpeciesCategoryWeight}.
+subset). \code{n_totalnumber}/\code{n_totalnumber_hour} come from the
+recorded \code{TotalNumber}, present regardless of length data and so the
+one universal per-species haul total, rather than being reconstructed by
+summing \code{\link{dr_HL_length}}'s length classes. The name says so on
+purpose: \code{\link{dr_HL_length}}'s \code{n_haul} is the same conceptual
+quantity arrived at the other way -- raising the measured length frequencies
+-- and the two do not always agree (see below). Calling both \code{n_haul}
+invited exactly that confusion. \code{w_haul}/\code{w_hour} keep their
+names because \code{SpeciesCategoryWeight} is their only possible source;
+there is no length-derived weight in obus to confuse them with.
 }
 \details{
 \code{n_measured} is the raw, un-raised count of individuals actually run
 through calipers (\eqn{\Sigma}\code{NumberAtLength} before any
 \code{DataType}/\code{SubsamplingFactor} raising), and \code{0} for a
 species with no length data at all. It is a genuinely different quantity
-from \code{n_haul}: for a subsampled catch the two diverge on purpose --
-\code{n_haul} is the raised whole-haul estimate, \code{n_measured} is how
-many fish that estimate was built from. It is \code{NA}, not \code{0}, when
+from \code{n_totalnumber}: for a subsampled catch the two diverge on purpose
+-- \code{n_totalnumber} is the reported whole-haul total, \code{n_measured}
+is how many fish were actually put through calipers. It is \code{NA}, not \code{0}, when
 \code{DataType == "C"}: that convention reports \code{NumberAtLength} as an
 already-hourly rate, so no true physical count can be recovered, and
 \code{0} is reserved for species genuinely never measured.
 
-\code{n_haul} here and the length-class sum from \code{\link{dr_HL_length}}
-describe the same underlying count \emph{when the source submission is
+\code{n_totalnumber} here and the length-class sum from
+\code{\link{dr_HL_length}} describe the same underlying count \emph{when the source submission is
 internally consistent} -- a cross-check worth running, not a guarantee.
 Measured archive-wide on the retired implementation of this table
 (1,920,932 groups), 3.5\\% still disagreed meaningfully, concentrated in
@@ -101,6 +106,13 @@ For most surveys, filter to \code{SpeciesValidity == "1"} before
 aggregating. Summing \code{n_haul} or \code{w_haul} per \code{.id}
 \eqn{\times} \code{aphia} without filtering mixes record types and
 double-counts.
+
+Where \code{HaulDuration} is 0 or negative,
+\code{n_totalnumber_hour}/\code{w_hour} are \code{NA} rather than
+\code{Inf}; and for \code{DataType == "C"} -- which reports rates directly,
+and is 200 of the 217 zero-duration hauls -- it is
+\code{n_totalnumber}/\code{w_haul} that go \code{NA} instead of a
+misleading \code{0}.
 
 \strong{Can-Mar is the documented exception}: it puts real
 \code{LengthClass}/\code{NumberAtLength} data on \code{"5"} rows, so

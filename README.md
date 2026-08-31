@@ -45,13 +45,17 @@ were actually measured.
 
 `dr_HL_summary()` is the per-haul species roster: one row per haul x
 species x species-validity, covering *every* species recorded for the
-haul, measured or not, with numbers, weights, and how many individuals
-the numbers were built from.
+haul, measured or not. Its `n_totalnumber` is the total DATRAS
+*reported* for the species (`TotalNumber`) — deliberately named apart
+from `dr_HL_length()`’s `n_haul`, which reaches the same quantity by
+raising the measured length frequencies. The two disagree for about 3.4%
+of haul x species groups, and that disagreement is a genuine data signal
+worth checking, not a bug.
 
 ``` r
 dr_con("HL_summary") |>
   filter(Survey == "NS-IBTS", Year == 2022, Quarter == 1, SpeciesValidity == "1") |>
-  select(.id, latin, species, n_haul, n_hour, w_haul, n_measured) |>
+  select(.id, latin, species, n_totalnumber, w_haul, n_measured) |>
   collect()
 ```
 

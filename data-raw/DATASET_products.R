@@ -77,20 +77,20 @@ dr_write(smry, "HL_summary")
 # SubsamplingFactors, and it concentrates in particular surveys rather than
 # spreading evenly. The retired implementation measured 3.5% over 1,920,932
 # groups; landing far from that means something changed.
-message("\nCross-check: HL_summary n_haul vs summed HL_length ...")
+message("\nCross-check: HL_summary n_totalnumber vs summed HL_length n_haul ...")
 len_out  <- dr_con("HL_length",  path = DR_OUT)
 smry_out <- dr_con("HL_summary", path = DR_OUT)
 
 cmp <- smry_out |>
-  dplyr::select(.id, aphia, n_haul) |>
+  dplyr::select(.id, aphia, n_totalnumber) |>
   dplyr::inner_join(
     len_out |>
       dplyr::group_by(.id, aphia) |>
       dplyr::summarise(n_len = sum(n_haul, na.rm = TRUE), .groups = "drop"),
     by = c(".id", "aphia")
   ) |>
-  dplyr::filter(!is.na(n_haul), !is.na(n_len)) |>
-  dplyr::mutate(d = abs(n_haul - n_len)) |>
+  dplyr::filter(!is.na(n_totalnumber), !is.na(n_len)) |>
+  dplyr::mutate(d = abs(n_totalnumber - n_len)) |>
   dplyr::summarise(
     groups  = dplyr::n(),
     # `abs > 0.5` reproduces the tolerance obus_retired measured its own 3.5%
@@ -107,7 +107,7 @@ cmp <- smry_out |>
     # says nothing about whether a disagreement is material.
     gt_half  = sum(as.integer(d > 0.5), na.rm = TRUE),
     gt_stable = sum(as.integer(d > 0.51), na.rm = TRUE),
-    gt_1pct  = sum(as.integer(d > 0.5 & d > 0.01 * n_haul), na.rm = TRUE)
+    gt_1pct  = sum(as.integer(d > 0.5 & d > 0.01 * n_totalnumber), na.rm = TRUE)
   ) |>
   dplyr::collect()
 

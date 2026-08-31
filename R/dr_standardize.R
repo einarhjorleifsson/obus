@@ -69,6 +69,12 @@
 #'   \code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
 #'   \code{SpeciesValidity}.
 #'
+#' Where \code{HaulDuration} is 0 or negative (219 hauls archive-wide),
+#' \code{n_hour} is \code{NA} rather than \code{Inf} -- an hourly rate is
+#' undefined with no time fished. \code{DataType == "C"} is the exception: it
+#' reports a rate directly, so there \code{n_hour} survives and \code{n_haul}
+#' is \code{NA} instead.
+#'
 #' @seealso \code{\link{dr_HL_summary}}, \code{\link{dr_add_id}}
 #' @export
 dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
@@ -104,25 +110,30 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' One row per \code{.id} \eqn{\times} \code{aphia} -- every species recorded
 #' in \code{hl} for that haul, whether or not it was individually measured
 #' (unlike \code{\link{dr_HL_length}}, which covers only the length-measured
-#' subset). \code{n_haul}/\code{n_hour} come from the recorded
-#' \code{TotalNumber}, present regardless of length data and so the one
-#' universal per-species haul total, rather than being reconstructed by summing
-#' \code{\link{dr_HL_length}}'s length classes; \code{w_haul}/\code{w_hour}
-#' come from \code{SpeciesCategoryWeight}.
+#' subset). \code{n_totalnumber}/\code{n_totalnumber_hour} come from the
+#' recorded \code{TotalNumber}, present regardless of length data and so the
+#' one universal per-species haul total, rather than being reconstructed by
+#' summing \code{\link{dr_HL_length}}'s length classes. The name says so on
+#' purpose: \code{\link{dr_HL_length}}'s \code{n_haul} is the same conceptual
+#' quantity arrived at the other way -- raising the measured length frequencies
+#' -- and the two do not always agree (see below). Calling both \code{n_haul}
+#' invited exactly that confusion. \code{w_haul}/\code{w_hour} keep their
+#' names because \code{SpeciesCategoryWeight} is their only possible source;
+#' there is no length-derived weight in obus to confuse them with.
 #'
 #' \code{n_measured} is the raw, un-raised count of individuals actually run
 #' through calipers (\eqn{\Sigma}\code{NumberAtLength} before any
 #' \code{DataType}/\code{SubsamplingFactor} raising), and \code{0} for a
 #' species with no length data at all. It is a genuinely different quantity
-#' from \code{n_haul}: for a subsampled catch the two diverge on purpose --
-#' \code{n_haul} is the raised whole-haul estimate, \code{n_measured} is how
-#' many fish that estimate was built from. It is \code{NA}, not \code{0}, when
+#' from \code{n_totalnumber}: for a subsampled catch the two diverge on purpose
+#' -- \code{n_totalnumber} is the reported whole-haul total, \code{n_measured}
+#' is how many fish were actually put through calipers. It is \code{NA}, not \code{0}, when
 #' \code{DataType == "C"}: that convention reports \code{NumberAtLength} as an
 #' already-hourly rate, so no true physical count can be recovered, and
 #' \code{0} is reserved for species genuinely never measured.
 #'
-#' \code{n_haul} here and the length-class sum from \code{\link{dr_HL_length}}
-#' describe the same underlying count \emph{when the source submission is
+#' \code{n_totalnumber} here and the length-class sum from
+#' \code{\link{dr_HL_length}} describe the same underlying count \emph{when the source submission is
 #' internally consistent} -- a cross-check worth running, not a guarantee.
 #' Measured archive-wide on the retired implementation of this table
 #' (1,920,932 groups), 3.5\% still disagreed meaningfully, concentrated in
@@ -170,6 +181,13 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' \eqn{\times} \code{aphia} without filtering mixes record types and
 #' double-counts.
 #'
+#' Where \code{HaulDuration} is 0 or negative,
+#' \code{n_totalnumber_hour}/\code{w_hour} are \code{NA} rather than
+#' \code{Inf}; and for \code{DataType == "C"} -- which reports rates directly,
+#' and is 200 of the 217 zero-duration hauls -- it is
+#' \code{n_totalnumber}/\code{w_haul} that go \code{NA} instead of a
+#' misleading \code{0}.
+#'
 #' \strong{Can-Mar is the documented exception}: it puts real
 #' \code{LengthClass}/\code{NumberAtLength} data on \code{"5"} rows, so
 #' filtering to \code{"1"} there discards genuine length data for a
@@ -184,9 +202,9 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' @return A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
 #'   \eqn{\times} \code{SpeciesValidity} (see Details):
 #'   \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
-#'   \code{latin}, \code{species}, \code{rank}, \code{n_haul}, \code{n_hour},
-#'   \code{w_haul}, \code{w_hour}, \code{n_measured}, \code{p_females},
-#'   \code{SpeciesValidity}.
+#'   \code{latin}, \code{species}, \code{rank}, \code{n_totalnumber},
+#'   \code{n_totalnumber_hour}, \code{w_haul}, \code{w_hour},
+#'   \code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 #'
 #' @seealso \code{\link{dr_HL_length}}, \code{\link{dr_add_id}}
 #' @export
@@ -251,13 +269,20 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
                     DevelopmentStage, TotalNumber) |>
     dplyr::inner_join(hh_cols, by = ".id") |>
     dplyr::mutate(
+      # A HaulDuration of 0 (or negative) makes one of these two undefined, in
+      # opposite directions depending on DataType, and the raw arithmetic hides
+      # it either way: a derived hourly rate comes out Inf, and a "C" per-haul
+      # count comes out 0. Both become NA. Archive-wide: 217 hauls at duration
+      # 0 (200 of them "C"), plus 2 negative.
       n_haul_raw = dplyr::case_when(
+        DataType == "C" & HaulDuration <= 0 ~ NA_real_,
         DataType == "C" ~ TotalNumber * HaulDuration / 60,
         TRUE            ~ TotalNumber
       ),
       n_hour_raw = dplyr::case_when(
-        DataType == "C" ~ TotalNumber,
-        TRUE            ~ TotalNumber / HaulDuration * 60
+        DataType == "C"   ~ TotalNumber,
+        HaulDuration <= 0 ~ NA_real_,
+        TRUE              ~ TotalNumber / HaulDuration * 60
       )
     )
 
@@ -299,7 +324,8 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
                      by = c(".id", "aphia", "SpeciesCategory", "SpeciesValidity",
                             "sex", "DevelopmentStage"),
                      na_matches = "na") |>
-    dplyr::mutate(reconciles = !is.na(sex_expected) & abs(n_haul_raw - sex_expected) <= 0.5)
+    dplyr::mutate(reconciles = !is.na(sex_expected) & !is.na(n_haul_raw) &
+                    abs(n_haul_raw - sex_expected) <= 0.5)
 
   trusted <- reconciled |> dplyr::filter(reconciles)
 
@@ -322,10 +348,22 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     ) |>
     dplyr::group_by(.id, Survey, Year, Quarter, aphia, SpeciesValidity) |>
     dplyr::summarise(
-      n_haul = sum(n_haul_raw, na.rm = TRUE),
-      n_hour = sum(n_hour_raw, na.rm = TRUE),
+      n_totalnumber      = sum(n_haul_raw, na.rm = TRUE),
+      n_totalnumber_hour = sum(n_hour_raw, na.rm = TRUE),
+      # How many inputs were actually present. Needed because sum(x, na.rm =
+      # TRUE) over an all-NA group is 0 in R but NULL in SQL -- so without
+      # this the two backends disagree, and the eager one silently converts
+      # the deliberate zero-duration NA above straight back into the false
+      # zero it was meant to prevent.
+      .n_ok = sum(as.integer(!is.na(n_haul_raw)), na.rm = TRUE),
+      .h_ok = sum(as.integer(!is.na(n_hour_raw)), na.rm = TRUE),
       .groups = "drop"
-    )
+    ) |>
+    dplyr::mutate(
+      n_totalnumber      = dplyr::if_else(.n_ok == 0, NA_real_, n_totalnumber),
+      n_totalnumber_hour = dplyr::if_else(.h_ok == 0, NA_real_, n_totalnumber_hour)
+    ) |>
+    dplyr::select(-.n_ok, -.h_ok)
 
   # ---- weights: SpeciesCategoryWeight -----------------------------------
   # Deduplicated the same way as counts above, and for the same reason:
@@ -342,21 +380,35 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::distinct(.id, aphia, SpeciesCategory, SpeciesValidity, SpeciesCategoryWeight) |>
     dplyr::inner_join(hh_cols, by = ".id") |>
     dplyr::mutate(
+      # Same zero-duration treatment as the counts above.
       w_haul_raw = dplyr::case_when(
+        DataType == "C" & HaulDuration <= 0 ~ NA_real_,
         DataType == "C" ~ SpeciesCategoryWeight * HaulDuration / 60,
         TRUE            ~ SpeciesCategoryWeight
       ),
       w_hour_raw = dplyr::case_when(
-        DataType == "C" ~ SpeciesCategoryWeight,
-        TRUE            ~ SpeciesCategoryWeight / HaulDuration * 60
+        DataType == "C"   ~ SpeciesCategoryWeight,
+        HaulDuration <= 0 ~ NA_real_,
+        TRUE              ~ SpeciesCategoryWeight / HaulDuration * 60
       )
     ) |>
     dplyr::group_by(.id, Survey, Year, Quarter, aphia, SpeciesValidity) |>
     dplyr::summarise(
       w_haul = sum(w_haul_raw, na.rm = TRUE),
       w_hour = sum(w_hour_raw, na.rm = TRUE),
+      # Same all-NA guard as the counts above. It also settles a species with
+      # no recorded weight at all (672,065 rows archive-wide) as NA in both
+      # backends, rather than 0 eagerly and NULL lazily -- "not weighed" is
+      # not "weighed nothing".
+      .w_ok = sum(as.integer(!is.na(w_haul_raw)), na.rm = TRUE),
+      .wh_ok = sum(as.integer(!is.na(w_hour_raw)), na.rm = TRUE),
       .groups = "drop"
-    )
+    ) |>
+    dplyr::mutate(
+      w_haul = dplyr::if_else(.w_ok == 0, NA_real_, w_haul),
+      w_hour = dplyr::if_else(.wh_ok == 0, NA_real_, w_hour)
+    ) |>
+    dplyr::select(-.w_ok, -.wh_ok)
 
   # ---- shared base for p_females and n_measured -------------------------
   # Both are sourced from NumberAtLength, not TotalNumber. Shared to avoid
@@ -428,6 +480,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dr_join_species(species) |>
     dplyr::select(
       .id, Survey, Year, Quarter, aphia, latin, species, rank,
-      n_haul, n_hour, w_haul, w_hour, n_measured, p_females, SpeciesValidity
+      n_totalnumber, n_totalnumber_hour, w_haul, w_hour,
+      n_measured, p_females, SpeciesValidity
     )
 }

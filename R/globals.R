@@ -17,6 +17,7 @@ utils::globalVariables(c(
   # derived
   "length_mm", "length_cm", "accuracy", "n_haul", "n_hour",
   "n_haul_raw", "n_hour_raw", "w_haul", "w_hour", "w_haul_raw", "w_hour_raw",
+  "n_totalnumber", "n_totalnumber_hour", ".n_ok", ".h_ok", ".w_ok", ".wh_ok",
   "raised", "sex_expected", "reconciles", "n_f", "n_m", "p_females",
   "n_measured", ".has_length"
 ))

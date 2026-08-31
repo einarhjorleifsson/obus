@@ -36,7 +36,7 @@ test_that("a weight repeated identically across sex-split rows is counted once, 
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 33160)          # NOT 33160 * 3 = 99480
-  expect_equal(out$n_haul, 8 + 14 + 3)     # counts still sum correctly across sex
+  expect_equal(out$n_totalnumber, 8 + 14 + 3)     # counts still sum correctly across sex
 })
 
 test_that("genuinely distinct per-sex weights are still summed, not deduplicated away", {
@@ -47,7 +47,7 @@ test_that("genuinely distinct per-sex weights are still summed, not deduplicated
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 4000 + 900)
-  expect_equal(out$n_haul, 23 + 4)
+  expect_equal(out$n_totalnumber, 23 + 4)
 })
 
 test_that("two SpeciesCategory codes, each internally sex-duplicated, sum to the true total", {
@@ -62,7 +62,7 @@ test_that("two SpeciesCategory codes, each internally sex-duplicated, sum to the
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 33160 + 850)    # NOT (33160 + 850) * 3 = 102030
-  expect_equal(out$n_haul, (8 + 14 + 3) + (3 + 2 + 14))
+  expect_equal(out$n_totalnumber, (8 + 14 + 3) + (3 + 2 + 14))
 })
 
 test_that("a single sex row (the common, no-risk case) is unaffected", {
@@ -72,7 +72,7 @@ test_that("a single sex row (the common, no-risk case) is unaffected", {
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 5000)
-  expect_equal(out$n_haul, 10)
+  expect_equal(out$n_totalnumber, 10)
 })
 
 # --- TotalNumber duplicated identically across sex (the analogous count bug, ---
@@ -109,8 +109,8 @@ test_that("TotalNumber duplicated identically across sex is counted once, not pe
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
-  expect_equal(out$n_haul, 2)     # NOT 1+1 summed against a duplicated total = 4
-  expect_equal(out$n_hour, 4)     # HaulDuration = 30 -> n_hour = n_haul/30*60
+  expect_equal(out$n_totalnumber, 2)     # NOT 1+1 summed against a duplicated total = 4
+  expect_equal(out$n_totalnumber_hour, 4)     # HaulDuration = 30 -> n_hour = n_haul/30*60
 })
 
 test_that("two different sexes coincidentally reporting the SAME real value are both trusted and summed", {
@@ -137,7 +137,7 @@ test_that("two different sexes coincidentally reporting the SAME real value are 
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
-  expect_equal(out$n_haul, 4)     # NOT distinct(2,1) = 3 -- M and unsexed are genuinely separate
+  expect_equal(out$n_totalnumber, 4)     # NOT distinct(2,1) = 3 -- M and unsexed are genuinely separate
 })
 
 # --- TotalNumber duplicated across SpeciesCategory (found + fixed 2026-07-26) ---
@@ -168,7 +168,7 @@ test_that("TotalNumber duplicated across SpeciesCategory is counted once, not pe
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
-  expect_equal(out$n_haul, 660)   # NOT 660 + 660 = 1320 (once per category)
+  expect_equal(out$n_totalnumber, 660)   # NOT 660 + 660 = 1320 (once per category)
 })
 
 test_that("genuinely distinct SpeciesCategory totals are still summed, not collapsed", {
@@ -191,7 +191,7 @@ test_that("genuinely distinct SpeciesCategory totals are still summed, not colla
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
-  expect_equal(out$n_haul, 4 + 2)   # NOT collapsed to distinct-value 4 (they differ anyway)
+  expect_equal(out$n_totalnumber, 4 + 2)   # NOT collapsed to distinct-value 4 (they differ anyway)
 })
 
 test_that("p_females is sourced from NumberAtLength, not the (possibly duplicated) TotalNumber", {
@@ -213,7 +213,7 @@ test_that("p_females is sourced from NumberAtLength, not the (possibly duplicate
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
-  expect_equal(out$n_haul, 10)                 # counts correctly deduplicated (not 10+10=20)
+  expect_equal(out$n_totalnumber, 10)                 # counts correctly deduplicated (not 10+10=20)
   expect_equal(out$p_females, 2 / (2 + 6))      # NOT 10/(10+10) = 0.5
 })
 
@@ -236,7 +236,7 @@ test_that("n_measured is 0 for a bulk-only species (no LengthClass at all)", {
                    species = "Bulk species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
-  expect_equal(out$n_haul, 12)              # a real, non-zero catch
+  expect_equal(out$n_totalnumber, 12)              # a real, non-zero catch
   expect_equal(out$n_measured, 0)           # but zero individuals measured
 })
 
@@ -254,7 +254,7 @@ test_that("n_measured is NA (not a misleading rate) when DataType == 'C'", {
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_measured))
-  expect_false(is.na(out$n_haul))           # n_haul itself is still resolved
+  expect_false(is.na(out$n_totalnumber))           # n_haul itself is still resolved
 })
 
 test_that("n_measured is the raw un-raised count for DataType == 'R'/'S'/'P'", {
@@ -271,7 +271,7 @@ test_that("n_measured is the raw un-raised count for DataType == 'R'/'S'/'P'", {
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_equal(out$n_measured, 3 + 5)        # raw, un-raised by SubsamplingFactor
-  expect_equal(out$n_haul, 16)               # the recorded (raised) total, unaffected
+  expect_equal(out$n_totalnumber, 16)               # the recorded (raised) total, unaffected
 })
 
 test_that("dr_HL_summary() covers every species, unlike dr_HL_length()", {
@@ -296,4 +296,66 @@ test_that("dr_HL_summary() covers every species, unlike dr_HL_length()", {
 
   expect_equal(nrow(out), 2L)
   expect_true(all(c(126417L, 999999L) %in% out$aphia))
+})
+
+# --- HaulDuration <= 0: undefined, not Inf and not a false zero -------------
+# A rate per hour cannot be derived from a haul with no (or negative) duration.
+# Left alone the arithmetic hides this: the derived hourly figure comes out
+# Inf, while a DataType "C" per-haul figure -- which multiplies BY the duration
+# rather than dividing by it -- comes out a plausible-looking 0. Archive-wide:
+# 217 hauls at duration 0 (200 of them "C"), plus 2 negative.
+
+test_that("HaulDuration == 0 gives NA hourly figures, not Inf", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2018L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 0, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 126417L, NumberAtLength = 5, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, sex = "F",
+    SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = 5, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_true(is.na(out$n_totalnumber_hour))
+  expect_true(is.na(out$w_hour))
+  expect_equal(out$n_totalnumber, 5)      # the per-haul total is still known
+  expect_equal(out$w_haul, 500)
+})
+
+test_that("HaulDuration < 0 gives NA hourly figures too", {
+  hh <- data.frame(.id = 1L, Survey = "Can-Mar", Year = 2017L, Quarter = 3L,
+                   DataType = "R", HaulDuration = -514, HaulValidity = "I")
+  hl <- data.frame(
+    .id = 1L, aphia = 126417L, NumberAtLength = 5, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, sex = "F",
+    SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = 5, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_true(is.na(out$n_totalnumber_hour))
+  expect_true(is.na(out$w_hour))
+})
+
+test_that("DataType 'C' with HaulDuration == 0 keeps the reported rate, NAs the haul total", {
+  # "C" reports an hourly rate directly, so the rate survives; it is the
+  # per-haul figure -- rate x duration -- that becomes undefined, and it must
+  # not come back as 0.
+  hh <- data.frame(.id = 1L, Survey = "BITS", Year = 2020L, Quarter = 1L,
+                   DataType = "C", HaulDuration = 0, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 126417L, NumberAtLength = 4, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, sex = "F",
+    SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = 8, SpeciesCategoryWeight = 800, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_equal(out$n_totalnumber_hour, 8)   # reported rate, kept
+  expect_equal(out$w_hour, 800)
+  expect_true(is.na(out$n_totalnumber))     # NOT 0
+  expect_true(is.na(out$w_haul))
 })

@@ -154,12 +154,25 @@ stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
 
 ## Open, not resolved
 
-- [ ] **32 rows carry `Inf` `n_hour`/`w_hour`** — all
-      `NS-IBTS:2018:1:GB-SCT:748S:GOV`, where `HaulDuration == 0`. Known and
-      documented in `obus_retired`'s notes, never fixed there either. HH also
-      has 51 NA and **2 negative** `HaulDuration` (min −514). Decide whether
-      `n_hour` should be `NA` rather than `Inf` when duration is 0 — it is a
-      real silent `Inf` in published output.
+- [x] **RESOLVED — `Inf` from `HaulDuration <= 0`.** An hourly rate is
+      undefined with no time fished, so `*_hour` is now `NA`, not `Inf`.
+      `DataType == "C"` is the mirror image — it reports a rate directly, so
+      there the rate survives and the per-haul figure goes `NA` instead of a
+      plausible-looking `0`. Verified: 0 `Inf` and 0 `NaN` anywhere in either
+      table. Only 7 hauls with duration <= 0 actually carry HL rows (6 `P`,
+      1 `R`) — exactly the 7 `obus_retired` named — so the `C` and negative
+      guards are correct but touch no published row today; they protect
+      future submissions. The 2 negative-duration hauls (Can-Mar 2017, both
+      already `HaulValidity == "I"`) likewise have no HL rows.
+- [x] **RESOLVED — `n_haul` renamed to `n_totalnumber` in `HL_summary`.** By
+      design it is the *reported* `TotalNumber`, while `dr_HL_length()`'s
+      `n_haul` reaches the same conceptual quantity by raising measured length
+      frequencies. Calling both `n_haul` invited exactly the confusion the
+      3.44% disagreement makes material. `n_hour` follows as
+      `n_totalnumber_hour`. `w_haul`/`w_hour` keep their names —
+      `SpeciesCategoryWeight` is their only possible source, so there is no
+      competing quantity to confuse them with.
+
 - [ ] **Can-Mar `SpeciesValidity = "5"` rows carry real length data**, unlike
       every other survey. ICES documents this as unresolved. Can-Mar is also
       the single largest contributor to the mismatch count (31,989 of 66,674),
@@ -170,3 +183,19 @@ stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
       submission is self-consistent — the 3.44% is exactly where they are not.
       Using `TotalNumber` is defensible (it is the only value for bulk-only
       species) but it is a real design choice worth revisiting, not a given.
+
+### A fourth eager/lazy divergence, found by the new duration tests
+
+`sum(x, na.rm = TRUE)` over an all-`NA` group is **0** in R but **NULL** in
+SQL. That silently converted the deliberate zero-duration `NA` straight back
+into the false `0` it was meant to prevent — on the eager path only. Both
+count and weight aggregations now carry an explicit non-NA counter and restore
+`NA` when nothing was present, so the two backends agree. It also settles the
+672,065 rows with no recorded weight as `NA` in both: "not weighed" is not
+"weighed nothing".
+
+This is the second bug in this pass caused by R and SQL disagreeing about
+`NA` (the first was `NULL = NULL` in the joins). Anything aggregating or
+joining in these two functions should be assumed to differ between backends
+until checked both ways — the synthetic tests run eager, the build runs lazy,
+so keeping both is what catches these.
