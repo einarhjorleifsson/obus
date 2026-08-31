@@ -175,12 +175,45 @@ stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
       every other survey. ICES documents this as unresolved. Can-Mar is also
       the single largest contributor to the mismatch count (31,989 of 66,674),
       driven by its separately-documented 2021-22 historical conversion.
-- [ ] **`HL_summary`'s `n_totalnumber` comes from `TotalNumber`, but ICES's
-      guidance is `n_haul = Σ(NumberAtLength × SubsamplingFactor)`** and it defines
-      `TotalNo = SUM(HLNoAtLngt)`. The two are the same quantity when a
-      submission is self-consistent — the 3.44% is exactly where they are not.
-      Using `TotalNumber` is defensible (it is the only value for bulk-only
-      species) but it is a real design choice worth revisiting, not a given.
+- [x] **RESOLVED — the two tables already give both quantities; nothing to
+      add.** ICES's row-level formula is fully derivable from `HL_length`:
+      summing its `n_haul` over `.id x aphia x SpeciesValidity` reproduces
+      Sum(NumberAtLength x SubsamplingFactor) **exactly** — verified over
+      1,925,444 groups with 0 differing, 0 present on only one side. So
+      `HL_summary` should NOT carry a second, length-derived total: it would
+      duplicate derivable information across two tables, which is precisely
+      what the split exists to avoid.
+
+      The division of labour is the right one:
+        - `HL_length`, summed  -> the raised length-frequency total (ICES's
+          recommended row-level formula)
+        - `HL_summary$n_totalnumber` -> the reported `TotalNumber`
+        - their disagreement (3.44%) -> visible by construction, which is the
+          point
+
+      `HL_summary` earns its `TotalNumber` because it is the *only* universal
+      per-species total: 366,013 of its 2,291,457 rows (16%) are species with
+      no length data at all, where no length-derived figure exists. The other
+      84% have one available on demand.
+
+      The join is clean — `aphia` and `SpeciesValidity` are never NA in
+      `HL_summary`, so no `na_matches` is needed for this one:
+
+      ```r
+      dr_con("HL_summary") |>
+        left_join(
+          dr_con("HL_length") |>
+            group_by(.id, aphia, SpeciesValidity) |>
+            summarise(n_length = sum(n_haul), .groups = "drop"),
+          by = c(".id", "aphia", "SpeciesValidity")
+        )
+      ```
+
+      One caveat worth keeping: `HL_length$n_haul` embeds the documented
+      `DataType == "R"` + NA `SubsamplingFactor` -> treat as 1 convention, so
+      a naive `NumberAtLength * SubsamplingFactor` done by hand is NOT
+      equivalent — it returns NA for those rows (5.35% of BTS's R rows,
+      2.46% of NS-IBTS's). Sum `n_haul`; don't re-multiply the raw columns.
 
 ### A fourth eager/lazy divergence, found by the new duration tests
 
