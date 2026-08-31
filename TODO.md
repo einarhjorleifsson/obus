@@ -196,8 +196,10 @@ stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
 
 - [ ] **Can-Mar `SpeciesValidity = "5"` rows carry real length data**, unlike
       every other survey. ICES documents this as unresolved. Can-Mar is also
-      the single largest contributor to the mismatch count (31,989 of 66,674),
-      driven by its separately-documented 2021-22 historical conversion.
+      the single largest contributor to the mismatch count (30,220 of 64,542,
+      47%), driven by its separately-documented 2021-22 historical conversion.
+      It is likewise 98% of the rows affected by the missing-SubsamplingFactor
+      change. Any serious attempt to reduce the residual starts here.
 - [x] **RESOLVED — the two tables already give both quantities; nothing to
       add.** ICES's row-level formula is fully derivable from `HL_length`:
       summing its `n_haul` over `.id x aphia x SpeciesValidity` reproduces
