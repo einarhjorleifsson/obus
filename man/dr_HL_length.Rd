@@ -26,17 +26,20 @@ Optional: \code{HaulValidity}, used when \code{haulval} is set.}
 \value{
 A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
 \eqn{\times} \code{length_mm} \eqn{\times} \code{sex} \eqn{\times}
-\code{LengthType} (see Details): \code{.id},
+\code{DevelopmentStage} \eqn{\times} \code{LengthType} (see Details):
+\code{.id},
 \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia}, \code{latin},
 \code{species}, \code{rank}, \code{length_mm}, \code{length_cm},
-\code{accuracy}, \code{LengthType}, \code{sex}, \code{n_haul},
-\code{n_hour}, \code{SpeciesValidity}.
+\code{accuracy}, \code{LengthType}, \code{sex},
+\code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
+\code{SpeciesValidity}.
 }
 \description{
 One row per \code{.id} \eqn{\times} \code{aphia} \eqn{\times}
-\code{length_mm} \eqn{\times} \code{sex} \eqn{\times} \code{LengthType}
--- only for species that were actually run through calipers (records with
-\code{LengthClass} present). A
+\code{length_mm} \eqn{\times} \code{sex} \eqn{\times}
+\code{DevelopmentStage} \eqn{\times} \code{LengthType} -- only for species
+that were actually run through calipers (records with \code{LengthClass}
+present). A
 haul's bulk-counted or bulk-weighed species have no row here at all, not a
 zero-length placeholder, since "count at length" is not a meaningful
 description of a record that was never length-measured. See
@@ -57,17 +60,17 @@ derive it after grouping \code{sex} away, e.g.
 \code{summarise(p_females = sum(n_haul[sex \%in\% c("F","B")]) /
 sum(n_haul[sex \%in\% c("F","M","B")]))}.
 
-\code{LengthType} is part of the grain, not just a carried attribute: one
-haul can measure the same species, length and sex under two different
-measurement conventions, and each is its own real count that must not be
-collapsed. Measured over the whole archive (2026-08-31), 4,074 of
-13,992,024 groups (0.03\\%) split this way -- 885 on \code{LengthType}, 15
-on \code{SpeciesValidity}, 14 on \code{accuracy} (i.e. on
-\code{LengthCode}), the rest on more than one at once. Grouping
-\code{.id} \eqn{\times} \code{aphia} \eqn{\times} \code{length_mm}
-\eqn{\times} \code{sex} alone and expecting one row will therefore fail
-on a small number of hauls; sum \code{n_haul} rather than assuming
-uniqueness.
+\code{LengthType} and \code{DevelopmentStage} are part of the grain, not
+carried attributes. ICES's own field descriptions define an HL record by the
+combination \emph{haul, species, sex, devstage and subsampling category},
+so one haul can measure the same species and length under two measurement
+conventions, or as both egg-bearing and unstaged, and each is its own real
+count that must not be summed away. Measured over the whole archive
+(2026-08-31): 5,476 groups split on \code{DevelopmentStage}, 885 on
+\code{LengthType}, 15 on \code{SpeciesValidity}, 14 on \code{accuracy}
+(i.e. on \code{LengthCode}). At the full key the table is exactly unique
+(verified: 0 duplicated groups over 14,001,605 rows); at any coarser key it
+is not, so sum \code{n_haul} rather than assuming one row.
 }
 \seealso{
 \code{\link{dr_HL_summary}}, \code{\link{dr_add_id}}

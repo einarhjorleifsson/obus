@@ -80,21 +80,32 @@ recoverable by aggregating \code{\link{dr_HL_length}}; sex-specific
 data, not a gap in obus.
 
 \strong{The grain is \code{.id} \eqn{\times} \code{aphia} \eqn{\times}
-\code{SpeciesValidity}, not \code{.id} \eqn{\times} \code{aphia}} -- and
-where those differ, the row is very likely a duplicated total rather than a
-genuine split. Measured over the whole archive (2026-08-31), 1,219 of
-2,290,227 haul \eqn{\times} species groups (0.05\\%) report the same
-species under more than one \code{SpeciesValidity} code, and of the 2,716
-\code{SpeciesCategory}/\code{sex} sub-groups that span more than one code,
-2,642 (97\\%) repeat an \emph{identical} \code{TotalNumber} across them.
-The typical shape is a full set of length rows under one code plus a single
-extra length-free row under another, carrying the same
-\code{TotalNumber}/\code{SpeciesCategoryWeight} again. This is the same
-repeated-placeholder pattern already handled for \code{sex} and
-\code{SpeciesCategory}, recurring one dimension further over; it is
-\emph{not} yet collapsed here. Summing \code{n_haul} or \code{w_haul} per
-\code{.id} \eqn{\times} \code{aphia} without first collapsing on
-\code{SpeciesValidity} will double-count those groups.
+\code{SpeciesValidity}, and that is correct, not a defect.}
+\code{SpeciesValidity} is a \emph{record type} field -- it says what kind of
+data is present for a species in a haul, not whether the haul is valid -- and
+the HL format deliberately allows more than one record type per species per
+haul. ICES's own documentation is explicit that this is intentional, and
+that "if you aggregate over \code{.id} x \code{aphia} without also grouping
+on \code{SpeciesValidity}, rows from different record types will be silently
+mixed together." The typical case is a full length-frequency series
+(\code{"1"}) alongside a supplementary presence marker (\code{"5"}) or a
+count-only row (\code{"4"}) carrying the same \code{TotalNumber} again.
+
+Measured over the whole archive (2026-08-31): 1,219 of 2,290,203 groups
+(0.05\\%) carry more than one record type, the commonest pairs being
+\code{\{1,5\}} and \code{\{4,7\}} -- matching ICES's own reported
+pattern independently. Filtering to a single \code{SpeciesValidity} makes
+\code{.id} \eqn{\times} \code{aphia} exactly unique (verified: 0
+duplicates at codes \code{"1"}, \code{"4"}, \code{"5"} and \code{"7"}).
+For most surveys, filter to \code{SpeciesValidity == "1"} before
+aggregating. Summing \code{n_haul} or \code{w_haul} per \code{.id}
+\eqn{\times} \code{aphia} without filtering mixes record types and
+double-counts.
+
+\strong{Can-Mar is the documented exception}: it puts real
+\code{LengthClass}/\code{NumberAtLength} data on \code{"5"} rows, so
+filtering to \code{"1"} there discards genuine length data for a
+substantial share of its groups. Treat Can-Mar separately.
 }
 \seealso{
 \code{\link{dr_HL_length}}, \code{\link{dr_add_id}}

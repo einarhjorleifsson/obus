@@ -11,7 +11,7 @@ utils::globalVariables(c(
   # HL
   "aphia", "sex", "SpeciesValidity", "SpeciesCategory", "TotalNumber",
   "SpeciesCategoryWeight", "SubsamplingFactor", "NumberAtLength",
-  "LengthCode", "LengthClass", "LengthType",
+  "LengthCode", "LengthClass", "LengthType", "DevelopmentStage",
   # species lookup
   "latin", "species", "rank",
   # derived

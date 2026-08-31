@@ -11,9 +11,10 @@
 #' Length-frequency catch table from HH and HL
 #'
 #' One row per \code{.id} \eqn{\times} \code{aphia} \eqn{\times}
-#' \code{length_mm} \eqn{\times} \code{sex} \eqn{\times} \code{LengthType}
-#' -- only for species that were actually run through calipers (records with
-#' \code{LengthClass} present). A
+#' \code{length_mm} \eqn{\times} \code{sex} \eqn{\times}
+#' \code{DevelopmentStage} \eqn{\times} \code{LengthType} -- only for species
+#' that were actually run through calipers (records with \code{LengthClass}
+#' present). A
 #' haul's bulk-counted or bulk-weighed species have no row here at all, not a
 #' zero-length placeholder, since "count at length" is not a meaningful
 #' description of a record that was never length-measured. See
@@ -33,17 +34,17 @@
 #' \code{summarise(p_females = sum(n_haul[sex \%in\% c("F","B")]) /
 #' sum(n_haul[sex \%in\% c("F","M","B")]))}.
 #'
-#' \code{LengthType} is part of the grain, not just a carried attribute: one
-#' haul can measure the same species, length and sex under two different
-#' measurement conventions, and each is its own real count that must not be
-#' collapsed. Measured over the whole archive (2026-08-31), 4,074 of
-#' 13,992,024 groups (0.03\%) split this way -- 885 on \code{LengthType}, 15
-#' on \code{SpeciesValidity}, 14 on \code{accuracy} (i.e. on
-#' \code{LengthCode}), the rest on more than one at once. Grouping
-#' \code{.id} \eqn{\times} \code{aphia} \eqn{\times} \code{length_mm}
-#' \eqn{\times} \code{sex} alone and expecting one row will therefore fail
-#' on a small number of hauls; sum \code{n_haul} rather than assuming
-#' uniqueness.
+#' \code{LengthType} and \code{DevelopmentStage} are part of the grain, not
+#' carried attributes. ICES's own field descriptions define an HL record by the
+#' combination \emph{haul, species, sex, devstage and subsampling category},
+#' so one haul can measure the same species and length under two measurement
+#' conventions, or as both egg-bearing and unstaged, and each is its own real
+#' count that must not be summed away. Measured over the whole archive
+#' (2026-08-31): 5,476 groups split on \code{DevelopmentStage}, 885 on
+#' \code{LengthType}, 15 on \code{SpeciesValidity}, 14 on \code{accuracy}
+#' (i.e. on \code{LengthCode}). At the full key the table is exactly unique
+#' (verified: 0 duplicated groups over 14,001,605 rows); at any coarser key it
+#' is not, so sum \code{n_haul} rather than assuming one row.
 #'
 #' @param hh DATRAS HH table with \code{.id} present (see
 #'   \code{\link{dr_add_id}}). Required: \code{.id}, \code{Survey},
@@ -60,11 +61,13 @@
 #'
 #' @return A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
 #'   \eqn{\times} \code{length_mm} \eqn{\times} \code{sex} \eqn{\times}
-#'   \code{LengthType} (see Details): \code{.id},
+#'   \code{DevelopmentStage} \eqn{\times} \code{LengthType} (see Details):
+#'   \code{.id},
 #'   \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia}, \code{latin},
 #'   \code{species}, \code{rank}, \code{length_mm}, \code{length_cm},
-#'   \code{accuracy}, \code{LengthType}, \code{sex}, \code{n_haul},
-#'   \code{n_hour}, \code{SpeciesValidity}.
+#'   \code{accuracy}, \code{LengthType}, \code{sex},
+#'   \code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
+#'   \code{SpeciesValidity}.
 #'
 #' @seealso \code{\link{dr_HL_summary}}, \code{\link{dr_add_id}}
 #' @export
@@ -82,7 +85,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
     dr_join_species(species) |>
     dplyr::group_by(.id, Survey, Year, Quarter, aphia, latin, species, rank,
                     length_mm, length_cm, accuracy, LengthType, sex,
-                    SpeciesValidity) |>
+                    DevelopmentStage, SpeciesValidity) |>
     dplyr::summarise(
       n_haul = sum(n_haul, na.rm = TRUE),
       n_hour = sum(n_hour, na.rm = TRUE),
@@ -90,7 +93,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
     ) |>
     dplyr::select(
       .id, Survey, Year, Quarter, aphia, latin, species, rank,
-      length_mm, length_cm, accuracy, LengthType, sex,
+      length_mm, length_cm, accuracy, LengthType, sex, DevelopmentStage,
       n_haul, n_hour, SpeciesValidity
     )
 }
@@ -145,21 +148,32 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' data, not a gap in obus.
 #'
 #' \strong{The grain is \code{.id} \eqn{\times} \code{aphia} \eqn{\times}
-#' \code{SpeciesValidity}, not \code{.id} \eqn{\times} \code{aphia}} -- and
-#' where those differ, the row is very likely a duplicated total rather than a
-#' genuine split. Measured over the whole archive (2026-08-31), 1,219 of
-#' 2,290,227 haul \eqn{\times} species groups (0.05\%) report the same
-#' species under more than one \code{SpeciesValidity} code, and of the 2,716
-#' \code{SpeciesCategory}/\code{sex} sub-groups that span more than one code,
-#' 2,642 (97\%) repeat an \emph{identical} \code{TotalNumber} across them.
-#' The typical shape is a full set of length rows under one code plus a single
-#' extra length-free row under another, carrying the same
-#' \code{TotalNumber}/\code{SpeciesCategoryWeight} again. This is the same
-#' repeated-placeholder pattern already handled for \code{sex} and
-#' \code{SpeciesCategory}, recurring one dimension further over; it is
-#' \emph{not} yet collapsed here. Summing \code{n_haul} or \code{w_haul} per
-#' \code{.id} \eqn{\times} \code{aphia} without first collapsing on
-#' \code{SpeciesValidity} will double-count those groups.
+#' \code{SpeciesValidity}, and that is correct, not a defect.}
+#' \code{SpeciesValidity} is a \emph{record type} field -- it says what kind of
+#' data is present for a species in a haul, not whether the haul is valid -- and
+#' the HL format deliberately allows more than one record type per species per
+#' haul. ICES's own documentation is explicit that this is intentional, and
+#' that "if you aggregate over \code{.id} x \code{aphia} without also grouping
+#' on \code{SpeciesValidity}, rows from different record types will be silently
+#' mixed together." The typical case is a full length-frequency series
+#' (\code{"1"}) alongside a supplementary presence marker (\code{"5"}) or a
+#' count-only row (\code{"4"}) carrying the same \code{TotalNumber} again.
+#'
+#' Measured over the whole archive (2026-08-31): 1,219 of 2,290,203 groups
+#' (0.05\%) carry more than one record type, the commonest pairs being
+#' \code{\{1,5\}} and \code{\{4,7\}} -- matching ICES's own reported
+#' pattern independently. Filtering to a single \code{SpeciesValidity} makes
+#' \code{.id} \eqn{\times} \code{aphia} exactly unique (verified: 0
+#' duplicates at codes \code{"1"}, \code{"4"}, \code{"5"} and \code{"7"}).
+#' For most surveys, filter to \code{SpeciesValidity == "1"} before
+#' aggregating. Summing \code{n_haul} or \code{w_haul} per \code{.id}
+#' \eqn{\times} \code{aphia} without filtering mixes record types and
+#' double-counts.
+#'
+#' \strong{Can-Mar is the documented exception}: it puts real
+#' \code{LengthClass}/\code{NumberAtLength} data on \code{"5"} rows, so
+#' filtering to \code{"1"} there discards genuine length data for a
+#' substantial share of its groups. Treat Can-Mar separately.
 #'
 #' @inheritParams dr_HL_length
 #' @param hl DATRAS HL table with \code{.id} present. Required: \code{.id},
@@ -212,10 +226,29 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # excludes SpeciesCategory from its collapse key too -- not the trusted
   # branch, which still credits any category whose own data genuinely
   # reconciles.
+  # DevelopmentStage belongs in this key because ICES's own field description
+  # puts it there: TotalNumber is documented as the total "per category (unique
+  # combination of cruise haul, species, sex, devstage and subsampling category
+  # identifier)", and SpeciesCategoryWeight carries the identical wording.
+  # obus_retired's own dev notes cite the same five-part key from
+  # grammar_of_datras_data.qmd, but its code only ever used four parts -- so two
+  # genuinely distinct per-devstage totals that happened to be equal were
+  # collapsed by distinct() and undercounted. Measured archive-wide: 289 groups
+  # span more than one DevelopmentStage, 21 of them with colliding TotalNumber,
+  # worth +29 fish out of 1,443,326,029. Correct by the book and invisible in
+  # practice -- fixed because it is free, and because DevelopmentStage may be
+  # used more heavily in future submissions than the current 0.2% of rows.
+  #
+  # Weight is deliberately NOT keyed on devstage below, for the same reason it
+  # is not keyed on sex: DATRAS demonstrably repeats one weight across those
+  # sub-rows regardless of what its own spec says (verified 3x inflation on a
+  # real NS-IBTS haul), so distinct() without them is the empirically-correct
+  # reading.
   hh_dt <- dplyr::select(hh_cols, .id, DataType, HaulDuration)
 
   tn_by_sex <- hl |>
-    dplyr::distinct(.id, aphia, SpeciesCategory, SpeciesValidity, sex, TotalNumber) |>
+    dplyr::distinct(.id, aphia, SpeciesCategory, SpeciesValidity, sex,
+                    DevelopmentStage, TotalNumber) |>
     dplyr::inner_join(hh_cols, by = ".id") |>
     dplyr::mutate(
       n_haul_raw = dplyr::case_when(
@@ -237,12 +270,35 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
         TRUE            ~ NumberAtLength * dplyr::coalesce(SubsamplingFactor, 1)
       )
     ) |>
-    dplyr::group_by(.id, aphia, SpeciesCategory, SpeciesValidity, sex) |>
+    dplyr::group_by(.id, aphia, SpeciesCategory, SpeciesValidity, sex,
+                    DevelopmentStage) |>
     dplyr::summarise(sex_expected = sum(raised, na.rm = TRUE), .groups = "drop")
 
+  # na_matches = "na" on every join below whose key can hold NA -- NOT optional,
+  # and the single most consequential line in this function. SQL's `=` treats
+  # NULL = NULL as unknown, so a lazy join silently fails to match any row with
+  # an NA key, while dplyr's own eager join matches NA to NA. `sex` is NA in
+  # 54% of HL rows, and `SpeciesCategory`/`SpeciesValidity`/`TotalNumber` can
+  # be NA too. Without this, every NA-sex row fails to find its own
+  # length-derived expectation, never reconciles, and falls to the
+  # distinct()-collapse fallback -- which undercounts.
+  #
+  # Confirmed on the real case obus_retired documents for exactly this
+  # scenario (BITS:1999:1:DK:26HI:TVS:017492:22, aphia 127143): F's own total
+  # 2, M's own 1, and an unsexed row's own 1 -- true total 4. Run lazily
+  # without na_matches the unsexed row cannot reconcile and the answer comes
+  # out 3. obus_retired never hit this because its build collected HH and HL
+  # eagerly before calling this function; running it lazily, as obus now does,
+  # makes the SQL semantics live. Its own dev notes flag the same NULL = NULL
+  # trap, but only as a pitfall for validation scripts.
+  #
+  # dbplyr renders this as `IS NOT DISTINCT FROM`, which DuckDB supports
+  # natively; verified to reproduce dplyr's eager result exactly.
   reconciled <- tn_by_sex |>
     dplyr::left_join(len_expected_by_sex,
-                     by = c(".id", "aphia", "SpeciesCategory", "SpeciesValidity", "sex")) |>
+                     by = c(".id", "aphia", "SpeciesCategory", "SpeciesValidity",
+                            "sex", "DevelopmentStage"),
+                     na_matches = "na") |>
     dplyr::mutate(reconciles = !is.na(sex_expected) & abs(n_haul_raw - sex_expected) <= 0.5)
 
   trusted <- reconciled |> dplyr::filter(reconciles)
@@ -255,7 +311,8 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::distinct(.id, Survey, Year, Quarter, aphia, SpeciesValidity,
                     TotalNumber, n_haul_raw, n_hour_raw) |>
     dplyr::anti_join(already_claimed,
-                     by = c(".id", "aphia", "SpeciesValidity", "TotalNumber"))
+                     by = c(".id", "aphia", "SpeciesValidity", "TotalNumber"),
+                     na_matches = "na")
 
   hl_counts <- dplyr::union_all(
       dplyr::select(trusted, .id, Survey, Year, Quarter, aphia, SpeciesValidity,
@@ -316,9 +373,16 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # p_females is the proportion of individually-measured, sexed fish that are
   # female. "B" (berried) is a known-female state, counted as female. NA when
   # no fish in the group were sexed.
+  # Grouped by SpeciesValidity as well as .id x aphia -- the table's actual
+  # grain. Without it these two are computed across every record type at once
+  # and the same value is repeated onto each SpeciesValidity row, which is
+  # exactly the silent mixing of record types DATRAS's own FAQ warns about
+  # ("if you aggregate over .id x aphia without also grouping on
+  # SpeciesValidity, rows from different record types will be silently mixed
+  # together"). Affects the 1,219 multi-validity groups.
   hl_pfem <- hl_len_base |>
     dr_add_n_and_cpue() |>
-    dplyr::group_by(.id, aphia) |>
+    dplyr::group_by(.id, aphia, SpeciesValidity) |>
     dplyr::summarise(
       n_f = sum(dplyr::if_else(sex %in% c("F", "B"), n_haul, 0), na.rm = TRUE),
       n_m = sum(dplyr::if_else(sex == "M", n_haul, 0), na.rm = TRUE),
@@ -327,7 +391,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::mutate(
       p_females = dplyr::if_else(n_f + n_m > 0, n_f / (n_f + n_m), NA_real_)
     ) |>
-    dplyr::select(.id, aphia, p_females)
+    dplyr::select(.id, aphia, SpeciesValidity, p_females)
 
   # ---- n_measured: raw, un-raised count actually run through calipers ----
   # DataType == "C" reports NumberAtLength as an already-hourly RATE, not a
@@ -340,7 +404,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # unknown, not a known zero); a bare coalesce(n_measured, 0) cannot tell
   # those apart, since both look like NA after the left join.
   hl_measured <- hl_len_base |>
-    dplyr::group_by(.id, aphia) |>
+    dplyr::group_by(.id, aphia, SpeciesValidity) |>
     dplyr::summarise(
       n_measured = dplyr::if_else(
         dplyr::first(DataType) == "C",
@@ -353,9 +417,12 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
 
   hl_counts |>
     dplyr::left_join(hl_weights,
-                     by = c(".id", "Survey", "Year", "Quarter", "aphia", "SpeciesValidity")) |>
-    dplyr::left_join(hl_pfem, by = c(".id", "aphia")) |>
-    dplyr::left_join(hl_measured, by = c(".id", "aphia")) |>
+                     by = c(".id", "Survey", "Year", "Quarter", "aphia", "SpeciesValidity"),
+                     na_matches = "na") |>
+    dplyr::left_join(hl_pfem, by = c(".id", "aphia", "SpeciesValidity"),
+                     na_matches = "na") |>
+    dplyr::left_join(hl_measured, by = c(".id", "aphia", "SpeciesValidity"),
+                     na_matches = "na") |>
     dplyr::mutate(n_measured = dplyr::if_else(is.na(.has_length), 0, n_measured)) |>
     dplyr::select(-.has_length) |>
     dr_join_species(species) |>

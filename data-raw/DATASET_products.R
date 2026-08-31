@@ -93,18 +93,28 @@ cmp <- smry_out |>
   dplyr::mutate(d = abs(n_haul - n_len)) |>
   dplyr::summarise(
     groups  = dplyr::n(),
-    # abs > 0.5 is the comparable-to-benchmark figure: it is the same
-    # tolerance the per-sex reconciliation inside dr_HL_summary() uses, and
-    # what the retired implementation's own 3.5% was measured at. The
-    # relative variant is reported alongside because a raw count says
-    # nothing about whether a disagreement is material.
-    gt_half = sum(as.integer(d > 0.5), na.rm = TRUE),
-    gt_1pct = sum(as.integer(d > 0.5 & d > 0.01 * n_haul), na.rm = TRUE)
+    # `abs > 0.5` reproduces the tolerance obus_retired measured its own 3.5%
+    # at, and is kept only for that comparison -- it is NOT a good statistic.
+    # 13,829 groups sit at a difference of *exactly* 0.5 (measured
+    # 2026-08-31), so the threshold lands on a large cluster: whether a given
+    # group falls above or below it comes down to the order DuckDB's parallel
+    # sum() happened to add the length classes in, and the count drifts by
+    # about +/-10 between identical runs. Reported as approximate for that
+    # reason.
+    #
+    # `abs > 0.51` clears the cluster and is stable run to run -- use it as
+    # the real figure. The relative variant is reported because a raw count
+    # says nothing about whether a disagreement is material.
+    gt_half  = sum(as.integer(d > 0.5), na.rm = TRUE),
+    gt_stable = sum(as.integer(d > 0.51), na.rm = TRUE),
+    gt_1pct  = sum(as.integer(d > 0.5 & d > 0.01 * n_haul), na.rm = TRUE)
   ) |>
   dplyr::collect()
 
 message(sprintf("  %s comparable groups", format(cmp$groups, big.mark = ",")))
-message(sprintf("    abs > 0.5          : %s (%.2f%%)   <- benchmark: retired measured 3.5%%",
+message(sprintf("    abs > 0.51 (stable): %s (%.2f%%)   <- the figure to quote",
+                format(cmp$gt_stable, big.mark = ","), 100 * cmp$gt_stable / cmp$groups))
+message(sprintf("    abs > 0.5  (+/-10) : ~%s (%.2f%%)  <- benchmark only: retired measured 3.5%%",
                 format(cmp$gt_half, big.mark = ","), 100 * cmp$gt_half / cmp$groups))
 message(sprintf("    and also rel > 1%%  : %s (%.2f%%)",
                 format(cmp$gt_1pct, big.mark = ","), 100 * cmp$gt_1pct / cmp$groups))
