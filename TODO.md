@@ -65,14 +65,25 @@ locally against the full archive. **Nothing is published yet.**
 
 ## Later
 
-- [ ] **`dr_add_n_and_cpue()` returns `NA` for `DataType == "-9"` and for
-      any unrecognised code, silently.** Correct, but a submission with an
-      unexpected `DataType` would vanish into `NA` with no signal. Worth a
-      count-and-warn if it ever matters.
+- [x] **CHECKED — `DataType == "-9"` is benign.** 40 hauls archive-wide, and
+      **every one is independently `HaulValidity == "I"`** — the vocabulary's
+      "Invalid hauls" and the haul-validity flag agree completely, with no
+      contradicting case. They carry 32 HL rows and **zero length rows**, so
+      they contribute nothing to `HL_length`; their 32 `HL_summary` rows come
+      out all-`NA` because the underlying `TotalNumber`/weights are themselves
+      absent. Spread thinly over BITS, FR-CGFS, NS-IBTS and EVHOE, 2004-2018.
+      No warning needed; callers wanting them gone can pass
+      `haulval = "V"`.
 
-- [ ] **The raw archive has no `.id`; obus builds it on every read.** Fine
-      at this scale (14M rows, a few seconds). If it stops being fine, the
-      right fix is upstream in opus's own consolidation, not a cache here.
+
+- [x] **CLOSED — the `.id` item was misleadingly worded and is a non-issue.**
+      It referred only to the *raw* archive (`datras/raw/*.parquet`), which
+      ships without `.id`, so `data-raw/DATASET_products.R` computes it with
+      `dr_add_id()` during a rebuild. Every **published** obus table —
+      `HH`, `HL_length`, `HL_summary` — carries `.id` as a stored column;
+      nothing recomputes it at read time, and `dr_con()` users never pay for
+      it. The build cost is seconds, once per rebuild.
+
 
 - [ ] **`CA` is fetched by `DATASET_species.R` but nothing else uses it.**
       It contributes aphia codes to the species lookup and is otherwise
@@ -85,12 +96,35 @@ locally against the full archive. **Nothing is published yet.**
       documented and coherent rule. See the `-9` section below. obus must not
       re-introduce sentinels locally: it cannot tell which NULLs were `-9`.
 
-- [ ] **Possible truncated submission upstream — NS-IBTS 2022 Q1 HL is
-      exactly 32,767 rows (2^15 − 1).** Still true in the raw archive
-      (confirmed 2026-08-31). Neighbouring quarters of the same survey run
-      44k–52k. Not an obus bug and nothing here works around it; a
-      candidate for opus's known-issues registry and one targeted question
-      to ICES.
+- [x] **RESOLVED — NS-IBTS 2022 Q1 is not truncated; 32,767 is a
+      coincidence.** Investigated 2026-08-31. The suspicion was that HL had
+      been cut at exactly 2^15-1 rows. It had not: the survey was simply
+      smaller that year, and the row count is exactly what the haul count
+      predicts.
+
+      1. **HH is down too.** 249 hauls, against 325-387 in every other year
+         2014-2026. A truncated HL would leave HH untouched.
+      2. **Rows per haul is normal** — 131.6, inside the 117-145 range of
+         neighbouring years. Regressing rows on hauls over the other twelve
+         years predicts 37,755 rows for 249 hauls, 95% PI 25,207-50,303.
+         Observed 32,767 sits inside it, so there is no shortfall to explain.
+      3. **No truncated tail.** A file cut mid-stream would leave its last
+         hauls abnormally short. The 2022 rows-per-haul distribution
+         (min 3, median 129, max 344) matches 2021 (1 / 134 / 259) and 2023
+         (3 / 142.5 / 263) — and 2022's *maximum* is the largest of the three.
+
+      **What actually happened: reduced survey effort, concentrated in two
+      countries.** NS-IBTS Q1 hauls, 2021 -> 2022 -> 2023: DE 67 -> **10** ->
+      22; GB-SCT 61 -> **15** -> 54; DK 45 -> 27 -> 45. FR/NL/NO/SE are flat.
+      Across all surveys in 2022, GB-SCT ran 307 hauls against 428 in 2021
+      (-28%), so its reduction was fleet-wide; DE's total was steady
+      (461 -> 428), so its shortfall was specific to NS-IBTS Q1.
+
+      The original reasoning contained a base-rate error worth remembering:
+      "it is the only one of 971 groups sitting on exactly that value" is not
+      evidence of anything — nearly every specific row count is hit at most
+      once. The question that settles it is whether the count is anomalous
+      *given the haul count*, and it is not.
 
 ## Official docs are the authority (standing rule, 2026-08-31)
 
