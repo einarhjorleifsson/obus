@@ -57,12 +57,11 @@ locally against the full archive. **Nothing is published yet.**
       data on `"5"` rows, so filtering to `"1"` there discards genuine data —
       treat Can-Mar separately.
 
-- [ ] **No test suite.** `Suggests` and `Config/testthat/edition: 3` are in
-      place; `tests/` does not exist. The natural first tests are the ones
-      already run by hand: `.id` identical eagerly and lazily (the whole
-      reason `.dr_concat_ws()` exists, and currently protected by nothing),
-      `dr_add_length_cm()`/`dr_add_n_and_cpue()` on a small fixture, and
-      the grain counts above as regression guards.
+- [x] **Test suite exists** — 24 tests in `tests/testthat/`, ported from
+      `obus_retired` and extended, running inside `R CMD check`. They encode
+      all three of the retired package's bugs plus this pass's five. Crucially
+      they run **eager** while the build runs **lazy**, which is what caught
+      both R/SQL `NA` divergences; keep both paths.
 
 ## Later
 
@@ -80,12 +79,11 @@ locally against the full archive. **Nothing is published yet.**
       untouched. An `age`/`length` product would be the natural next thing
       to build, and `dr_add_id()` already works on it unchanged.
 
-- [ ] **Sentinel-to-`NA` conversion** remains unimplemented and blocked on
-      opus: opus ships `inst/DATRAS-known-issues.yaml` with `sentinels:`
-      keys, and `op_sentinels()`/`op_strip_sentinels()`/`op_sentinel_policy()`
-      now exist to read it. Worth re-checking whether that unblocks a
-      per-field, evidence-based pass here — but it stays opt-in, never a
-      blanket rule (AGENTS.md Working Principle 3).
+- [x] **Sentinel handling needs nothing from obus** — resolved 2026-08-31.
+      opus applies its own `op_sentinels()` policy when building the raw
+      archive, so `-9` is already resolved before obus reads it, per a
+      documented and coherent rule. See the `-9` section below. obus must not
+      re-introduce sentinels locally: it cannot tell which NULLs were `-9`.
 
 - [ ] **Possible truncated submission upstream — NS-IBTS 2022 Q1 HL is
       exactly 32,767 rows (2^15 − 1).** Still true in the raw archive
@@ -177,8 +175,8 @@ stable; `> 0.5` gives ~66,674 and is kept only for comparison to the 66,629.
       every other survey. ICES documents this as unresolved. Can-Mar is also
       the single largest contributor to the mismatch count (31,989 of 66,674),
       driven by its separately-documented 2021-22 historical conversion.
-- [ ] **`HL_summary`'s `n_haul` comes from `TotalNumber`, but ICES's guidance
-      is `n_haul = Σ(NumberAtLength × SubsamplingFactor)`** and it defines
+- [ ] **`HL_summary`'s `n_totalnumber` comes from `TotalNumber`, but ICES's
+      guidance is `n_haul = Σ(NumberAtLength × SubsamplingFactor)`** and it defines
       `TotalNo = SUM(HLNoAtLngt)`. The two are the same quantity when a
       submission is self-consistent — the 3.44% is exactly where they are not.
       Using `TotalNumber` is defensible (it is the only value for bulk-only
