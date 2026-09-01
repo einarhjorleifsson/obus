@@ -512,3 +512,21 @@ plausible (two tiny catches both 12 g). Worth 485,711 g, 0.1% of the P defect.
 They stay flagged. A `TotalNumber`-based discriminator was considered and
 rejected — `TotalNo` and `CatCatchWgt` are independent fields, and one
 repeating says nothing reliable about the other.
+
+
+## Published 2026-09-01 21:34 GMT
+
+All six parquets republished after the DataType P weight fix, and verified
+against the server: worked case `w_haul` = 105,300 g (was 210,600), row counts
+match the local build on all five tables, and the flag lookup is consistent
+with the data again.
+
+Two flag codes were re-tiered by the fix:
+
+| code | was | now | why |
+|---|---|---|---|
+| `WGT_CAT_REPEAT_P` | `inflated` | `property` | obus collapses these correctly now; the repetition is a real feature of the submission, but `w_haul` is right |
+| `WGT_CAT_REPEAT_R` | `inflated` | `unexplained` | "inflated" claimed more than is known — whether summing those 209 is wrong is unresolved |
+
+**There are no `inflated` records left**, because obus no longer inflates
+anything. Defect-flagged groups (`suspect`): 22,031 -> 20,332.
