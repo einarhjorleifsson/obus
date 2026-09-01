@@ -466,7 +466,17 @@ ICES's D2.2 guideline settled two things the codes rest on: the count chain is
 the DataType P raising factor IS category weight / sample weight, which is
 *why* the category weight repeats across pseudocategory rows.
 
-- [ ] **Publish `hl_flag` and `hl_flag_code`** once the codes are agreed.
+- [x] **Published `hl_flag` and `hl_flag_code`** (2026-09-01 21:05 GMT). Verified
+      against the server: 1,262,108 rows, 15 codes, `kind` breakdown matches the
+      local build, spot-check on the worked weight case returns the right codes.
+      `dr_con("hl_flag")` and `dr_con("hl_flag_code")` work with no `path`.
+
+      **The `kind` assignments are accepted as they stand**, including the two
+      that were flagged as arguable: `CNT_RAISE_LOST` = `suspect` (20,004 groups,
+      overwhelmingly Can-Mar, with an explicit "prefer the reported total"
+      recommendation) and `CNT_C_SMALL` = `intrinsic` (10,004 groups, a heuristic
+      that cannot be proven per individual record). Do not reopen these without
+      new evidence.
 - [ ] **`CNT_OTHER` (3,949) and `CNT_DIRECTIONAL` (249) are the unexplained
       residue.** Everything else now has either a mechanism or a reason not to
       worry. This is the remaining analytical question, and it is two orders of
