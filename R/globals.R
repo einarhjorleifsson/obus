@@ -9,7 +9,7 @@ utils::globalVariables(c(
   # HH
   "HaulValidity", "DataType", "HaulDuration",
   # HL
-  "aphia", "sex", "SpeciesValidity", "SpeciesCategory", "TotalNumber",
+  "Valid_Aphia", "SpeciesSex", "SpeciesValidity", "SpeciesCategory", "TotalNumber",
   "SpeciesCategoryWeight", "SubsamplingFactor", "NumberAtLength",
   "LengthCode", "LengthClass", "LengthType", "DevelopmentStage",
   # species lookup

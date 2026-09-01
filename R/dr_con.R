@@ -27,7 +27,7 @@ DR_TABLES     <- c("HH", "species", "HL_length", "HL_summary",
 #' Opens a lazy DuckDB connection to one of the four Tier-1 exchange tables in
 #' the raw opus archive. These carry opus's current field names exactly as
 #' staged, with no obus-side additions -- in particular no \code{.id} (see
-#' \code{\link{dr_add_id}}) and no \code{aphia}/\code{sex} rename.
+#' \code{\link{dr_add_id}}) and no \code{Valid_Aphia}/\code{SpeciesSex} rename.
 #'
 #' @param table One of \code{"HH"}, \code{"HL"}, \code{"CA"}, \code{"LT"}.
 #' @param path Archive root -- a directory named \code{raw}, local or remote.
@@ -61,14 +61,14 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #' @param type One of:
 #'   \describe{
 #'     \item{\code{"HH"}}{The raw haul table with \code{.id} added.}
-#'     \item{\code{"species"}}{WoRMS lookup: \code{aphia}, \code{latin},
+#'     \item{\code{"species"}}{WoRMS lookup: \code{Valid_Aphia}, \code{latin},
 #'       \code{species} (English common name), \code{rank}, the higher
-#'       classification, and WoRMS \code{status}/\code{valid_aphia}.}
-#'     \item{\code{"HL_length"}}{One row per \code{.id} x \code{aphia} x
-#'       \code{length_mm} x \code{sex}; see \code{\link{dr_HL_length}}.}
-#'     \item{\code{"HL_summary"}}{One row per \code{.id} x \code{aphia};
+#'       classification, and WoRMS \code{status}/\code{worms_aphia}.}
+#'     \item{\code{"HL_length"}}{One row per \code{.id} x \code{Valid_Aphia} x
+#'       \code{length_mm} x \code{SpeciesSex}; see \code{\link{dr_HL_length}}.}
+#'     \item{\code{"HL_summary"}}{One row per \code{.id} x \code{Valid_Aphia};
 #'       see \code{\link{dr_HL_summary}}.}
-#'     \item{\code{"hl_flag"}}{One row per \code{.id} x \code{aphia} x
+#'     \item{\code{"hl_flag"}}{One row per \code{.id} x \code{Valid_Aphia} x
 #'       \code{code}, for records carrying a flag. Long, so a record with
 #'       several flags has several rows. Joins onto \code{"HL_summary"}
 #'       directly, and onto \code{"HL_length"} as a property of the haul x

@@ -1,14 +1,14 @@
 # Tests for dr_HL_summary(): synthetic, offline, eager data frames only.
-# Covers the sex-split SpeciesCategoryWeight deduplication fix (migrated
+# Covers the SpeciesSex-split SpeciesCategoryWeight deduplication fix (migrated
 # from test-dr_HL_standardised.R, which tested this via
 # dr_HL_standardised() + filter(type == "haul") before the 2026-07 split)
 # and the new n_measured field's three-way semantics (0 / NA / real count).
 
-# --- sex-split SpeciesCategoryWeight deduplication (real bug, fixed 2026-07-08) ---
-# TotalNumber legitimately varies by sex and must be summed across sex rows to
+# --- SpeciesSex-split SpeciesCategoryWeight deduplication (real bug, fixed 2026-07-08) ---
+# TotalNumber legitimately varies by SpeciesSex and must be summed across SpeciesSex rows to
 # get the true haul total; SpeciesCategoryWeight is a single per-category total
-# that DATRAS repeats identically on every sex-split row for that category, so
-# it must be deduplicated (not summed once per sex row) before being added up.
+# that DATRAS repeats identically on every SpeciesSex-split row for that category, so
+# it must be deduplicated (not summed once per SpeciesSex row) before being added up.
 # Modelled directly on a real NS-IBTS haul (NS-IBTS:2019:1:NO:58G2:GOV:60003:3)
 # where this inflated w_haul by exactly 3x.
 
@@ -16,33 +16,33 @@
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- do.call(rbind, lapply(rows, function(r) data.frame(
-    .id = 1L, aphia = 126417L, NumberAtLength = r$TotalNumber,
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = r$TotalNumber,
     LengthClass = 100, LengthCode = "1", LengthType = "1",
-    SubsamplingFactor = 1, sex = r$sex, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SubsamplingFactor = 1, SpeciesSex = r$SpeciesSex, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = r$TotalNumber, SpeciesCategoryWeight = r$SpeciesCategoryWeight,
     SpeciesCategory = r$SpeciesCategory, stringsAsFactors = FALSE
   )))
-  sp <- data.frame(aphia = 126417L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
   list(hh = hh, hl = hl, species = sp)
 }
 
-test_that("a weight repeated identically across sex-split rows is counted once, not per sex", {
+test_that("a weight repeated identically across SpeciesSex-split rows is counted once, not per SpeciesSex", {
   f <- .hl_summary_fixture(list(
-    list(sex = "M",  TotalNumber = 8,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
-    list(sex = "F",  TotalNumber = 14, SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
-    list(sex = NA,   TotalNumber = 3,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1)
+    list(SpeciesSex = "M",  TotalNumber = 8,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
+    list(SpeciesSex = "F",  TotalNumber = 14, SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
+    list(SpeciesSex = NA,   TotalNumber = 3,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1)
   ))
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 33160)          # NOT 33160 * 3 = 99480
-  expect_equal(out$n_totalnumber, 8 + 14 + 3)     # counts still sum correctly across sex
+  expect_equal(out$n_totalnumber, 8 + 14 + 3)     # counts still sum correctly across SpeciesSex
 })
 
-test_that("genuinely distinct per-sex weights are still summed, not deduplicated away", {
+test_that("genuinely distinct per-SpeciesSex weights are still summed, not deduplicated away", {
   f <- .hl_summary_fixture(list(
-    list(sex = "M", TotalNumber = 23, SpeciesCategoryWeight = 4000, SpeciesCategory = 1),
-    list(sex = "F", TotalNumber = 4,  SpeciesCategoryWeight = 900,  SpeciesCategory = 1)
+    list(SpeciesSex = "M", TotalNumber = 23, SpeciesCategoryWeight = 4000, SpeciesCategory = 1),
+    list(SpeciesSex = "F", TotalNumber = 4,  SpeciesCategoryWeight = 900,  SpeciesCategory = 1)
   ))
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
@@ -50,14 +50,14 @@ test_that("genuinely distinct per-sex weights are still summed, not deduplicated
   expect_equal(out$n_totalnumber, 23 + 4)
 })
 
-test_that("two SpeciesCategory codes, each internally sex-duplicated, sum to the true total", {
+test_that("two SpeciesCategory codes, each internally SpeciesSex-duplicated, sum to the true total", {
   f <- .hl_summary_fixture(list(
-    list(sex = "M", TotalNumber = 8,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
-    list(sex = "F", TotalNumber = 14, SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
-    list(sex = NA,  TotalNumber = 3,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
-    list(sex = "M", TotalNumber = 3,  SpeciesCategoryWeight = 850,   SpeciesCategory = 2),
-    list(sex = "F", TotalNumber = 2,  SpeciesCategoryWeight = 850,   SpeciesCategory = 2),
-    list(sex = NA,  TotalNumber = 14, SpeciesCategoryWeight = 850,   SpeciesCategory = 2)
+    list(SpeciesSex = "M", TotalNumber = 8,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
+    list(SpeciesSex = "F", TotalNumber = 14, SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
+    list(SpeciesSex = NA,  TotalNumber = 3,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
+    list(SpeciesSex = "M", TotalNumber = 3,  SpeciesCategoryWeight = 850,   SpeciesCategory = 2),
+    list(SpeciesSex = "F", TotalNumber = 2,  SpeciesCategoryWeight = 850,   SpeciesCategory = 2),
+    list(SpeciesSex = NA,  TotalNumber = 14, SpeciesCategoryWeight = 850,   SpeciesCategory = 2)
   ))
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
@@ -65,9 +65,9 @@ test_that("two SpeciesCategory codes, each internally sex-duplicated, sum to the
   expect_equal(out$n_totalnumber, (8 + 14 + 3) + (3 + 2 + 14))
 })
 
-test_that("a single sex row (the common, no-risk case) is unaffected", {
+test_that("a single SpeciesSex row (the common, no-risk case) is unaffected", {
   f <- .hl_summary_fixture(list(
-    list(sex = "F", TotalNumber = 10, SpeciesCategoryWeight = 5000, SpeciesCategory = 1)
+    list(SpeciesSex = "F", TotalNumber = 10, SpeciesCategoryWeight = 5000, SpeciesCategory = 1)
   ))
   out <- dr_HL_summary(f$hh, f$hl, species = f$species)
 
@@ -75,37 +75,37 @@ test_that("a single sex row (the common, no-risk case) is unaffected", {
   expect_equal(out$n_totalnumber, 10)
 })
 
-# --- TotalNumber duplicated identically across sex (the analogous count bug, ---
+# --- TotalNumber duplicated identically across SpeciesSex (the analogous count bug, ---
 # --- found 2026-07-26 and fixed here; confirmed live on a real Can-Mar haul, ---
 # --- witch flounder (Can-Mar:1970:3:CA:18AT:Y36:11:80): TotalNumber == 2 on ---
 # --- both an F row and an M row, true total 2, this code previously summed ---
 # --- to 4. Same mechanism as the already-known weight bug, just not caught ---
-# --- for counts until now because TotalNumber genuinely IS per-sex often ---
-# --- enough (66% of multi-sex groups, archive-wide) that no existing test ---
+# --- for counts until now because TotalNumber genuinely IS per-SpeciesSex often ---
+# --- enough (66% of multi-SpeciesSex groups, archive-wide) that no existing test ---
 # --- exercised the duplicate case. ---
 
-test_that("TotalNumber duplicated identically across sex is counted once, not per sex", {
+test_that("TotalNumber duplicated identically across SpeciesSex is counted once, not per SpeciesSex", {
   # NOT built on .hl_summary_fixture(): that helper sets NumberAtLength ==
   # TotalNumber for convenience, which would make this specific case
-  # self-consistent per sex (each sex's own data would genuinely reconcile
+  # self-consistent per SpeciesSex (each SpeciesSex's own data would genuinely reconcile
   # with its own TotalNumber, at which point summing them IS the correct
   # accounting answer, not a bug). A genuine placeholder duplicate needs
   # NumberAtLength that does NOT reconcile with the (larger, duplicated)
-  # TotalNumber for either sex -- modelled directly on the real Can-Mar
+  # TotalNumber for either SpeciesSex -- modelled directly on the real Can-Mar
   # example (witch flounder, Can-Mar:1970:3:CA:18AT:Y36:11:80): 1 F
   # individual, 1 M individual, TotalNumber == 2 (the true combined total)
   # repeated on both rows.
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L,
+    .id = 1L, Valid_Aphia = 126417L,
     NumberAtLength = c(1, 1), LengthClass = c(100, 110),
     LengthCode = "1", LengthType = "1", SubsamplingFactor = 1,
-    sex = c("F", "M"), SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = c("F", "M"), SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = c(2, 2), SpeciesCategoryWeight = c(1550, 1550),
     SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -115,25 +115,25 @@ test_that("TotalNumber duplicated identically across sex is counted once, not pe
 
 test_that("two different sexes coincidentally reporting the SAME real value are both trusted and summed", {
   # The blind spot the first fix (distinct()-on-value-alone) had: unlike the
-  # placeholder case above, here EACH sex's own NumberAtLength genuinely
+  # placeholder case above, here EACH SpeciesSex's own NumberAtLength genuinely
   # reconciles with its own TotalNumber -- they just happen to be equal by
   # coincidence, not duplication. Modelled on a real BITS haul
-  # (BITS:1999:1:DK:26HI:TVS:017492:22, aphia 127143): F's own total is 2
+  # (BITS:1999:1:DK:26HI:TVS:017492:22, Valid_Aphia 127143): F's own total is 2
   # (two length rows, both correctly repeating TotalNumber=2), M's own total
   # is 1, an unsexed row's own total is ALSO 1 -- three genuinely separate
   # values, two of which coincide. True total 2+1+1=4.
   hh <- data.frame(.id = 1L, Survey = "BITS", Year = 1999L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 127143L,
+    .id = 1L, Valid_Aphia = 127143L,
     NumberAtLength = c(1, 1, 1, 1),
     LengthClass = c(12, 25, 20, 11),
     LengthCode = "1", LengthType = "1", SubsamplingFactor = 1,
-    sex = c("F", "F", "M", NA_character_), SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = c("F", "F", "M", NA_character_), SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = c(2, 2, 1, 1), SpeciesCategoryWeight = 100,
     SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 127143L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 127143L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -141,11 +141,11 @@ test_that("two different sexes coincidentally reporting the SAME real value are 
 })
 
 # --- TotalNumber duplicated across SpeciesCategory (found + fixed 2026-07-26) ---
-# The same placeholder-duplication mechanism as sex above, one dimension over:
+# The same placeholder-duplication mechanism as SpeciesSex above, one dimension over:
 # some surveys report the SAME haul-species total on two different
 # SpeciesCategory rows (size strata) instead of two independent per-category
 # totals. Modelled directly on a real NS-IBTS haul
-# (NS-IBTS:2025:3:GB-SCT:748S:JTFS:259:259, aphia 126438): category "12"
+# (NS-IBTS:2025:3:GB-SCT:748S:JTFS:259:259, Valid_Aphia 126438): category "12"
 # (3 large individuals, SubsamplingFactor == 1) and category "11" (the bulk
 # of the catch, SubsamplingFactor == 1.825), both rows carrying
 # TotalNumber == 660 -- the combined species total, not either stratum's own.
@@ -154,17 +154,17 @@ test_that("TotalNumber duplicated across SpeciesCategory is counted once, not pe
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2025L, Quarter = 3L,
                    DataType = "P", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126438L,
+    .id = 1L, Valid_Aphia = 126438L,
     NumberAtLength = c(1, 1, 1, 17, 70, 71, 47, 24, 15, 24, 25, 27, 17, 11, 11, 1),
     LengthClass = c(330, 340, 350, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320),
     LengthCode = "1", LengthType = "1",
     SubsamplingFactor = c(1, 1, 1, rep(1.825, 13)),
-    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 660,
     SpeciesCategoryWeight = 5000,
     SpeciesCategory = c(rep("12", 3), rep("11", 13))
   )
-  sp <- data.frame(aphia = 126438L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126438L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -179,15 +179,15 @@ test_that("genuinely distinct SpeciesCategory totals are still summed, not colla
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L,
+    .id = 1L, Valid_Aphia = 126417L,
     NumberAtLength = c(4, 2),
     LengthClass = c(100, 110),
     LengthCode = "1", LengthType = "1", SubsamplingFactor = 1,
-    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = c(4, 2), SpeciesCategoryWeight = c(500, 300),
     SpeciesCategory = c("1", "2")
   )
-  sp <- data.frame(aphia = 126417L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -198,18 +198,18 @@ test_that("p_females is sourced from NumberAtLength, not the (possibly duplicate
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L,
-    # TotalNumber is a duplicated placeholder (same value on both sex rows) --
+    .id = 1L, Valid_Aphia = 126417L,
+    # TotalNumber is a duplicated placeholder (same value on both SpeciesSex rows) --
     # if p_females were still derived from it, F and M would look equal (0.5)
     # regardless of the true split. NumberAtLength carries the true, uneven one.
     NumberAtLength = c(2, 6),
     LengthClass = c(100, 110), LengthCode = "1", LengthType = "1",
     SubsamplingFactor = 1,
-    sex = c("F", "M"),
+    SpeciesSex = c("F", "M"),
     SpeciesValidity = 1L, DevelopmentStage = NA_character_, TotalNumber = c(10, 10), SpeciesCategoryWeight = c(500, 500),
     SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -227,12 +227,12 @@ test_that("n_measured is 0 for a bulk-only species (no LengthClass at all)", {
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 999999L, NumberAtLength = NA_real_,
+    .id = 1L, Valid_Aphia = 999999L, NumberAtLength = NA_real_,
     LengthClass = NA_real_, LengthCode = NA_character_, LengthType = NA_character_,
-    SubsamplingFactor = NA_real_, sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SubsamplingFactor = NA_real_, SpeciesSex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 12, SpeciesCategoryWeight = 3000, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 999999L, latin = "Bulk species",
+  sp <- data.frame(Valid_Aphia = 999999L, latin = "Bulk species",
                    species = "Bulk species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -244,12 +244,12 @@ test_that("n_measured is NA (not a misleading rate) when DataType == 'C'", {
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "C", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L, NumberAtLength = 4,
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 4,
     LengthClass = 100, LengthCode = "1", LengthType = "1",
-    SubsamplingFactor = 1, sex = "F", SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SubsamplingFactor = 1, SpeciesSex = "F", SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 4, SpeciesCategoryWeight = 400, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -261,12 +261,12 @@ test_that("n_measured is the raw un-raised count for DataType == 'R'/'S'/'P'", {
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "S", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L, NumberAtLength = c(3, 5),
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = c(3, 5),
     LengthClass = c(100, 110), LengthCode = "1", LengthType = "1",
-    SubsamplingFactor = 2, sex = "F", SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SubsamplingFactor = 2, SpeciesSex = "F", SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 16, SpeciesCategoryWeight = 800, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "Test species",
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -279,23 +279,23 @@ test_that("dr_HL_summary() covers every species, unlike dr_HL_length()", {
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
     .id = c(1L, 1L),
-    aphia = c(126417L, 999999L),
+    Valid_Aphia = c(126417L, 999999L),
     NumberAtLength = c(5, NA),
     LengthClass = c(100, NA),
     LengthCode = c("1", NA), LengthType = c("1", NA),
-    SubsamplingFactor = c(1, NA), sex = c("F", NA),
+    SubsamplingFactor = c(1, NA), SpeciesSex = c("F", NA),
     SpeciesValidity = c(1L, 1L), DevelopmentStage = NA_character_,
     TotalNumber = c(5, 12), SpeciesCategoryWeight = c(500, 3000),
     SpeciesCategory = c("1", "1")
   )
-  sp <- data.frame(aphia = c(126417L, 999999L),
+  sp <- data.frame(Valid_Aphia = c(126417L, 999999L),
                    latin = c("Test species", "Bulk species"),
                    species = c("Test species", "Bulk species"),
                    rank = c("Species", "Species"))
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_equal(nrow(out), 2L)
-  expect_true(all(c(126417L, 999999L) %in% out$aphia))
+  expect_true(all(c(126417L, 999999L) %in% out$Valid_Aphia))
 })
 
 # --- HaulDuration <= 0: undefined, not Inf and not a false zero -------------
@@ -309,12 +309,12 @@ test_that("HaulDuration == 0 gives NA hourly figures, not Inf", {
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2018L, Quarter = 1L,
                    DataType = "R", HaulDuration = 0, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L, NumberAtLength = 5, LengthClass = 100,
-    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, sex = "F",
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 5, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, SpeciesSex = "F",
     SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 5, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_totalnumber_hour))
@@ -327,12 +327,12 @@ test_that("HaulDuration < 0 gives NA hourly figures too", {
   hh <- data.frame(.id = 1L, Survey = "Can-Mar", Year = 2017L, Quarter = 3L,
                    DataType = "R", HaulDuration = -514, HaulValidity = "I")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L, NumberAtLength = 5, LengthClass = 100,
-    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, sex = "F",
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 5, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, SpeciesSex = "F",
     SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 5, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_totalnumber_hour))
@@ -346,12 +346,12 @@ test_that("DataType 'C' with HaulDuration == 0 keeps the reported rate, NAs the 
   hh <- data.frame(.id = 1L, Survey = "BITS", Year = 2020L, Quarter = 1L,
                    DataType = "C", HaulDuration = 0, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126417L, NumberAtLength = 4, LengthClass = 100,
-    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, sex = "F",
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 4, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1, SpeciesSex = "F",
     SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 8, SpeciesCategoryWeight = 800, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber_hour, 8)   # reported rate, kept
@@ -371,17 +371,17 @@ test_that("a weight repeated across pseudocategories is counted once per main ca
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 4L,
                    DataType = "P", HaulDuration = 60, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 126437L,
+    .id = 1L, Valid_Aphia = 126437L,
     NumberAtLength = c(4, 9, 16, 6,  1, 7, 20,  31, 31, 27),
     LengthClass    = c(15, 16, 17, 18,  22, 23, 24,  33, 34, 35),
     LengthCode = "1", LengthType = "1",
     SubsamplingFactor = c(rep(1, 4), rep(2.374, 3), rep(1, 3)),
-    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = c(rep(35, 4), rep(916.364, 3), rep(249, 3)),
     SpeciesCategoryWeight = c(rep(991, 4), rep(290100, 3), rep(290100, 3)),
     SpeciesCategory = c(rep("11", 4), rep("21", 3), rep("22", 3))
   )
-  sp <- data.frame(aphia = 126437L, latin = "Melanogrammus aeglefinus",
+  sp <- data.frame(Valid_Aphia = 126437L, latin = "Melanogrammus aeglefinus",
                    species = "haddock", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
@@ -394,16 +394,16 @@ test_that("under DataType R, genuinely distinct per-category weights are still s
   hh <- data.frame(.id = 1L, Survey = "BTS", Year = 2020L, Quarter = 3L,
                    DataType = "R", HaulDuration = 60, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 127139L,
+    .id = 1L, Valid_Aphia = 127139L,
     NumberAtLength = c(16, 105), LengthClass = c(100, 200),
     LengthCode = "1", LengthType = "1",
     SubsamplingFactor = c(1, 20.2776),
-    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = c(16, 2129.1),
     SpeciesCategoryWeight = c(1950, 572030),
     SpeciesCategory = c("1", "2")
   )
-  sp <- data.frame(aphia = 127139L, latin = "T", species = "T", rank = "Species")
+  sp <- data.frame(Valid_Aphia = 127139L, latin = "T", species = "T", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_equal(out$w_haul, 1950 + 572030)
@@ -419,13 +419,13 @@ test_that("n_haul equals the raised length frequency, and n_totalnumber the repo
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   # measured 3 + 5 fish at factor 4 -> raised 32; but the submission reports 30.
   hl <- data.frame(
-    .id = 1L, aphia = 126417L,
+    .id = 1L, Valid_Aphia = 126417L,
     NumberAtLength = c(3, 5), LengthClass = c(100, 110),
     LengthCode = "1", LengthType = "1", SubsamplingFactor = 4,
-    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    SpeciesSex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
     TotalNumber = 30, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_equal(out$n_haul, (3 + 5) * 4)   # 32, from the length rows
@@ -437,13 +437,13 @@ test_that("n_haul is NA, not 0, for a species with no length data", {
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
-    .id = 1L, aphia = 999999L, NumberAtLength = NA_real_, LengthClass = NA_real_,
+    .id = 1L, Valid_Aphia = 999999L, NumberAtLength = NA_real_, LengthClass = NA_real_,
     LengthCode = NA_character_, LengthType = NA_character_,
-    SubsamplingFactor = NA_real_, sex = NA_character_, SpeciesValidity = 1L,
+    SubsamplingFactor = NA_real_, SpeciesSex = NA_character_, SpeciesValidity = 1L,
     DevelopmentStage = NA_character_, TotalNumber = 12,
     SpeciesCategoryWeight = 3000, SpeciesCategory = "1"
   )
-  sp <- data.frame(aphia = 999999L, latin = "Bulk", species = "Bulk", rank = "Species")
+  sp <- data.frame(Valid_Aphia = 999999L, latin = "Bulk", species = "Bulk", rank = "Species")
   out <- dr_HL_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 12)

@@ -53,21 +53,26 @@ rest on them are flagged as such each time.
 
 ## Three naming layers
 
-Field names in this codebase come from three places, and confusing them is the
-commonest source of a broken join.
+Field names in this codebase come from two places, and there is deliberately no
+third.
 
 | Layer | What it is | Example |
 |---|---|---|
 | **1. ICES legacy exchange names** | The names in the ICES exchange file and in every ICES document quoted here. | `HLNoAtLngt`, `SubFactor`, `CatIdentifier` |
-| **2. opus current names** | What the raw parquet archive actually carries. `opus` stages the exchange tables under these. | `NumberAtLength`, `SubsamplingFactor`, `SpeciesCategory` |
-| **3. obus renames** | Two renames obus applies on top, **for the derived tables only**. | `Valid_Aphia` → `aphia`, `SpeciesSex` → `sex` |
+| **2. opus current names** | What the raw parquet archive carries, and what every obus table carries too. | `NumberAtLength`, `SubsamplingFactor`, `SpeciesCategory` |
 
-Layer 3 is exactly two renames and nothing else. They are applied in
-`data-raw/DATASET_products.R` when `HL_length` and `HL_summary` are built, so
-`dr_con_raw("HL")` carries `Valid_Aphia` and `SpeciesSex`, while
-`dr_con("HL_length")` carries `aphia` and `sex`. Neither `aphia` nor `sex`
-appears as a `new_name` in the crosswalk below, because neither is an ICES or
-an opus name.
+**obus invents no field names.** `dr_con_raw("HL")` and `dr_con("HL_length")`
+both carry `Valid_Aphia` and `SpeciesSex`, so a join between the raw archive and
+a derived table needs no name mapping, and the crosswalk below describes every
+column in every table.
+
+obus briefly renamed those two — `Valid_Aphia` → `aphia` and `SpeciesSex` →
+`sex` — on the grounds that the short forms read better. That was dropped: the
+benefit was cosmetic, and the cost was a permanent `by = c("Valid_Aphia" =
+"aphia")` on every raw-to-derived join, a naming layer invisible to
+`op_crosswalk()`, and an ambiguity waiting to happen, since ICES's legacy `Sex`
+maps to `SpeciesSex` in HL but `IndividualSex` in CA — two genuinely different
+measurements that a single `sex` column would have flattened.
 
 ### The legacy-to-current crosswalk
 
@@ -159,8 +164,8 @@ wording above must not be attributed to the earlier vintages.
 
 | Table | Grain |
 |---|---|
-| `HL_length` | `.id` × `aphia` × `length_mm` × `length_cm` × `accuracy` × `LengthType` × `sex` × `DevelopmentStage` × `SpeciesValidity` |
-| `HL_summary` | `.id` × `aphia` × `SpeciesValidity` |
+| `HL_length` | `.id` × `Valid_Aphia` × `length_mm` × `length_cm` × `accuracy` × `LengthType` × `SpeciesSex` × `DevelopmentStage` × `SpeciesValidity` |
+| `HL_summary` | `.id` × `Valid_Aphia` × `SpeciesValidity` |
 
 Both are exactly unique at their stated grain (verified: zero duplicated
 groups, over 14,001,605 rows in `HL_length`). At any coarser key neither is,
@@ -204,7 +209,7 @@ old female-proportion can derive it after grouping `sex` away:
 
 ```{r}
 dr_con("HL_length") |>
-  dplyr::group_by(.id, aphia) |>
+  dplyr::group_by(.id, Valid_Aphia) |>
   dplyr::summarise(
     p_females = sum(n_haul[sex %in% c("F", "B")]) /
                 sum(n_haul[sex %in% c("F", "M", "B")])
@@ -233,9 +238,9 @@ format deliberately allows more than one record type per species per haul.
 
 **obus:** `SpeciesValidity` is part of `HL_summary`'s grain. 1,219 of
 2,290,203 groups (0.05%) carry more than one record type; the commonest pairs
-are `{1,5}` and `{4,7}`. Filtering to a single code makes `.id` × `aphia`
+are `{1,5}` and `{4,7}`. Filtering to a single code makes `.id` × `Valid_Aphia`
 exactly unique (verified at codes `"1"`, `"4"`, `"5"` and `"7"`). Aggregating
-over `.id` × `aphia` without also grouping on `SpeciesValidity` mixes record
+over `.id` × `Valid_Aphia` without also grouping on `SpeciesValidity` mixes record
 types and double-counts.
 
 ```{r}
@@ -272,7 +277,7 @@ vocabulary, `-9` carries a per-field meaning:
 
 | Field | Meaning of `-9` |
 |---|---|
-| `Sex` (obus: `SpeciesSex`) | "not sampled" — distinct from `U`, "Unidentified" |
+| `Sex` (current: `SpeciesSex`) | "not sampled" — distinct from `U`, "Unidentified" |
 | `DevStage` | "No information" |
 | `DataType` | "Invalid hauls" — a real classification, not an absence |
 
@@ -487,9 +492,9 @@ into `HL_summary`:
 dr_con("HL_summary") |>
   dplyr::left_join(
     dr_con("HL_length") |>
-      dplyr::group_by(.id, aphia, SpeciesValidity) |>
+      dplyr::group_by(.id, Valid_Aphia, SpeciesValidity) |>
       dplyr::summarise(n_length = sum(n_haul), .groups = "drop"),
-    by = c(".id", "aphia", "SpeciesValidity")
+    by = c(".id", "Valid_Aphia", "SpeciesValidity")
   )
 ```
 
@@ -587,7 +592,7 @@ rules that the data itself does not distinguish.
 `dr_HL_summary()` resolves the ambiguity per group rather than by picking one
 convention globally:
 
-1. **Reconcile.** For each `(.id, aphia, SpeciesCategory, SpeciesValidity,
+1. **Reconcile.** For each `(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity,
    sex, DevelopmentStage)` subgroup, compare its **own** recorded `TotalNo`
    against its **own** length-derived expectation. A subgroup that reconciles
    (within 0.5) is *trusted* and summed individually.
@@ -831,7 +836,7 @@ It has no arithmetic cross-check in the format equivalent to
 `dr_HL_summary()` uses
 
 ```
-distinct(.id, aphia, SpeciesCategory, SpeciesValidity, SpeciesCategoryWeight)
+distinct(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesCategoryWeight)
 ```
 
 then sums. The key **excludes `sex` and `DevelopmentStage`** but **keeps

@@ -53,11 +53,15 @@ speculative generality.
 dependency on `icesDatras`. The raw archive already carries opus's current
 names; obus reads them as they are.
 
-**2. obus's own naming layer is thin, explicit, and applied last.**
-`Valid_Aphia -> aphia` and `SpeciesSex -> sex` are obus's own names,
-applied in `data-raw/DATASET_products.R` on the way into the derived
-tables and nowhere else. The raw archive is never rewritten. This is a
-rename and nothing else: no values change.
+**2. obus invents no field names.** The derived tables carry opus's current
+names exactly as the raw archive stages them, so one vocabulary runs from
+raw through to the published products and a join between them needs no
+name mapping. obus briefly renamed `Valid_Aphia -> aphia` and
+`SpeciesSex -> sex`; that was dropped 2026-09-01 because the benefit was
+cosmetic while the cost was permanent -- a `by =` mapping on every
+raw-to-derived join, a naming layer `op_crosswalk()` could not describe,
+and a latent ambiguity, since ICES's legacy `Sex` maps to `SpeciesSex` in
+HL but `IndividualSex` in CA.
 
 **3. Sentinel values are never scrubbed automatically.** `-9` and the
 other DATRAS sentinel codes pass through unchanged. opus's own history
@@ -123,7 +127,7 @@ real needs it.
 neither script publishes anything.
 - `build_helpers.R` — local mirror of the raw archive (`data-raw/raw`,
   gitignored), zstd parquet writer, both gitignored output paths
-- `DATASET_species.R` — distinct `aphia` from raw HL and CA -> WoRMS
+- `DATASET_species.R` — distinct `Valid_Aphia` from raw HL and CA -> WoRMS
   (`wm_id2name_`, `wm_common_id_`, chunked `wm_record`) -> `species.parquet`
 - `DATASET_products.R` — raw HH/HL -> `HH`, `HL_length`, `HL_summary`,
   entirely lazily; DuckDB streams straight to parquet, nothing is
@@ -148,20 +152,20 @@ CA, so it must come out identical either way.
 
 **Measured on the full archive, 2026-08-31.** HH 150,217 hauls, `.id`
 unique, zero `NA`, zero orphan HL rows. HL 14,423,771 rows. species 2,022
-aphia (15 not WoRMS-accepted, 11 forwarding elsewhere — the same counts
+Valid_Aphia (15 not WoRMS-accepted, 11 forwarding elsewhere — the same counts
 the retired build measured in July). HL_length 13,996,129 rows.
 HL_summary 2,291,449 rows.
 
 **Neither catch table's grain is what its documentation used to claim, and
 both were fixed in the docs rather than the code.**
-- `HL_length` is keyed by `.id x aphia x length_mm x sex x LengthType`.
+- `HL_length` is keyed by `.id x Valid_Aphia x length_mm x SpeciesSex x LengthType`.
   4,074 groups (0.03%) split on `LengthType`, `SpeciesValidity` or
   `accuracy`. These are genuinely separate counts and must not be
   collapsed.
-- `HL_summary` is keyed by `.id x aphia x SpeciesValidity`. 1,219 groups
+- `HL_summary` is keyed by `.id x Valid_Aphia x SpeciesValidity`. 1,219 groups
   (0.05%) split — and 97% of the sub-groups that do are the
   repeated-total pattern of Working Principle 5, not a real split. Summing
-  `n_haul`/`w_haul` per `.id x aphia` without collapsing first
+  `n_haul`/`w_haul` per `.id x Valid_Aphia` without collapsing first
   double-counts them. **Open decision, see `TODO.md`.**
 
 **The cross-check that says the port is faithful.** `HL_summary`'s

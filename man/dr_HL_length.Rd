@@ -13,24 +13,24 @@ dr_HL_length(hh, hl, species = NULL, haulval = NULL)
 Optional: \code{HaulValidity}, used when \code{haulval} is set.}
 
 \item{hl}{DATRAS HL table with \code{.id} present. Required: \code{.id},
-\code{aphia}, \code{NumberAtLength}, \code{LengthClass},
+\code{Valid_Aphia}, \code{NumberAtLength}, \code{LengthClass},
 \code{LengthCode}, \code{LengthType}, \code{SubsamplingFactor},
-\code{sex}, \code{SpeciesValidity}.}
+\code{SpeciesSex}, \code{SpeciesValidity}.}
 
-\item{species}{Species lookup with \code{aphia}, \code{latin},
+\item{species}{Species lookup with \code{Valid_Aphia}, \code{latin},
 \code{species}, \code{rank}. Defaults to \code{dr_con("species")}.}
 
 \item{haulval}{Character vector of \code{HaulValidity} codes to retain.
 \code{NULL} keeps all hauls.}
 }
 \value{
-A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
-\eqn{\times} \code{length_mm} \eqn{\times} \code{sex} \eqn{\times}
+A lazy table, one row per \code{.id} \eqn{\times} \code{Valid_Aphia}
+\eqn{\times} \code{length_mm} \eqn{\times} \code{SpeciesSex} \eqn{\times}
 \code{DevelopmentStage} \eqn{\times} \code{LengthType} (see Details):
 \code{.id},
-\code{Survey}, \code{Year}, \code{Quarter}, \code{aphia}, \code{latin},
+\code{Survey}, \code{Year}, \code{Quarter}, \code{Valid_Aphia}, \code{latin},
 \code{species}, \code{rank}, \code{length_mm}, \code{length_cm},
-\code{accuracy}, \code{LengthType}, \code{sex},
+\code{accuracy}, \code{LengthType}, \code{SpeciesSex},
 \code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
 \code{SpeciesValidity}.
 
@@ -41,8 +41,8 @@ reports a rate directly, so there \code{n_hour} survives and \code{n_haul}
 is \code{NA} instead.
 }
 \description{
-One row per \code{.id} \eqn{\times} \code{aphia} \eqn{\times}
-\code{length_mm} \eqn{\times} \code{sex} \eqn{\times}
+One row per \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
+\code{length_mm} \eqn{\times} \code{SpeciesSex} \eqn{\times}
 \code{DevelopmentStage} \eqn{\times} \code{LengthType} -- only for species
 that were actually run through calipers (records with \code{LengthClass}
 present). A
@@ -53,7 +53,7 @@ description of a record that was never length-measured. See
 those species.
 }
 \details{
-\code{sex} is carried as its own column rather than collapsed to a
+\code{SpeciesSex} is carried as its own column rather than collapsed to a
 \code{p_females} ratio. That is safe here and not in
 \code{\link{dr_HL_summary}}: \code{NumberAtLength} is a genuine
 per-sex-per-length count, and -- verified full-archive -- unlike
@@ -62,9 +62,9 @@ The raw code is kept as reported (\code{"F"}, \code{"M"}, \code{"U"},
 \code{"B"}, or \code{NA}): \code{"B"} (berried, egg-bearing) is not
 pre-merged into \code{"F"}, and \code{"U"} (assessed, undetermined) stays
 distinct from \code{NA} (never assessed). A caller wanting the old ratio can
-derive it after grouping \code{sex} away, e.g.
-\code{summarise(p_females = sum(n_haul[sex \%in\% c("F","B")]) /
-sum(n_haul[sex \%in\% c("F","M","B")]))}.
+derive it after grouping \code{SpeciesSex} away, e.g.
+\code{summarise(p_females = sum(n_haul[SpeciesSex \%in\% c("F","B")]) /
+sum(n_haul[SpeciesSex \%in\% c("F","M","B")]))}.
 
 \code{LengthType} and \code{DevelopmentStage} are part of the grain, not
 carried attributes. ICES's own field descriptions define an HL record by the

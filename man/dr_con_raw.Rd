@@ -23,7 +23,7 @@ A lazy \code{tbl}. Pipe \code{{dplyr}} verbs and call
 Opens a lazy DuckDB connection to one of the four Tier-1 exchange tables in
 the raw opus archive. These carry opus's current field names exactly as
 staged, with no obus-side additions -- in particular no \code{.id} (see
-\code{\link{dr_add_id}}) and no \code{aphia}/\code{sex} rename.
+\code{\link{dr_add_id}}) and no \code{Valid_Aphia}/\code{SpeciesSex} rename.
 }
 \examples{
 \dontrun{

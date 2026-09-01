@@ -588,3 +588,55 @@ to see its size was backwards. The 3.85% is now `n_totalnumber - n_haul`.
 
 Cost: HL_summary 49.5 -> 53.3 MB. Verified zero disagreement with
 `sum(HL_length$n_haul)` over 1,912,256 groups.
+
+
+## Dropped obus's own field names (2026-09-01)
+
+The derived tables now carry opus's current names exactly as the raw archive
+stages them. `Valid_Aphia` and `SpeciesSex` throughout; the former
+`aphia`/`sex` renames are gone.
+
+**Why.** The benefit was cosmetic — `aphia` reads better than `Valid_Aphia`.
+The costs were permanent:
+
+- every raw-to-derived join needed `by = c("Valid_Aphia" = "aphia")`
+- a third naming layer that `op_crosswalk()` could not describe, so the
+  authoritative mapping was incomplete by construction
+- `dr_HL_summary()` errored on raw data unless the caller knew to rename first
+- ICES's legacy `Sex` maps to `SpeciesSex` in HL but `IndividualSex` in CA —
+  two genuinely different measurements (visual vs by dissection) that a single
+  `sex` column would have flattened the moment a CA product appeared
+
+It also cut against obus's own stated principle: never invent a fact opus or
+ICES already owns.
+
+**Timing.** Consumers referenced `aphia` 111 times, but were already broken
+(30 dead `dr_HL_standardised()` calls in datrasdoodle2, 53 stale references in
+imbus) and need rewriting regardless. The marginal cost was near zero on the
+day the tables were first published, and rises from here.
+
+### A collision the change exposed
+
+Renaming the key to `Valid_Aphia` put it one capital letter away from
+`valid_aphia`, the species lookup's WoRMS-forwarding column — two genuinely
+different things (the code as submitted vs the currently accepted code; e.g.
+124635 *Leptopentacta elongata* forwards to 1474372 *Paraleptopentacta
+elongata*). Confusing them would silently join the wrong species.
+
+So the WoRMS columns took a prefix: `status`/`valid_aphia`/`valid_name` ->
+`worms_status`/`worms_aphia`/`worms_name`. Nothing now distinguishes two
+meanings by capitalisation alone.
+
+Note the latent trap in ICES's own name: `Valid_Aphia` means *the
+datacenter-resolved code*, NOT *the currently-valid code*.
+
+### Also fixed
+
+`DATASET_species.R` now retries a failed WoRMS chunk with backoff. One
+transient 500 anywhere in ~40 sequential requests previously discarded the
+whole sweep several minutes in — observed on 2026-09-01, where the failing id
+resolved perfectly on its own moments later.
+
+Verified after rebuild: species unchanged in content (2,022 codes, 15
+non-accepted, 11 forwarding), and the cross-check identical at 89.01% / 7.14% /
+3.85% — the rename changed names, not values.

@@ -68,8 +68,7 @@ the raw archive:
 
 ```r
 hh <- dr_con_raw("HH") |> dr_add_id()
-hl <- dr_con_raw("HL") |> dr_add_id() |>
-  rename(aphia = Valid_Aphia, sex = SpeciesSex)
+hl <- dr_con_raw("HL") |> dr_add_id()
 
 dr_HL_summary(hh, hl, haulval = "1")
 ```

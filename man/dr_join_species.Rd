@@ -2,12 +2,12 @@
 % Please edit documentation in R/dr_transformation.R
 \name{dr_join_species}
 \alias{dr_join_species}
-\title{Add species names to a table carrying \code{aphia}}
+\title{Add species names to a table carrying \code{Valid_Aphia}}
 \usage{
 dr_join_species(x, species = NULL)
 }
 \arguments{
-\item{x}{A data frame or lazy table with an \code{aphia} column.}
+\item{x}{A data frame or lazy table with a \code{Valid_Aphia} column.}
 
 \item{species}{Species lookup. Defaults to \code{dr_con("species")},
 collected first when \code{x} is an eager data frame -- dbplyr refuses to
@@ -17,7 +17,7 @@ join a data frame against a lazy table.}
 \code{x} with the lookup's columns joined on.
 }
 \description{
-Left-joins the WoRMS lookup onto any table with an \code{aphia} column, so
+Left-joins the WoRMS lookup onto any table with a \code{Valid_Aphia} column, so
 rows whose code is absent from the lookup are kept with \code{NA} names
 rather than dropped.
 }

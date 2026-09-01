@@ -37,20 +37,20 @@
 
 PUBLISHED_SCHEMA <- list(
   HL_summary = c(
-    ".id", "Survey", "Year", "Quarter", "aphia", "latin", "species", "rank",
+    ".id", "Survey", "Year", "Quarter", "Valid_Aphia", "latin", "species", "rank",
     "n_totalnumber", "n_totalnumber_hour", "n_haul", "w_haul", "w_hour",
     "n_measured", "p_females", "SpeciesValidity"
   ),
   HL_length = c(
-    ".id", "Survey", "Year", "Quarter", "aphia", "latin", "species", "rank",
-    "length_mm", "length_cm", "accuracy", "LengthType", "sex",
+    ".id", "Survey", "Year", "Quarter", "Valid_Aphia", "latin", "species", "rank",
+    "length_mm", "length_cm", "accuracy", "LengthType", "SpeciesSex",
     "DevelopmentStage", "n_haul", "n_hour", "SpeciesValidity"
   ),
-  hl_flag      = c(".id", "aphia", "code"),
+  hl_flag      = c(".id", "Valid_Aphia", "code"),
   hl_flag_code = c("code", "kind", "affects", "label", "meaning", "evidence"),
-  species      = c("aphia", "latin", "species", "rank", "kingdom", "phylum",
+  species      = c("Valid_Aphia", "latin", "species", "rank", "kingdom", "phylum",
                    "class", "order", "family", "genus", "status",
-                   "valid_aphia", "valid_name")
+                   "worms_aphia", "worms_name")
 )
 
 # The tables dr_con() serves. Adding one is fine; removing or renaming one
@@ -67,13 +67,13 @@ PUBLISHED_TABLES <- c("HH", "species", "HL_length", "HL_summary",
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
     .id = 1L,
-    aphia = c(126417L, 126417L, 126417L, 999999L),
+    Valid_Aphia = c(126417L, 126417L, 126417L, 999999L),
     NumberAtLength = c(3, 5, 2, NA),
     LengthClass = c(100, 100, 110, NA),
     LengthCode = c("1", "1", "1", NA),
     LengthType = c("1", "1", "1", NA),
     SubsamplingFactor = c(1, 1, 1, NA),
-    sex = c("F", "M", NA, NA),
+    SpeciesSex = c("F", "M", NA, NA),
     DevelopmentStage = c(NA, NA, "B", NA),
     SpeciesValidity = 1L,
     TotalNumber = c(3, 5, 2, 12),
@@ -81,7 +81,7 @@ PUBLISHED_TABLES <- c("HH", "species", "HL_length", "HL_summary",
     SpeciesCategory = c("1", "1", "2", "1"),
     stringsAsFactors = FALSE
   )
-  sp <- data.frame(aphia = c(126417L, 999999L),
+  sp <- data.frame(Valid_Aphia = c(126417L, 999999L),
                    latin = c("Test species", "Bulk species"),
                    species = c("Test species", "Bulk species"),
                    rank = c("Species", "Species"))

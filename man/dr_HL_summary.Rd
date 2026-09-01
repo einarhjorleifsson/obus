@@ -13,26 +13,26 @@ dr_HL_summary(hh, hl, species = NULL, haulval = NULL)
 Optional: \code{HaulValidity}, used when \code{haulval} is set.}
 
 \item{hl}{DATRAS HL table with \code{.id} present. Required: \code{.id},
-\code{aphia}, \code{sex}, \code{SpeciesCategory}, \code{SpeciesValidity},
+\code{Valid_Aphia}, \code{SpeciesSex}, \code{SpeciesCategory}, \code{SpeciesValidity},
 \code{TotalNumber}, \code{SpeciesCategoryWeight}, \code{NumberAtLength},
 \code{LengthClass} (the last two only for \code{n_measured}).}
 
-\item{species}{Species lookup with \code{aphia}, \code{latin},
+\item{species}{Species lookup with \code{Valid_Aphia}, \code{latin},
 \code{species}, \code{rank}. Defaults to \code{dr_con("species")}.}
 
 \item{haulval}{Character vector of \code{HaulValidity} codes to retain.
 \code{NULL} keeps all hauls.}
 }
 \value{
-A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
+A lazy table, one row per \code{.id} \eqn{\times} \code{Valid_Aphia}
 \eqn{\times} \code{SpeciesValidity} (see Details):
-\code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
+\code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{Valid_Aphia},
 \code{latin}, \code{species}, \code{rank}, \code{n_totalnumber},
 \code{n_totalnumber_hour}, \code{n_haul}, \code{w_haul}, \code{w_hour},
 \code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 }
 \description{
-One row per \code{.id} \eqn{\times} \code{aphia} -- every species recorded
+One row per \code{.id} \eqn{\times} \code{Valid_Aphia} -- every species recorded
 in \code{hl} for that haul, whether or not it was individually measured
 (unlike \code{\link{dr_HL_length}}, which covers only the length-measured
 subset). \code{n_totalnumber}/\code{n_totalnumber_hour} come from the
@@ -78,7 +78,7 @@ need not match a raised length-frequency sum exactly) or rounding noise from
 a non-integer \code{SubsamplingFactor}.
 
 Unlike \code{\link{dr_HL_length}}, this table does \emph{not} carry
-\code{sex} as a grain dimension. That asymmetry is deliberate and
+\code{SpeciesSex} as a grain dimension. That asymmetry is deliberate and
 empirically grounded. Verified full-archive across 212,497 haul x species
 groups reporting more than one sex, \code{TotalNumber} genuinely varies by
 sex for 66\\% of them and is a species-level placeholder repeated identically
@@ -86,20 +86,20 @@ across every sex sub-row for the other 34\\% -- and per-sex arithmetic
 reconciliation can tell those apart.
 \code{SpeciesCategoryWeight} has no analogous check, and its
 repeats-vs-varies pattern tracks \code{TotalNumber}'s only about half the
-time. Splitting this table by \code{sex} would therefore silently
+time. Splitting this table by \code{SpeciesSex} would therefore silently
 misrepresent \code{w_haul}/\code{w_hour} for an unknown share of species
 with no per-row way to flag which. Sex-specific \emph{counts} stay
 recoverable by aggregating \code{\link{dr_HL_length}}; sex-specific
 \emph{weight} is not recoverable in general -- a property of the source
 data, not a gap in obus.
 
-\strong{The grain is \code{.id} \eqn{\times} \code{aphia} \eqn{\times}
+\strong{The grain is \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
 \code{SpeciesValidity}, and that is correct, not a defect.}
 \code{SpeciesValidity} is a \emph{record type} field -- it says what kind of
 data is present for a species in a haul, not whether the haul is valid -- and
 the HL format deliberately allows more than one record type per species per
 haul. ICES's own documentation is explicit that this is intentional, and
-that "if you aggregate over \code{.id} x \code{aphia} without also grouping
+that "if you aggregate over \code{.id} x \code{Valid_Aphia} without also grouping
 on \code{SpeciesValidity}, rows from different record types will be silently
 mixed together." The typical case is a full length-frequency series
 (\code{"1"}) alongside a supplementary presence marker (\code{"5"}) or a
@@ -109,11 +109,11 @@ Measured over the whole archive (2026-08-31): 1,219 of 2,290,203 groups
 (0.05\\%) carry more than one record type, the commonest pairs being
 \code{\{1,5\}} and \code{\{4,7\}} -- matching ICES's own reported
 pattern independently. Filtering to a single \code{SpeciesValidity} makes
-\code{.id} \eqn{\times} \code{aphia} exactly unique (verified: 0
+\code{.id} \eqn{\times} \code{Valid_Aphia} exactly unique (verified: 0
 duplicates at codes \code{"1"}, \code{"4"}, \code{"5"} and \code{"7"}).
 For most surveys, filter to \code{SpeciesValidity == "1"} before
 aggregating. Summing \code{n_haul} or \code{w_haul} per \code{.id}
-\eqn{\times} \code{aphia} without filtering mixes record types and
+\eqn{\times} \code{Valid_Aphia} without filtering mixes record types and
 double-counts.
 
 Where \code{HaulDuration} is 0 or negative,

@@ -20,12 +20,11 @@ source("data-raw/build_helpers.R")
 dr_cache_raw(c("HH", "HL"))
 
 # ---- inputs -----------------------------------------------------------------
-# Valid_Aphia -> aphia and SpeciesSex -> sex is obus's own naming layer, applied
-# on top of opus's current names. It is a rename and nothing else: no values
-# change, and the raw archive is left exactly as opus staged it.
+# No renaming. The derived tables carry opus's current field names exactly as
+# the raw archive stages them, so one vocabulary runs from raw through to the
+# published products and a join between them needs no name mapping.
 hh <- dr_con_raw("HH", path = DR_RAW) |> dr_add_id()
-hl <- dr_con_raw("HL", path = DR_RAW) |> dr_add_id() |>
-  dplyr::rename(aphia = Valid_Aphia, sex = SpeciesSex)
+hl <- dr_con_raw("HL", path = DR_RAW) |> dr_add_id()
 
 species <- dr_con("species", path = DR_OUT)
 
@@ -96,12 +95,12 @@ smry_out <- dr_con("HL_summary", path = DR_OUT)
 #
 # So: gap < 1 fish is arithmetic and excluded; gap >= 1 fish is real.
 cmp <- smry_out |>
-  dplyr::select(.id, aphia, n_totalnumber) |>
+  dplyr::select(.id, Valid_Aphia, n_totalnumber) |>
   dplyr::inner_join(
     len_out |>
-      dplyr::group_by(.id, aphia) |>
+      dplyr::group_by(.id, Valid_Aphia) |>
       dplyr::summarise(n_len = sum(n_haul, na.rm = TRUE), .groups = "drop"),
-    by = c(".id", "aphia"), na_matches = "na"
+    by = c(".id", "Valid_Aphia"), na_matches = "na"
   ) |>
   dplyr::filter(!is.na(n_totalnumber), !is.na(n_len)) |>
   dplyr::inner_join(dplyr::select(hh, .id, DataType, HaulDuration), by = ".id") |>

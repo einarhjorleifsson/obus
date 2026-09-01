@@ -139,13 +139,13 @@ dr_add_n_and_cpue <- function(d) {
     )
 }
 
-#' Add species names to a table carrying `aphia`
+#' Add species names to a table carrying `Valid_Aphia`
 #'
-#' Left-joins the WoRMS lookup onto any table with an \code{aphia} column, so
+#' Left-joins the WoRMS lookup onto any table with a \code{Valid_Aphia} column, so
 #' rows whose code is absent from the lookup are kept with \code{NA} names
 #' rather than dropped.
 #'
-#' @param x A data frame or lazy table with an \code{aphia} column.
+#' @param x A data frame or lazy table with a \code{Valid_Aphia} column.
 #' @param species Species lookup. Defaults to \code{dr_con("species")},
 #'   collected first when \code{x} is an eager data frame -- dbplyr refuses to
 #'   join a data frame against a lazy table.
@@ -153,13 +153,13 @@ dr_add_n_and_cpue <- function(d) {
 #' @return \code{x} with the lookup's columns joined on.
 #' @export
 dr_join_species <- function(x, species = NULL) {
-  .dr_require_cols(x, "aphia", "dr_join_species")
+  .dr_require_cols(x, "Valid_Aphia", "dr_join_species")
 
   if (is.null(species)) {
     species <- dr_con("species")
     if (!inherits(x, "tbl_lazy")) species <- dplyr::collect(species)
   }
-  dplyr::left_join(x, species, by = dplyr::join_by(aphia == aphia))
+  dplyr::left_join(x, species, by = "Valid_Aphia")
 }
 
 # One error message shape for every helper above.
