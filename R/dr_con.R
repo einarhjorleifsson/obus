@@ -19,7 +19,8 @@
 # opus::op_archive(), and opens the file itself on obus's one connection.
 
 DR_RAW_TABLES <- c("HH", "HL", "CA", "LT")
-DR_TABLES     <- c("HH", "species", "HL_length", "HL_summary")
+DR_TABLES     <- c("HH", "species", "HL_length", "HL_summary",
+                   "hl_flag", "hl_flag_code")
 
 #' Connect to a raw DATRAS exchange table
 #'
@@ -67,6 +68,15 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #'       \code{length_mm} x \code{sex}; see \code{\link{dr_HL_length}}.}
 #'     \item{\code{"HL_summary"}}{One row per \code{.id} x \code{aphia};
 #'       see \code{\link{dr_HL_summary}}.}
+#'     \item{\code{"hl_flag"}}{One row per \code{.id} x \code{aphia} x
+#'       \code{code}, for records carrying a flag. Long, so a record with
+#'       several flags has several rows. Joins onto \code{"HL_summary"}
+#'       directly, and onto \code{"HL_length"} as a property of the haul x
+#'       species group.}
+#'     \item{\code{"hl_flag_code"}}{The flag lookup: \code{code},
+#'       \code{kind}, \code{affects}, \code{label}, \code{meaning},
+#'       \code{evidence}. \code{kind} is the one to filter on --
+#'       \code{"intrinsic"} and \code{"property"} records are not defects.}
 #'   }
 #' @param path Location of the parquet directory, local or remote. Trailing
 #'   slashes are stripped; \code{~} is expanded for local paths.

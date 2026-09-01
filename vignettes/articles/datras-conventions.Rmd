@@ -1,11 +1,12 @@
 ---
 title: "DATRAS conventions, and what obus does about them"
 subtitle: "What the ICES exchange format specifies, where its documents disagree with each other, and how obus reads them."
-format:
-  html:
+output:
+  html_document:
     toc: true
-    toc-depth: 3
-    toc-location: left
+    toc_depth: 3
+    toc_float:
+      collapsed: false
 ---
 
 ```{r, include = FALSE}
@@ -907,8 +908,8 @@ The arithmetic is a fact of the file. **The generalisation is a hypothesis: no
 ICES document states this identity in words anywhere.** If it holds generally,
 the weight path has the exact analogue of `TotalNo = NoMeas × SubFactor`, and
 becomes checkable. *What would settle it:* over all HL rows with `SubWgt`,
-`CatCatchWgt` and `SubFactor` populated, compute `r = CatCatchWgt / SubWgt`
-and compare it to the reported factor, stratified by survey × year ×
+`CatCatchWgt` and `SubFactor` populated, compute the ratio
+`CatCatchWgt / SubWgt` and compare it to the reported factor, stratified by survey × year ×
 `DataType`. High agreement means the factor is weight-derived and the weight
 fields are mutually consistent; agreement in some provider blocks only would
 itself identify which providers derive the factor by weight and which by
@@ -933,7 +934,7 @@ signature.
 |---|---|---|
 | **H-W1** | `DataType` C weight standardisation is handled asymmetrically. HL row 22 makes `CatCatchWgt` for C a *rate* (*"For datatype C, values should be standardised to 60 minutes"*; May 2022 is blunter still: *"total species weight per haul per hour for CPUE data type"*). If `w_haul` treats C weights as per-haul while `n_haul` back-multiplies C counts by `HaulDuration/60`, then `w_haul / n_haul` for C is wrong by `60 / HaulDuration`. This would touch roughly a third of the archive rather than 1.8% of it. | For the 200 most abundant aphia codes, plot median g/fish by `DataType`, and within C regress `log(g/fish)` on `log(HaulDuration)`. Slope near +1 confirms; near 0 refutes. |
 | **H-W2** | Excluding `sex` from the weight key silently halves genuinely distinct per-sex weights that happen to be equal. | Isolate groups with ≥2 sexes in one `(.id, aphia, SpeciesCategory)` and identical non-zero weights; compare their g/fish against single-sex groups of the same species and year. |
-| **H-W3** | A provider wrote `SubWgt` into `CatCatchWgt` or vice versa — adjacent fields, both integer grams, only one mandatory. | H-W0's ratio test, filtered to `r ≈ 1 & SubFactor > 1.5`, tabulated by survey × year × country. |
+| **H-W3** | A provider wrote `SubWgt` into `CatCatchWgt` or vice versa — adjacent fields, both integer grams, only one mandatory. | H-W0's ratio test, filtered to ratio ≈ 1 and `SubFactor > 1.5`, tabulated by survey × year × country. |
 | **H-W4** | Unit errors: kilograms, or 100-gram units, written into a grams field. **Partly answered already** — IBTSWG 2025 Table 3.8.1 records a realised case: CEFAS NS-IBTS Q1 from 1978, `TotalNo` "122→244", `CatCatchWgt` "2750→55", with the comments *"No per hr (\*2)"* and *"No per hour (\*2) per 100g (/100)"*. | Per species, compute the archive-wide median g/fish; per (survey, year, country, platform) compute the median ratio to that reference and look for blocks near 10⁻³, 10⁻², 10² or 10³. Discrete blocks confirm; a continuous spread is biology. |
 | **H-W6** | The 33 P blocks sharing one weight *across* main categories are either genuinely equal catches or a wider repeat than the memo describes. | g/fish against the species norm for those 33, plus whether `SubWgt` also repeats across the main categories — a repeated `SubWgt` is much harder to call coincidence. |
 | **H-W7** | The 59 sub-1 kg R duplicate blocks are coincidence; the 152 above 1 kg (matching to the gram, up to 1.9 tonnes, with identical `TotalNo` in 153 of 211) are not. | Model the coincidence rate: for R groups with 2+ categories, what fraction have equal weights as a function of weight magnitude? |

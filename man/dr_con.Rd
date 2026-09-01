@@ -17,6 +17,15 @@ classification, and WoRMS \code{status}/\code{valid_aphia}.}
 \code{length_mm} x \code{sex}; see \code{\link{dr_HL_length}}.}
 \item{\code{"HL_summary"}}{One row per \code{.id} x \code{aphia};
 see \code{\link{dr_HL_summary}}.}
+\item{\code{"hl_flag"}}{One row per \code{.id} x \code{aphia} x
+\code{code}, for records carrying a flag. Long, so a record with
+several flags has several rows. Joins onto \code{"HL_summary"}
+directly, and onto \code{"HL_length"} as a property of the haul x
+species group.}
+\item{\code{"hl_flag_code"}}{The flag lookup: \code{code},
+\code{kind}, \code{affects}, \code{label}, \code{meaning},
+\code{evidence}. \code{kind} is the one to filter on --
+\code{"intrinsic"} and \code{"property"} records are not defects.}
 }}
 
 \item{path}{Location of the parquet directory, local or remote. Trailing

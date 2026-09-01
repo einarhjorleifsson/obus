@@ -410,7 +410,7 @@ step 17 gives the HaulDur/60 multiplier verbatim. One genuine divergence: its C
 multiplier is HaulDur/60 *only*, with no `SubFactor` term, where obus also
 multiplies by `SubsamplingFactor`.
 
-- [ ] **`w_haul`/`w_hour` are inflated for 1,702 haul x species groups
+- [x] **FLAGGED (not fixed) — `w_haul`/`w_hour` inflated for 1,702 haul x species groups
       (428,460,564 g, 1.81% of all weight mass).** Weight repeated across
       `SpeciesCategory` is summed once per category. Under `DataType` P this is
       the documented convention ("CatCatchweight value is same in each
@@ -434,3 +434,40 @@ multiplies by `SubsamplingFactor`.
       and `data-raw/to_https` were cleaned during the audit. The server copies
       carry the current schema (`n_totalnumber`, `DevelopmentStage`), but a
       rebuild is needed to confirm they match the current code byte-for-byte.
+
+
+## The flag tables (2026-09-01)
+
+`hl_flag.parquet` + `hl_flag_code.parquet`, built by
+`data-raw/DATASET_hl_flag.R` from `data-raw/hl_flag_code.csv`. Long format,
+one row per `.id x aphia x code`, only for records that carry a code; the
+lookup is a 15-row CSV that is edited by hand and is where the judgement sits.
+
+Kept as separate files rather than columns in the products: `HL_length` is
+~200 MB, and the flags encode current *understanding* while the data does not
+change, so revising a code costs a 12 MB republish rather than a 200 MB one.
+
+**`kind` is the column to filter on**, because most flagged records are not
+defects:
+
+| kind | groups | meaning |
+|---|---|---|
+| `property` | 1,050,534 | a fact about the record (no lengths, no weight, factor absent) |
+| `intrinsic` | 185,246 | the two totals legitimately differ; neither table is wrong |
+| `suspect` | 20,332 | likely a submission problem, direction known |
+| `unexplained` | 4,296 | flagged, mechanism not established |
+| `inflated` | 1,700 | obus's own output overstates a value |
+
+Only **22,031 of 2,291,457 groups (0.96%)** carry `inflated` or `suspect`.
+
+ICES's D2.2 guideline settled two things the codes rest on: the count chain is
+`NumberAtLength --SUM--> SubsampledNumber --x SubsamplingFactor--> TotalNumber`
+(so obus's raising is right and `TotalNo=SUM(HLNoAtLngt)` is the error), and
+the DataType P raising factor IS category weight / sample weight, which is
+*why* the category weight repeats across pseudocategory rows.
+
+- [ ] **Publish `hl_flag` and `hl_flag_code`** once the codes are agreed.
+- [ ] **`CNT_OTHER` (3,949) and `CNT_DIRECTIONAL` (249) are the unexplained
+      residue.** Everything else now has either a mechanism or a reason not to
+      worry. This is the remaining analytical question, and it is two orders of
+      magnitude smaller than the headline disagreement rate suggested.
