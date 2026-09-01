@@ -371,22 +371,30 @@ blends into a meaningless middle:
   100% and PT-IBTS 95%. Consistent with duplicated length rows.
 
 - [x] **Schema-pin test added** (`tests/testthat/test-published-schema.R`,
-      2026-09-01). Pins the exact published column names of HL_summary,
-      HL_length, hl_flag, hl_flag_code and species, plus the dr_con() and
-      dr_con_raw() table sets, plus `.id`'s value. Offline, against the
-      function output, so it fires the moment someone edits a function --
-      before a rebuild, before a publish, before a consumer sees it. A ninth
-      test compares the PUBLISHED files to the same list (skipped offline),
-      which catches the other failure seen here: a server file sitting behind
-      its own source. Verified by simulating a `w_haul` -> `w_catch` rename:
-      the test fails with a column-by-column diff.
+      2026-09-01). Pins the published column names of HL_summary, HL_length,
+      hl_flag, hl_flag_code and species, the dr_con()/dr_con_raw() table sets,
+      and `.id`'s value. Verified by simulating a `w_haul` -> `w_catch` rename;
+      it fails with a column-by-column diff.
 
-      This exists because renames fail SILENTLY. `n_haul` still exists in
-      HL_length, so a consumer reading `HL_summary$n_haul` after the rename
-      gets NULL or joins the wrong table and returns a plausible wrong number.
-      Rendering does not catch it; grep does not either (~95% false positives,
-      measured) because the same token is right in one table and wrong in the
-      other.
+      **Scope corrected the same day.** This was first justified as the defence
+      against silent renames, using `n_haul` -> `n_totalnumber` as the example.
+      That example does not hold. `n_haul` in HL_length is a DIFFERENT quantity
+      (raised length frequency) from HL_summary's reported `TotalNo`, and every
+      `n_haul` reference in imbus and datrasdoodle2 turned out to be to the
+      length-derived one, which never changed. Distinct names for distinct
+      quantities was a fix, not a hazard. The rename broke nothing.
+
+      What the test is actually worth: a guard against ACCIDENTAL renames and
+      reorderings during refactoring, and — via its online half — against a
+      published file drifting behind its source, which did happen here.
+
+- [ ] **Schedule a render of the consumers. This, not schema pinning, is the
+      real fix.** The drift that actually broke imbus and datrasdoodle2 was
+      REMOVED FUNCTIONS (`dr_HL_standardised()` x30, `dr_get()` x15, the
+      `dr_check_*` family), and those fail loudly the moment anything runs
+      them. Nothing noticed because nothing re-executes obus: measured across
+      imbus, **0 obus calls inside executable chunks, 53 in prose**. A weekly
+      CI render of either consumer would have caught the lot on day one.
 
 - [ ] **Chase the 6-50 fish directional bucket (~3,900 groups).** Same
       signature as Can-Mar's lost raising factor but in surveys with no known

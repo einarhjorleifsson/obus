@@ -1,16 +1,34 @@
 # The published column contract.
 #
-# These names are what downstream code binds to. A rename is invisible to the
-# code that does it and silent in the code that consumes it -- `n_haul` still
-# exists in HL_length, so a consumer reading HL_summary$n_haul after the rename
-# to n_totalnumber gets NULL or, worse, joins against the wrong table and
-# returns a plausible wrong number. Rendering a document does not catch that,
-# and neither does grepping for the name: `n_haul` is correct in one table and
-# wrong in the other, and the token cannot tell you which.
+# WHAT THIS IS FOR, honestly scoped. It is a regression guard against
+# ACCIDENTAL change: a rename or reordering slipped in during refactoring, a
+# column dropped from a select(), a dr_con() table name changed. Nothing else
+# in the package would notice any of those.
 #
-# So the check lives here, against the function output, and fires the moment
-# someone edits the function -- before a rebuild, before a publish, before any
-# consumer sees it.
+# WHAT IT IS NOT. It is not the main defence against consumer drift, and the
+# example that would suggest otherwise does not survive checking. The
+# HL_summary n_haul -> n_totalnumber rename broke nothing: `n_haul` in
+# HL_length is a DIFFERENT QUANTITY (NumberAtLength x SubsamplingFactor, the
+# raised length frequency) from HL_summary's reported TotalNo, and every
+# `n_haul` reference in imbus and datrasdoodle2 was to the length-derived one,
+# which is unchanged. Giving two different quantities two different names was
+# a fix, not a hazard -- they agree only when a submission is internally
+# consistent, and 3.85% of haul x species groups show they often do not.
+#
+# The drift that actually happened to the consumers was REMOVED FUNCTIONS --
+# dr_HL_standardised() x30 in datrasdoodle2, dr_get() x15 in imbus, the whole
+# dr_check_* family. Those fail loudly the moment anything runs them. Nobody
+# noticed only because nothing re-executes obus: measured across imbus,
+# 0 obus calls inside executable chunks and 53 in prose. The real fix for that
+# is a scheduled render of the consumers, not a test in this package.
+#
+# So: worth having, cheap, catches a real class of accident. Not a substitute
+# for something actually running the consumers.
+#
+# The ONLINE test at the bottom is the more valuable half. It compares the
+# PUBLISHED files against this list, and catches a failure that did occur here:
+# a server parquet sitting two fixes behind its own source, which no test of
+# the code can reveal.
 #
 # IF A TEST BELOW FAILS AND YOU MEANT IT: update the vector, then update the
 # consumers. As of 2026-09-01 those are imbus (deliverables/, DATRAS/) and
