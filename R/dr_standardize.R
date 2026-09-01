@@ -394,9 +394,40 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # real cases: a repeated identical weight collapses to one row; genuinely
   # distinct per-sex weights (some programmes do weigh sexes separately) are
   # kept and summed.
+  #
+  # Under DataType "P" (pseudo category sampling) the deduplication key is the
+  # MAIN category, not the reported CatIdentifier. ICES's own guidance makes the
+  # reason structural rather than incidental: a pseudocategory's raising factor
+  # IS category weight / sample weight (in its worked haddock example,
+  # 290.1 / 122.1988 = 2.374), so the category weight is necessarily present on
+  # every pseudocategory row of that category. CatIdentifier is a two-part code
+  # under "P" -- 11, 12, 13 are sub-categories of main category 1, 21 and 22 of
+  # main category 2 -- and the archive agrees: every P code is exactly two
+  # digits. Keying on the reported code therefore adds one category's weight
+  # once per sub-category. Measured: 1,491 groups, 410,122,351 g, close to 29%
+  # of all P weight mass, because sub-category sampling is used precisely on
+  # the big catches.
+  #
+  # The collapse is deliberately limited to "P". Under "R" a repeated weight
+  # across categories also occurs (209 groups) but its cause is NOT
+  # established: 135 of them are a single vessel-year, and the 29 where
+  # TotalNumber differs are a mix of implausible ties (two categories both at
+  # exactly 9992 g) and plausible ones (two tiny catches both at 12 g). Worth
+  # 485,711 g in total, 0.1% of the P defect. Those stay flagged
+  # (WGT_CAT_REPEAT_R in hl_flag) rather than silently collapsed.
   hl_weights <- hl |>
-    dplyr::distinct(.id, aphia, SpeciesCategory, SpeciesValidity, SpeciesCategoryWeight) |>
+    dplyr::select(.id, aphia, SpeciesCategory, SpeciesValidity,
+                  SpeciesCategoryWeight) |>
     dplyr::inner_join(hh_cols, by = ".id") |>
+    dplyr::mutate(
+      .wgt_cat = dplyr::if_else(
+        DataType == "P",
+        substr(as.character(SpeciesCategory), 1L, 1L),
+        as.character(SpeciesCategory)
+      )
+    ) |>
+    dplyr::distinct(.id, Survey, Year, Quarter, aphia, SpeciesValidity,
+                    .wgt_cat, SpeciesCategoryWeight, DataType, HaulDuration) |>
     dplyr::mutate(
       # Same zero-duration treatment as the counts above.
       w_haul_raw = dplyr::case_when(

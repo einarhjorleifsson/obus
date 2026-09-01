@@ -359,3 +359,52 @@ test_that("DataType 'C' with HaulDuration == 0 keeps the reported rate, NAs the 
   expect_true(is.na(out$n_totalnumber))     # NOT 0
   expect_true(is.na(out$w_haul))
 })
+
+# --- DataType P: the main category, not the pseudocategory, keys the weight ---
+# Modelled on ICES's own worked haddock example (D2.2 Field Dependency, Annex 1
+# Example 3.3): category 1 weighs 0.991 kg; category 2 weighs 290.1 kg and is
+# split into pseudocategories 21 (factor 290.1/122.1988 = 2.374) and 22
+# (factor 1). The factor IS category weight / sample weight, so 290.1 kg
+# appears on BOTH pseudocategory rows. True catch weight is 991 + 290100 g.
+
+test_that("a weight repeated across pseudocategories is counted once per main category", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 4L,
+                   DataType = "P", HaulDuration = 60, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 126437L,
+    NumberAtLength = c(4, 9, 16, 6,  1, 7, 20,  31, 31, 27),
+    LengthClass    = c(15, 16, 17, 18,  22, 23, 24,  33, 34, 35),
+    LengthCode = "1", LengthType = "1",
+    SubsamplingFactor = c(rep(1, 4), rep(2.374, 3), rep(1, 3)),
+    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = c(rep(35, 4), rep(916.364, 3), rep(249, 3)),
+    SpeciesCategoryWeight = c(rep(991, 4), rep(290100, 3), rep(290100, 3)),
+    SpeciesCategory = c(rep("11", 4), rep("21", 3), rep("22", 3))
+  )
+  sp <- data.frame(aphia = 126437L, latin = "Melanogrammus aeglefinus",
+                   species = "haddock", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_equal(out$w_haul, 991 + 290100)   # NOT 991 + 290100 + 290100
+})
+
+test_that("under DataType R, genuinely distinct per-category weights are still summed", {
+  # The control case: CatIdentifier is a true partition under "R", so two
+  # categories with their own weights must be added, not collapsed.
+  hh <- data.frame(.id = 1L, Survey = "BTS", Year = 2020L, Quarter = 3L,
+                   DataType = "R", HaulDuration = 60, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 127139L,
+    NumberAtLength = c(16, 105), LengthClass = c(100, 200),
+    LengthCode = "1", LengthType = "1",
+    SubsamplingFactor = c(1, 20.2776),
+    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = c(16, 2129.1),
+    SpeciesCategoryWeight = c(1950, 572030),
+    SpeciesCategory = c("1", "2")
+  )
+  sp <- data.frame(aphia = 127139L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_equal(out$w_haul, 1950 + 572030)
+})

@@ -410,7 +410,7 @@ step 17 gives the HaulDur/60 multiplier verbatim. One genuine divergence: its C
 multiplier is HaulDur/60 *only*, with no `SubFactor` term, where obus also
 multiplies by `SubsamplingFactor`.
 
-- [x] **FLAGGED (not fixed) — `w_haul`/`w_hour` inflated for 1,702 haul x species groups
+- [x] **FIXED for DataType P (2026-09-01) — was inflated for 1,702 haul x species groups
       (428,460,564 g, 1.81% of all weight mass).** Weight repeated across
       `SpeciesCategory` is summed once per category. Under `DataType` P this is
       the documented convention ("CatCatchweight value is same in each
@@ -481,3 +481,34 @@ the DataType P raising factor IS category weight / sample weight, which is
       residue.** Everything else now has either a mechanism or a reason not to
       worry. This is the remaining analytical question, and it is two orders of
       magnitude smaller than the headline disagreement rate suggested.
+
+
+## The DataType P weight fix (2026-09-01)
+
+`dr_HL_summary()` now deduplicates catch weight on the **main** category under
+`DataType == "P"`, not on the reported `CatIdentifier`.
+
+ICES's own guidance makes this structural: a pseudocategory's raising factor
+**is** category weight / sample weight (290.1 / 122.1988 = 2.374 in its worked
+haddock example), so the category weight necessarily sits on every
+pseudocategory row. `CatIdentifier` is a two-part code under `P` — verified,
+every P code in the archive is exactly two digits (11-14, 21-23, 31).
+
+**Effect: 1,458 groups changed, 409,946,801 g removed (1.73% of all `w_haul`
+mass), every change a decrease and none an increase.** The worked case
+`NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12` aphia 126437 went from 210,600 g to
+105,300 g for a 105,300 g catch. `HL_length` and `n_totalnumber` are untouched;
+the count cross-check is unchanged at 3.85%.
+
+Two regression tests, both from ICES's worked examples: the haddock case
+(expects `991 + 290100`, not `+ 290100` twice) and the `R` control case
+(expects 1,950 + 572,030 **summed**, guarding against over-collapsing).
+
+**Deliberately NOT extended to `DataType R`.** 209 groups there also repeat a
+weight across categories, but the cause is not established: 135 are a single
+vessel-year (NS-IBTS 2025 GB 74E9), and of the 29 where `TotalNumber` differs,
+some ties are implausible (two categories both exactly 9992 g) and some
+plausible (two tiny catches both 12 g). Worth 485,711 g, 0.1% of the P defect.
+They stay flagged. A `TotalNumber`-based discriminator was considered and
+rejected — `TotalNo` and `CatCatchWgt` are independent fields, and one
+repeating says nothing reliable about the other.
