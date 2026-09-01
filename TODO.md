@@ -374,3 +374,63 @@ blends into a meaningless middle:
       signature as Can-Mar's lost raising factor but in surveys with no known
       conversion event. This is the real open question, and it is two orders
       of magnitude smaller than the headline rate made it look.
+
+
+## Official-document audit (2026-09-01)
+
+15-agent audit of every ICES primary source in `imbus/DATRAS/external`, with two
+adversarial verifiers re-checking quotes against sources and recomputing every
+figure. Written up in `vignettes/articles/datras-conventions.qmd`. Headlines:
+
+**obus reads the documents correctly; the documents are the broken party.**
+`TotalNo=SUM(HLNoAtLngt)` in the field descriptions is a defect, disproved from
+inside the same workbook: its own `Example file` sheet shows
+`TotalNumber = 9766.059` against `sum(NumberAtLength) = 237`, `NoMeas = 237`,
+`SubFactor = 41.207` — i.e. 237 x 41.207, the *raised* sum. Corroborated by the
+FAQ's DataType R rule, its Annex I, and both its worked examples. The stale
+fragment survives a March-2024 rewrite of the same cell.
+
+**ICES's own index procedures never read `TotalNo`** (zero hits in
+`Indices_Calculation_Steps_IBTS/BITS`); they raise the length frequencies —
+which is `dr_HL_length()`. But it is NOT true that ICES never consumes it:
+WKDATR13 (2013) 3.2.1.3 agreed exactly this comparison as a submission check,
+with a worked 2,473-fish example, and WKABSENS 2021 step 17a uses `TotalNo` as
+a fallback. What no document states is what a *user* should do when the two
+disagree.
+
+**`TotalNo`'s scope is documented three incompatible ways** — FAQ (2014 on) per
+species x sex x category; spreadsheet (<=2023) haul x species; spreadsheet
+(2024 on) per species x sex x devstage x category. Both submitter conventions
+are in the archive with nothing marking which a row follows. obus's hybrid
+dedup is an arbitration between mutually exclusive published rules, not a
+deviation from one.
+
+**obus's DataType C handling has published precedent** — WKABSENS 2021 3.3
+step 17 gives the HaulDur/60 multiplier verbatim. One genuine divergence: its C
+multiplier is HaulDur/60 *only*, with no `SubFactor` term, where obus also
+multiplies by `SubsamplingFactor`.
+
+- [ ] **`w_haul`/`w_hour` are inflated for 1,702 haul x species groups
+      (428,460,564 g, 1.81% of all weight mass).** Weight repeated across
+      `SpeciesCategory` is summed once per category. Under `DataType` P this is
+      the documented convention ("CatCatchweight value is same in each
+      subcategory"), so 1,491 P groups are affected — close to 29% of all P
+      weight mass, because sub-category sampling is used precisely on the big
+      catches. A further 211 R groups are affected and are **undocumented**,
+      135 of them NS-IBTS 2025 Q3 GB platform 74E9. Worked case:
+      `NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12` aphia 126437 returns
+      `w_haul = 210,600 g` for a 105,300 g catch.
+
+      **A fix must be DataType-conditional.** For `R` the NL control case in
+      ICES's own worked spreadsheet proves summing weight over `CatIdentifier`
+      is correct (ratio 1.0), so simply dropping `SpeciesCategory` from the key
+      would break `R`. The count path is unaffected: for all 1,491 P blocks the
+      underlying length frequencies differ.
+
+      Left unfixed deliberately — the user's instruction is that the functions
+      stay as they are pending a decision.
+
+- [ ] **Verify the published parquets against a fresh build.** `data-raw/raw`
+      and `data-raw/to_https` were cleaned during the audit. The server copies
+      carry the current schema (`n_totalnumber`, `DevelopmentStage`), but a
+      rebuild is needed to confirm they match the current code byte-for-byte.
