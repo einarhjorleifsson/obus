@@ -370,6 +370,24 @@ blends into a meaningless middle:
 - **>50 fish** (462, 0.6%) — direction *flips*, 61.5% length-sum-higher; NSSS
   100% and PT-IBTS 95%. Consistent with duplicated length rows.
 
+- [x] **Schema-pin test added** (`tests/testthat/test-published-schema.R`,
+      2026-09-01). Pins the exact published column names of HL_summary,
+      HL_length, hl_flag, hl_flag_code and species, plus the dr_con() and
+      dr_con_raw() table sets, plus `.id`'s value. Offline, against the
+      function output, so it fires the moment someone edits a function --
+      before a rebuild, before a publish, before a consumer sees it. A ninth
+      test compares the PUBLISHED files to the same list (skipped offline),
+      which catches the other failure seen here: a server file sitting behind
+      its own source. Verified by simulating a `w_haul` -> `w_catch` rename:
+      the test fails with a column-by-column diff.
+
+      This exists because renames fail SILENTLY. `n_haul` still exists in
+      HL_length, so a consumer reading `HL_summary$n_haul` after the rename
+      gets NULL or joins the wrong table and returns a plausible wrong number.
+      Rendering does not catch it; grep does not either (~95% false positives,
+      measured) because the same token is right in one table and wrong in the
+      other.
+
 - [ ] **Chase the 6-50 fish directional bucket (~3,900 groups).** Same
       signature as Can-Mar's lost raising factor but in surveys with no known
       conversion event. This is the real open question, and it is two orders
