@@ -150,6 +150,15 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' already-hourly rate, so no true physical count can be recovered, and
 #' \code{0} is reserved for species genuinely never measured.
 #'
+#' \strong{Both routes are carried here.} \code{n_totalnumber} is the reported
+#' total; \code{n_haul} is the same quantity reconstructed by raising the
+#' length frequencies -- identical to summing \code{\link{dr_HL_length}}'s own
+#' \code{n_haul} to this grain, and \code{NA} where the species has no length
+#' data or its raising factor is unknown. Their difference is the disagreement
+#' described below, available as a subtraction rather than a grouped join
+#' (a naive \code{left_join()} to \code{\link{dr_HL_length}} fans out and
+#' silently multiplies).
+#'
 #' \code{n_totalnumber} here and the length-class sum from
 #' \code{\link{dr_HL_length}} describe the same underlying count \emph{when the source submission is
 #' internally consistent} -- a cross-check worth running, not a guarantee.
@@ -221,7 +230,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #'   \eqn{\times} \code{SpeciesValidity} (see Details):
 #'   \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
 #'   \code{latin}, \code{species}, \code{rank}, \code{n_totalnumber},
-#'   \code{n_totalnumber_hour}, \code{w_haul}, \code{w_hour},
+#'   \code{n_totalnumber_hour}, \code{n_haul}, \code{w_haul}, \code{w_hour},
 #'   \code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 #'
 #' @seealso \code{\link{dr_HL_length}}, \code{\link{dr_add_id}}
@@ -494,6 +503,33 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     ) |>
     dplyr::select(.id, aphia, SpeciesValidity, p_females)
 
+  # ---- n_haul: the raised length-frequency total -------------------------
+  # The same quantity dr_HL_length() carries under the same name, summed to
+  # this table's grain: sum(NumberAtLength x SubsamplingFactor), with the
+  # DataType handling dr_add_n_and_cpue() applies.
+  #
+  # It sits beside n_totalnumber deliberately. The two are DIFFERENT routes to
+  # one number -- n_totalnumber is what the submission declares, n_haul is what
+  # the length frequencies reconstruct -- and they disagree for 3.85% of
+  # groups. Carrying both makes that difference a subtraction in one table
+  # rather than a grouped join across two, and a naive left_join() to
+  # HL_length fans out and silently multiplies, which is a trap worth removing.
+  #
+  # The same all-NA guard as everywhere else: a group whose raising is unknown
+  # (missing SubsamplingFactor, non-positive HaulDuration) must come back NA,
+  # not the 0 that sum(x, na.rm = TRUE) yields in R.
+  hl_raised <- hl_len_base |>
+    dr_add_n_and_cpue() |>
+    dplyr::mutate(.r_raw = n_haul) |>
+    dplyr::group_by(.id, aphia, SpeciesValidity) |>
+    dplyr::summarise(
+      n_haul = sum(.r_raw, na.rm = TRUE),
+      .r_ok  = sum(as.integer(!is.na(.r_raw)), na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(n_haul = dplyr::if_else(.r_ok == 0, NA_real_, n_haul)) |>
+    dplyr::select(.id, aphia, SpeciesValidity, n_haul)
+
   # ---- n_measured: raw, un-raised count actually run through calipers ----
   # DataType == "C" reports NumberAtLength as an already-hourly RATE, not a
   # per-haul count -- summing it raw gives a rate-scale number (confirmed:
@@ -520,6 +556,8 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::left_join(hl_weights,
                      by = c(".id", "Survey", "Year", "Quarter", "aphia", "SpeciesValidity"),
                      na_matches = "na") |>
+    dplyr::left_join(hl_raised, by = c(".id", "aphia", "SpeciesValidity"),
+                     na_matches = "na") |>
     dplyr::left_join(hl_pfem, by = c(".id", "aphia", "SpeciesValidity"),
                      na_matches = "na") |>
     dplyr::left_join(hl_measured, by = c(".id", "aphia", "SpeciesValidity"),
@@ -529,7 +567,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dr_join_species(species) |>
     dplyr::select(
       .id, Survey, Year, Quarter, aphia, latin, species, rank,
-      n_totalnumber, n_totalnumber_hour, w_haul, w_hour,
+      n_totalnumber, n_totalnumber_hour, n_haul, w_haul, w_hour,
       n_measured, p_females, SpeciesValidity
     )
 }

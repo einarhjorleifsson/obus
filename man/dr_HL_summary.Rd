@@ -28,7 +28,7 @@ A lazy table, one row per \code{.id} \eqn{\times} \code{aphia}
 \eqn{\times} \code{SpeciesValidity} (see Details):
 \code{.id}, \code{Survey}, \code{Year}, \code{Quarter}, \code{aphia},
 \code{latin}, \code{species}, \code{rank}, \code{n_totalnumber},
-\code{n_totalnumber_hour}, \code{w_haul}, \code{w_hour},
+\code{n_totalnumber_hour}, \code{n_haul}, \code{w_haul}, \code{w_hour},
 \code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 }
 \description{
@@ -57,6 +57,15 @@ is how many fish were actually put through calipers. It is \code{NA}, not \code{
 \code{DataType == "C"}: that convention reports \code{NumberAtLength} as an
 already-hourly rate, so no true physical count can be recovered, and
 \code{0} is reserved for species genuinely never measured.
+
+\strong{Both routes are carried here.} \code{n_totalnumber} is the reported
+total; \code{n_haul} is the same quantity reconstructed by raising the
+length frequencies -- identical to summing \code{\link{dr_HL_length}}'s own
+\code{n_haul} to this grain, and \code{NA} where the species has no length
+data or its raising factor is unknown. Their difference is the disagreement
+described below, available as a subtraction rather than a grouped join
+(a naive \code{left_join()} to \code{\link{dr_HL_length}} fans out and
+silently multiplies).
 
 \code{n_totalnumber} here and the length-class sum from
 \code{\link{dr_HL_length}} describe the same underlying count \emph{when the source submission is

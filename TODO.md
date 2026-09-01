@@ -236,8 +236,15 @@ by at least one fish** — the figure to quote.
       Can-Mar's lost raising factor is 30,214 of the 73,596 real disagreements
       (41%), median gap 13 fish, 98% one-directional — a documented
       provider-side conversion, not something obus can fix.
-- [x] **RESOLVED — the two tables already give both quantities; nothing to
-      add.** ICES's row-level formula is fully derivable from `HL_length`:
+- [x] **SUPERSEDED 2026-09-01 — `n_haul` added to `HL_summary`.** The earlier
+      "nothing to add" reasoning was inconsistent: `HL_summary` already carried
+      `n_measured`, the raw un-raised sum of `NumberAtLength`, so the table
+      already crossed the length-path boundary. It carried the un-raised length
+      count but not the raised one, which is the only figure directly
+      comparable to `n_totalnumber`. That was arbitrary. Verified after the
+      change: zero of 1,912,256 groups differ from summing `HL_length`.
+
+      Original reasoning, kept for the record: ICES's row-level formula is fully derivable from `HL_length`:
       summing its `n_haul` over `.id x aphia x SpeciesValidity` reproduces
       Sum(NumberAtLength x SubsamplingFactor) **exactly** — verified over
       1,925,444 groups with 0 differing, 0 present on only one side. So
@@ -556,3 +563,28 @@ Two flag codes were re-tiered by the fix:
 
 **There are no `inflated` records left**, because obus no longer inflates
 anything. Defect-flagged groups (`suspect`): 22,031 -> 20,332.
+
+
+## `n_haul` in HL_summary (2026-09-01)
+
+`HL_summary` now carries **both** routes to a catch total, side by side:
+
+| column | source | meaning |
+|---|---|---|
+| `n_totalnumber` | reported `TotalNo` | what the submission declares |
+| `n_haul` | Sum(`NumberAtLength` x `SubFactor`) | what the length frequencies reconstruct |
+| `n_measured` | Sum `NumberAtLength` | how many fish were measured |
+
+Same name as in `HL_length` on purpose: it is the same quantity computed the
+same way, summed to this grain. `NA` where the species has no length data
+(379,201 rows) or its raising factor is unknown.
+
+**Why, having earlier argued against it.** Derivability was the wrong test —
+`n_measured` is equally derivable and is stored anyway. The deciding points:
+the derivation is a trap (a naive `left_join()` to `HL_length` fans out and
+silently multiplies, so it must be a grouped sum); and the whole `hl_flag`
+table exists to surface this disagreement, so making a user do a grouped join
+to see its size was backwards. The 3.85% is now `n_totalnumber - n_haul`.
+
+Cost: HL_summary 49.5 -> 53.3 MB. Verified zero disagreement with
+`sum(HL_length$n_haul)` over 1,912,256 groups.

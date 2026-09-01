@@ -38,7 +38,7 @@
 PUBLISHED_SCHEMA <- list(
   HL_summary = c(
     ".id", "Survey", "Year", "Quarter", "aphia", "latin", "species", "rank",
-    "n_totalnumber", "n_totalnumber_hour", "w_haul", "w_hour",
+    "n_totalnumber", "n_totalnumber_hour", "n_haul", "w_haul", "w_hour",
     "n_measured", "p_females", "SpeciesValidity"
   ),
   HL_length = c(

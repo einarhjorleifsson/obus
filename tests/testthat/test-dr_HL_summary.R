@@ -408,3 +408,45 @@ test_that("under DataType R, genuinely distinct per-category weights are still s
 
   expect_equal(out$w_haul, 1950 + 572030)
 })
+
+# --- n_haul: the raised length total, beside the reported one ---------------
+# The two are different routes to one number and disagree for 3.85% of groups
+# archive-wide. Carrying both makes the difference a subtraction rather than a
+# grouped join.
+
+test_that("n_haul equals the raised length frequency, and n_totalnumber the reported total", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 30, HaulValidity = "V")
+  # measured 3 + 5 fish at factor 4 -> raised 32; but the submission reports 30.
+  hl <- data.frame(
+    .id = 1L, aphia = 126417L,
+    NumberAtLength = c(3, 5), LengthClass = c(100, 110),
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 4,
+    sex = NA_character_, SpeciesValidity = 1L, DevelopmentStage = NA_character_,
+    TotalNumber = 30, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_equal(out$n_haul, (3 + 5) * 4)   # 32, from the length rows
+  expect_equal(out$n_totalnumber, 30)     # what the submission declares
+  expect_equal(out$n_measured, 3 + 5)     # raw, un-raised
+})
+
+test_that("n_haul is NA, not 0, for a species with no length data", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, aphia = 999999L, NumberAtLength = NA_real_, LengthClass = NA_real_,
+    LengthCode = NA_character_, LengthType = NA_character_,
+    SubsamplingFactor = NA_real_, sex = NA_character_, SpeciesValidity = 1L,
+    DevelopmentStage = NA_character_, TotalNumber = 12,
+    SpeciesCategoryWeight = 3000, SpeciesCategory = "1"
+  )
+  sp <- data.frame(aphia = 999999L, latin = "Bulk", species = "Bulk", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_equal(out$n_totalnumber, 12)
+  expect_true(is.na(out$n_haul))      # nothing to reconstruct from
+  expect_equal(out$n_measured, 0)     # a known zero: never measured
+})
