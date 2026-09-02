@@ -49,7 +49,7 @@ PUBLISHED_SCHEMA <- list(
   hl_flag      = c(".id", "Valid_Aphia", "code"),
   hl_flag_code = c("code", "kind", "affects", "label", "meaning", "evidence"),
   species      = c("Valid_Aphia", "latin", "species", "rank", "kingdom", "phylum",
-                   "class", "order", "family", "genus", "status",
+                   "class", "order", "family", "genus", "worms_status",
                    "worms_aphia", "worms_name")
 )
 
