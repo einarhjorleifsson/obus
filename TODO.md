@@ -43,15 +43,17 @@ brackets): `ca_fit` 242 [244], `fishbase_bayes` 527 [525], `sealifebase_species`
 61 [61], `_genus` 52 [51], `_family` 50 [47], `default_constant` 172 [172],
 `unresolved` 29 [28], `not_applicable` 43 [43].
 
-- [ ] **Publish `length_weight.parquet` and `length_type_conversion.parquet`.**
-      Until then `test-published-schema.R`'s online test **fails on purpose**:
-      the server still serves `obus_retired`'s file, keyed `aphia`, and the test
-      says so. That is the test doing its job, not a broken build.
+- [x] **Published 2026-09-02.** `length_weight.parquet` and
+      `length_type_conversion.parquet` are live. Verified after upload: both
+      byte-identical to the local build (2,022 and 2 rows), tier coverage
+      matches, and `test-published-schema.R`'s online test now runs all seven
+      tables and passes. Test suite 209 pass / 0 fail / 0 skip; `R CMD check`
+      0 errors, 0 warnings, 1 note (`docs` missing from `.Rbuildignore`,
+      pre-existing).
 
-      ```
-      scp data-raw/to_https/length_weight.parquet einarhj@heima.hafro.is:~/public_html/datras/length_weight.parquet
-      scp data-raw/to_https/length_type_conversion.parquet einarhj@heima.hafro.is:~/public_html/datras/length_type_conversion.parquet
-      ```
+      Note that commit `3ae5580`'s message says "R CMD check: 1 error" and
+      explains it as the stale server file. True when written, stale now --
+      publishing cleared it.
 
 - [ ] **The midpoint fix shifted the external tiers, and nobody has arbitrated
       it.** `LengthClass` is a bin's lower boundary, so weights are now
