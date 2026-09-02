@@ -18,10 +18,14 @@ Imports:
     opus,
     rlang
 Suggests:
+    broom,
     knitr,
+    purrr,
+    rfishbase,
     rmarkdown,
     testthat (>= 3.0.0),
     tibble,
+    tidyr,
     worrms
 Remotes:
     einarhjorleifsson/opus

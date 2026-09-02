@@ -96,15 +96,19 @@ until measured.
 ## Scope
 
 **Supported:** `HH`, `HL`, `CA`, `LT` via `dr_con_raw()`; `HH`, `species`,
-`HL_length`, `HL_summary` via `dr_con()`.
+`HL_length`, `HL_summary`, `hl_flag`, `hl_flag_code`, `length_weight`,
+`length_type_conversion` via `dr_con()`.
 
 **Deliberately absent** — every one of these existed in `obus_retired` and
 was left out, not overlooked: `dr_get()` (eager fetch, live XML,
 submission status), `dr_settypes()`/`dr_translate()`, `dr_HL_standardised()`
 (the deprecated union of the two catch tables), `dr_add_record_type()`,
-`dr_add_starttime()`, `length_weight`, `swept_area`, the areas/shapes
-lookups, and all of the `dr_check_*` family. Reintroduce one when something
-real needs it.
+`dr_add_starttime()`, `swept_area`, the areas/shapes lookups, and all of the
+`dr_check_*` family. Reintroduce one when something real needs it.
+
+`length_weight` was on that list until 2026-09-02 and came back, with its
+`length_type_conversion` companion and the shared `.dr_resolve.R` cascade
+primitive.
 
 ------------------------------------------------------------------------
 
@@ -113,13 +117,20 @@ real needs it.
 **Exported** (`R/`):
 - `dr_con_raw(table, path, quiet)`, `dr_con(type, path, quiet)` — `R/dr_con.R`
 - `dr_add_id(d)` — `R/dr_add_id.R`
-- `dr_add_length_mm(d)`, `dr_add_length_cm(d)`, `dr_add_n_and_cpue(d)`,
-  `dr_join_species(x, species)` — `R/dr_transformation.R`
+- `dr_add_length_mm(d)`, `dr_add_length_cm(d)`, `dr_add_length_mid(d)`,
+  `dr_add_n_and_cpue(d)`, `dr_join_species(x, species)` —
+  `R/dr_transformation.R`
 - `dr_HL_length(hh, hl, species, haulval)`,
   `dr_HL_summary(hh, hl, species, haulval)` — `R/dr_standardize.R`
+- `dr_add_length_tl(catch, conv, length_col)`,
+  `dr_add_predicted_weight(catch, lw, length_col, bias_correct, exclude_tiers)`,
+  `dr_compare_length_weight(len, smry, lw, tol, flag)` — `R/dr_length_weight.R`
 
 **Internal:** `.dr_resolve_parquet_path()`, `.dr_concat_ws()`,
-`.dr_hh_cols_for_hl()`, `.dr_require_cols()`.
+`.dr_hh_cols_for_hl()`, `.dr_require_cols()`, `.dr_maybe_collect()`;
+`.dr_coalesce_with_provenance()` (`R/dr_resolve.R`, eager + lazy) and the
+length-weight tier producers `.dr_lw_fit_ca()`, `.dr_lw_from_estimate()`,
+`.dr_lw_consensus()`, `.dr_lw_from_sealifebase()`.
 
 `NAMESPACE` is roxygen2-generated; never hand-edit it.
 
@@ -132,6 +143,11 @@ neither script publishes anything.
 - `DATASET_products.R` — raw HH/HL -> `HH`, `HL_length`, `HL_summary`,
   entirely lazily; DuckDB streams straight to parquet, nothing is
   `collect()`ed
+- `DATASET_length_weight.R` — raw CA + raw HL + `species.parquet` -> FishBase /
+  SeaLifeBase -> `length_weight.parquet`. Runs after `DATASET_species.R` and
+  is independent of `DATASET_products.R`
+- `DATASET_length_type_conversion.R` — two traced Macrouridae PAFL factors ->
+  `length_type_conversion.parquet`. No network
 
 ------------------------------------------------------------------------
 
@@ -176,6 +192,36 @@ Fresh build: 67,296 of 1,925,733 groups (3.49%). The retired
 implementation measured 3.5% over 1,920,932. The residual is real data —
 intrinsic to `DataType == "C"` plus rounding noise from non-integer
 `SubsamplingFactor` — not a defect.
+
+**`LengthClass` is the LOWER BOUNDARY of a length bin, not a length.** ICES
+says so for HL and CA alike — *"Lower length boundary of the Length class. In
+cm or mm depending on the LngtCode. E.g. 10-11 cm=10"* — and opus already
+carries it verbatim (`inst/DATRAS-data-dict.yaml:1713` and `:2289`). It is
+harmless for a length distribution, where a bin label is exactly what is
+wanted, and it is a real bias for weight: \(W = aL^b\) is convex, so the
+lower bound under-predicts, worst for small fish and wide bins — 15.8% at
+10 cm and 5.1% at 30 cm with the 1 cm bins that carry 59% of `HL_length`.
+It does not average out over a haul.
+
+`dr_add_length_mid()` adds `length_cm_mid = length_cm + accuracy/2`, and
+`dr_add_predicted_weight()` **defaults to that column**, so a pipeline that
+skipped the step errors instead of quietly returning low weights. The CA fit
+in `DATASET_length_weight.R` uses midpoints too. Both sides matter: fitting on
+lower bounds inflates `a` to compensate, which cancels at apply time only if
+the species happens to be reported at the same bin width in both tables —
+and the mixes differ (raw HL 39.65% mm / 57.73% cm, raw CA 48.23% / 51.77%).
+Found 2026-09-02, after the retired implementation had predicted from the
+lower bound throughout.
+
+**Two lookups at one grain, kept in two files.** `species` and `length_weight`
+are both exactly one row per `Valid_Aphia`, and merging them was considered and
+rejected: they rebuild against different remotes (WoRMS vs FishBase/
+SeaLifeBase), so a merged table has a partial-rebuild failure mode where half
+the columns silently vanish; and `species` is WoRMS fact while `length_weight`
+is obus's own modelled inference, which is why it carries `lw_source`, `r2`
+and `sigma` at all. The build cycle that looked like it would force the issue
+does not exist — `length_bearing` comes straight from raw HL, not from
+`HL_length` (verified identical, 1,176 either way).
 
 **`obus_retired` is a reference, never a source of settled fact.** It is
 archived intact at `../obus_retired`. Several of its own documented

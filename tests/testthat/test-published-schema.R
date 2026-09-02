@@ -50,13 +50,22 @@ PUBLISHED_SCHEMA <- list(
   hl_flag_code = c("code", "kind", "affects", "label", "meaning", "evidence"),
   species      = c("Valid_Aphia", "latin", "species", "rank", "kingdom", "phylum",
                    "class", "order", "family", "genus", "worms_status",
-                   "worms_aphia", "worms_name")
+                   "worms_aphia", "worms_name"),
+  # Same grain as `species` (one row per Valid_Aphia) but deliberately its own
+  # file: WoRMS fact and obus's modelled inference rebuild against different
+  # remotes, and a partial rebuild of a merged table would silently drop half
+  # of it. See dr_con()'s roxygen.
+  length_weight = c("Valid_Aphia", "a", "b", "lw_source", "n_ca", "r2", "sigma",
+                    "length_bearing"),
+  length_type_conversion = c("Valid_Aphia", "from_type", "intercept", "slope",
+                             "source")
 )
 
 # The tables dr_con() serves. Adding one is fine; removing or renaming one
 # breaks every caller that names it.
 PUBLISHED_TABLES <- c("HH", "species", "HL_length", "HL_summary",
-                      "hl_flag", "hl_flag_code")
+                      "hl_flag", "hl_flag_code",
+                      "length_weight", "length_type_conversion")
 
 # --- offline: the functions define the contract -----------------------------
 # A minimal haul carrying every branch the two functions key on: two sexes, a

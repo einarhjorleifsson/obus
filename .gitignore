@@ -4,3 +4,5 @@
 .Ruserdata
 data-raw/raw/
 data-raw/to_https/
+tests/testthat/_problems/
+tests/testthat/testthat-problems.rds

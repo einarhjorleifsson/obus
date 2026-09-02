@@ -71,7 +71,7 @@ silently multiplies).
 \code{\link{dr_HL_length}} describe the same underlying count \emph{when the source submission is
 internally consistent} -- a cross-check worth running, not a guarantee.
 Measured archive-wide on the retired implementation of this table
-(1,920,932 groups), 3.5\\% still disagreed meaningfully, concentrated in
+(1,920,932 groups), 3.5\% still disagreed meaningfully, concentrated in
 particular surveys rather than spread evenly. Most of the rest is either
 intrinsic to \code{DataType == "C"} (an independently reported catch rate
 need not match a raised length-frequency sum exactly) or rounding noise from
@@ -81,8 +81,8 @@ Unlike \code{\link{dr_HL_length}}, this table does \emph{not} carry
 \code{SpeciesSex} as a grain dimension. That asymmetry is deliberate and
 empirically grounded. Verified full-archive across 212,497 haul x species
 groups reporting more than one sex, \code{TotalNumber} genuinely varies by
-sex for 66\\% of them and is a species-level placeholder repeated identically
-across every sex sub-row for the other 34\\% -- and per-sex arithmetic
+sex for 66\% of them and is a species-level placeholder repeated identically
+across every sex sub-row for the other 34\% -- and per-sex arithmetic
 reconciliation can tell those apart.
 \code{SpeciesCategoryWeight} has no analogous check, and its
 repeats-vs-varies pattern tracks \code{TotalNumber}'s only about half the
@@ -106,7 +106,7 @@ mixed together." The typical case is a full length-frequency series
 count-only row (\code{"4"}) carrying the same \code{TotalNumber} again.
 
 Measured over the whole archive (2026-08-31): 1,219 of 2,290,203 groups
-(0.05\\%) carry more than one record type, the commonest pairs being
+(0.05\%) carry more than one record type, the commonest pairs being
 \code{\{1,5\}} and \code{\{4,7\}} -- matching ICES's own reported
 pattern independently. Filtering to a single \code{SpeciesValidity} makes
 \code{.id} \eqn{\times} \code{Valid_Aphia} exactly unique (verified: 0

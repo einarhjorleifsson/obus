@@ -30,6 +30,87 @@ locally against the full archive. **Nothing is published yet.**
 
 ---
 
+## Length-weight, rebuilt (2026-09-02)
+
+Regenerated from `obus_retired`'s cascade, keyed on `Valid_Aphia`, published as
+its own table rather than folded into `species`. Verified end to end: the build
+runs, and `dr_compare_length_weight()` on NS-IBTS 2015 Q1 reproduces the retired
+build's headline numbers on the same data — **7,145 haul × species, median ratio
+1.046, 27.4% outside ±25%** against retired's 7,145 / 1.04 / 27%.
+
+Tier coverage over the 1,176 length-bearing species (retired's figures in
+brackets): `ca_fit` 242 [244], `fishbase_bayes` 527 [525], `sealifebase_species`
+61 [61], `_genus` 52 [51], `_family` 50 [47], `default_constant` 172 [172],
+`unresolved` 29 [28], `not_applicable` 43 [43].
+
+- [ ] **Publish `length_weight.parquet` and `length_type_conversion.parquet`.**
+      Until then `test-published-schema.R`'s online test **fails on purpose**:
+      the server still serves `obus_retired`'s file, keyed `aphia`, and the test
+      says so. That is the test doing its job, not a broken build.
+
+      ```
+      scp data-raw/to_https/length_weight.parquet einarhj@heima.hafro.is:~/public_html/datras/length_weight.parquet
+      scp data-raw/to_https/length_type_conversion.parquet einarhj@heima.hafro.is:~/public_html/datras/length_type_conversion.parquet
+      ```
+
+- [ ] **The midpoint fix shifted the external tiers, and nobody has arbitrated
+      it.** `LengthClass` is a bin's lower boundary, so weights are now
+      predicted from `length_cm_mid` (see AGENTS.md, Key Facts). `ca_fit`
+      absorbed the change — its own coefficients moved with it (median `a`
+      −15.1%, `b` +1.31%) and its median ratio is unchanged at 1.04, on 86% of
+      the comparisons. The tiers fitted elsewhere did not.
+
+      Isolated properly — one build, one set of coefficients, only `length_col`
+      changing, NS-IBTS 2015 Q1. (Do NOT compare against the figures in
+      `obus_retired`'s `dev/length_weight_notes.qmd`: those predate a different
+      archive and a different FishBase snapshot, so the difference there is not
+      attributable to the length convention.)
+
+      | tier | n | lower bound | midpoint | lift |
+      |---|---:|---:|---:|---:|
+      | `ca_fit` | 6174 | 0.995 | 1.038 | 2.9% |
+      | `fishbase_bayes` | 381 | 0.986 | 1.063 | 5.8% |
+      | `sealifebase_species` | 301 | 1.068 | 1.149 | 9.5% |
+      | `sealifebase_genus` | 154 | 1.346 | 1.454 | 2.2% |
+      | `default_constant` | 82 | 1.174 | 1.434 | 20.6% |
+      | `sealifebase_family` | 53 | 0.785 | 0.798 | 2.5% |
+
+      The `ca_fit` row is not a retired-vs-new comparison — both its columns use
+      the new midpoint-fitted coefficients, so its lower-bound column pairs them
+      with a length convention they were not fitted under. `default_constant`
+      moves most because its species are smallest: median 5.5 cm in 1 cm bins,
+      where the correction is ~30%, against `ca_fit`'s 20 cm in 0.5 cm bins at
+      ~4%.
+
+      **This is not a regression to tune away.** External coefficients are
+      fitted on actual measured fish, so feeding them the midpoint is the
+      correct operation and the previous ~1.0 was two errors cancelling. But it
+      leaves a real open question — whether the residual over-prediction is
+      FishBase's coefficients, the reported `SpeciesCategoryWeight`, or both —
+      and the house rule is to surface a two-measurement mismatch, not to pick
+      a winner. `dr_add_predicted_weight(exclude_tiers = ...)` is the caller's
+      lever meanwhile.
+
+      One thing that did improve: `sealifebase_genus`'s median ratio is 1.45,
+      against the 3.94 the retired build reported. Not attributed — the
+      archive, SeaLifeBase's own contents and the length convention all changed
+      at once, and no one has separated them.
+
+- [ ] **The midpoint assumes lengths are uniform within a bin.** They are not
+      quite: a declining length-frequency puts slightly more fish below the
+      midpoint. The bias from that is second-order (~0.03% at 30 cm with 1 cm
+      bins, against the 5.1% the lower bound cost) and correcting it means
+      assuming a within-bin distribution. Recorded, not planned.
+
+- [ ] **`datrasdoodle2`'s chapter 09 (`09-weight-from-length.qmd`) is stale.**
+      It calls `dr_lookup_length_weight` (an eager `.rda` that no longer
+      exists — it is `dr_con("length_weight")` now), `dr_con("CA")` (now
+      `dr_con_raw("CA")`) and `aphia` (now `Valid_Aphia`), and predicts from
+      `length_cm` throughout. Nothing re-executes obus, so none of this fails
+      until someone renders it.
+
+---
+
 ## Immediate
 
 - [ ] **Publish.** All four files are in `data-raw/to_https/` and none are

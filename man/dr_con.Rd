@@ -26,6 +26,18 @@ species group.}
 \code{kind}, \code{affects}, \code{label}, \code{meaning},
 \code{evidence}. \code{kind} is the one to filter on --
 \code{"intrinsic"} and \code{"property"} records are not defects.}
+\item{\code{"length_weight"}}{Length-weight coefficients, one row per
+\code{Valid_Aphia}: \code{a}, \code{b}, the \code{lw_source}
+provenance label, the \code{ca_fit} metadata (\code{n_ca},
+\code{r2}, \code{sigma}) and \code{length_bearing}. Kept out of
+\code{"species"} despite the shared grain: it is obus's own modelled
+inference rather than WoRMS fact, and it rebuilds against different
+(FishBase/SeaLifeBase) remotes. See
+\code{\link{dr_add_predicted_weight}}.}
+\item{\code{"length_type_conversion"}}{Non-Total-Length landmark to
+Total Length, for the few species DATRAS measures otherwise:
+\code{Valid_Aphia}, \code{from_type}, \code{intercept},
+\code{slope}, \code{source}. See \code{\link{dr_add_length_tl}}.}
 }}
 
 \item{path}{Location of the parquet directory, local or remote. Trailing

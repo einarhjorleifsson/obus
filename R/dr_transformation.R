@@ -65,6 +65,41 @@ dr_add_length_mm <- function(d) {
     )
 }
 
+#' Add `length_cm_mid`, the midpoint of the length bin
+#'
+#' \code{LengthClass} -- and therefore \code{\link{dr_add_length_cm}}'s
+#' \code{length_cm} -- is the \strong{lower boundary} of a length bin, not the
+#' length of the fish in it. ICES's field descriptions are explicit for both HL
+#' and CA: \emph{"Lower length boundary of the Length class. In cm or mm
+#' depending on the LngtCode. E.g. 10-11 cm=10"}. This adds the bin midpoint,
+#' \code{length_cm + accuracy / 2}, which is the unbiased point estimate of the
+#' length of a fish reported in that bin.
+#'
+#' \strong{This matters for weight and not much else.} A length-frequency
+#' distribution is fine on lower bounds -- that is what a bin label is. But
+#' \eqn{W = a L^b} is convex, so predicting weight from the lower bound
+#' systematically \emph{under}-estimates it, worst for small fish and wide bins:
+#' with the 1 cm bins that carry 59% of the archive's length rows, the shortfall
+#' is 15.8% at 10 cm and 5.1% at 30 cm. It does not average out over a haul.
+#' \code{\link{dr_add_predicted_weight}} therefore takes this column by default.
+#'
+#' \code{accuracy} is \code{NA} where \code{LengthCode} is the \code{"-9"}
+#' sentinel, and \code{length_cm_mid} is then \code{NA} too: with no bin width
+#' there is no midpoint, and falling back to the lower bound would reintroduce
+#' the bias silently. No row in the published \code{HL_length} is affected.
+#'
+#' @param d A data frame or lazy table with \code{length_cm} and
+#'   \code{accuracy}, as produced by \code{\link{dr_add_length_cm}} and as
+#'   carried by \code{\link{dr_HL_length}}.
+#'
+#' @return \code{d} with an added \code{length_cm_mid} column.
+#' @seealso \code{\link{dr_add_length_cm}}, \code{\link{dr_add_predicted_weight}}
+#' @export
+dr_add_length_mid <- function(d) {
+  .dr_require_cols(d, c("length_cm", "accuracy"), "dr_add_length_mid")
+  dplyr::mutate(d, length_cm_mid = length_cm + accuracy / 2)
+}
+
 # icesVocab - DataType
 #   |key |description                               |
 #   |:---|:-----------------------------------------|
@@ -93,8 +128,8 @@ dr_add_length_mm <- function(d) {
 #' supplied}, which is not the same statement as \code{1}, and substituting one
 #' for the other would assert a fact the submission does not contain.
 #'
-#' Archive-wide this affects 24,298 length rows (0.17\%), worth 0.003\% of
-#' total \code{n_haul}; 98\% of them are Can-Mar. An invalid (\code{"-9"}) or
+#' Archive-wide this affects 24,298 length rows (0.17%), worth 0.003% of
+#' total \code{n_haul}; 98% of them are Can-Mar. An invalid (\code{"-9"}) or
 #' missing \code{DataType} gives \code{NA} outright, as before.
 #'
 #' Per ICES: \code{"C"} must report 1, \code{"S"} is always >1, and

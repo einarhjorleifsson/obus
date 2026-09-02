@@ -32,8 +32,8 @@ as a numeric sentinel. So an \code{NA} here means \emph{no information was
 supplied}, which is not the same statement as \code{1}, and substituting one
 for the other would assert a fact the submission does not contain.
 
-Archive-wide this affects 24,298 length rows (0.17\\%), worth 0.003\\% of
-total \code{n_haul}; 98\\% of them are Can-Mar. An invalid (\code{"-9"}) or
+Archive-wide this affects 24,298 length rows (0.17\%), worth 0.003\% of
+total \code{n_haul}; 98\% of them are Can-Mar. An invalid (\code{"-9"}) or
 missing \code{DataType} gives \code{NA} outright, as before.
 
 Per ICES: \code{"C"} must report 1, \code{"S"} is always >1, and

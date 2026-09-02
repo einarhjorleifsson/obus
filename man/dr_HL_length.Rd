@@ -63,8 +63,8 @@ The raw code is kept as reported (\code{"F"}, \code{"M"}, \code{"U"},
 pre-merged into \code{"F"}, and \code{"U"} (assessed, undetermined) stays
 distinct from \code{NA} (never assessed). A caller wanting the old ratio can
 derive it after grouping \code{SpeciesSex} away, e.g.
-\code{summarise(p_females = sum(n_haul[SpeciesSex \%in\% c("F","B")]) /
-sum(n_haul[SpeciesSex \%in\% c("F","M","B")]))}.
+\verb{summarise(p_females = sum(n_haul[SpeciesSex \%in\% c("F","B")]) /}
+\verb{sum(n_haul[SpeciesSex \%in\% c("F","M","B")]))}.
 
 \code{LengthType} and \code{DevelopmentStage} are part of the grain, not
 carried attributes. ICES's own field descriptions define an HL record by the
