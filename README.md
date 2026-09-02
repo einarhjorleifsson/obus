@@ -12,7 +12,9 @@ builds the derived catch tables on top of them.
 
 Field names and types are opus’s to define; obus does not keep its own
 copy of that knowledge. What obus adds is the haul key (`.id`), the
-species lookup, and two catch tables.
+species lookup, two catch tables, a per-record issue-flag table, and the
+length-weight coefficients needed to turn a length frequency into a
+weight.
 
 ## Install
 
@@ -33,7 +35,8 @@ library(dplyr)
 # the raw opus archive -- HH, HL, CA, LT, exactly as staged
 dr_con_raw("HH")
 
-# what obus builds from it -- HH (+ .id), species, HL_length, HL_summary
+# what obus builds from it -- HH (+ .id), species, HL_length, HL_summary,
+# hl_flag, hl_flag_code, length_weight, length_type_conversion
 dr_con("HL_summary")
 ```
 
@@ -73,12 +76,52 @@ Neither table filters on `HaulValidity` or `SpeciesValidity` as
 published – both are carried as columns so that the choice stays the
 caller’s.
 
+## Weight from length
+
+`dr_HL_length()` gives numbers at length; `length_weight` gives the
+coefficients for `W = a * L^b`, resolved per species through a ranked
+cascade – a fit on obus’s own CA weight-at-length data where there is
+one, then FishBase for finfish, SeaLifeBase for invertebrates, and a
+generic constant as the floor. Every row records which tier answered, in
+`lw_source`, so no predicted weight is ever anonymous. Taxa where a
+power law is not meaningful (jellyfish, sponges, worms) are labelled
+`not_applicable` rather than given a fish default.
+
+**`LengthClass` is the lower boundary of a length bin, not a length** –
+ICES says so for HL and CA alike. `W = a * L^b` is convex, so predicting
+from the lower bound under-estimates, by 15.8% at 10 cm and 5.1% at 30
+cm with 1 cm bins. `dr_add_length_mid()` takes the midpoint, and
+`dr_add_predicted_weight()` defaults to that column, so skipping the
+step errors rather than quietly returning low weights.
+
+``` r
+dr_con("HL_length") |>
+  filter(Survey == "NS-IBTS", Year == 2022, Quarter == 1) |>
+  dr_add_length_mid() |>
+  dr_add_predicted_weight() |>          # w_ind, w_haul_pred, w_hour_pred
+  collect()
+```
+
+`dr_compare_length_weight()` checks the result against the measured
+`w_haul` in `dr_HL_summary()`. It reports a mismatch and never resolves
+one: a discrepancy can mean the coefficients are wrong *or* that the
+reported weight is, and there is no principled way to pick a winner
+between two independent measurements.
+
 ## Building the published files
 
 `data-raw/` holds the scripts that produce what the server serves. They
-are run by hand, in order, and neither one publishes anything:
+are run by hand, `DATASET_species.R` first, and none of them publishes
+anything:
 
 ``` r
-source("data-raw/DATASET_species.R")   # -> to_https/species.parquet
-source("data-raw/DATASET_products.R")  # -> to_https/{HH,HL_length,HL_summary}.parquet
+source("data-raw/DATASET_species.R")                 # -> species.parquet
+source("data-raw/DATASET_products.R")                # -> HH, HL_length, HL_summary
+source("data-raw/DATASET_hl_flag.R")                 # -> hl_flag, hl_flag_code
+source("data-raw/DATASET_length_weight.R")           # -> length_weight.parquet
+source("data-raw/DATASET_length_type_conversion.R")  # -> length_type_conversion.parquet
 ```
+
+`DATASET_length_weight.R` needs `species.parquet` but not the products,
+so it can run before or after `DATASET_products.R`. Publishing is a
+manual `scp`.

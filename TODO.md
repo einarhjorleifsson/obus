@@ -1,8 +1,9 @@
 # obus — TODO
 
-**Status:** Rebuilt 2026-08-31 from an empty `R/`. Nine exported functions,
-`R CMD check` clean (0/0/0), all three product parquets built and verified
-locally against the full archive. **Nothing is published yet.**
+**Status:** Rebuilt 2026-08-31 from an empty `R/`; length-weight added
+2026-09-02. Thirteen exported functions, `R CMD check` clean (0/0/0), 209 tests
+passing including the online schema check. **All eight tables are published**
+and verified against the full archive.
 
 ---
 
@@ -21,12 +22,20 @@ locally against the full archive. **Nothing is published yet.**
       off WoRMS; 2,022 aphia, all resolving
 - [x] `data-raw/DATASET_products.R` — `HH`, `HL_length`, `HL_summary`,
       built entirely lazily
+- [x] `dr_add_length_mid()`, `dr_add_length_tl()`,
+      `dr_add_predicted_weight()`, `dr_compare_length_weight()` and the
+      `.dr_coalesce_with_provenance()` cascade primitive, with
+      `DATASET_length_weight.R` / `DATASET_length_type_conversion.R` — see
+      **Length-weight, rebuilt (2026-09-02)** below
 - [x] **Verified against the full archive**: `.id` unique over 150,217
       hauls, zero NA, zero orphan HL rows; `HL_length` reproduces the
       published `HL_standardised` exactly on NS-IBTS 2022 Q1 (29,752 rows,
       zero differences); the summary-vs-length cross-check lands at 3.49%,
       against the 3.5% the retired implementation measured
-- [x] `R CMD check`: 0 errors, 0 warnings, 0 notes
+- [x] `R CMD check`: 0 errors, 0 warnings, 0 notes. `^docs$` added to
+      `.Rbuildignore` 2026-09-02 — the pkgdown output had always tripped a
+      "non-standard file/directory at top level" NOTE, which the earlier
+      0/0/0 claim predated
 
 ---
 
@@ -48,8 +57,8 @@ brackets): `ca_fit` 242 [244], `fishbase_bayes` 527 [525], `sealifebase_species`
       byte-identical to the local build (2,022 and 2 rows), tier coverage
       matches, and `test-published-schema.R`'s online test now runs all seven
       tables and passes. Test suite 209 pass / 0 fail / 0 skip; `R CMD check`
-      0 errors, 0 warnings, 1 note (`docs` missing from `.Rbuildignore`,
-      pre-existing).
+      `Status: OK` (0/0/0) once `^docs$` was added to `.Rbuildignore` — that
+      NOTE was pre-existing, not caused by this work.
 
       Note that commit `3ae5580`'s message says "R CMD check: 1 error" and
       explains it as the stale server file. True when written, stale now --

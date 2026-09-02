@@ -2,7 +2,9 @@
 
 # obus — DATRAS Access Layer for R
 
-**Status:** Rebuilt from an empty `R/`, 2026-08-31. **Version:** 2026.08
+**Status:** Rebuilt from an empty `R/`, 2026-08-31; length-weight added
+2026-09-02. **Version:** 2026.08 — 13 exported functions, all eight published
+tables live, `R CMD check` 0/0/0.
 
 ------------------------------------------------------------------------
 
@@ -18,7 +20,8 @@ package stages, and builds the derived catch tables on top of them.
    opus's current field names exactly as staged, no `.id`, nothing derived.
 2. **`dr_con(type)`** — lazy DuckDB view over what obus itself builds and
    publishes at `https://heima.hafro.is/~einarhj/datras/`: `HH` (raw plus
-   `.id`), `species`, `HL_length`, `HL_summary`.
+   `.id`), `species`, `HL_length`, `HL_summary`, `hl_flag`, `hl_flag_code`,
+   `length_weight`, `length_type_conversion`.
 
 Both open onto the **same** DuckDB connection (duckdbfs's cached one), and
 that is load-bearing, not incidental: `dr_HL_length()`/`dr_HL_summary()`
