@@ -4,11 +4,14 @@ output: github_document
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE)
+# Pin duckdb's extension/secret home so it does not announce the location on
+# every connection; duckdbfs re-opens a connection per exit finalizer, and those
+# messages escape message = FALSE.
+options(duckdb.home = "~/.duckdb")
 ```
 
 # obus
 
-## Preamble
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -45,5 +48,46 @@ duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/raw/CA.parquet") 
 duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/species.parquet") |> dplyr::glimpse()
 duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL_length.parquet") |> dplyr::glimpse()
 duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL_summary.parquet") |> dplyr::glimpse()
+```
+
+One could do:
+
+```{r}
+system.time({
+  library(obus)
+  library(dplyr)
+  library(ggplot2)
+  library(tidyr)
+  
+  options(width = 100)
+  
+  focus <- c("Atlantic cod", "haddock", "whiting", "Atlantic herring")
+  
+  hh <- dr_con_raw("HH") |>
+    dr_add_id() |> 
+    filter(Survey == "NS-IBTS", Quarter == 1, Gear == "GOV",
+           Year >= 1984, HaulValidity == "V") |>
+    select(.id, Year) |>
+    collect()
+  
+  catch <- dr_con("HL_summary") |>
+    filter(Survey == "NS-IBTS", Quarter == 1, species %in% focus) |>
+    group_by(.id, species) |>
+    summarise(n_hour = sum(n_totalnumber_hour, na.rm = TRUE), .groups = "drop") |>
+    collect()
+  
+  # every haul x every species, so that "not caught" becomes a zero
+  # rather than a missing row - the next section is about why
+  abundance <- crossing(hh, species = focus) |>
+    left_join(catch, by = c(".id", "species")) |>
+    mutate(n_hour = coalesce(n_hour, 0))
+})
+```
+
+```{r simple-plot}
+ggplot(abundance, aes(Year, n_hour)) +
+  stat_summary(fun.data = "mean_cl_boot") +
+  facet_wrap(~species, scales = "free_y") +
+  labs(x = NULL, y = "Numbers per hour")
 ```
 
