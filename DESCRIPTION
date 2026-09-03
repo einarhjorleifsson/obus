@@ -32,5 +32,6 @@ Remotes:
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 Config/roxygen2/version: 8.1.0
-URL: https://einarhjorleifsson.github.io/obus/
+URL: https://github.com/einarhjorleifsson/obus
+BugReports: https://github.com/einarhjorleifsson/obus/issues
 Config/Needs/website: rmarkdown
