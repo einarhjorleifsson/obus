@@ -1,127 +1,241 @@
 
 # obus
 
+## Preamble
+
 <!-- badges: start -->
 
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-obus is the R access layer for the ICES DATRAS trawl-survey archive. It
-reads the raw exchange tables that the sibling
-[opus](https://github.com/einarhjorleifsson/opus) package stages, and
-builds the derived catch tables on top of them.
+{obus} is a temporary experimental package used to explore various
+DATRAS data connections and wrapper functions to make life a little
+easier for the ordinary user. Some of that may be taken up in a more
+official package. Or possibly not. So far {obus} does actually very
+little, but hopefully well.
 
-Field names and types are opus’s to define; obus does not keep its own
-copy of that knowledge. What obus adds is the haul key (`.id`), the
-species lookup, two catch tables, a per-record issue-flag table, and the
-length-weight coefficients needed to turn a length frequency into a
-weight.
+The package code resides on
+[GitHub](https://github.com/einarhjorleifsson/obus).
 
-## Install
+For purists, one regrets to inform that the functionality of {obus}
+rests on a quite substantial number of dependencies (see
+[DESCRIPTION](https://raw.githubusercontent.com/einarhjorleifsson/obus/refs/heads/main/DESCRIPTION)
+for the full list). Some of them may possibly be trimmed, but never all.
 
-``` r
-# install.packages("pak")
-pak::pak("einarhjorleifsson/obus")
-```
+Access to the parquet datafiles is, however, independent of {obus} and,
+for that matter, of any software platform used. The current
+**temporary** path to the data (with the new header lingo) used in
+{obus} is:
 
-## Two connections
+    # The exchange files:
+    https://heima.hafro.is/~einarhj/datras/raw/HH.parquet
+    https://heima.hafro.is/~einarhj/datras/raw/HL.parquet
+    https://heima.hafro.is/~einarhj/datras/raw/CA.parquet
+    # Auxiliary files:
+    https://heima.hafro.is/~einarhj/datras/species.parquet
+    ...
+    # Experimentation with standardization of the HL data:
+    https://heima.hafro.is/~einarhj/datras/HL_length.parquet
+    https://heima.hafro.is/~einarhj/datras/HL_summary.parquet
 
-Everything is lazy: a `dr_con*()` call opens a DuckDB view over a remote
-parquet file and downloads nothing until `dplyr::collect()`.
-
-``` r
-library(obus)
-library(dplyr)
-
-# the raw opus archive -- HH, HL, CA, LT, exactly as staged
-dr_con_raw("HH")
-
-# what obus builds from it -- HH (+ .id), species, HL_length, HL_summary,
-# hl_flag, hl_flag_code, length_weight, length_type_conversion
-dr_con("HL_summary")
-```
-
-## The two catch tables
-
-`dr_HL_length()` is the length-frequency table: one row per haul x
-species x length x sex x measurement type, covering only species that
-were actually measured.
-
-`dr_HL_summary()` is the per-haul species roster: one row per haul x
-species x species-validity, covering *every* species recorded for the
-haul, measured or not. Its `n_totalnumber` is the total DATRAS
-*reported* for the species (`TotalNumber`) — deliberately named apart
-from `dr_HL_length()`’s `n_haul`, which reaches the same quantity by
-raising the measured length frequencies. The two disagree for about 3.4%
-of haul x species groups, and that disagreement is a genuine data signal
-worth checking, not a bug.
+One way to access these is just using {duckdb}/{duckdbfs}:
 
 ``` r
-dr_con("HL_summary") |>
-  filter(Survey == "NS-IBTS", Year == 2022, Quarter == 1, SpeciesValidity == "1") |>
-  select(.id, latin, species, n_totalnumber, w_haul, n_measured) |>
-  collect()
+duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/raw/HH.parquet") |> dplyr::glimpse()
+#> Rows: ??
+#> Columns: 69
+#> $ RecordHeader            <chr> "HH", "HH", "HH", "HH", "HH", "HH", "HH", "HH"~
+#> $ Survey                  <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS"~
+#> $ Quarter                 <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1~
+#> $ Country                 <chr> "DK", "DK", "DK", "DK", "DK", "DK", "DK", "DK"~
+#> $ Platform                <chr> "26D4", "26D4", "26D4", "26D4", "26D4", "26D4"~
+#> $ Gear                    <chr> "CAM", "CAM", "CAM", "EXP", "EXP", "GRT", "GRT~
+#> $ SweepLength             <int> NA, NA, NA, 110, 110, NA, NA, NA, NA, NA, NA, ~
+#> $ GearExceptions          <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ DoorType                <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ StationName             <chr> "150", "151", "152", "149", "147", "10", "101"~
+#> $ HaulNumber              <int> 67, 68, 69, 66, 65, 8, 54, 2, 55, 56, 57, 59, ~
+#> $ Year                    <int> 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1991~
+#> $ Month                   <int> 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3~
+#> $ Day                     <int> 20, 20, 20, 19, 19, 6, 17, 5, 17, 17, 17, 17, ~
+#> $ StartTime               <chr> "0514", "0644", "0923", "2128", "1829", "1417"~
+#> $ DepthStratum            <chr> "11", "11", "12", "12", "12", "10", "11", "9",~
+#> $ HaulDuration            <int> 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60~
+#> $ DayNight                <chr> "D", "D", "D", "N", "N", "D", "D", "D", "D", "~
+#> $ ShootLatitude           <dbl> 55.6000, 55.6667, 55.5167, 55.4500, 55.5500, 5~
+#> $ ShootLongitude          <dbl> 16.2500, 16.2667, 16.1667, 15.1167, 15.1833, 1~
+#> $ HaulLatitude            <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ HaulLongitude           <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ StatisticalRectangle    <chr> "40G6", "40G6", "40G6", "39G5", "40G5", "38G4"~
+#> $ BottomDepth             <int> 76, 71, 80, 83, 80, 47, 79, 34, 60, 80, 80, 73~
+#> $ HaulValidity            <chr> "V", "V", "V", "V", "V", "V", "V", "V", "V", "~
+#> $ HydrographicStationID   <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, "104+5", N~
+#> $ StandardSpeciesCode     <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "~
+#> $ BycatchSpeciesCode      <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "~
+#> $ DataType                <chr> "C", "C", "C", "C", "C", "C", "C", "C", "C", "~
+#> $ NetOpening              <dbl> NA, 5, 5, 7, 16, 3, 3, 4, 3, 3, 3, 3, 3, 3, 3,~
+#> $ Rigging                 <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ Tickler                 <chr> "-9", "-9", "-9", "-9", "-9", "-9", "-9", "-9"~
+#> $ Distance                <int> 6111, 6482, 6482, 6667, 8519, 6667, 6482, 6296~
+#> $ WarpLength              <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ WarpDiameter            <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ WarpDensity             <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ DoorSurface             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ DoorWeight              <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ DoorSpread              <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ WingSpread              <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ Buoyancy                <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ KiteArea                <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ GroundRopeWeight        <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ TowDirection            <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SpeedGround             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SpeedWater              <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SurfaceCurrentDirection <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SurfaceCurrentSpeed     <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ BottomCurrentDirection  <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ BottomCurrentSpeed      <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ WindDirection           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ WindSpeed               <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SwellDirection          <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SwellHeight             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SurfaceTemperature      <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ BottomTemperature       <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SurfaceSalinity         <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ BottomSalinity          <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ ThermoCline             <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ ThermoClineDepth        <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ CodendMesh              <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ SecchiDepth             <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ Turbidity               <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ TidePhase               <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ TideSpeed               <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ PelagicSamplingType     <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ MinTrawlDepth           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ MaxTrawlDepth           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA~
+#> $ DateofCalculation       <date> 2025-04-01, 2025-04-01, 2025-04-01, 2025-04-0~
+duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/raw/HL.parquet") |> dplyr::glimpse()
+#> Rows: ??
+#> Columns: 29
+#> $ RecordHeader          <chr> "HL", "HL", "HL", "HL", "HL", "HL", "HL", "HL", ~
+#> $ Survey                <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS", ~
+#> $ Quarter               <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ~
+#> $ Country               <chr> "DE", "DE", "DE", "DE", "DE", "DE", "DE", "DE", ~
+#> $ Platform              <chr> "06S1", "06S1", "06S1", "06S1", "06S1", "06S1", ~
+#> $ Gear                  <chr> "H20", "H20", "H20", "H20", "H20", "H20", "H20",~
+#> $ SweepLength           <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ GearExceptions        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ DoorType              <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ StationName           <chr> "33", "33", "33", "48", "48", "48", "491", "491"~
+#> $ HaulNumber            <int> 28, 28, 28, 43, 43, 43, 42, 42, 42, 42, 42, 42, ~
+#> $ Year                  <int> 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1991, ~
+#> $ SpeciesCodeType       <chr> "W", "W", "W", "W", "W", "W", "W", "W", "W", "W"~
+#> $ SpeciesCode           <int> 126436, 126436, 126436, 127143, 127143, 126440, ~
+#> $ SpeciesValidity       <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"~
+#> $ SpeciesSex            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ TotalNumber           <dbl> 46, 46, 46, 6, 6, 2, 596, 596, 596, 596, 596, 59~
+#> $ SpeciesCategory       <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"~
+#> $ SubsampledNumber      <int> 23, 23, 23, 3, 3, 1, 63, 63, 63, 63, 63, 63, 63,~
+#> $ SubsamplingFactor     <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ~
+#> $ SubsampleWeight       <int> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ SpeciesCategoryWeight <int> 95, 95, 95, 9, 9, 2, 240, 240, 240, 240, 240, 24~
+#> $ LengthCode            <chr> "1", "1", "1", "1", "1", "1", "0", "0", "0", "0"~
+#> $ LengthClass           <int> 15, 46, 50, 24, 25, 24, 150, 155, 160, 165, 170,~
+#> $ NumberAtLength        <dbl> 6, 2, 2, 2, 4, 2, 9, 9, 28, 57, 19, 19, 47, 38, ~
+#> $ DevelopmentStage      <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ LengthType            <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ DateofCalculation     <date> 2025-04-01, 2025-04-01, 2025-04-01, 2025-04-01,~
+#> $ Valid_Aphia           <int> 126436, 126436, 126436, 127143, 127143, 126440, ~
+duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/raw/CA.parquet") |> dplyr::glimpse()
+#> Rows: ??
+#> Columns: 34
+#> $ RecordHeader         <chr> "CA", "CA", "CA", "CA", "CA", "CA", "CA", "CA", "~
+#> $ Survey               <chr> "BITS", "BITS", "BITS", "BITS", "BITS", "BITS", "~
+#> $ Quarter              <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1~
+#> $ Country              <chr> "SE", "LV", "LV", "LV", "LV", "LV", "LV", "LV", "~
+#> $ Platform             <chr> "77AR", "90MX", "90MX", "90MX", "90MX", "90MX", "~
+#> $ Gear                 <chr> "FOT", "LBT", "LBT", "LBT", "LBT", "LBT", "LBT", ~
+#> $ SweepLength          <int> 185, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, ~
+#> $ GearExceptions       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
+#> $ DoorType             <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
+#> $ StationName          <chr> "82", "3", "3", "3", "3", "3", "3", "3", "3", "3"~
+#> $ HaulNumber           <int> 17, 24, 24, 24, 24, 21, 21, 21, 21, 21, 21, 21, 2~
+#> $ Year                 <int> 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1991, 1~
+#> $ SpeciesCodeType      <chr> "W", "W", "W", "W", "W", "W", "W", "W", "W", "W",~
+#> $ SpeciesCode          <int> 126436, 126436, 126436, 126436, 126436, 126436, 1~
+#> $ AreaType             <chr> NA, "4", "4", "4", "4", "4", "4", "4", "4", "4", ~
+#> $ AreaCode             <chr> NA, "26", "26", "26", "26", "26", "26", "26", "26~
+#> $ LengthCode           <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1",~
+#> $ LengthClass          <int> 26, 50, 50, 49, 49, 52, 51, 50, 48, 42, 39, 33, 3~
+#> $ IndividualSex        <chr> "F", "F", "M", "F", "F", "F", "F", "M", "M", "F",~
+#> $ IndividualMaturity   <chr> "1", "65", "62", "65", "65", "62", "62", "62", "6~
+#> $ AgePlusGroup         <chr> "-9", "-9", "-9", "-9", "-9", "-9", "-9", "-9", "~
+#> $ Age                  <int> 2, 4, 4, 4, 4, 5, 5, 5, 5, 3, 3, 2, 2, 7, 8, 6, 6~
+#> $ NumberAtLength       <int> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1~
+#> $ IndividualWeight     <dbl> 150, 1320, 1520, 1780, 1520, 1750, 1550, 1450, 12~
+#> $ FishID               <chr> NA, "19", "13", "11", "18", "28", "26", "29", "25~
+#> $ GeneticSamplingFlag  <chr> NA, "N", "N", "N", "N", "N", "N", "N", "N", "N", ~
+#> $ StomachSamplingFlag  <chr> NA, "N", "N", "N", "N", "N", "N", "N", "N", "N", ~
+#> $ AgeSource            <chr> NA, "otolith", "otolith", "otolith", "otolith", "~
+#> $ AgePreparationMethod <chr> NA, "BB", "BB", "BB", "BB", "BB", "BB", "BB", "BB~
+#> $ OtolithGrading       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
+#> $ ParasiteSamplingFlag <chr> NA, "N", "N", "N", "N", "N", "N", "N", "N", "N", ~
+#> $ MaturityScale        <chr> NA, "M6", "M6", "M6", "M6", "M6", "M6", "M6", "M6~
+#> $ DateofCalculation    <date> 2025-04-01, 2025-04-01, 2025-04-01, 2025-04-01, ~
+#> $ Valid_Aphia          <int> 126436, 126436, 126436, 126436, 126436, 126436, 1~
+duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/species.parquet") |> dplyr::glimpse()
+#> Rows: ??
+#> Columns: 13
+#> $ Valid_Aphia  <int> 55, 69, 101, 104, 105, 113, 120, 127, 145, 149, 151, 152,~
+#> $ latin        <chr> "Polyplacophora", "Ischnochitonidae", "Gastropoda", "Scap~
+#> $ species      <chr> "chitons", NA, "gastropods", "scaphopodians", "bivalves",~
+#> $ rank         <chr> "Class", "Family", "Class", "Class", "Class", "Family", "~
+#> $ kingdom      <chr> "Animalia", "Animalia", "Animalia", "Animalia", "Animalia~
+#> $ phylum       <chr> "Mollusca", "Mollusca", "Mollusca", "Mollusca", "Mollusca~
+#> $ class        <chr> "Polyplacophora", "Polyplacophora", "Gastropoda", "Scapho~
+#> $ order        <chr> NA, "Chitonida", NA, NA, NA, "Patellida", "Littorinimorph~
+#> $ family       <chr> NA, "Ischnochitonidae", NA, NA, NA, "Patellidae", "Hydrob~
+#> $ genus        <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
+#> $ worms_status <chr> "accepted", "accepted", "accepted", "accepted", "accepted~
+#> $ worms_aphia  <int> 55, 69, 101, 104, 105, 113, 120, 127, 145, 149, 151, 152,~
+#> $ worms_name   <chr> "Polyplacophora", "Ischnochitonidae", "Gastropoda", "Scap~
+duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL_length.parquet") |> dplyr::glimpse()
+#> Rows: ??
+#> Columns: 17
+#> $ .id              <chr> "NS-IBTS:2006:3:GB-SCT:748S:GOV:321:9", "NS-IBTS:2006~
+#> $ Survey           <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS"~
+#> $ Year             <int> 2006, 2006, 2006, 2006, 2006, 2006, 2006, 2006, 2006,~
+#> $ Quarter          <int> 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,~
+#> $ Valid_Aphia      <int> 126437, 150637, 127137, 127139, 126715, 127139, 10581~
+#> $ latin            <chr> "Melanogrammus aeglefinus", "Eutrigla gurnardus", "Hi~
+#> $ species          <chr> "haddock", "grey gurnard", "American plaice", "common~
+#> $ rank             <chr> "Species", "Species", "Species", "Species", "Species"~
+#> $ length_mm        <int> 410, 240, 160, 220, 190, 200, 520, 270, 350, 150, 280~
+#> $ length_cm        <dbl> 41, 24, 16, 22, 19, 20, 52, 27, 35, 15, 28, 27, 26, 2~
+#> $ accuracy         <dbl> 1.0, 1.0, 1.0, 0.1, 1.0, 0.1, 1.0, 1.0, 1.0, 0.1, 1.0~
+#> $ LengthType       <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
+#> $ SpeciesSex       <chr> "U", "U", "U", "F", "U", NA, "M", "U", "U", NA, "U", ~
+#> $ DevelopmentStage <chr> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, N~
+#> $ n_haul           <dbl> 1.000, 2.000, 3.000, 1.000, 2.000, 278.949, 1.000, 1.~
+#> $ n_hour           <dbl> 2.000, 4.000, 6.000, 2.000, 4.000, 557.898, 2.000, 2.~
+#> $ SpeciesValidity  <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "1"~
+duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL_summary.parquet") |> dplyr::glimpse()
+#> Rows: ??
+#> Columns: 16
+#> $ .id                <chr> "NS-IBTS:2006:3:DE:06NI:GOV:697:1", "NS-IBTS:2007:3~
+#> $ Survey             <chr> "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBTS", "NS-IBT~
+#> $ Year               <int> 2006, 2007, 2007, 2007, 2008, 2008, 2008, 2008, 200~
+#> $ Quarter            <int> 3, 3, 3, 3, 1, 1, 1, 3, 3, 3, 1, 1, 3, 3, 3, 3, 1, ~
+#> $ Valid_Aphia        <int> 11707, 127143, 126437, 127023, 140270, 126417, 1264~
+#> $ latin              <chr> "Cephalopoda", "Pleuronectes platessa", "Melanogram~
+#> $ species            <chr> "cephalopods", "European plaice", "haddock", "Atlan~
+#> $ rank               <chr> "Class", "Species", "Species", "Species", "Species"~
+#> $ n_totalnumber      <dbl> 44.000000, 10.000000, 154.000000, 31.000000, 10.000~
+#> $ n_totalnumber_hour <dbl> 88.00, 20.00, 308.00, 62.00, 20.00, 58.00, 1057.00,~
+#> $ n_haul             <dbl> 44.000000, 10.000000, 154.000000, 31.000000, 10.000~
+#> $ w_haul             <dbl> 233.0000, 2994.0000, 2859.5000, 8380.0000, NA, NA, ~
+#> $ w_hour             <dbl> 466, 5988, 5719, 16760, NA, NA, 11039, NA, 5421, 11~
+#> $ n_measured         <dbl> NA, 10, NA, 31, NA, 29, NA, NA, NA, 213, 1, 29, NA,~
+#> $ p_females          <dbl> NA, NA, NA, NA, NA, NA, NA, NA, NA, 0.6240841, NA, ~
+#> $ SpeciesValidity    <chr> "1", "1", "1", "1", "1", "1", "1", "1", "1", "1", "~
 ```
-
-Both are published, pre-computed, on the obus server. To recompute
-either from the raw archive:
-
-``` r
-hh <- dr_con_raw("HH") |> dr_add_id()
-hl <- dr_con_raw("HL") |> dr_add_id()
-
-dr_HL_summary(hh, hl, haulval = "1")
-```
-
-Neither table filters on `HaulValidity` or `SpeciesValidity` as
-published – both are carried as columns so that the choice stays the
-caller’s.
-
-## Weight from length
-
-`dr_HL_length()` gives numbers at length; `length_weight` gives the
-coefficients for `W = a * L^b`, resolved per species through a ranked
-cascade – a fit on obus’s own CA weight-at-length data where there is
-one, then FishBase for finfish, SeaLifeBase for invertebrates, and a
-generic constant as the floor. Every row records which tier answered, in
-`lw_source`, so no predicted weight is ever anonymous. Taxa where a
-power law is not meaningful (jellyfish, sponges, worms) are labelled
-`not_applicable` rather than given a fish default.
-
-**`LengthClass` is the lower boundary of a length bin, not a length** –
-ICES says so for HL and CA alike. `W = a * L^b` is convex, so predicting
-from the lower bound under-estimates, by 15.8% at 10 cm and 5.1% at 30
-cm with 1 cm bins. `dr_add_length_mid()` takes the midpoint, and
-`dr_add_predicted_weight()` defaults to that column, so skipping the
-step errors rather than quietly returning low weights.
-
-``` r
-dr_con("HL_length") |>
-  filter(Survey == "NS-IBTS", Year == 2022, Quarter == 1) |>
-  dr_add_length_mid() |>
-  dr_add_predicted_weight() |>          # w_ind, w_haul_pred, w_hour_pred
-  collect()
-```
-
-`dr_compare_length_weight()` checks the result against the measured
-`w_haul` in `dr_HL_summary()`. It reports a mismatch and never resolves
-one: a discrepancy can mean the coefficients are wrong *or* that the
-reported weight is, and there is no principled way to pick a winner
-between two independent measurements.
-
-## Building the published files
-
-`data-raw/` holds the scripts that produce what the server serves. They
-are run by hand, `DATASET_species.R` first, and none of them publishes
-anything:
-
-``` r
-source("data-raw/DATASET_species.R")                 # -> species.parquet
-source("data-raw/DATASET_products.R")                # -> HH, HL_length, HL_summary
-source("data-raw/DATASET_hl_flag.R")                 # -> hl_flag, hl_flag_code
-source("data-raw/DATASET_length_weight.R")           # -> length_weight.parquet
-source("data-raw/DATASET_length_type_conversion.R")  # -> length_type_conversion.parquet
-```
-
-`DATASET_length_weight.R` needs `species.parquet` but not the products,
-so it can run before or after `DATASET_products.R`. Publishing is a
-manual `scp`.
