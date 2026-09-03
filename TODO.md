@@ -177,6 +177,44 @@ brackets): `ca_fit` 242 [244], `fishbase_bayes` 527 [525], `sealifebase_species`
       it. The build cost is seconds, once per rebuild.
 
 
+- [ ] **HH positions carry two traps that swept-area work will walk into.**
+      Measured on the published archive 2026-09-02 over 150,217 hauls, while
+      writing `datrasdoodle2`'s HH chapter. Nothing is wrong in obus today —
+      obus computes nothing from these fields yet — but whatever builds
+      `dr_impute_spread()` / towed distance needs both facts up front.
+
+      1. **31,038 hauls (20.7%) have no haul (end) position at all** — only
+         `ShootLatitude`/`ShootLongitude`. Any distance-from-positions
+         calculation needs a documented fallback for a fifth of the archive.
+
+      2. **2,780 hauls record an end position identical to the shoot
+         position**, which yields a *zero-distance tow* — a plausible-looking
+         number rather than an honest `NA`, which is the more dangerous of the
+         two failure modes. This has historically been flagged as a Norwegian
+         quirk; that undersells it badly. By country, share of hauls with an
+         identical pair, against the share recorded at one-decimal precision:
+
+         | country | hauls | identical | 1-decimal |
+         |---|---:|---:|---:|
+         | RU | 1,059 | **41.8%** | 11.0% |
+         | EE | 306 | **40.2%** | 12.4% |
+         | NO | 1,746 | 14.3% | 3.6% |
+         | LV | 1,255 | 12.5% | 2.8% |
+         | GB-SCT | 12,280 | 8.4% | 5.8% |
+         | PL | 2,166 | 6.7% | 2.4% |
+
+         The precision column is there to kill the innocent explanation:
+         if identical pairs were a rounding artefact, the 1-decimal share
+         would have to be at least as large as the identical share. It is
+         three to four times *smaller* on every affected country. So these
+         are fine-grained positions that have been **copied**, almost
+         certainly the shoot position written into both slots — not coarse
+         positions colliding with themselves.
+
+      Recommended treatment when the time comes: an identical pair is a
+      *missing* end position, not a zero-length tow. Worth a `dr_check_*`-style
+      report rather than a silent repair, per the house rule.
+
 - [ ] **`CA` is fetched by `DATASET_species.R` but nothing else uses it.**
       It contributes aphia codes to the species lookup and is otherwise
       untouched. An `age`/`length` product would be the natural next thing
