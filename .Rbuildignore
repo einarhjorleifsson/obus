@@ -7,3 +7,4 @@
 ^vignettes/articles$
 ^docs$
 ^README_files$
+^DEVLOG\.md$

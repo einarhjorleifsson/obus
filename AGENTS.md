@@ -96,6 +96,16 @@ a split. It has now been found three times over, in `sex`, in
 grouping dimension added to `dr_HL_summary()` should be assumed guilty
 until measured.
 
+**6. Only ICES's own published documents are evidence for what a field
+means.** That is `~/R/Pakkar/imbus/DATRAS/external/` — chiefly
+`DATRAS_Field_descriptions_and_example_file_December2025.xlsx` (including its
+`General Notes` sheet), the SISP manuals, and the ICES workshop and
+working-group reports. The authored `.qmd` files one directory up, and
+anything in `obus_retired`, are pointers to where to look, not evidence.
+Findings get written up in `vignettes/datras-conventions.Rmd`. (Standing rule
+since 2026-08-31; it lived in `TODO.md` until the 2026-09-04 split, where it
+was the only entry that was a rule rather than a task.)
+
 ------------------------------------------------------------------------
 
 ## Scope
