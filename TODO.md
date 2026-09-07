@@ -157,6 +157,56 @@ brackets): `ca_fit` 242 [244], `fishbase_bayes` 527 [525], `sealifebase_species`
 
 ## Later
 
+- [ ] **Relocate the three root survey documents; obus is the wrong home.**
+      Decided 2026-09-07. Nothing in obus references them but each other —
+      zero hits in `AGENTS.md`, `TODO.md`, opus, imbus or datrasdoodle2 — and
+      the survey changed nothing in obus: both its headline results
+      *confirmed* decisions already made.
+      - `SURVEY-hl-construct.md` (413 lines) → a datrasdoodle2 appendix. The
+        `+0.5` hardcoders and the DataType-blind raisers have natural hooks in
+        `08-standardising-catch.qmd` and `13-known-issues.qmd`; it is reader
+        material, not package source.
+      - `FINDING-wkfishdish-datatype.md` → imbus's issues register, alongside
+        the `IMBUS_FISHMAP#29` batch, which does not currently mention it. It
+        names a specific ICES analysis, labels itself unconfirmed, and records
+        three verified blockers to running the one-line check that would
+        settle it. A published book is the wrong venue for that; a private
+        escalation track is the right one.
+      - `PLAN-hl-construct-survey.md` → process scaffolding, can go.
+
+      **Not done yet, on purpose:** datrasdoodle2 has no commits at all, so
+      moving anything there today trades committed for untracked.
+
+      **Distil these two into `AGENTS.md` before the files move**, since
+      nothing outside them records either: (1) only obus and DATRASextra are
+      bin-width aware — four repos hardcode `+0.5`, which is right only at
+      1 cm bins, and every one of those sits in an ALK or mean-length context
+      rather than a catch-at-length product; (2) DATRASextra's `mid_lengths`
+      is one bin width high (`R/weight.R:641`, `R/length.R:572`, with `:576`
+      correcting only the last element), which **neither CHECK script
+      mentions** even though both run DATRASextra's stack unmodified. The
+      second is a live loose end, not a note.
+
+- [ ] **Embed metadata in the derived parquet files** — dict for obus's own
+      columns, provenance carrying the source archive's `dict_sha256`, and a
+      machine-readable grain. Design decision recorded at the end of this file
+      (2026-09-04); needs the opus-side writer first.
+- [x] ~~**Drop `duckdbfs` for plain `DBI`/`dbplyr`/`duckdb`.**~~
+      **Implemented and reverted, both on 2026-09-04.** The dataset
+      abstraction is genuinely unused, but the *connection registry* is not,
+      and a private connection broke cross-package joins silently. What
+      survives is the position the correction below arrives at: keep
+      `duckdbfs` for the connection, export an accessor (`dr_duckdb()`,
+      `dr_parquet()`), and use a raw `COPY` only in `dr_write()` for the
+      metadata. That is what the tree does as of 2026-09-07. Full account in
+      the section at the end.
+- [x] ~~Decide whether to go all the way to `duckplyr`.~~ **Tested
+      2026-09-04: no.** duckplyr 1.2.1 does not translate `as.character()`,
+      `paste0()`/`paste()` or `case_when()`, so `dr_add_id()` and every
+      derived-column function are blocked; under `lavish` it completes only by
+      falling back to R eight times in one call. Re-test when the string and
+      `case_when()` families land. Full findings in the section at the end.
+
 - [x] **CHECKED — `DataType == "-9"` is benign.** 40 hauls archive-wide, and
       **every one is independently `HaulValidity == "I"`** — the vocabulary's
       "Invalid hauls" and the haul-validity flag agree completely, with no
@@ -770,3 +820,337 @@ resolved perfectly on its own moments later.
 Verified after rebuild: species unchanged in content (2,022 codes, 15
 non-accepted, 11 forwarding), and the cross-check identical at 89.01% / 7.14% /
 3.85% — the rename changed names, not values.
+
+---
+
+## Metadata on the derived tables (design decision, 2026-09-04)
+
+**Recorded, not implemented.** Raised while considering a datrasdoodle2 chapter
+on how a consumer reads the archive's metadata.
+
+### The measured asymmetry
+
+Every raw file is self-describing; none of obus's published files are. Measured
+2026-09-04 with `parquet_kv_metadata()` over the live server:
+
+| file | `datras:dict` | `provenance` | `sentinels` | `coverage` | `known_issues` |
+|---|--|--|--|--|--|
+| `raw/{HH,HL,CA,LT}.parquet` | yes, 59 KB on HH | yes | yes | yes | yes |
+| `{HH,HL,CA}.parquet` | — | — | — | — | — |
+| `HL_length.parquet`, `HL_summary.parquet` | — | — | — | — | — |
+| `species`, `length_weight`, `hl_flag` | — | — | — | — | — |
+
+All five blocks are JSON. opus's provenance is a build receipt:
+
+```json
+{"table":"HH","n_rows":150217,"n_cols":69,"source":"ICES DATRAS ASMX web service",
+ "built_utc":"2026-08-29T19:19:21Z","opus_version":"0.2.0","opus_git_sha":"00d9b7f",
+ "dict_sha256":"d74c9e38…","writer":"nanoparquet 0.5.1",
+ "pipeline":"archive_02_download -> … -> archive_06_consolidate"}
+```
+
+And opus reads it **out of the file**, not from the installed package —
+`op_dict()`, `op_provenance()`, `op_coverage()`, `op_known_issues()`,
+`op_catalog()`, `op_keys()`, `op_relationships()` and `op_definitions()` all
+resolve through `.op_kv(table, "datras:dict", path)` (`opus/R/archive.R:71`).
+`op_sentinels()` is the deliberate exception: no `path` argument, so it is
+opus's *policy*, while a file's `datras:sentinels` records what was applied to
+that file. `dict_sha256` ties the two together.
+
+### The decision
+
+A three-way split, chosen so that one access idiom keeps working across the
+whole server directory:
+
+1. **Format and writer belong to opus.** It owns how a DATRAS-family parquet
+   describes itself. If obus invents its own key names or JSON shapes then
+   `op_dict()` stops working on half the published files and a consumer needs
+   two idioms for one folder. opus should export the writer, or at minimum the
+   block schema.
+2. **Content for the derived columns belongs to obus.** `n_haul`, `n_hour`,
+   `n_measured`, `length_mm`, `length_cm`, `length_cm_mid`, `accuracy`,
+   `w_haul` and `.id` are obus's own inventions. Working Principle 1 forbids
+   re-deriving *DATRAS* names; it says nothing against documenting columns obus
+   created, and not documenting them is the worse outcome.
+3. **`dict_sha256` of the source archive is non-negotiable.** Today, given
+   `HL_length.parquet`, there is no way to tell which archive build produced
+   it.
+
+**Why (3) is the load-bearing one.** This project has already been bitten by
+exactly the failure it prevents: the server root held retired-era `HL.parquet`,
+`CA.parquet` and `LT.parquet` carrying abandoned renames and *filtered* row
+counts, and nothing noticed for weeks because `dr_con()` simply refused the
+names (see "The server root still carries retired-era files no build script
+owns" in `AGENTS.md`). A provenance block makes a stale file self-evident
+rather than invisible.
+
+**Grain should go in too.** Neither catch table's grain was what its
+documentation claimed, and both were fixed in the docs rather than the code. A
+machine-readable grain block is testable; prose in `AGENTS.md` is not.
+
+### Implementation notes
+
+Feasible cheaply and it preserves the streaming property — nothing needs
+`collect()`ing. Verified 2026-09-04 on duckdb 1.5.5: `COPY … (FORMAT PARQUET,
+KV_METADATA {key: 'value'})` is supported and round-trips through
+`parquet_kv_metadata()`. `data-raw/build_helpers.R:56` is currently
+
+```r
+duckdbfs::write_dataset(x, out, options = "COMPRESSION 'zstd'")
+```
+
+**Resolved 2026-09-04 by test — no fallback needed, and only
+`build_helpers.R` is affected.** `duckdbfs::write_dataset()` builds
+`options_vec <- c(format_by, partition_by, allow_overwrite, options)` and
+collapses it with `glue_collapse(sep = ", ")` into the `COPY` parens
+(duckdbfs 0.1.2), so a multi-element `options` **vector or list** is forwarded
+verbatim. Verified on a lazy `tbl_duckdb_connection` input, exactly what
+`dr_write()` passes:
+
+| case | result |
+|---|---|
+| single option (today's call) | ok, 0 kv blocks |
+| `c("COMPRESSION 'zstd'", "KV_METADATA {test: 'hello'}")` | ok, 1 block |
+| quoted key + JSON value | ok, round-trips |
+| two keys in one `KV_METADATA` block | ok, 2 blocks |
+| `list()` instead of `c()` | ok |
+
+glue does **not** choke on the literal braces in `KV_METADATA {…}`, and the
+table stays lazy — no `collect()`.
+
+**One escaping trap, worth writing into the helper rather than rediscovering
+at build time.** These are single-quoted SQL literals, and
+`datras:known_issues` is 8 KB of English prose, so apostrophes are close to
+certain. A raw apostrophe fails with `Parser Error: syntax error at or near
+"s"`. Do not hand-roll `gsub("'", "''", …)`; use DBI:
+
+```r
+clause <- paste0("KV_METADATA {'datras:known_issues': ",
+                 DBI::dbQuoteString(con, json), "}")
+duckdbfs::write_dataset(x, out, options = c("COMPRESSION 'zstd'", clause))
+```
+
+Verified byte-identical on round-trip through `parquet_kv_metadata()` with a
+payload containing `ICES's` and `don't`.
+
+### The engine question, which arrived with it: drop duckdbfs?
+
+**Tested 2026-09-04, works.** `duckdbfs` appears in the shipped package
+exactly twice — `duckdbfs::open_dataset(full_path)` at `R/dr_con.R:63` and
+`:174` — and both call sites pass a **single resolved file path**. Nothing
+duckdbfs exists for is used: no partitioning, no globbing, no S3, no
+multi-file datasets, because every obus path is one unpartitioned parquet.
+
+A ~12-line replacement on plain `DBI` + `dbplyr` + `duckdb` passed six checks
+against the live archive:
+
+| check | result |
+|---|---|
+| lazy table | `tbl_duckdb_connection`, same class duckdbfs returns |
+| verbs push to SQL | `SELECT COUNT(*) … FROM read_parquet('https://…') WHERE …` |
+| NS-IBTS 2022 Q1 hauls | 249 |
+| **cross-file join** (raw HL x `species.parquet`) | whiting 4151, herring 3444, haddock 3069 |
+| identical to duckdbfs | `TRUE` |
+| local path | works |
+
+```r
+.e <- new.env(parent = emptyenv())
+dr_conn <- function() {
+  if (is.null(.e$con) || !DBI::dbIsValid(.e$con)) {
+    .e$con <- DBI::dbConnect(duckdb::duckdb())
+    try(DBI::dbExecute(.e$con, "INSTALL httpfs"), silent = TRUE)
+    DBI::dbExecute(.e$con, "LOAD httpfs")
+  }
+  .e$con
+}
+dr_open <- function(p) dplyr::tbl(dr_conn(),
+  dbplyr::sql(paste0("SELECT * FROM read_parquet('", p, "')")))
+```
+
+**Not a dependency-trimming argument.** duckdbfs imports `DBI, dbplyr, dplyr,
+duckdb, fs, glue`; obus would declare `DBI`, `dbplyr`, `duckdb` explicitly and
+shed only `fs` and `glue`. Two light packages. The real reasons are:
+
+1. **obus would own the invariant it calls load-bearing.** `AGENTS.md` states
+   that both connections resolving to one DuckDB connection "is load-bearing,
+   not incidental" — and that currently rests on another package's internal
+   cache.
+2. **The dependency graph would become honest.** The whole architecture
+   discussion is about DBI connections and dbplyr join semantics, and obus
+   declares none of DBI, dbplyr or duckdb; it declares duckdbfs and receives
+   them by accident.
+3. **The metadata work above wants direct `COPY` control anyway.** Assembling
+   raw SQL fragments and handing them to a wrapper that comma-collapses them is
+   odd layering, and the `dbQuoteString()` escaping trap sits right there.
+
+### Correction, written after implementing it (2026-09-04)
+
+**The case above overstated itself, and the record should say so.** Two of the
+three arguments did not survive being tested.
+
+1. **"Nothing duckdbfs exists for is used" was wrong.** That judgement came
+   from evaluating the *dataset abstraction* — partitioning, globbing, S3 —
+   which is genuinely unused. It missed the **connection registry**, which was
+   the real value: a shared cached connection meant obus's tables could be
+   joined to anything else a user opened with duckdbfs, with no ceremony.
+   Dropping it broke cross-package interop, which surfaced only when the user
+   asked whether datrasdoodle2 still worked —
+   `appendix-cpuel-vs-standardised.qmd` failed with "`x` and `y` must share the
+   same source". Two new exports (`dr_duckdb()`, `dr_parquet()`) exist to
+   rebuild an obus-only version of what duckdbfs provided globally.
+2. **"The metadata work needs raw `COPY`" is largely void.** Tested earlier the
+   same day: `duckdbfs::write_dataset(options = c("COMPRESSION 'zstd'",
+   "KV_METADATA {…}"))` works, five cases including JSON payloads and multiple
+   keys in one block. duckdbfs would have carried the metadata work. What
+   remains of the objection is layering aesthetics, not capability.
+3. **Only "obus should own the invariant it calls load-bearing" stands**, and
+   it is a modest argument on its own.
+
+**What obus now maintains that duckdbfs maintained for it:** the connection
+registry, connection lifecycle and `.onUnload`, extension install/load, the
+`shared_home` argument-position trap, SQL literal escaping, and lazy httpfs
+loading — around 70 lines plus two exports, in exchange for shedding two light
+packages (`fs`, `glue`). The tell is that most of the work after the decision
+was re-solving problems duckdbfs had already solved, including the
+`shared_home` trap that opus had also fallen into (`dbConnect(..., shared_home
+= FALSE)` is a no-op; it belongs to `duckdb::duckdb()` — fixed in opus
+2026-09-04, where the explicit `INSTALL httpfs` is load-bearing because
+`autoinstall_known_extensions` defaults to FALSE).
+
+**Had the registry been assessed properly up front, the recommendation would
+have been:** keep duckdbfs for the connection, use a raw `COPY` only in
+`dr_write()` for the metadata. That is still the cheapest position if this is
+ever revisited.
+
+**Why it was reverted the same day, and what this paragraph used to claim.**
+It previously read "left in place — reverting would cost more than it
+recovers", citing the removal build's own verification: `HL_length`
+byte-equivalent to the reference build (14,001,605 rows, `EXCEPT` 0 both
+directions, 207.8 MB), 243 tests passing, `R CMD check` 0/0/0. Every one of
+those numbers was true and **none of them touched the property that mattered**,
+because cross-package interop is not observable from inside obus's own test
+suite — which is precisely where the failure was. That is the lesson worth
+keeping: a verification that cannot see the thing you broke is not evidence.
+`duckdbfs` stays. The durable product of the exercise is the accessor that
+should have existed all along — `dr_duckdb()` and `dr_parquet()`, exported
+2026-09-04 — plus the raw `COPY` in `dr_write()`, which is kept for SQL
+literal escaping at the point the literal is built, not for capability.
+
+**The regression, which is not hypothetical — it happened.** A user could
+join `dr_con("HH")` to their own `duckdbfs::open_dataset(...)` because both
+landed on duckdbfs's shared cache. The private connection broke that with
+exactly the error `AGENTS.md` documents ("`x` and `y` must share the same
+source"), and it surfaced from *outside* obus, in datrasdoodle2's CPUEL
+appendix. Hence the two exports: `dr_duckdb()`, so a local frame can be
+`copy_to()`'d onto the connection, and `dr_parquet()`, so an arbitrary file
+opens on it too. Nine test call sites moved off
+`duckdbfs::cached_connection()` onto the accessor and their skips moved from
+`"duckdbfs"` to `"duckdb"` — churn, though the tests arguably should not have
+depended on a third party's cache in the first place.
+
+### Going all the way to duckplyr: tested and NO (2026-09-04)
+
+duckplyr 1.2.1 installed on the user's instruction and run against the real
+local archive (`data-raw/raw`, HL 14.4M rows). The read side works; **the
+package's own core does not translate**, and the argument for switching
+inverts once measured.
+
+**What works.** Remote and local parquet via
+`read_parquet_duckdb(path, prudence = "stingy")`; the return is a
+`prudent_duckplyr_df / duckplyr_df / tbl_df / data.frame` — a data.frame
+subclass, not a `tbl_lazy`. Same answers as dbplyr (249 NS-IBTS 2022 Q1 hauls
+both routes). The **cross-file join works** — raw HL x `species.parquet` gives
+whiting 4151, herring 3444, haddock 3069, identical to the dbplyr POC.
+`compute_parquet(x, path, options = list(COMPRESSION = "zstd"))` writes.
+
+**What does not translate**, tested one operation at a time on a stingy frame:
+
+| translates | does **not** translate |
+|---|---|
+| `as.integer()`, `if_else()`, `coalesce()`, `n_distinct()`, `count()`, `select()`, logical ops | `as.character()`, `paste0()`, `paste()`, `sprintf()`, `format()`, `nchar()`, `toupper()`, `substr()`, `as.numeric()`, **`case_when()`**, `first()` in `summarise()` |
+
+**That blocks obus at step one.** `dr_add_id()` fails immediately —
+`.dr_concat_ws()` needs `as.character()` and `paste0()`, so `.id`, the join key
+both catch tables are built on, cannot be constructed. `dr_add_length_cm()`,
+`dr_add_length_mm()`, `n_haul` and `n_hour` are all `case_when()`, so they are
+blocked too. Nothing downstream of those runs. The full-build test got three
+green lines (reading the inputs) and then stopped.
+
+There is an irony worth recording: `.dr_concat_ws()` exists **because**
+`paste(sep=)` resolves differently in eager R than through dbplyr's
+`CONCAT_WS()`. duckplyr cannot translate `paste()` at all.
+
+**The escape hatch is the disqualifying part, not the rescue.** Under
+`prudence = "lavish"` the pipeline completes — `dr_add_id()` on 150,217 HH rows
+in 1.3s — but with `fallback_config(info = TRUE)` the mechanism is plain:
+
+```
+Error processing duckplyr query with DuckDB, falling back to dplyr.
+Caused by error in `dplyr::mutate()`:
+! Can't translate function `as.character()`.
+```
+
+followed by **seven more** falling back on `case_when()`. Eight R-side
+fallbacks in one call to one obus function.
+
+**So the prize this file claimed is backwards.** The stated argument for
+duckplyr was that one evaluation engine would delete the eager/lazy divergence
+class that `.dr_concat_ws()` and `.dr_coalesce_with_provenance()` exist to work
+around. In fact duckplyr would run obus's pipeline through **both** engines —
+DuckDB where it can, R where it cannot — which is *more* engine mixing than
+today, at a boundary that is invisible unless fallback info is switched on. The
+current dbplyr arrangement at least puts the boundary where obus chose it and
+tests both sides deliberately.
+
+**Verdict: not viable for obus as written.** Not "a verb sweep" as this file
+previously guessed — the gap is the string and `case_when()` families, which is
+most of what obus's derived columns are made of. Rewriting around it would mean
+expressing every derived column in `if_else()`/`coalesce()`/`as.integer()`, and
+`.id` has no expression at all without string concatenation.
+
+**Asked and answered: would `tidyr::unite()` do it instead of
+`.dr_concat_ws()`?** No, and nothing else does either. Tested 2026-09-04 on a
+stingy frame — every route to a concatenated key fails:
+
+| route | result |
+|---|---|
+| `tidyr::unite()` | `Materialization is disabled, use collect()…` |
+| `stringr::str_c()` | not translated |
+| `stringr::str_glue()` | not translated |
+| `glue::glue()` | blocked on `as.character()` |
+| `concat()` — DuckDB's own name | not translated |
+| `concat_ws()` — DuckDB's own name | not translated |
+
+The decisive detail is the last two rows: **duckplyr does not pass unknown
+functions through to SQL.** It works from a closed allowlist, so naming
+DuckDB's native `concat_ws` does not reach it. There is no expression for `.id`
+under `stingy` in 1.2.1.
+
+`unite()`'s failure is also broader in kind, and worth knowing separately:
+it is not a translation gap but the fact that **tidyr verbs are not part of the
+duckplyr backend at all** — they operate on the data frame and therefore force
+materialisation. obus's own tidyr surface is small (`tidyr::nest()` in
+`dr_length_weight.R:70`, and one doc reference to `tidyr::separate()`), but any
+future lazy pipeline reaching for a tidyr verb would hit this rather than a
+missing translation.
+
+**Revisit only when duckplyr gains string and `case_when()` translation.**
+Worth a re-test at each release; the read-side story is otherwise good and the
+`stingy` failure mode is genuinely well designed — it names the unsupported
+function at the call site, which is how this was diagnosed in minutes.
+
+**Unaffected by any of this:** dropping duckdbfs for plain
+`DBI`/`dbplyr`/`duckdb` (tested, works, previous subsection) and the metadata
+work, which needs raw `COPY` either way. duckplyr's `compute_parquet()` also
+cannot write `KV_METADATA` — all four syntaxes fail with
+`Expected kv_metadata argument to be a STRUCT`, because duckplyr renders option
+values as SQL scalars and DuckDB needs an unquoted struct literal.
+
+### Downstream
+
+This is also the substance of a proposed datrasdoodle2 chapter: the archive is
+readable without any R package (`SELECT decode(value) FROM
+parquet_kv_metadata(…)`), and `datras:known_issues` ships a record of the
+archive's own defects — its first entry is `sentinel_replacement_data_loss`,
+severity `opus-internal`. That is an early chapter Chapter 13 can later collect
+from, which suits datrasdoodle2's storyline directive.
