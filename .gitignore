@@ -9,3 +9,6 @@ tests/testthat/testthat-problems.rds
 
 # Locally-built pkgdown site (not published)
 docs/
+
+# Render byproduct of README.Rmd (github_document)
+README.html
