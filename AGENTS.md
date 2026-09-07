@@ -336,6 +336,14 @@ measured 3.5% over 1,920,932. The residual is real data — intrinsic to
 `DataType == "C"` plus rounding noise from non-integer `SubsamplingFactor` —
 not a defect.
 
+**Only obus and `DATRASextra` are bin-width aware.** Surveyed across the
+mined corpus 2026-09-04: six repositories add a half-bin, but four hardcode
+`+0.5`, which is correct only at 1 cm bins — and every one of those four sits
+in an ALK or mean-length context, never in a catch-at-length product. So the
+ecosystem knows about the half-bin where it computes a mean length and forgets
+it where it predicts a weight, which is the gap `dr_add_length_mid()` closes.
+`DATRASextra`'s own width-aware version is off by one bin; see `TODO.md`.
+
 **`LengthClass` is the LOWER BOUNDARY of a length bin, not a length.** ICES
 says so for HL and CA alike — *"Lower length boundary of the Length class. In
 cm or mm depending on the LngtCode. E.g. 10-11 cm=10"* — and opus already

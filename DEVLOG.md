@@ -740,3 +740,106 @@ harnesses and live-verified on every render — the `N` matrix, `HaulN`,
 is `HL_length` + `HL_summary` or a `DATRASraw` read from the exchange file.
 The three survey documents that used to sit at this repo's top level went there
 too, as a parked appendix, before the branch holding them was deleted.
+
+## 2026-09-04 -- resolved TODO items, moved out of TODO.md
+
+Eleven items that were carrying `[x]` in `TODO.md` -- a file whose header
+says it tracks outstanding work only. Each is a finding with its reasoning,
+so they belong here rather than being deleted. Verbatim, in the order they
+appeared, grouped by the section they came from.
+
+The `## Done` section went too, unmoved: nine checkbox lines inventorying
+what obus exports and what was verified, all of it already stated better in
+`AGENTS.md`'s Implementation and "Measured on the full archive" sections.
+
+- [x] **RESOLVED — `SpeciesValidity` stays in the grain.** Settled against
+      ICES's own documentation (`~/R/Pakkar/imbus/DATRAS/`), not inference:
+      `SpeciesValidity` is a *record type* field, the HL format deliberately
+      allows several per species per haul, and the docs state plainly that
+      aggregating over `.id x aphia` without it "silently mixes record types."
+      Archive measurement independently reproduces ICES's own reported
+      pattern (commonest pairs `{1,5}` and `{4,7}`). Filtering to one code
+      makes `.id x aphia` exactly unique. **Caveat: Can-Mar** puts real length
+      data on `"5"` rows, so filtering to `"1"` there discards genuine data —
+      treat Can-Mar separately.
+
+- [x] **Test suite exists** — 24 tests in `tests/testthat/`, ported from
+      `obus_retired` and extended, running inside `R CMD check`. They encode
+      all three of the retired package's bugs plus this pass's five. Crucially
+      they run **eager** while the build runs **lazy**, which is what caught
+      both R/SQL `NA` divergences; keep both paths.
+
+- [x] ~~**Drop `duckdbfs` for plain `DBI`/`dbplyr`/`duckdb`.**~~
+      **Implemented and reverted, both on 2026-09-04.** The dataset
+      abstraction is genuinely unused, but the *connection registry* is not,
+      and a private connection broke cross-package joins silently. What
+      survives is the position the correction below arrives at: keep
+      `duckdbfs` for the connection, export an accessor (`dr_duckdb()`,
+      `dr_parquet()`), and use a raw `COPY` only in `dr_write()` for the
+      metadata. That is what the tree does as of 2026-09-07. Full account in
+      the section at the end.
+
+- [x] ~~Decide whether to go all the way to `duckplyr`.~~ **Tested
+      2026-09-04: no.** duckplyr 1.2.1 does not translate `as.character()`,
+      `paste0()`/`paste()` or `case_when()`, so `dr_add_id()` and every
+      derived-column function are blocked; under `lavish` it completes only by
+      falling back to R eight times in one call. Re-test when the string and
+      `case_when()` families land. Full findings in the section at the end.
+
+- [x] **CHECKED — `DataType == "-9"` is benign.** 40 hauls archive-wide, and
+      **every one is independently `HaulValidity == "I"`** — the vocabulary's
+      "Invalid hauls" and the haul-validity flag agree completely, with no
+      contradicting case. They carry 32 HL rows and **zero length rows**, so
+      they contribute nothing to `HL_length`; their 32 `HL_summary` rows come
+      out all-`NA` because the underlying `TotalNumber`/weights are themselves
+      absent. Spread thinly over BITS, FR-CGFS, NS-IBTS and EVHOE, 2004-2018.
+      No warning needed; callers wanting them gone can pass
+      `haulval = "V"`.
+
+- [x] **CLOSED — the `.id` item was misleadingly worded and is a non-issue.**
+      It referred only to the *raw* archive (`datras/raw/*.parquet`), which
+      ships without `.id`, so `data-raw/DATASET_products.R` computes it with
+      `dr_add_id()` during a rebuild. Every **published** obus table —
+      `HH`, `HL_length`, `HL_summary` — carries `.id` as a stored column;
+      nothing recomputes it at read time, and `dr_con()` users never pay for
+      it. The build cost is seconds, once per rebuild.
+
+- [x] **Sentinel handling needs nothing from obus** — resolved 2026-08-31.
+      opus applies its own `op_sentinels()` policy when building the raw
+      archive, so `-9` is already resolved before obus reads it, per a
+      documented and coherent rule. See the `-9` section below. obus must not
+      re-introduce sentinels locally: it cannot tell which NULLs were `-9`.
+
+- [x] **RESOLVED — NS-IBTS 2022 Q1 is not truncated; 32,767 is a
+      coincidence.** Investigated 2026-08-31. The suspicion was that HL had
+      been cut at exactly 2^15-1 rows. It had not: the survey was simply
+      smaller that year, and the row count is exactly what the haul count
+      predicts.
+
+- [x] **RESOLVED — `Inf` from `HaulDuration <= 0`.** An hourly rate is
+      undefined with no time fished, so `*_hour` is now `NA`, not `Inf`.
+      `DataType == "C"` is the mirror image — it reports a rate directly, so
+      there the rate survives and the per-haul figure goes `NA` instead of a
+      plausible-looking `0`. Verified: 0 `Inf` and 0 `NaN` anywhere in either
+      table. Only 7 hauls with duration <= 0 actually carry HL rows (6 `P`,
+      1 `R`) — exactly the 7 `obus_retired` named — so the `C` and negative
+      guards are correct but touch no published row today; they protect
+      future submissions. The 2 negative-duration hauls (Can-Mar 2017, both
+      already `HaulValidity == "I"`) likewise have no HL rows.
+
+- [x] **RESOLVED — `n_haul` renamed to `n_totalnumber` in `HL_summary`.** By
+      design it is the *reported* `TotalNumber`, while `dr_HL_length()`'s
+      `n_haul` reaches the same conceptual quantity by raising measured length
+      frequencies. Calling both `n_haul` invited exactly the confusion the
+      3.44% disagreement makes material. `n_hour` follows as
+      `n_totalnumber_hour`. `w_haul`/`w_hour` keep their names —
+      `SpeciesCategoryWeight` is their only possible source, so there is no
+      competing quantity to confuse them with.
+
+- [x] **SUPERSEDED 2026-09-01 — `n_haul` added to `HL_summary`.** The earlier
+      "nothing to add" reasoning was inconsistent: `HL_summary` already carried
+      `n_measured`, the raw un-raised sum of `NumberAtLength`, so the table
+      already crossed the length-path boundary. It carried the un-raised length
+      count but not the raised one, which is the only figure directly
+      comparable to `n_totalnumber`. That was arbitrary. Verified after the
+      change: zero of 1,912,256 groups differ from summing `HL_length`.

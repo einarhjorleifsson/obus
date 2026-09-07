@@ -13,38 +13,6 @@ lines of which four fifths was history; the convention follows opus's.*
 
 ---
 
-## Done
-
-- [x] `dr_con_raw()` / `dr_con()` — lazy DuckDB views over `datras/raw` and
-      `datras`, both on one connection so raw ⋈ derived joins work
-- [x] `dr_add_id()` — the eight-field haul key, new names only, with the
-      backend-consistent NA-skipping concat
-- [x] `dr_add_length_mm()`, `dr_add_length_cm()`, `dr_add_n_and_cpue()`,
-      `dr_join_species()`
-- [x] `dr_HL_length()`, `dr_HL_summary()` — ported from `obus_retired`
-      including the per-sex `TotalNumber` reconciliation and the
-      `SpeciesCategory` fallback fix
-- [x] `data-raw/DATASET_species.R` — `species.parquet` rebuilt from scratch
-      off WoRMS; 2,022 aphia, all resolving
-- [x] `data-raw/DATASET_products.R` — `HH`, `HL_length`, `HL_summary`,
-      built entirely lazily
-- [x] `dr_add_length_mid()`, `dr_add_length_tl()`,
-      `dr_add_predicted_weight()`, `dr_compare_length_weight()` and the
-      `.dr_coalesce_with_provenance()` cascade primitive, with
-      `DATASET_length_weight.R` / `DATASET_length_type_conversion.R` — see
-      **Length-weight, rebuilt (2026-09-02)** below
-- [x] **Verified against the full archive**: `.id` unique over 150,217
-      hauls, zero NA, zero orphan HL rows; `HL_length` reproduces the
-      published `HL_standardised` exactly on NS-IBTS 2022 Q1 (29,752 rows,
-      zero differences); the summary-vs-length cross-check lands at 3.49%,
-      against the 3.5% the retired implementation measured
-- [x] `R CMD check`: 0 errors, 0 warnings, 0 notes. `^docs$` added to
-      `.Rbuildignore` 2026-09-02 — the pkgdown output had always tripped a
-      "non-standard file/directory at top level" NOTE, which the earlier
-      0/0/0 claim predated
-
----
-
 ## Immediate
 
 - [ ] **Publish.** All four files are in `data-raw/to_https/` and none are
@@ -61,94 +29,26 @@ lines of which four fifths was history; the convention follows opus's.*
       superseded. Decide whether to delete it or leave it; it is
       demonstrably wrong (see below) and nothing in this obus reads it.
 
-- [x] **RESOLVED — `SpeciesValidity` stays in the grain.** Settled against
-      ICES's own documentation (`~/R/Pakkar/imbus/DATRAS/`), not inference:
-      `SpeciesValidity` is a *record type* field, the HL format deliberately
-      allows several per species per haul, and the docs state plainly that
-      aggregating over `.id x aphia` without it "silently mixes record types."
-      Archive measurement independently reproduces ICES's own reported
-      pattern (commonest pairs `{1,5}` and `{4,7}`). Filtering to one code
-      makes `.id x aphia` exactly unique. **Caveat: Can-Mar** puts real length
-      data on `"5"` rows, so filtering to `"1"` there discards genuine data —
-      treat Can-Mar separately.
-
-- [x] **Test suite exists** — 24 tests in `tests/testthat/`, ported from
-      `obus_retired` and extended, running inside `R CMD check`. They encode
-      all three of the retired package's bugs plus this pass's five. Crucially
-      they run **eager** while the build runs **lazy**, which is what caught
-      both R/SQL `NA` divergences; keep both paths.
-
 ## Later
 
-- [ ] **Relocate the three root survey documents; obus is the wrong home.**
-      Decided 2026-09-07. Nothing in obus references them but each other —
-      zero hits in `AGENTS.md`, `TODO.md`, opus, imbus or datrasdoodle2 — and
-      the survey changed nothing in obus: both its headline results
-      *confirmed* decisions already made.
-      - `SURVEY-hl-construct.md` (413 lines) → a datrasdoodle2 appendix. The
-        `+0.5` hardcoders and the DataType-blind raisers have natural hooks in
-        `08-standardising-catch.qmd` and `13-known-issues.qmd`; it is reader
-        material, not package source.
-      - `FINDING-wkfishdish-datatype.md` → imbus's issues register, alongside
-        the `IMBUS_FISHMAP#29` batch, which does not currently mention it. It
-        names a specific ICES analysis, labels itself unconfirmed, and records
-        three verified blockers to running the one-line check that would
-        settle it. A published book is the wrong venue for that; a private
-        escalation track is the right one.
-      - `PLAN-hl-construct-survey.md` → process scaffolding, can go.
+- [ ] **DATRASextra's `mid_lengths` is one bin width high, and neither CHECK
+      script notices.** `R/weight.R:641` and `R/length.R:572` compute
+      `cm_breaks[-1] + dls/2`. With `addSpectrum()`'s `cut(..., right = FALSE)`,
+      bin *j* is `[cm_breaks[j], cm_breaks[j+1])`, so its midpoint is
+      `cm_breaks[j] + dls[j]/2` — one bin lower. `:576` then rewrites only the
+      last element to the lower-bound form, which is itself evidence the two
+      conventions are mixed. Confirmed against the bin definition, not measured
+      against data.
 
-      **Not done yet, on purpose:** datrasdoodle2 has no commits at all, so
-      moving anything there today trades committed for untracked.
-
-      **Distil these two into `AGENTS.md` before the files move**, since
-      nothing outside them records either: (1) only obus and DATRASextra are
-      bin-width aware — four repos hardcode `+0.5`, which is right only at
-      1 cm bins, and every one of those sits in an ALK or mean-length context
-      rather than a catch-at-length product; (2) DATRASextra's `mid_lengths`
-      is one bin width high (`R/weight.R:641`, `R/length.R:572`, with `:576`
-      correcting only the last element), which **neither CHECK script
-      mentions** even though both run DATRASextra's stack unmodified. The
-      second is a live loose end, not a note.
+      This is a **live loose end, not a note**: both `data-raw/CHECK_datras_*.R`
+      run DATRASextra's stack unmodified and pass 11/11 and 25/25 without
+      touching it, so obus's own evidence does not cover it. Either extend a
+      CHECK script to catch it or raise it with DATRASextra.
 
 - [ ] **Embed metadata in the derived parquet files** — dict for obus's own
       columns, provenance carrying the source archive's `dict_sha256`, and a
       machine-readable grain. Design decision recorded at the end of this file
       (2026-09-04); needs the opus-side writer first.
-- [x] ~~**Drop `duckdbfs` for plain `DBI`/`dbplyr`/`duckdb`.**~~
-      **Implemented and reverted, both on 2026-09-04.** The dataset
-      abstraction is genuinely unused, but the *connection registry* is not,
-      and a private connection broke cross-package joins silently. What
-      survives is the position the correction below arrives at: keep
-      `duckdbfs` for the connection, export an accessor (`dr_duckdb()`,
-      `dr_parquet()`), and use a raw `COPY` only in `dr_write()` for the
-      metadata. That is what the tree does as of 2026-09-07. Full account in
-      the section at the end.
-- [x] ~~Decide whether to go all the way to `duckplyr`.~~ **Tested
-      2026-09-04: no.** duckplyr 1.2.1 does not translate `as.character()`,
-      `paste0()`/`paste()` or `case_when()`, so `dr_add_id()` and every
-      derived-column function are blocked; under `lavish` it completes only by
-      falling back to R eight times in one call. Re-test when the string and
-      `case_when()` families land. Full findings in the section at the end.
-
-- [x] **CHECKED — `DataType == "-9"` is benign.** 40 hauls archive-wide, and
-      **every one is independently `HaulValidity == "I"`** — the vocabulary's
-      "Invalid hauls" and the haul-validity flag agree completely, with no
-      contradicting case. They carry 32 HL rows and **zero length rows**, so
-      they contribute nothing to `HL_length`; their 32 `HL_summary` rows come
-      out all-`NA` because the underlying `TotalNumber`/weights are themselves
-      absent. Spread thinly over BITS, FR-CGFS, NS-IBTS and EVHOE, 2004-2018.
-      No warning needed; callers wanting them gone can pass
-      `haulval = "V"`.
-
-
-- [x] **CLOSED — the `.id` item was misleadingly worded and is a non-issue.**
-      It referred only to the *raw* archive (`datras/raw/*.parquet`), which
-      ships without `.id`, so `data-raw/DATASET_products.R` computes it with
-      `dr_add_id()` during a rebuild. Every **published** obus table —
-      `HH`, `HL_length`, `HL_summary` — carries `.id` as a stored column;
-      nothing recomputes it at read time, and `dr_con()` users never pay for
-      it. The build cost is seconds, once per rebuild.
-
 
 - [ ] **HH positions carry two traps that swept-area work will walk into.**
       Measured on the published archive 2026-09-02 over 150,217 hauls, while
@@ -193,18 +93,6 @@ lines of which four fifths was history; the convention follows opus's.*
       untouched. An `age`/`length` product would be the natural next thing
       to build, and `dr_add_id()` already works on it unchanged.
 
-- [x] **Sentinel handling needs nothing from obus** — resolved 2026-08-31.
-      opus applies its own `op_sentinels()` policy when building the raw
-      archive, so `-9` is already resolved before obus reads it, per a
-      documented and coherent rule. See the `-9` section below. obus must not
-      re-introduce sentinels locally: it cannot tell which NULLs were `-9`.
-
-- [x] **RESOLVED — NS-IBTS 2022 Q1 is not truncated; 32,767 is a
-      coincidence.** Investigated 2026-08-31. The suspicion was that HL had
-      been cut at exactly 2^15-1 rows. It had not: the survey was simply
-      smaller that year, and the row count is exactly what the haul count
-      predicts.
-
       1. **HH is down too.** 249 hauls, against 325-387 in every other year
          2014-2026. A truncated HL would leave HH untouched.
       2. **Rows per haul is normal** — 131.6, inside the 117-145 range of
@@ -231,37 +119,11 @@ lines of which four fifths was history; the convention follows opus's.*
 
 ## Open, not resolved
 
-- [x] **RESOLVED — `Inf` from `HaulDuration <= 0`.** An hourly rate is
-      undefined with no time fished, so `*_hour` is now `NA`, not `Inf`.
-      `DataType == "C"` is the mirror image — it reports a rate directly, so
-      there the rate survives and the per-haul figure goes `NA` instead of a
-      plausible-looking `0`. Verified: 0 `Inf` and 0 `NaN` anywhere in either
-      table. Only 7 hauls with duration <= 0 actually carry HL rows (6 `P`,
-      1 `R`) — exactly the 7 `obus_retired` named — so the `C` and negative
-      guards are correct but touch no published row today; they protect
-      future submissions. The 2 negative-duration hauls (Can-Mar 2017, both
-      already `HaulValidity == "I"`) likewise have no HL rows.
-- [x] **RESOLVED — `n_haul` renamed to `n_totalnumber` in `HL_summary`.** By
-      design it is the *reported* `TotalNumber`, while `dr_HL_length()`'s
-      `n_haul` reaches the same conceptual quantity by raising measured length
-      frequencies. Calling both `n_haul` invited exactly the confusion the
-      3.44% disagreement makes material. `n_hour` follows as
-      `n_totalnumber_hour`. `w_haul`/`w_hour` keep their names —
-      `SpeciesCategoryWeight` is their only possible source, so there is no
-      competing quantity to confuse them with.
-
 - [ ] **Can-Mar `SpeciesValidity = "5"` rows carry real length data**, unlike
       every other survey. ICES documents this as unresolved. Separately,
       Can-Mar's lost raising factor is 30,214 of the 73,596 real disagreements
       (41%), median gap 13 fish, 98% one-directional — a documented
       provider-side conversion, not something obus can fix.
-- [x] **SUPERSEDED 2026-09-01 — `n_haul` added to `HL_summary`.** The earlier
-      "nothing to add" reasoning was inconsistent: `HL_summary` already carried
-      `n_measured`, the raw un-raised sum of `NumberAtLength`, so the table
-      already crossed the length-path boundary. It carried the un-raised length
-      count but not the raised one, which is the only figure directly
-      comparable to `n_totalnumber`. That was arbitrary. Verified after the
-      change: zero of 1,912,256 groups differ from summing `HL_length`.
 
       Original reasoning, kept for the record: ICES's row-level formula is fully derivable from `HL_length`:
       summing its `n_haul` over `.id x aphia x SpeciesValidity` reproduces
