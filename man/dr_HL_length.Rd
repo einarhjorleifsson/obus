@@ -32,7 +32,7 @@ A lazy table, one row per \code{.id} \eqn{\times} \code{Valid_Aphia}
 \code{species}, \code{rank}, \code{length_mm}, \code{length_cm},
 \code{accuracy}, \code{LengthType}, \code{SpeciesSex},
 \code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
-\code{SpeciesValidity}.
+\code{n_measured}, \code{SpeciesValidity}.
 
 Where \code{HaulDuration} is 0 or negative (219 hauls archive-wide),
 \code{n_hour} is \code{NA} rather than \code{Inf} -- an hourly rate is
@@ -77,6 +77,32 @@ count that must not be summed away. Measured over the whole archive
 (i.e. on \code{LengthCode}). At the full key the table is exactly unique
 (verified: 0 duplicated groups over 14,001,605 rows); at any coarser key it
 is not, so sum \code{n_haul} rather than assuming one row.
+
+\strong{Both the raised and the un-raised count are carried.} \code{n_haul}
+is the raised whole-haul count (\code{NumberAtLength} \eqn{\times}
+\code{SubsamplingFactor}); \code{n_measured} is
+\eqn{\Sigma}\code{NumberAtLength} exactly as submitted, before any raising --
+how many fish actually went through the calipers at this length. It is the
+same quantity \code{\link{dr_HL_summary}} carries under the same name, one
+grain finer, and summing it to that table's grain reproduces that column.
+
+\strong{It is not recoverable from \code{n_haul}}, which is why it is a
+column rather than a note. \code{SubsamplingFactor} is not part of this
+table's grain, so one output row can aggregate several raw HL rows raised by
+\emph{different} factors -- measured archive-wide (2026-09-03), 44,215 rows
+are built from more than one raw row and 42,089 of those span more than one
+distinct \code{SubsamplingFactor}. On those rows no single divisor recovers
+the submitted count. Where both are known, the two differ on 2,044,217 of
+9,325,606 rows (21.9\%), which is simply how much of the archive was
+subsampled.
+
+\code{n_measured} is \code{NA} -- not \code{0} -- where
+\code{DataType == "C"}, following \code{\link{dr_HL_summary}}: that
+convention reports \code{NumberAtLength} as an already-hourly rate, so no
+physical count of measured fish exists to report. That is 4,651,701 of
+14,001,605 rows (33.2\%), verified to be exactly the \code{"C"} rows and no
+others. Unlike in \code{\link{dr_HL_summary}} there is no \code{0} case
+here: a species with no length data has no row in this table at all.
 }
 \seealso{
 \code{\link{dr_HL_summary}}, \code{\link{dr_add_id}}

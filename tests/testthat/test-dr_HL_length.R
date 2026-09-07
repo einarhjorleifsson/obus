@@ -201,3 +201,112 @@ test_that("a present SubsamplingFactor of 1 still means 'not subsampled' and rai
   expect_equal(out$n_haul, 7)
   expect_equal(out$n_hour, 14)
 })
+
+# --- n_measured: the un-raised NumberAtLength, as submitted ------------------
+# Added 2026-09-03. The raised n_haul was the only count here, which made the
+# submitted length frequency unrecoverable from the published table -- the one
+# HL field a QC consumer (DATRAS/DATRASextra's `Count` vs HLNoAtLngt) could
+# want and not find. n_measured is dr_HL_summary()'s column of the same name at
+# this finer grain, so the two tables stay one vocabulary.
+
+test_that("n_measured is the un-raised NumberAtLength, and n_haul the raised one", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 60, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 7, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 4,
+    SpeciesSex = "F", SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = 28, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_equal(out$n_measured, 7)     # what went through the calipers
+  expect_equal(out$n_haul, 28)        # raised to the whole haul
+})
+
+test_that("n_measured is NOT recoverable from n_haul when one row aggregates two raising factors", {
+  # SubsamplingFactor is not part of this table's grain, so two raw HL rows
+  # differing only in SpeciesCategory collapse into one output row. With
+  # different factors on them, no single divisor gets back to the submitted
+  # count -- 42,089 archive rows are in exactly this position.
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126417L,
+    NumberAtLength = c(4, 6),
+    LengthClass = 100, LengthCode = "1", LengthType = "1",
+    SubsamplingFactor = c(1, 3),
+    SpeciesSex = "F", SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = 22, SpeciesCategoryWeight = 500,
+    SpeciesCategory = c("1", "2")
+  )
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_equal(nrow(out), 1L)
+  expect_equal(out$n_measured, 10)               # 4 + 6, as submitted
+  expect_equal(out$n_haul, 22)                   # 4*1 + 6*3
+  # %in% binds tighter than /, so the ratio needs its own parentheses.
+  expect_false((out$n_haul / out$n_measured) %in% hl$SubsamplingFactor)
+})
+
+test_that("n_measured is NA under DataType 'C', which reports a rate rather than a count", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "C", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 8, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 1,
+    SpeciesSex = "F", SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = 8, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_true(is.na(out$n_measured))   # NOT 8, and NOT 0
+  expect_equal(out$n_hour, 8)          # the reported rate still survives
+  expect_equal(out$n_haul, 4)          # 8 per hour over a 30-minute haul
+})
+
+test_that("a missing SubsamplingFactor voids n_haul but leaves n_measured intact", {
+  # The submitted count is a fact regardless of whether the raising factor
+  # was supplied; only the raised figure becomes unknowable.
+  hh <- data.frame(.id = 1L, Survey = "Can-Mar", Year = 1995L, Quarter = 3L,
+                   DataType = "R", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 7, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = NA_real_,
+    SpeciesSex = "F", SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = 7, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_true(is.na(out$n_haul))
+  expect_equal(out$n_measured, 7)
+})
+
+test_that("summing n_measured to dr_HL_summary()'s grain reproduces its n_measured", {
+  # The invariant that lets the two tables carry one name for one quantity.
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
+                   DataType = "R", HaulDuration = 60, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126417L,
+    NumberAtLength = c(3, 5, 2),
+    LengthClass = c(100, 100, 110), LengthCode = "1", LengthType = "1",
+    SubsamplingFactor = c(1, 2, 1),
+    SpeciesSex = c("F", "M", "M"),
+    SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = c(3, 10, 2), SpeciesCategoryWeight = 500,
+    SpeciesCategory = "1"
+  )
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
+
+  len  <- dr_HL_length(hh, hl, species = sp)
+  smry <- dr_HL_summary(hh, hl, species = sp)
+
+  rolled <- stats::aggregate(n_measured ~ .id + Valid_Aphia + SpeciesValidity,
+                             data = len, FUN = sum, na.rm = TRUE)
+  expect_equal(rolled$n_measured, smry$n_measured)
+  expect_equal(smry$n_measured, 10)               # 3 + 5 + 2, un-raised
+})

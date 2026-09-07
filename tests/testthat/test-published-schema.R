@@ -44,7 +44,7 @@ PUBLISHED_SCHEMA <- list(
   HL_length = c(
     ".id", "Survey", "Year", "Quarter", "Valid_Aphia", "latin", "species", "rank",
     "length_mm", "length_cm", "accuracy", "LengthType", "SpeciesSex",
-    "DevelopmentStage", "n_haul", "n_hour", "SpeciesValidity"
+    "DevelopmentStage", "n_haul", "n_hour", "n_measured", "SpeciesValidity"
   ),
   hl_flag      = c(".id", "Valid_Aphia", "code"),
   hl_flag_code = c("code", "kind", "affects", "label", "meaning", "evidence"),

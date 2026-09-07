@@ -46,6 +46,32 @@
 #' (verified: 0 duplicated groups over 14,001,605 rows); at any coarser key it
 #' is not, so sum \code{n_haul} rather than assuming one row.
 #'
+#' \strong{Both the raised and the un-raised count are carried.} \code{n_haul}
+#' is the raised whole-haul count (\code{NumberAtLength} \eqn{\times}
+#' \code{SubsamplingFactor}); \code{n_measured} is
+#' \eqn{\Sigma}\code{NumberAtLength} exactly as submitted, before any raising --
+#' how many fish actually went through the calipers at this length. It is the
+#' same quantity \code{\link{dr_HL_summary}} carries under the same name, one
+#' grain finer, and summing it to that table's grain reproduces that column.
+#'
+#' \strong{It is not recoverable from \code{n_haul}}, which is why it is a
+#' column rather than a note. \code{SubsamplingFactor} is not part of this
+#' table's grain, so one output row can aggregate several raw HL rows raised by
+#' \emph{different} factors -- measured archive-wide (2026-09-03), 44,215 rows
+#' are built from more than one raw row and 42,089 of those span more than one
+#' distinct \code{SubsamplingFactor}. On those rows no single divisor recovers
+#' the submitted count. Where both are known, the two differ on 2,044,217 of
+#' 9,325,606 rows (21.9%), which is simply how much of the archive was
+#' subsampled.
+#'
+#' \code{n_measured} is \code{NA} -- not \code{0} -- where
+#' \code{DataType == "C"}, following \code{\link{dr_HL_summary}}: that
+#' convention reports \code{NumberAtLength} as an already-hourly rate, so no
+#' physical count of measured fish exists to report. That is 4,651,701 of
+#' 14,001,605 rows (33.2%), verified to be exactly the \code{"C"} rows and no
+#' others. Unlike in \code{\link{dr_HL_summary}} there is no \code{0} case
+#' here: a species with no length data has no row in this table at all.
+#'
 #' @param hh DATRAS HH table with \code{.id} present (see
 #'   \code{\link{dr_add_id}}). Required: \code{.id}, \code{Survey},
 #'   \code{Year}, \code{Quarter}, \code{DataType}, \code{HaulDuration}.
@@ -67,7 +93,7 @@
 #'   \code{species}, \code{rank}, \code{length_mm}, \code{length_cm},
 #'   \code{accuracy}, \code{LengthType}, \code{SpeciesSex},
 #'   \code{DevelopmentStage}, \code{n_haul}, \code{n_hour},
-#'   \code{SpeciesValidity}.
+#'   \code{n_measured}, \code{SpeciesValidity}.
 #'
 #' Where \code{HaulDuration} is 0 or negative (219 hauls archive-wide),
 #' \code{n_hour} is \code{NA} rather than \code{Inf} -- an hourly rate is
@@ -109,6 +135,30 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
       # confident 0 on the eager path. Caught by a test, not by review.
       .n_ok = sum(as.integer(!is.na(.n_raw)), na.rm = TRUE),
       .h_ok = sum(as.integer(!is.na(.h_raw)), na.rm = TRUE),
+      # n_measured: the un-raised NumberAtLength as submitted. Deliberately
+      # the SAME expression dr_HL_summary() uses for its own n_measured, one
+      # grain finer, so summing this column up to that table's grain
+      # reproduces its column. Verified full-archive 2026-09-03 over the
+      # 1,925,444 comparable groups: the NA sets are identical (586,884 either
+      # way -- the groups whose every length row is DataType "C"), and 2,501
+      # groups differ by at most 8.7e-11. That residual is floating point, not
+      # logic: 454,716 raw HL rows carry a FRACTIONAL NumberAtLength, and
+      # summing subgroups then re-summing is not bit-associative. Re-running
+      # moves the count by a few dozen either way, which is itself the proof.
+      #
+      # DataType == "C" is NA for the reason given in dr_HL_summary() -- that
+      # convention reports NumberAtLength as an already-hourly RATE, so no
+      # physical "number of fish measured" exists to report. 4,651,701 of
+      # 14,001,605 rows (33.2%), and measured to be exactly the "C" rows:
+      # no non-"C" row is NA and no "C" row is not.
+      #
+      # No all-NA guard is needed, unlike n_haul above: the NumberAtLength != 0
+      # filter has already dropped every NA row, in both backends.
+      n_measured = dplyr::if_else(
+        dplyr::first(DataType) == "C",
+        NA_real_,
+        sum(NumberAtLength, na.rm = TRUE)
+      ),
       .groups = "drop"
     ) |>
     dplyr::mutate(
@@ -118,7 +168,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::select(
       .id, Survey, Year, Quarter, Valid_Aphia, latin, species, rank,
       length_mm, length_cm, accuracy, LengthType, SpeciesSex, DevelopmentStage,
-      n_haul, n_hour, SpeciesValidity
+      n_haul, n_hour, n_measured, SpeciesValidity
     )
 }
 
