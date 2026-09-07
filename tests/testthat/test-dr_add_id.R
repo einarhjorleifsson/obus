@@ -25,7 +25,7 @@
 # Run the same expectations against a data frame and against a DuckDB view of
 # it, so a divergence fails rather than hiding until build time.
 .id_both <- function(d, name) {
-  con <- obus::dr_duckdb()
+  con <- duckdbfs::cached_connection()
   lz  <- dplyr::copy_to(con, d, name, overwrite = TRUE)
   list(eager = dr_add_id(d)$.id,
        lazy  = dplyr::pull(dr_add_id(lz), .id))
@@ -112,7 +112,7 @@ test_that(".id is appended last and no working column leaks out", {
   expect_identical(names(out), c(DR_ID_FIELDS, ".id"))
   expect_false(".dr_any" %in% names(out))
 
-  con <- obus::dr_duckdb()
+  con <- duckdbfs::cached_connection()
   lz  <- dplyr::copy_to(con, d, "id_cols", overwrite = TRUE)
   expect_identical(colnames(dr_add_id(lz)), c(DR_ID_FIELDS, ".id"))
 })
