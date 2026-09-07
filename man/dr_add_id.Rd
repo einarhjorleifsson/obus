@@ -22,10 +22,17 @@ Concatenates the eight join-key fields into a new \code{.id} column, e.g.
 \details{
 \code{.id} is an obus construct -- ICES/DATRAS has no such field. It is
 just the fields ICES's own exchange tables use to key a haul, glued
-together for obus's own convenience joining HH to HL and CA. Fields that
-are \code{NA} (most often \code{StationName}) are skipped rather than
-rendered as the string \code{"NA"}, matching the convention the published
-archive already uses; see \code{\link{.dr_concat_ws}} for why that needs
+together for obus's own convenience joining HH to HL and CA.
+
+\strong{It always has eight \code{":"}-separated fields.} A field that is
+\code{NA} -- in practice \code{StationName}, and in CA also
+\code{HaulNumber} -- is written as the literal string \code{"NA"}, so
+\code{.id} can be split back into the eight key columns positionally and
+so it is byte-identical to the DATRAS R package's \code{haul.id}. This
+changed on 2026-09-03: \code{NA} fields used to be skipped, which made
+4.59\% of hauls produce a seven-field \code{.id}. See
+\code{\link{.dr_concat_ws}} for the measurements behind the change, for
+why the token is \code{"NA"} and not \code{"-9"}, and for why this needs
 building by hand rather than leaving to \code{paste()}.
 
 Only opus's current field names are accepted. The legacy ICES names

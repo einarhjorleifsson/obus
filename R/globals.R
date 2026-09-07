@@ -9,7 +9,7 @@ NULL
 
 utils::globalVariables(c(
   # haul key
-  ".id", "Survey", "Year", "Quarter", "Country", "Platform", "Gear",
+  ".id", ".dr_any", "Survey", "Year", "Quarter", "Country", "Platform", "Gear",
   "StationName", "HaulNumber",
   # HH
   "HaulValidity", "DataType", "HaulDuration",

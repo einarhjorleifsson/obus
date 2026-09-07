@@ -2,9 +2,9 @@
 % Please edit documentation in R/dr_add_id.R
 \name{.dr_concat_ws}
 \alias{.dr_concat_ws}
-\title{Concatenate columns with a separator, skipping \code{NA} fields entirely}
+\title{Concatenate columns with a separator, writing a token for \code{NA} fields}
 \usage{
-.dr_concat_ws(d, cols, sep = ":")
+.dr_concat_ws(d, cols, sep = ":", na_token = "NA")
 }
 \arguments{
 \item{d}{A data frame or \code{tbl_lazy}.}
@@ -12,6 +12,8 @@
 \item{cols}{Character vector of column names to concatenate, in order.}
 
 \item{sep}{Separator string.}
+
+\item{na_token}{String written in place of an \code{NA} field.}
 }
 \value{
 \code{d} with an added (or overwritten) \code{.id} column.
@@ -25,15 +27,48 @@ renders an \code{NA} field as the literal two-character string \code{"NA"},
 while on a \code{tbl_lazy} \code{dbplyr} translates \code{paste(sep = x)}
 to DuckDB's \code{CONCAT_WS()}, which drops \code{NA} fields instead.
 \code{.id} is the join key between HH, HL and CA, so it must come out
-identical whichever backend computed it; this builds the NA-skipping
-behaviour explicitly from primitives (\code{is.na()},
-\code{dplyr::case_when()}, \code{paste0()}) that translate the same way on
-both.
+identical whichever backend computed it. This substitutes
+\code{na_token} for every \code{NA} field \emph{before} concatenating, so
+no \code{NA} ever reaches \code{paste0()} and the two backends cannot
+disagree about what it does with one.
 }
 \details{
-One deliberate departure from raw \code{CONCAT_WS()}: when every field is
-\code{NA} this returns \code{NA}, not \code{CONCAT_WS()}'s own \code{""}.
-An empty string would collide every such row onto one \code{.id}, which is
-worse than reporting honestly that no key could be built.
+\strong{The field count is fixed, and that is the point} (changed
+2026-09-03; it used to skip \code{NA} fields, producing a shorter string).
+Three things the skipping cost, all measured on the full archive:
+\itemize{
+\item \code{.id} was not splittable. 6,899 of 150,217 HH hauls (4.59\%)
+produced a 7-field \code{.id}, so a positional
+\code{tidyr::separate()} into the eight key names silently shifted
+\code{HaulNumber} into the \code{StationName} slot.
+\item It was self-consistent for HL only by luck. HH and HL carry
+\code{NA StationName} on the \emph{same} hauls, so both sides skipped
+the same field and still matched (0 orphan HL rows). CA does not:
+305,276 CA rows have \code{HaulNumber} missing too -- a field never
+\code{NA} in HH -- giving 280 six-field \code{.id}s that can match no
+haul.
+\item With two nullable fields it could collide two different hauls:
+\code{StationName = NA, HaulNumber = k} and
+\code{StationName = k, HaulNumber = NA} skip down to the same string.
+Not yet realised (0 collisions across HH, HL and CA), but live.
+}
+
+\code{"NA"} rather than \code{"-9"} deliberately. opus has already nulled
+\code{-9} as a sentinel, so writing it back would manufacture a value the
+archive does not contain and would be indistinguishable from a genuine
+\code{StationName} of \code{-9}; Working Principle 3's direction of travel
+is never to re-manufacture a sentinel. \code{"NA"} also makes \code{.id}
+byte-identical to the DATRAS R package's \code{haul.id}, which pastes the
+same eight fields in the same order and lets \code{NA} render as
+\code{"NA"} for exactly this reason. Verified unambiguous: no
+\code{StationName} in HH, HL or CA is \code{"NA"}, \code{"-9"},
+\code{""}, or contains a \code{":"}.
+
+One case still returns \code{NA} rather than a string: when \emph{every}
+field is \code{NA}. \code{"NA:NA:NA:NA:NA:NA:NA:NA"} would collide every
+such row onto one \code{.id}, which is worse than reporting honestly that
+no key could be built. It cannot arise in the current archive -- the first
+six fields are never \code{NA} in any of the three tables -- and is kept
+as a guard, not a live branch.
 }
 \keyword{internal}
