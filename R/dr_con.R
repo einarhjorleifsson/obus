@@ -18,8 +18,8 @@
 # build time and published. Reach for dr_con_raw() when you specifically want
 # what opus staged, untouched; otherwise prefer dr_con().
 #
-# Both open onto the SAME DuckDB connection -- see dr_duckdb().
-# That is not incidental -- dr_HL_length()/dr_HL_summary() join a raw HL against
+# Both open onto the SAME DuckDB connection (duckdbfs's cached one). That is
+# not incidental -- dr_HL_length()/dr_HL_summary() join a raw HL against
 # dr_con("species"), and dbplyr refuses to join two lazy tables held on
 # different connections ("`x` and `y` must share the same source"). Verified
 # 2026-08-31: opus::op_con() keeps its own private DBI connection, so calling
