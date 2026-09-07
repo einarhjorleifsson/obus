@@ -63,9 +63,16 @@ PUBLISHED_SCHEMA <- list(
 
 # The tables dr_con() serves. Adding one is fine; removing or renaming one
 # breaks every caller that names it.
-PUBLISHED_TABLES <- c("HH", "species", "HL_length", "HL_summary",
+PUBLISHED_TABLES <- c("HH", "HL", "CA", "species", "HL_length", "HL_summary",
                       "hl_flag", "hl_flag_code",
                       "length_weight", "length_type_conversion")
+
+# HH, HL and CA are deliberately absent from PUBLISHED_SCHEMA above. Their
+# columns are opus's, not obus's, and pinning them here would make obus a
+# second source of truth for DATRAS field names -- exactly what Working
+# Principle 1 forbids. The contract for those three is a RELATION, tested
+# online below: dr_con(tbl) is dr_con_raw(tbl) plus `.id`, and nothing else.
+DR_RAW_PLUS_ID <- c("HH", "HL", "CA")
 
 # --- offline: the functions define the contract -----------------------------
 # A minimal haul carrying every branch the two functions key on: two sexes, a
@@ -111,8 +118,8 @@ test_that("dr_HL_length() returns exactly the published columns, in order", {
 
 test_that("dr_con() serves exactly the published set of tables", {
   expect_identical(DR_TABLES, PUBLISHED_TABLES)
-  expect_error(dr_con("HL"), "Invalid table")          # HL is dr_con_raw()'s
   expect_error(dr_con("HL_standardised"), "Invalid table")
+  expect_error(dr_con("LT"), "Invalid table")   # LT is dr_con_raw()'s only
 })
 
 test_that("dr_con_raw() serves exactly the four Tier 1 exchange tables", {
@@ -139,5 +146,22 @@ test_that("the published files carry the same columns as the code produces", {
     skip_if(is.null(got), paste("could not reach the published", tbl))
     expect_identical(got, PUBLISHED_SCHEMA[[tbl]],
                      info = paste("published", tbl, "disagrees with the code"))
+  }
+})
+
+# The relation that stands in for a pinned schema on HH, HL and CA: each is
+# the raw table with `.id` appended and NOTHING else touched. Catches both
+# halves of the way this can rot -- a published file rebuilt from a stale raw
+# archive, and obus quietly adding or dropping a column on the way through.
+test_that("published HH, HL and CA are the raw tables plus `.id`, nothing more", {
+  skip_on_cran()
+  skip_if_offline()
+  for (tbl in DR_RAW_PLUS_ID) {
+    raw <- tryCatch(colnames(dr_con_raw(tbl)), error = function(e) NULL)
+    got <- tryCatch(colnames(dr_con(tbl)),     error = function(e) NULL)
+    skip_if(is.null(raw) || is.null(got), paste("could not reach", tbl))
+
+    expect_identical(got, c(raw, ".id"),
+                     info = paste(tbl, "is not raw +", "`.id`"))
   }
 })
