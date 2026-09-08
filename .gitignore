@@ -12,3 +12,6 @@ docs/
 
 # Render byproduct of README.Rmd (github_document)
 README.html
+
+# Render byproduct of data-raw/build_plan_page.py
+PLAN-qc-checks.html
