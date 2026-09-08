@@ -268,6 +268,62 @@ test_that("n_measured is NA under DataType 'C', which reports a rate rather than
   expect_equal(out$n_haul, 4)          # 8 per hour over a 30-minute haul
 })
 
+# REGRESSION GUARD. Under DataType "C" obus applies BOTH multipliers --
+# HaulDur/60 AND SubFactor -- and this deliberately contradicts ICES's own
+# published recipe, so it looks like a bug to anyone reading WKABSENS. It has
+# already been "fixed" to one multiplier once and reverted. Do not do it again.
+#
+# WKABSENS 2021 (3.3, step 17): "Multiplier = HaulDur/60 if DataType in ('C');
+# Multiplier = SubFactor if DataType in ('S','R')". The DATRAS R package did
+# exactly that until commit 880b553 (2023-04-11), which switched to two
+# multipliers over the note "some BITS hauls (all LT and some DK) have dataType
+# C but SubFactor>1 - two multipliers needed!". WKABSENS predates the discovery.
+#
+# The submissions settle it: over the 113 groups with "C" and SubFactor > 1,
+# TotalNo never equals sum(HLNoAtLngt) but equals sum x SubFactor in 102, and
+# sum(HLNoAtLngt) equals NoMeas in 108 -- so HLNoAtLngt there is the measured
+# subsample, and the haul is shaped like "R" while labelled "C".
+test_that("DataType 'C' with SubFactor > 1 applies both multipliers", {
+  # Modelled on BITS DK 2018: 30-minute haul, SubFactor 167.939, NoMeas 120,
+  # sum(HLNoAtLngt) 120, TotalNo 20152.68 = 120 * 167.939.
+  hh <- data.frame(.id = 1L, Survey = "BITS", Year = 2018L, Quarter = 4L,
+                   DataType = "C", HaulDuration = 30, HaulValidity = "N")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126425L, NumberAtLength = 120, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = 167.939,
+    SpeciesSex = "F", SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = 20152.68, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(Valid_Aphia = 126425L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  # 120 * 167.939 * 30/60 -- NOT 60 (duration only) and NOT 20152.68 (factor only)
+  expect_equal(out$n_haul, 120 * 167.939 * 0.5)
+  expect_equal(out$n_hour, 120 * 167.939)
+  expect_equal(out$n_hour, out$n_haul / 30 * 60)   # the two must stay consistent
+})
+
+test_that("DataType 'C' with a missing SubFactor gives NA, unlike the DATRAS package", {
+  # DATRAS coalesces a missing SubFactor to 1 (multiplier2 in read_datras.R);
+  # obus propagates the NA, under the same rule it applies to "R" -- "not
+  # recorded" is not the claim "not subsampled". In the archive every "C" row
+  # with no factor is a bulk record with no length data, so this guards the
+  # rule rather than a case that currently occurs.
+  hh <- data.frame(.id = 1L, Survey = "BITS", Year = 2012L, Quarter = 1L,
+                   DataType = "C", HaulDuration = 30, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 126417L, NumberAtLength = 8, LengthClass = 100,
+    LengthCode = "1", LengthType = "1", SubsamplingFactor = NA_real_,
+    SpeciesSex = "F", SpeciesValidity = "1", DevelopmentStage = NA_character_,
+    TotalNumber = 8, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
+  )
+  sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
+  out <- dr_HL_length(hh, hl, species = sp)
+
+  expect_true(is.na(out$n_haul))
+  expect_true(is.na(out$n_measured))
+})
+
 test_that("a missing SubsamplingFactor voids n_haul but leaves n_measured intact", {
   # The submitted count is a fact regardless of whether the raising factor
   # was supplied; only the raised figure becomes unknowable.

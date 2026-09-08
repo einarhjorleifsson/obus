@@ -289,10 +289,14 @@ carried 14,001,605.)
 
 **Neither catch table's grain is what its documentation used to claim, and
 both were fixed in the docs rather than the code.**
-- `HL_length` is keyed by `.id x Valid_Aphia x length_mm x SpeciesSex x LengthType`.
-  4,074 groups (0.03%) split on `LengthType`, `SpeciesValidity` or
-  `accuracy`. These are genuinely separate counts and must not be
-  collapsed.
+- `HL_length` is keyed by `.id x Valid_Aphia x length_mm x accuracy x
+  LengthType x SpeciesSex x DevelopmentStage x SpeciesValidity` -- eight
+  fields, 0 duplicated groups over all 14,001,605 rows (re-verified
+  2026-09-08). Every one is load-bearing; leaving one out introduces
+  duplicated groups: `SpeciesSex` 741,219, `DevelopmentStage` 5,476,
+  `LengthType` 3,909, `accuracy` 15, `SpeciesValidity` 15. These are
+  genuinely separate counts and must not be collapsed. (`length_cm` is
+  `length_mm / 10`, carried for convenience, not part of the key.)
 - `HL_summary` is keyed by `.id x Valid_Aphia x SpeciesValidity`. 1,219 groups
   (0.05%) split — and 97% of the sub-groups that do are the
   repeated-total pattern of Working Principle 5, not a real split. Summing

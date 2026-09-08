@@ -54,9 +54,12 @@ species with no length data at all. It is a genuinely different quantity
 from \code{n_totalnumber}: for a subsampled catch the two diverge on purpose
 -- \code{n_totalnumber} is the reported whole-haul total, \code{n_measured}
 is how many fish were actually put through calipers. It is \code{NA}, not \code{0}, when
-\code{DataType == "C"}: that convention reports \code{NumberAtLength} as an
-already-hourly rate, so no true physical count can be recovered, and
-\code{0} is reserved for species genuinely never measured.
+\code{DataType == "C"}: ICES instructs that convention to report
+\code{HLNoAtLngt} already adjusted to one hour (DATRAS FAQ, \emph{DataType
+C} block), so summing it yields a rate and not a count, and \code{0} is
+reserved for species genuinely never measured. The information is not
+necessarily gone -- see \code{\link{dr_HL_length}} for the subsampling
+trace that often survives in HL's \code{SubsampledNumber}.
 
 \strong{Both routes are carried here.} \code{n_totalnumber} is the reported
 total; \code{n_haul} is the same quantity reconstructed by raising the

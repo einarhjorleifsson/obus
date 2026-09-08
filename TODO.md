@@ -119,6 +119,85 @@ lines of which four fifths was history; the convention follows opus's.*
 
 ## Open, not resolved
 
+### Labelled hypotheses moved out of the conventions article (2026-09-08)
+
+Trimmed from `vignettes/articles/datras-conventions.qmd` to keep it readable.
+None is a finding; each has a stated test. Kept here because the article was
+their only home.
+
+**Can-Mar's whole-fish disagreement** — 31,047 groups, 41.8% of the residual;
+median gap 13 fish, 98% with `TotalNo` higher, 88.2% carrying
+`SubsamplingFactor == 1`. Two rival mechanisms, both live:
+
+- **H-C1a — lost raising factor.** A provider-side historical conversion
+  dropped the real sub-sampling factor to 1 while `TotalNo` kept the raised
+  value, so `TotalNo / length_sum` *is* the lost factor. *Test:* histogram
+  `TotalNo / length_sum` over Can-Mar whole-fish groups. Clustering at small
+  integers, or a smooth distribution centred well above 1, supports it; a
+  distribution centred near 1 with a long tail does not. Stronger still: if
+  `CatCatchWgt / SubWgt` recovers a factor above 1 where `SubFactor` reads 1,
+  that is close to proof.
+- **H-C1b — counted but not measured.** Fish counted into `TotalNo` that never
+  entered a length row: a bulk count plus a measured sub-sample, the residual
+  never distributed over length classes. *Test:* regress the gap on `TotalNo`
+  and on the number of occupied length classes separately. H-C1a predicts the
+  gap scales with the length sum; H-C1b predicts it scales with `TotalNo` with
+  no length-class term. These separate cleanly.
+- **Refuted:** a per-length-class half-fish truncation. `gap / n_length_classes`
+  has median 1.000 (Q1 0.333, Q3 3.333), not 0.5, and median gap 13 against
+  median 14 occupied classes — far too dispersed for any per-class mechanism.
+
+**Weight-path hypotheses.** All share one instrument that has not been built:
+mean weight per fish, `w_haul / n_haul`, stratified by species, which is
+biologically bounded within roughly an order of magnitude, so any mechanism
+scaling weight without scaling count leaves a self-normalising signature.
+
+- **H-W0 — `SubFactor = CatCatchWgt / SubWgt`.** True arithmetically in the
+  Example file (343666 / 8340 = 41.207, and 237 x 41.207 = 9766.059 exactly),
+  stated in words nowhere. *Test:* over all HL rows with `SubWgt`,
+  `CatCatchWgt` and `SubFactor` populated, compare the ratio with the reported
+  factor, stratified by survey x year x `DataType`. This one is still cited in
+  the article; the rest below are not.
+- **H-W1 — `DataType` C weight standardisation handled asymmetrically.** HL
+  row 22 makes `CatCatchWgt` for C a rate. If `w_haul` treats C weights as
+  per-haul while `n_haul` back-multiplies C counts by `HaulDuration/60`, then
+  `w_haul / n_haul` for C is wrong by `60 / HaulDuration` — roughly a third of
+  the archive. *Test:* for the 200 most abundant aphia codes plot median
+  g/fish by `DataType`, and within C regress `log(g/fish)` on
+  `log(HaulDuration)`. Slope near +1 confirms; near 0 refutes.
+- **H-W2 — dropping `SpeciesSex` from the weight key** halves genuinely
+  separate per-sex weights that happen to be equal. *Test:* isolate groups with
+  >=2 sexes in one `(.id, aphia, SpeciesCategory)` and identical non-zero
+  weights; compare their g/fish with single-sex groups of the same species and
+  year.
+- **H-W3 — `SubWgt` written into `CatCatchWgt` or vice versa.** Adjacent
+  fields, both integer grams, only one mandatory. *Test:* H-W0's ratio test
+  filtered to ratio ~ 1 and `SubFactor > 1.5`, tabulated by survey x year x
+  country.
+- **H-W4 — unit errors**, kilograms or 100-gram units in a grams field.
+  Partly answered: IBTSWG 2025 Table 3.8.1 records a realised case (CEFAS
+  NS-IBTS Q1 1978, `TotalNo` "122->244", `CatCatchWgt` "2750->55", comments
+  "No per hr (*2)" and "No per hour (*2) per 100g (/100)"). *Test:* per species
+  compute the archive-wide median g/fish; per (survey, year, country, platform)
+  compute the median ratio to that reference and look for blocks near 1e-3,
+  1e-2, 1e2 or 1e3. Discrete blocks confirm; a continuous spread is biology.
+- **H-W6 — the 36 P blocks sharing one weight across main categories** are
+  either genuinely equal catches or a wider repeat than the pseudo-category
+  memo describes. *Test:* g/fish against the species norm for those blocks,
+  plus whether `SubWgt` also repeats across main categories — a repeated
+  `SubWgt` is much harder to call coincidence.
+- **H-W7 — the R duplicates.** The 56 sub-1 kg blocks may be coincidence; the
+  153 above 1 kg (matching to the gram, up to 1.9 tonnes, identical
+  `TotalNo` in 160 of 209) are not. *Test:* model the coincidence rate — for R
+  groups with 2+ categories, what fraction have equal weights as a function of
+  weight magnitude?
+- **H-W8 — weight with no count.** Groups with a missing `SubFactor` have
+  `w_haul` populated and `n_haul` `NA`, so no g/fish diagnostic exists for
+  them at all. *Test:* count groups with non-`NA` `w_haul` and `NA` `n_haul`,
+  by survey and era. Every g/fish result above is conditioned on excluding
+  them, which must be stated.
+
+
 - [ ] **Can-Mar `SpeciesValidity = "5"` rows carry real length data**, unlike
       every other survey. ICES documents this as unresolved. Separately,
       Can-Mar's lost raising factor is 30,214 of the 73,596 real disagreements

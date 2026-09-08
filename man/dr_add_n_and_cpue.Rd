@@ -20,8 +20,9 @@ hourly rate (\code{n_hour}), according to how the submission reports its
 catch (\code{DataType}).
 }
 \details{
-A missing \code{SubsamplingFactor} propagates to \code{NA} for every
-\code{DataType}, including \code{"R"}. This follows ICES's own format
+A missing \code{SubsamplingFactor} propagates to \code{NA} under
+\code{DataType} \code{"R"}, \code{"P"} and \code{"S"} -- \code{"R"}
+included. This follows ICES's own format
 documentation rather than the DATRAS R package's convention, and the
 difference is deliberate: that package treats \code{"R"} plus a missing
 factor as 1, i.e. "the whole catch was measured". ICES's field descriptions
@@ -38,4 +39,28 @@ missing \code{DataType} gives \code{NA} outright, as before.
 
 Per ICES: \code{"C"} must report 1, \code{"S"} is always >1, and
 \code{"R"} is 1 or >1 depending on whether the species was subsampled.
+
+\strong{Under \code{DataType "C"} both multipliers are applied}, against
+ICES's own published recipe. WKABSENS 2021 (section 3.3, step 17) gives
+\emph{"Multiplier = HaulDur/60 if DataType in ('C'); Multiplier = SubFactor
+if DataType in ('S','R')"} -- one or the other. The DATRAS R package did
+exactly that until 2023-04-11, when it moved to two multipliers over the
+note that \emph{"some BITS hauls (all LT and some DK) have dataType C but
+SubFactor>1"}. WKABSENS predates that discovery and documents the superseded
+behaviour.
+
+The submissions decide it. Across the 113 haul x species x sex x category
+groups with \code{"C"} and \code{SubsamplingFactor > 1} (BITS LT 2008-2016
+and DK 2018; 1,832 length rows, 36 hauls), \code{TotalNo} never equals
+\eqn{\Sigma}\code{HLNoAtLngt} but equals \eqn{\Sigma}\code{HLNoAtLngt}
+\eqn{\times} \code{SubFactor} in 102, and \eqn{\Sigma}\code{HLNoAtLngt}
+equals \code{NoMeas} in 108. So \code{HLNoAtLngt} there is the measured
+subsample, not an hourly rate -- those hauls are shaped like \code{"R"} and
+labelled \code{"C"}. Omitting \code{SubFactor} understates them by up to
+167.9 times. Records are flagged \code{"CNT_C_SUBFACTOR_CONFLICT"} in
+\code{dr_con("hl_flag")}.
+
+Nothing outside the DATRAS package's source records this: 35 of the 36
+hauls carry \code{HaulValidity == "V"}, and ICES's upload validation has a
+\code{SubFactor} range rule for \code{"S"} and none for \code{"C"}.
 }

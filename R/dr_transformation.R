@@ -116,8 +116,9 @@ dr_add_length_mid <- function(d) {
 #' catch (\code{DataType}).
 #'
 #' @details
-#' A missing \code{SubsamplingFactor} propagates to \code{NA} for every
-#' \code{DataType}, including \code{"R"}. This follows ICES's own format
+#' A missing \code{SubsamplingFactor} propagates to \code{NA} under
+#' \code{DataType} \code{"R"}, \code{"P"} and \code{"S"} -- \code{"R"}
+#' included. This follows ICES's own format
 #' documentation rather than the DATRAS R package's convention, and the
 #' difference is deliberate: that package treats \code{"R"} plus a missing
 #' factor as 1, i.e. "the whole catch was measured". ICES's field descriptions
@@ -134,6 +135,30 @@ dr_add_length_mid <- function(d) {
 #'
 #' Per ICES: \code{"C"} must report 1, \code{"S"} is always >1, and
 #' \code{"R"} is 1 or >1 depending on whether the species was subsampled.
+#'
+#' \strong{Under \code{DataType "C"} both multipliers are applied}, against
+#' ICES's own published recipe. WKABSENS 2021 (section 3.3, step 17) gives
+#' \emph{"Multiplier = HaulDur/60 if DataType in ('C'); Multiplier = SubFactor
+#' if DataType in ('S','R')"} -- one or the other. The DATRAS R package did
+#' exactly that until 2023-04-11, when it moved to two multipliers over the
+#' note that \emph{"some BITS hauls (all LT and some DK) have dataType C but
+#' SubFactor>1"}. WKABSENS predates that discovery and documents the superseded
+#' behaviour.
+#'
+#' The submissions decide it. Across the 113 haul x species x sex x category
+#' groups with \code{"C"} and \code{SubsamplingFactor > 1} (BITS LT 2008-2016
+#' and DK 2018; 1,832 length rows, 36 hauls), \code{TotalNo} never equals
+#' \eqn{\Sigma}\code{HLNoAtLngt} but equals \eqn{\Sigma}\code{HLNoAtLngt}
+#' \eqn{\times} \code{SubFactor} in 102, and \eqn{\Sigma}\code{HLNoAtLngt}
+#' equals \code{NoMeas} in 108. So \code{HLNoAtLngt} there is the measured
+#' subsample, not an hourly rate -- those hauls are shaped like \code{"R"} and
+#' labelled \code{"C"}. Omitting \code{SubFactor} understates them by up to
+#' 167.9 times. Records are flagged \code{"CNT_C_SUBFACTOR_CONFLICT"} in
+#' \code{dr_con("hl_flag")}.
+#'
+#' Nothing outside the DATRAS package's source records this: 35 of the 36
+#' hauls carry \code{HaulValidity == "V"}, and ICES's upload validation has a
+#' \code{SubFactor} range rule for \code{"S"} and none for \code{"C"}.
 #'
 #' @param d DATRAS length table (HL) with \code{DataType}, \code{HaulDuration},
 #'   \code{NumberAtLength} and \code{SubsamplingFactor}. \code{DataType} and
@@ -153,6 +178,31 @@ dr_add_n_and_cpue <- function(d) {
         # that duration is 0 or negative. Without this the arithmetic silently
         # returns 0 (or a negative count), which is worse than an error: it
         # looks like a real observation.
+        #
+        # BOTH multipliers are applied under "C", and this is the one place in
+        # obus where ICES's own published recipe is deliberately NOT followed.
+        # DO NOT "simplify" this to one multiplier -- that has already been
+        # done once, in this file, and reverted.
+        #
+        # WKABSENS 2021 (section 3.3, step 17) says "Multiplier = HaulDur/60 if
+        # DataType in ('C'); Multiplier = SubFactor if DataType in ('S','R')"
+        # -- one or the other. That is exactly what the DATRAS R package did
+        # until commit 880b553 (2023-04-11, Casper Berg, DTU Aqua), which
+        # replaced it with two multipliers over the note "some BITS hauls (all
+        # LT and some DK) have dataType C but SubFactor>1 - two multipliers
+        # needed!". WKABSENS predates that discovery by two years and documents
+        # the superseded behaviour, so it is not an independent authority here.
+        #
+        # The submissions settle it. Over the 113 haul x species x sex x
+        # category groups with DataType "C" and SubFactor > 1 (BITS: LT
+        # 2008-2016, DK 2018; 1,832 length rows, 36 hauls):
+        #   TotalNo == sum(HLNoAtLngt)               0 groups
+        #   TotalNo == sum(HLNoAtLngt) * SubFactor   102 groups
+        #   NoMeas  == sum(HLNoAtLngt)               108 groups
+        # So HLNoAtLngt there is the MEASURED SUBSAMPLE COUNT, not an hourly
+        # rate: those submissions are shaped like DataType R and labelled C.
+        # Dropping SubFactor understates them by up to 167.9x. Flagged per
+        # record as CNT_C_SUBFACTOR_CONFLICT; see data-raw/hl_flag_code.csv.
         DataType == "C" & HaulDuration <= 0 ~ NA_real_,
         DataType == "C"  ~ NumberAtLength * SubsamplingFactor * HaulDuration / 60,
         DataType %in% c("R", "P", "S") ~ NumberAtLength * SubsamplingFactor,
@@ -162,7 +212,10 @@ dr_add_n_and_cpue <- function(d) {
     dplyr::mutate(
       n_hour = dplyr::case_when(
         # "C" already IS an hourly rate -- it is reported, not derived, so it
-        # survives a bad duration intact and must not be discarded.
+        # survives a bad duration intact and must not be discarded. SubFactor
+        # is applied for the same reason as in the n_haul branch above -- see
+        # there; the two must stay consistent or n_hour stops being
+        # n_haul / HaulDuration * 60.
         DataType == "C"   ~ NumberAtLength * SubsamplingFactor,
         # Everywhere else the rate is derived by dividing by the duration,
         # which is undefined at 0 (yields Inf) and meaningless when negative

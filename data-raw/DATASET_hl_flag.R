@@ -123,6 +123,110 @@ wgt_rep <- hl |>
   ) |>
   dplyr::select(.id, Valid_Aphia, code)
 
+# ---- DataType C: subsampling that was raised away before submission --------
+# Under C the submission arrives already raised to one hour and ICES instructs
+# SubFactor to be reported as 1 (DATRAS FAQ, "DataType C" block), so on-board
+# subsampling leaves no trace in the raising factor. It does leave one in NoMeas
+# (SubsampledNumber), which the same block makes optional ("or report -9"):
+# where NoMeas IS reported and falls below the back-computed catch, subsampling
+# demonstrably happened and the submitter raised it away.
+#
+# Computed at HL's own subsampling grain -- haul x species x sex x category --
+# because that is the grain NoMeas is reported at, then reduced to this table's
+# grain. The half-fish tolerance matches the other count rules.
+c_hidden <- hl |>
+  dplyr::filter(!is.na(LengthClass), NumberAtLength != 0,
+                !is.na(SubsampledNumber)) |>
+  dplyr::inner_join(dplyr::filter(hh, DataType == "C", HaulDuration > 0),
+                    by = ".id") |>
+  dplyr::group_by(.id, Valid_Aphia, SpeciesSex, SpeciesCategory) |>
+  dplyr::summarise(
+    n_back = sum(NumberAtLength, na.rm = TRUE) *
+             max(HaulDuration, na.rm = TRUE) / 60,
+    nomeas = max(SubsampledNumber, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::filter(nomeas < n_back - 0.5) |>
+  dplyr::distinct(.id, Valid_Aphia) |>
+  dplyr::mutate(code = "CNT_C_SUBSAMPLE_HIDDEN")
+
+# ---- DataType C carrying a raising factor it should not have ----------------
+# ICES instructs a "C" submission to report SubFactor as 1 (DATRAS FAQ). Where
+# it is greater than 1 the submission is not shaped like C at all: TotalNo
+# matches sum(HLNoAtLngt) x SubFactor and sum(HLNoAtLngt) matches NoMeas, i.e.
+# HLNoAtLngt is the measured subsample, exactly as under DataType R.
+#
+# obus applies BOTH multipliers on these (see dr_add_n_and_cpue), following the
+# DATRAS R package's 2023 correction rather than WKABSENS's one-multiplier
+# recipe, which predates it. This flag is the per-record record of that choice:
+# n_haul here rests on a rule ICES has not published, and 35 of the 36 hauls
+# are marked HaulValidity "V", so nothing else in the archive marks them.
+c_conflict <- hl |>
+  dplyr::filter(!is.na(LengthClass), NumberAtLength != 0,
+                SubsamplingFactor > 1) |>
+  dplyr::inner_join(dplyr::filter(hh, DataType == "C"), by = ".id") |>
+  dplyr::distinct(.id, Valid_Aphia) |>
+  dplyr::mutate(code = "CNT_C_SUBFACTOR_CONFLICT")
+
+# ---- does the submission agree with its own arithmetic? ---------------------
+# The generic form of the DataType/SubFactor cross-check ICES's Data Centre was
+# actioned to produce at WKDATR 2013 (s3.2.2.1) and which does not appear in any
+# ICES tooling: icesDatsuQC mentions neither field. It needs no per-survey
+# knowledge -- every submission unit states TotalNo, SubFactor and a set of
+# length rows, and exactly one of two identities should hold:
+#
+#   TotalNo == sum(HLNoAtLngt)               the lengths are already raised
+#   TotalNo == sum(HLNoAtLngt) * SubFactor   the lengths are the subsample
+#
+# ICES's own FAQ permits BOTH readings of HLNoAtLngt ("TotalNo = Sum(HLNoAtLngt)
+# or NoMeas = Sum(HLNoAtLngt)"), which is why this has to be measured rather
+# than assumed.
+#
+# Grain: haul x species x sex x category, which is where TotalNo and SubFactor
+# are reported -- coarser than that and categories with different factors get
+# mixed. Everything is converted to FISH IN THE HAUL first, so DataType C's
+# hourly convention does not inflate the tolerance (an unscaled test reports
+# every 1-fish gap in a 30-minute C haul as 2 and floods on near-misses).
+#
+# DataType P is excluded on purpose. Under the pseudocategory convention the
+# factor is category weight / sample weight, so neither identity applies; left
+# in, GB-SCT alone contributes ~2,500 false positives, declaring a median
+# SubFactor of 2.07 against an implied 17.88. "-9" is excluded as an invalid haul.
+ident <- hl |>
+  dplyr::filter(!is.na(LengthClass), NumberAtLength != 0, !is.na(TotalNumber)) |>
+  dplyr::inner_join(hh, by = ".id") |>
+  dplyr::filter(DataType %in% c("R", "S", "C"), HaulDuration > 0) |>
+  dplyr::mutate(mult = dplyr::if_else(DataType == "C", HaulDuration / 60, 1)) |>
+  dplyr::group_by(.id, Valid_Aphia, SpeciesSex, SpeciesCategory) |>
+  dplyr::summarise(
+    total_fish = max(TotalNumber, na.rm = TRUE)     * max(mult, na.rm = TRUE),
+    len_fish   = sum(NumberAtLength, na.rm = TRUE)  * max(mult, na.rm = TRUE),
+    ssf        = max(SubsamplingFactor, na.rm = TRUE),
+    .groups    = "drop"
+  ) |>
+  dplyr::filter(len_fish > 0, !is.na(ssf)) |>
+  dplyr::mutate(
+    tol            = pmax(0.5, 1e-6 * abs(total_fish)),
+    implied        = total_fish / len_fish,
+    fits_raised    = abs(total_fish - len_fish)       <= tol,
+    fits_subsample = abs(total_fish - len_fish * ssf) <= tol
+  )
+
+# Declared 1, but the record implies a real factor. The 1.5 floor keeps rounding
+# noise out; the 1-fish floor keeps sub-unit arithmetic out (CNT_ARITH's job).
+sf_reset <- ident |>
+  dplyr::filter(!fits_raised, ssf <= 1, implied >= 1.5,
+                abs(total_fish - len_fish) >= 1) |>
+  dplyr::distinct(.id, Valid_Aphia) |>
+  dplyr::mutate(code = "CNT_SF_RESET")
+
+# Declared > 1 and neither identity holds: no raising is derivable at all.
+sf_unrec <- ident |>
+  dplyr::filter(ssf > 1, !fits_raised, !fits_subsample,
+                abs(total_fish - len_fish * ssf) >= 1) |>
+  dplyr::distinct(.id, Valid_Aphia) |>
+  dplyr::mutate(code = "CNT_SF_UNRECONCILED")
+
 wgt_none <- smry |>
   dplyr::filter(is.na(w_haul)) |>
   dplyr::distinct(.id, Valid_Aphia) |>
@@ -141,6 +245,10 @@ rec <- dplyr::union_all(
 # ---- assemble ---------------------------------------------------------------
 flags <- dplyr::union_all(cnt, wgt_rep) |>
   dplyr::union_all(wgt_none) |>
+  dplyr::union_all(c_hidden) |>
+  dplyr::union_all(c_conflict) |>
+  dplyr::union_all(sf_reset) |>
+  dplyr::union_all(sf_unrec) |>
   dplyr::union_all(rec) |>
   dplyr::distinct(.id, Valid_Aphia, code)
 

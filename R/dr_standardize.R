@@ -11,10 +11,11 @@
 #' Length-frequency catch table from HH and HL
 #'
 #' One row per \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
-#' \code{length_mm} \eqn{\times} \code{SpeciesSex} \eqn{\times}
-#' \code{DevelopmentStage} \eqn{\times} \code{LengthType} -- only for species
-#' that were actually run through calipers (records with \code{LengthClass}
-#' present). A
+#' \code{length_mm} \eqn{\times} \code{accuracy} \eqn{\times}
+#' \code{LengthType} \eqn{\times} \code{SpeciesSex} \eqn{\times}
+#' \code{DevelopmentStage} \eqn{\times} \code{SpeciesValidity} -- only for
+#' species that were actually run through calipers (records with
+#' \code{LengthClass} present). A
 #' haul's bulk-counted or bulk-weighed species have no row here at all, not a
 #' zero-length placeholder, since "count at length" is not a meaningful
 #' description of a record that was never length-measured. See
@@ -29,22 +30,39 @@
 #' The raw code is kept as reported (\code{"F"}, \code{"M"}, \code{"U"},
 #' \code{"B"}, or \code{NA}): \code{"B"} (berried, egg-bearing) is not
 #' pre-merged into \code{"F"}, and \code{"U"} (assessed, undetermined) stays
-#' distinct from \code{NA} (never assessed). A caller wanting the old ratio can
-#' derive it after grouping \code{SpeciesSex} away, e.g.
+#' distinct from \code{NA} (never assessed). The female proportion that
+#' \code{\link{dr_HL_summary}} publishes as \code{p_females} is one
+#' aggregation away, by grouping \code{SpeciesSex} out, e.g.
 #' `summarise(p_females = sum(n_haul[SpeciesSex %in% c("F","B")]) /`
 #' `sum(n_haul[SpeciesSex %in% c("F","M","B")]))`.
 #'
-#' \code{LengthType} and \code{DevelopmentStage} are part of the grain, not
-#' carried attributes. ICES's own field descriptions define an HL record by the
-#' combination \emph{haul, species, sex, devstage and subsampling category},
-#' so one haul can measure the same species and length under two measurement
-#' conventions, or as both egg-bearing and unstaged, and each is its own real
-#' count that must not be summed away. Measured over the whole archive
-#' (2026-08-31): 5,476 groups split on \code{DevelopmentStage}, 885 on
-#' \code{LengthType}, 15 on \code{SpeciesValidity}, 14 on \code{accuracy}
-#' (i.e. on \code{LengthCode}). At the full key the table is exactly unique
-#' (verified: 0 duplicated groups over 14,001,605 rows); at any coarser key it
-#' is not, so sum \code{n_haul} rather than assuming one row.
+#' \code{LengthType}, \code{DevelopmentStage}, \code{accuracy} and
+#' \code{SpeciesValidity} are part of the grain, not carried attributes.
+#' ICES's own field descriptions define an HL record by the combination
+#' \emph{haul, species, sex, devstage and subsampling category}, so one haul
+#' can measure the same species and length under two measurement conventions,
+#' or as both egg-bearing and unstaged, and each is its own real count that
+#' must not be summed away; \code{accuracy} follows \code{LengthCode}, and a
+#' 1-cm and a 5-cm series for one species in one haul are different
+#' observations.
+#'
+#' At the key above the table is exactly unique -- verified over all
+#' 14,001,605 rows, 0 duplicated groups -- and dropping any one dimension
+#' breaks that, so sum \code{n_haul} rather than assuming one row. Measured
+#' archive-wide (2026-09-08), duplicated groups introduced by leaving one
+#' dimension out:
+#'
+#' \tabular{lr}{
+#'   \strong{Dimension dropped} \tab \strong{Duplicated groups} \cr
+#'   \code{SpeciesSex}         \tab 741,219 \cr
+#'   \code{DevelopmentStage}   \tab 5,476 \cr
+#'   \code{LengthType}         \tab 3,909 \cr
+#'   \code{accuracy}           \tab 15 \cr
+#'   \code{SpeciesValidity}    \tab 15 \cr
+#' }
+#'
+#' \code{length_cm} is \code{length_mm / 10} throughout, so it is carried for
+#' convenience and adds nothing to the key.
 #'
 #' \strong{Both the raised and the un-raised count are carried.} \code{n_haul}
 #' is the raised whole-haul count (\code{NumberAtLength} \eqn{\times}
@@ -65,12 +83,24 @@
 #' subsampled.
 #'
 #' \code{n_measured} is \code{NA} -- not \code{0} -- where
-#' \code{DataType == "C"}, following \code{\link{dr_HL_summary}}: that
-#' convention reports \code{NumberAtLength} as an already-hourly rate, so no
-#' physical count of measured fish exists to report. That is 4,651,701 of
+#' \code{DataType == "C"}, following \code{\link{dr_HL_summary}}: ICES
+#' instructs a \code{"C"} submission to report \code{HLNoAtLngt} "adjusted to
+#' one hour of catching", with \code{TotalNo = Sum(HLNoAtLngt)} (DATRAS FAQ,
+#' \emph{DataType C} block), so the summed column is a rate and no measured
+#' count exists \emph{at this grain}. That is 4,651,701 of
 #' 14,001,605 rows (33.2%), verified to be exactly the \code{"C"} rows and no
 #' others. Unlike in \code{\link{dr_HL_summary}} there is no \code{0} case
 #' here: a species with no length data has no row in this table at all.
+#'
+#' \strong{That is a statement about this grain, not about the archive.} A
+#' category-grain trace often survives in HL's own \code{SubsampledNumber}
+#' (ICES's \code{NoMeas}), which the same FAQ block makes optional for
+#' \code{"C"} ("or report -9"). It is absent on 31.8 percent of \code{"C"}
+#' rows; where present, 104,019 of 421,813 haul x species x sex x category
+#' groups (24.7 percent) report fewer measured fish than the back-computed
+#' catch -- on-board subsampling that the submitter raised away, with
+#' \code{SubFactor} reported as the mandated 1. Those records carry
+#' \code{"CNT_C_SUBSAMPLE_HIDDEN"} in \code{dr_con("hl_flag")}.
 #'
 #' @param hh DATRAS HH table with \code{.id} present (see
 #'   \code{\link{dr_add_id}}). Required: \code{.id}, \code{Survey},
@@ -86,8 +116,10 @@
 #'   \code{NULL} keeps all hauls.
 #'
 #' @return A lazy table, one row per \code{.id} \eqn{\times} \code{Valid_Aphia}
-#'   \eqn{\times} \code{length_mm} \eqn{\times} \code{SpeciesSex} \eqn{\times}
-#'   \code{DevelopmentStage} \eqn{\times} \code{LengthType} (see Details):
+#'   \eqn{\times} \code{length_mm} \eqn{\times} \code{accuracy} \eqn{\times}
+#'   \code{LengthType} \eqn{\times} \code{SpeciesSex} \eqn{\times}
+#'   \code{DevelopmentStage} \eqn{\times} \code{SpeciesValidity}
+#'   (see Details):
 #'   \code{.id},
 #'   \code{Survey}, \code{Year}, \code{Quarter}, \code{Valid_Aphia}, \code{latin},
 #'   \code{species}, \code{rank}, \code{length_mm}, \code{length_cm},
@@ -196,9 +228,12 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' from \code{n_totalnumber}: for a subsampled catch the two diverge on purpose
 #' -- \code{n_totalnumber} is the reported whole-haul total, \code{n_measured}
 #' is how many fish were actually put through calipers. It is \code{NA}, not \code{0}, when
-#' \code{DataType == "C"}: that convention reports \code{NumberAtLength} as an
-#' already-hourly rate, so no true physical count can be recovered, and
-#' \code{0} is reserved for species genuinely never measured.
+#' \code{DataType == "C"}: ICES instructs that convention to report
+#' \code{HLNoAtLngt} already adjusted to one hour (DATRAS FAQ, \emph{DataType
+#' C} block), so summing it yields a rate and not a count, and \code{0} is
+#' reserved for species genuinely never measured. The information is not
+#' necessarily gone -- see \code{\link{dr_HL_length}} for the subsampling
+#' trace that often survives in HL's \code{SubsampledNumber}.
 #'
 #' \strong{Both routes are carried here.} \code{n_totalnumber} is the reported
 #' total; \code{n_haul} is the same quantity reconstructed by raising the
@@ -584,8 +619,20 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # DataType == "C" reports NumberAtLength as an already-hourly RATE, not a
   # per-haul count -- summing it raw gives a rate-scale number (confirmed:
   # exactly 2x n_haul for a 30-minute "C" haul), not "how many fish were
-  # measured". No true physical count is recoverable from a rate-only
-  # submission, so n_measured is NA for "C" rather than misleadingly scaled.
+  # measured". ICES instructs exactly that: the DATRAS FAQ's DataType C block
+  # reports HLNoAtLngt "adjusted to one hour of catching", with TotalNo =
+  # Sum(HLNoAtLngt). So n_measured is NA for "C" rather than misleadingly
+  # scaled.
+  #
+  # NOT because the information is gone. This comment used to claim "no true
+  # physical count is recoverable from a rate-only submission". That was obus's
+  # own inference, traceable to no ICES document, and it is wrong: ICES's
+  # NoMeas field (SubsampledNumber) survives on 68.2% of "C" rows, and where
+  # present it matches the back-computed catch on 71.8% of groups and falls
+  # below it on 24.7% -- subsampling that happened and was raised away. What is
+  # genuinely missing is a count at THIS grain: NoMeas is per haul x species x
+  # sex x category and SpeciesCategory is collapsed here. The 24.7% are flagged
+  # CNT_C_SUBSAMPLE_HIDDEN by DATASET_hl_flag.R.
   # .has_length distinguishes "no match at all" (bulk-only species -- 0
   # measured, a known fact) from "matched but NA" (DataType == "C" --
   # unknown, not a known zero); a bare coalesce(n_measured, 0) cannot tell
