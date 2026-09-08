@@ -1,6 +1,6 @@
 ---
-title: "From an exchange file to a catch at length"
-subtitle: "What `HL_length` and `HL_summary` are for, what ICES specifies, and what stands between the two."
+title: "Two catch tables for DATRAS"
+subtitle: "`HL_length` and `HL_summary` — a proposal, what they reproduce, and the conventions that shape them."
 bibliography: references.bib
 link-citations: true
 format:
@@ -13,7 +13,9 @@ format:
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = TRUE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = TRUE,
+                      message = FALSE, warning = FALSE)
+options(width = 120)
 ```
 
 This is a reference article about the two catch tables `{obus}` derives from the
@@ -112,9 +114,9 @@ It covers **8 of the archive's 29 surveys**:
 
 ```{r}
 duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet") |>
-  distinct(Survey) |> count()                     #> 8
+  distinct(Survey) |> count() |> collect()
 
-dr_con("HH") |> distinct(Survey) |> count()       #> 29
+dr_con("HH") |> distinct(Survey) |> count() |> collect()
 ```
 
 `HL_length` is that same table for all 29. Where the two snapshots are of the
@@ -173,12 +175,8 @@ cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.pa
 cpuel_like |>
   inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
   summarise(cells = n(),
-            agree = sum(ifelse(abs(n_hour - cpuel) < 0.001, 1, 0)))
-```
-
-```
-  cells agree
-  40027 38607        # 96.45% agree to a thousandth of a fish per hour
+            agree = sum(ifelse(abs(n_hour - cpuel) < 0.001, 1, 0))) |>
+  collect()
 ```
 
 Over the 317 hauls both sides cover, the rebuild matches **96.6% of CPUEL's
@@ -189,14 +187,8 @@ per hour; the median ratio is exactly 1.000. A worked haul, three cod:
 cpuel_like |>
   inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
   filter(.id == "NS-IBTS:2023:1:DE:06NI:GOV:104:22", Valid_Aphia == 126436) |>
-  arrange(length_mm)
-```
-
-```
-  .id                               Valid_Aphia length_mm n_hour cpuel
-  NS-IBTS:2023:1:DE:06NI:GOV:104:22      126436       410      2     2
-  NS-IBTS:2023:1:DE:06NI:GOV:104:22      126436       470      2     2
-  NS-IBTS:2023:1:DE:06NI:GOV:104:22      126436       580      2     2
+  arrange(length_mm) |>
+  collect()
 ```
 
 The residual is accounted for and none of it is arithmetic. The two files are
@@ -305,9 +297,8 @@ dr_con_raw("HL") |>
   filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
   select(LengthCode, LengthClass, NumberAtLength, SubsamplingFactor,
          SubsampledNumber, TotalNumber, SpeciesCategoryWeight) |>
-  collect() |> 
-  arrange(LengthClass) |> 
-  knitr::kable()
+  collect() |>
+  arrange(LengthClass)
 ```
 
 Four things have to happen before that is a catch at length:
@@ -328,17 +319,8 @@ Four things have to happen before that is a catch at length:
 dr_con("HL_length") |>
   filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
   select(length_cm, accuracy, n_haul, n_hour, n_measured) |>
-  arrange(length_cm)
-```
-
-```
-  length_cm accuracy  n_haul n_measured
-        5.5      0.1  67.872          6
-        6.0      0.1 633.472         56
-        6.5      0.1 463.792         41
-        7.0      0.1 113.120         10
-        7.5      0.1  11.312          1
-          …        …       …          …
+  arrange(length_cm) |>
+  collect()
 ```
 
 and `HL_summary` carries one row for the species in the haul, with the
@@ -347,12 +329,8 @@ reported total beside the reconstructed one:
 ```{r}
 dr_con("HL_summary") |>
   filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
-  select(species, n_totalnumber, n_haul, n_measured, w_haul)
-```
-
-```
-         species n_totalnumber   n_haul n_measured w_haul
-  European sprat        1606.3 1606.304        142   3948
+  select(species, n_totalnumber, n_haul, n_measured, w_haul) |>
+  collect()
 ```
 
 1606.3 against 1606.304: the reported total and the raised length frequencies
@@ -377,6 +355,52 @@ Both are published as parquet files and read lazily: ask for one survey, year
 or species and only those rows are fetched, so a single haul can be inspected
 without downloading the archive.
 
+### Why these columns, and which of them could go
+
+These two tables are a **proposal**, not a settled product, and the column set
+is deliberately generous. Several columns are derivable from others, and that
+is a choice rather than an oversight — while the shape of the tables is still
+open, adding a column later is disruptive and removing one is not.
+
+Three of the redundancies are worth naming, because a reader will spot them:
+
+- **`length_cm` is exactly `length_mm / 10`** — checked on all 14,001,605
+  rows, no exceptions. It is carried because the two communities that would
+  use these tables count in different units. The exchange format and CPUEL are
+  millimetre; `{DATRAS}`, `{DATRASextra}` and the length–weight relationship
+  *W = aL^b* are centimetre, as is `accuracy`. Carrying both means neither side
+  converts. Cost: 13.5 MB of 190.
+- **The per-hour columns are unit conversions.** No row in either table carries
+  an hourly value whose per-haul counterpart is missing — measured as zero for
+  `n_hour`, `n_totalnumber_hour` and `w_hour` alike — and the reconstruction
+  `n_haul / HaulDuration × 60` is exact to machine precision. They are carried
+  because per hour is what CPUEL publishes and what most downstream work asks
+  for. The alternative is to publish `HaulDuration` instead and let the user
+  standardise to an hour, a half hour or a swept area: that costs 3.3 MB
+  against `n_hour`'s 25.8, and is arguably the better table.
+- **`latin` and `species` are one join away** from `Valid_Aphia` and
+  `dr_con("species")`, and cost 23.7 MB together. They are carried so that
+  someone can filter on a common name without first knowing an AphiaID.
+
+`n_measured` is the one that is *not* derivable — 42,089 rows aggregate raw
+rows raised by different factors, so no single divisor recovers it — but it is
+also the one the analysis stack never reads: `{DATRAS}` consumes `HLNoAtLngt`
+once, at read, to produce `Count`, and never refers to it again. It is kept
+because it is the only number present on the 24,298 rows where the raising
+factor is missing, and because how much of a length distribution was measured
+rather than raised is a question worth being able to ask.
+
+`.id` is the largest single column at 66.6 MB, 35% of `HL_length`. It is not
+redundant: five of the eight haul fields it concatenates —
+`Country`, `Platform`, `Gear`, `StationName`, `HaulNumber` — appear nowhere
+else in the table.
+
+**Which of these survive is not a package author's decision.** If ICES adopts
+tables of this shape, what they should carry is for the survey groups to
+settle, and the sensible direction of travel is to trim. This article states
+what each column costs and what it duplicates so that the conversation can
+start from measurements.
+
 ### Why two tables and not one
 
 Two reasons, and both come from the data rather than from convenience.
@@ -390,7 +414,8 @@ have no length rows behind them at all:
 dr_con("HL_summary") |>
   anti_join(dr_con("HL_length") |> distinct(.id, Valid_Aphia, SpeciesValidity),
             by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
-  count()
+  count() |>
+  collect()
 ```
 
 Those species cannot appear in a length table, and giving them a placeholder
@@ -418,7 +443,12 @@ once each under `TotalNumber`, `SubsampledNumber`, `NumberAtLength` and
 (the phrasing varies slightly between the four cells; the components do not).
 So an HL record is identified by **haul × species × sex × `DevelopmentStage` ×
 `SpeciesCategory`**, and the length rows add `LengthClass` and `LengthType`.
-The two `{obus}` tables follow that, with the sub-sampling category summed away:
+The two `{obus}` tables follow that, with the sub-sampling category summed
+away — which is safe because a category is a sampling stratum and not a
+biological one: the North Sea IBTS manual [@ices2020sisp10] has one created
+when a catch holds two or more distinct length groups so that each can be
+sub-sampled at its own rate, so the categories partition a single catch and
+adding them back returns it.
 
 | Table | One row per |
 |---|---|
@@ -434,7 +464,8 @@ dr_con("HL_length") |>
   count(.id, Valid_Aphia, length_mm, length_cm, accuracy,
         LengthType, SpeciesSex, DevelopmentStage, SpeciesValidity) |>
   filter(n > 1) |>
-  count()                                   #> 0
+  count() |>
+  collect()
 ```
 
 `LengthType` and `DevelopmentStage` are part of what makes a row unique, not
@@ -478,7 +509,7 @@ Sex codes are kept as reported — `"F"`, `"M"`, `"U"`, `"B"` or `NA`. `"B"`
 undetermined) stays distinct from `NA` (never examined). The female proportion
 `HL_summary` publishes as `p_females` is one step away from `HL_length`:
 
-```{r}
+```{r, eval = FALSE}
 dr_con("HL_length") |>
   group_by(.id, Valid_Aphia) |>
   summarise(
@@ -527,7 +558,6 @@ The first row is demonstrated rather than asserted — see [existing analyses ru
 on them unchanged](#existing-analyses-run-on-them-unchanged) above.
 
 ## Field names: two layers, both ICES's {#two-naming-layers}
-
 
 Field names in this codebase come from two places — **both of them ICES's** —
 and there is deliberately no third.
@@ -588,39 +618,6 @@ cannot describe a different vintage than the data it accompanies:
 
 ```{r}
 opus::op_crosswalk("HL")
-```
-
-```
-          old_name              new_name
-        RecordType          RecordHeader
-            Survey                Survey
-           Quarter               Quarter
-           Country               Country
-              Ship              Platform
-              Gear                  Gear
-         SweepLngt           SweepLength
-            GearEx        GearExceptions
-          DoorType              DoorType
-              StNo           StationName
-            HaulNo            HaulNumber
-              Year                  Year
-      SpecCodeType       SpeciesCodeType
-          SpecCode           SpeciesCode
-           SpecVal       SpeciesValidity
-               Sex            SpeciesSex
-           TotalNo           TotalNumber
-     CatIdentifier       SpeciesCategory
-            NoMeas      SubsampledNumber
-         SubFactor     SubsamplingFactor
-            SubWgt       SubsampleWeight
-       CatCatchWgt SpeciesCategoryWeight
-          LngtCode            LengthCode
-         LngtClass           LengthClass
-        HLNoAtLngt        NumberAtLength
-          DevStage      DevelopmentStage
-       LenMeasType            LengthType
- DateofCalculation     DateofCalculation
-       Valid_Aphia           Valid_Aphia
 ```
 
 29 rows — two more than either ICES list. Neither `getDatrasFieldList` nor the
@@ -692,7 +689,8 @@ package that means the primary sources kept in
 |---|---|
 | [`DATRAS_Field_descriptions_and_example_file_December2025.xlsx`](https://www.ices.dk/data/Documents/DATRAS/DATRAS_Field_descriptions_and_example_file_December2025.xlsx) [@ices2026fielddesc] | the field descriptions, or "the spreadsheet" |
 | [`DATRAS_FAQs`](https://www.ices.dk/data/Documents/DATRAS/DATRAS_FAQs.pdf) v3.0, August 2014 [@ices2014datrasfaqs] | the FAQ |
-| [`Indices_Calculation_Steps_IBTS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_IBTS.pdf) [@ices2022ibtsindices], [`Indices_Calculation_Steps_BITS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_BITS.pdf) [@ices2013bitsindices] | the index procedures |
+| [`Indices_Calculation_Steps_IBTS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_IBTS.pdf) [@ices2022ibtsindices], [`Indices_Calculation_Steps_BITS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_BITS.pdf) [@ices2013bitsindices], and for SWC-IBTS and Rockall before 2011 [Holmes 2008](https://www.ices.dk/data/Documents/DATRAS/SWC-IBTS_and_ROCKALL_IndicesCalculation_pre2011.pdf) [@holmes2008swcibts] | the index procedures |
+| [SISP 10](https://doi.org/10.17895/ices.pub.7562) (North Sea IBTS, Revision 11) [@ices2020sisp10] and [SISP 15](https://doi.org/10.17895/ices.pub.3519) (IBTS North Eastern Atlantic) [@ices2017sisp15] | the survey manuals |
 | [`DATRAS_dataproducts_units` v3.1](https://www.ices.dk/data/Documents/DATRAS/3.1.DATRAS_dataproducts_units.pdf) [@ices2021units] — [v3.0](https://www.ices.dk/data/Documents/DATRAS/DATRAS_dataproducts_units.pdf) [@ices2017units] only where the two differ | the units specification |
 | [`DATRAS_NewHeaders_Lookup_Dec2024.xlsx`](https://www.ices.dk/data/Documents/DATRAS/DATRAS_NewHeaders_Lookup_Dec2024.xlsx) [@ices2024newheaders] | the New Headers lookup |
 | [`WKDATR13`](https://doi.org/10.17895/ices.pub.21655439) (ICES CM 2013/SSGESST:05) [@ices2013wkdatr] | the 2013 data-review workshop |
@@ -707,6 +705,14 @@ operation publishes the field-name mapping used in [Field names: two layers,
 both ICES's](#two-naming-layers), and whose
 [per-table operations](https://datras.ices.dk/WebServices/DATRASWebService.asmx)
 report the field names each table really carries.
+
+**The format standard does not stand alone.** Its field descriptions defer to
+"the survey manuals" fifteen times — twelve fields in HH and three in HL — and
+two of the three HL deferrals fall on fields this article turns on:
+`SpeciesCategory` (*"Further details on survey specific subsampling categories
+are available in the survey manuals"*) and `LengthCode` (*"Survey and species
+specific, see survey manuals for further details"*). Those manuals are ICES
+publications in their own right, and the two IBTS ones are cited above.
 
 **This article describes the format as it currently stands.** The field
 descriptions are a living workbook, revised periodically, and the December
@@ -760,15 +766,8 @@ whether it marks a genuine defect or a documented property of the format:
 dr_con("hl_flag") |>
   filter(.id == "BITS:2017:4:DK:26HF:TVS:552:42") |>
   left_join(dr_con("hl_flag_code") |> select(code, kind, label), by = "code") |>
-  select(Valid_Aphia, code, kind, label)
-```
-
-```
-  Valid_Aphia        code      kind                          label
-       127082 CNT_LEN_DUP   suspect         Duplicated length rows
-       126438   CNT_ARITH intrinsic Sub-unit arithmetic difference
-       126425   CNT_ARITH intrinsic Sub-unit arithmetic difference
-       127150 CNT_LEN_DUP   suspect         Duplicated length rows
+  select(Valid_Aphia, code, kind, label) |>
+  collect()
 ```
 
 Most flagged records are `intrinsic` or `property` — arithmetic, or the format
@@ -903,11 +902,11 @@ you can do them by hand on any haul and get the published figure back:
 dr_con_raw("HL") |>
   dr_add_id() |>
   filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
-  summarise(by_hand = sum(NumberAtLength * SubsamplingFactor))     #> 1606.304
+  summarise(by_hand = sum(NumberAtLength * SubsamplingFactor)) |> collect()
 
 dr_con("HL_length") |>
   filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
-  summarise(published = sum(n_haul))                               #> 1606.304
+  summarise(published = sum(n_haul)) |> collect()
 ```
 
 The `DataType` `C` back-multiplication by `HaulDuration/60` — recovering an
@@ -978,7 +977,7 @@ Summing `HL_length` reproduces `Σ(NumberAtLength × SubsamplingFactor)` exactly
 (1,925,444 groups, zero differing), so nothing is lost by not duplicating it
 into `HL_summary`:
 
-```{r}
+```{r, eval = FALSE}
 dr_con("HL_summary") |>
   dplyr::left_join(
     dr_con("HL_length") |>
@@ -1362,13 +1361,8 @@ worked case that used to be wrong:
 dr_con_raw("HL") |>
   dr_add_id() |>
   filter(.id == "NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12", Valid_Aphia == 126437) |>
-  distinct(SpeciesCategory, TotalNumber, SpeciesCategoryWeight)
-```
-
-```
-  SpeciesCategory TotalNumber SpeciesCategoryWeight
-               11         613                105300
-               12         613                105300
+  distinct(SpeciesCategory, TotalNumber, SpeciesCategoryWeight) |>
+  collect()
 ```
 
 Both sub-categories carry 105,300 g, which is one catch weighed once.
@@ -1377,7 +1371,7 @@ Both sub-categories carry 105,300 g, which is one catch weighed once.
 ```{r}
 dr_con("HL_summary") |>
   filter(.id == "NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12", Valid_Aphia == 126437) |>
-  select(n_totalnumber, w_haul)                       #> 613, 105300
+  select(n_totalnumber, w_haul) |> collect()
 ```
 
 Left uncollapsed this one haul would report 210,600 g for a 105,300 g catch,
@@ -1418,13 +1412,8 @@ published |>
   inner_join(collapsed, by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
   filter(w_pub > w_alt + 0.5) |>
   group_by(DataType) |>
-  summarise(records = n(), excess_g = sum(w_pub - w_alt))
-```
-
-```
-  DataType records excess_g
-         R     211 18338213
-         P      36   175550
+  summarise(records = n(), excess_g = sum(w_pub - w_alt)) |>
+  collect()
 ```
 
 **18,513,763 g in all — 0.080% of the archive's `w_haul` mass** of
@@ -1530,16 +1519,8 @@ dr_con_raw("HL") |>
             smallest = min(LengthClass, na.rm = TRUE),
             largest  = max(LengthClass, na.rm = TRUE),
             .groups = "drop") |>
-  arrange(desc(rows))
-```
-
-```
-  LengthCode    rows smallest largest
-           1 8322123        0     900     # centimetres
-           . 4470490        0   11930     # millimetres
-           0 1248295        0    1300     # millimetres, half-cm classes
-        <NA>  377784       NA      NA
-           5    5079       60     160     # centimetres, 5-cm classes
+  arrange(desc(rows)) |>
+  collect()
 ```
 
 ICES does publish the vocabularies themselves, at `vocab.ices.dk`, and the
@@ -1580,14 +1561,15 @@ type; the commonest pairs are `{1,5}` and `{4,7}`:
 dr_con("HL_summary") |>
   count(.id, Valid_Aphia) |>
   filter(n > 1) |>
-  count()                                   #> 1219
+  count() |>
+  collect()
 ```
  Filtering to a single code makes `.id` × `Valid_Aphia`
 exactly unique (verified at codes `"1"`, `"4"`, `"5"` and `"7"`). Aggregating
 over `.id` × `Valid_Aphia` without also grouping on `SpeciesValidity` mixes record
 types and double-counts.
 
-```{r}
+```{r, eval = FALSE}
 dr_con("HL_summary") |>
   dplyr::filter(SpeciesValidity == "1")   # the usual starting point
 ```
@@ -1620,18 +1602,8 @@ missing value propagates. All three together, 270 hauls:
 ```{r}
 dr_con("HH") |>
   filter(is.na(HaulDuration) | HaulDuration <= 0) |>
-  count(DataType, HaulDuration)
-```
-
-```
-  DataType HaulDuration   n
-         C            0 200
-         R            0  11
-         P            0   6
-         R         -514   1
-         R         -238   1
-         C           NA  33
-         R           NA  18
+  count(DataType, HaulDuration) |>
+  collect()
 ```
 
 No ICES document states anything about a zero, negative or absent haul
@@ -1672,18 +1644,9 @@ takes the `HaulValidity` codes to keep, and `NULL` keeps every haul. What is
 there to choose from:
 
 ```{r}
-dr_con("HH") |> count(HaulValidity)
+dr_con("HH") |> count(HaulValidity) |> collect()
 ```
 
-```
-  HaulValidity      n
-             V 144713
-             I   3468
-             N    868
-             A    815
-             C    317
-             M     36
-```
  The filter is applied to HH before the join, in
 `.dr_hh_cols_for_hl()`, so both tables stay in lockstep on which hauls are in
 scope.
@@ -1983,7 +1946,6 @@ onto one `.id`.
 Each of these produced a real, silent, wrong number at some point. Keeping
 both an eager test suite and a lazy build is what catches them; neither does
 alone.
-
 
 ## References {.unnumbered}
 

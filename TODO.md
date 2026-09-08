@@ -121,7 +121,7 @@ lines of which four fifths was history; the convention follows opus's.*
 
 ### Labelled hypotheses moved out of the conventions article (2026-09-08)
 
-Trimmed from `vignettes/articles/datras-conventions.qmd` to keep it readable.
+Trimmed from `vignettes/articles/catch-tables.qmd` to keep it readable.
 None is a finding; each has a stated test. Kept here because the article was
 their only home.
 

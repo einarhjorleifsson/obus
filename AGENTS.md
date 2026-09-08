@@ -102,7 +102,7 @@ means.** That is `~/R/Pakkar/imbus/DATRAS/external/` — chiefly
 `General Notes` sheet), the SISP manuals, and the ICES workshop and
 working-group reports. The authored `.qmd` files one directory up, and
 anything in `obus_retired`, are pointers to where to look, not evidence.
-Findings get written up in `vignettes/datras-conventions.Rmd`. (Standing rule
+Findings get written up in `vignettes/articles/catch-tables.qmd`. (Standing rule
 since 2026-08-31; it lived in `TODO.md` until the 2026-09-04 split, where it
 was the only entry that was a rule rather than a task.)
 

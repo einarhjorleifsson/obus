@@ -1,6 +1,6 @@
 # Minimal configuration. Bootstrap 5 is a hard requirement for Quarto articles
 # (pkgdown: "Quarto articles require Bootstrap 5"), and vignettes/articles/
-# datras-conventions.qmd is a Quarto article because it needs hover citations,
+# catch-tables.qmd is a Quarto article because it needs hover citations,
 # which rmarkdown's html_document cannot provide.
 template:
   bootstrap: 5

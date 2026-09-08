@@ -147,7 +147,7 @@ ok("CPUEL does NOT match the one-multiplier figure", abs(r1 - 1) > 0.1,
 # this.
 #
 # THE MEASUREMENT ADJUDICATES AN OPEN DISCREPANCY. vignettes/articles/
-# datras-conventions.Rmd records this as D20, classified "Contradiction":
+# catch-tables.qmd records this as D20, classified "Contradiction":
 # ICES states the conversion's scope three ways in one document -- cod only,
 # unconditionally ("CPUE are converted to standard trawl by multiplying with a
 # conversion factor"), and as an undefined "apply fishing power". The data says

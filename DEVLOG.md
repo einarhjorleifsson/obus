@@ -85,7 +85,7 @@ length_cm x accuracy x LengthType x sex x DevelopmentStage x SpeciesValidity`
 `obus_retired` measured its 3.5% at lands directly on a cluster. The count
 drifts ~±10 between identical runs purely from the order DuckDB's parallel
 `sum()` adds length classes. **Superseded 2026-08-31** — the tolerance framing was itself the wrong tool.
-See "Where the two totals disagree" in `vignettes/datras-conventions.Rmd`:
+See "Where the two routes disagree" in `vignettes/articles/catch-tables.qmd`:
 compare in submission units and count whole fish. 89.01% reconcile exactly,
 7.14% differ by less than one fish (arithmetic, excluded), and **3.85% differ
 by at least one fish** — the figure to quote.
@@ -142,7 +142,7 @@ failing to match — trading a loud join bug for a quiet arithmetic one.
 Redone after the first attempt used relative-magnitude buckets — which is the
 error `obus_retired`'s own notes warn about: a summary statistic cannot tell
 arithmetic apart from a miscount. Full write-up in
-`vignettes/datras-conventions.Rmd`. Two method points that did the work:
+`vignettes/articles/catch-tables.qmd`. Two method points that did the work:
 
 1. **Compare in submission units.** `DataType == "C"` scales both sides by
    `HaulDuration/60`, so a real one-fish gap in a 30-minute haul reads as 0.5
@@ -202,7 +202,7 @@ blends into a meaningless middle:
 
 15-agent audit of every ICES primary source in `imbus/DATRAS/external`, with two
 adversarial verifiers re-checking quotes against sources and recomputing every
-figure. Written up in `vignettes/articles/datras-conventions.qmd`. Headlines:
+figure. Written up in `vignettes/articles/catch-tables.qmd`. Headlines:
 
 **obus reads the documents correctly; the documents are the broken party.**
 `TotalNo=SUM(HLNoAtLngt)` in the field descriptions is a defect, disproved from
