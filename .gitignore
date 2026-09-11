@@ -15,3 +15,7 @@ README.html
 
 # Render byproduct of data-raw/build_plan_page.py
 PLAN-qc-checks.html
+
+# Download cache DATRASextra::download_datras() drops at the repo root,
+# named after the survey (data-raw/CHECK_datras_interop.R)
+NS-IBTS/

@@ -390,6 +390,29 @@ The motivating gap was external: `DATRAS`/`DATRASextra` build `Count`
 figure published, measured-vs-raised QC at length was impossible from
 `HL_length` alone.
 
+**The column has since earned itself, and the demonstration is worth keeping**
+(measured 2026-09-08 for `datrasdoodle2`'s catch chapter). BITS Q1 plaice on
+`DataType == "R"` hauls, where raising means exactly one thing:
+
+| block | mean measured/haul | mean raised/haul | factor |
+|---|---:|---:|---:|
+| 1995-1999 | 10.2 | 10.2 | **1.00** |
+| 2005-2009 | 35.4 | 48.5 | 1.37 |
+| 2015-2019 | 63.9 | 151.5 | 2.37 |
+| 2025-2029 | 100.9 | 757.8 | **7.51** |
+
+The measured column **plateaus near 100 fish a haul and stops**; the raised
+one does not. That is the measuring board saturating — past some catch size
+every additional fish goes into the multiplier rather than onto the board,
+and plaice sub-sampling in BITS was literally zero before 2000. Over the
+series, measured plaice per haul rose 10.5x while raised rose 73.7x.
+
+The general lesson, which is why this sits in AGENTS.md rather than only in
+the book: **the raising correction is largest exactly where the signal is
+strongest**, so publishing only one of the two counts does not add noise to a
+consumer's analysis, it removes the finding. Neither column is recoverable
+from the other (see the paragraph above), so both have to be published.
+
 **The cross-check that says the port is faithful.** `HL_summary`'s
 `n_haul` (from `TotalNumber`) and `HL_length`'s summed length classes are
 computed from different fields by different routes, so their disagreement
@@ -447,8 +470,16 @@ and `LT.parquet` from `obus_retired`, carrying its abandoned renames
 **filtered row counts** — HL 14,400,747 against raw's 14,423,771, CA
 5,966,950 against 5,968,027. `dr_con()` refused those names, so nothing in
 obus read them and nothing noticed. This rebuild overwrites `HL` and `CA`.
-`LT.parquet` is not overwritten by any script and should be deleted from the
-server, not left to look current.
+
+**Still open as of 2026-09-08, re-confirmed live.** Two orphans remain at the
+server root, neither produced by any current build script: `LT.parquet`
+(79,451 rows, retired-era build — `dr_con_raw("LT")` reads `raw/LT.parquet`,
+which is the live one) and `HL_standardised.parquet` (15,483,270 rows, the
+deprecated stacked shape, still carrying the abandoned `aphia` rename and a
+`type` column). Both should be deleted rather than left to look current; see
+`TODO.md` for the command. `CPUEL.parquet` at the root is deliberate — it is
+ICES's own product, mirrored, and both the article and `datrasdoodle2` read
+it.
 
 **`obus_retired` is a reference, never a source of settled fact.** It is
 archived intact at `../obus_retired`. Several of its own documented

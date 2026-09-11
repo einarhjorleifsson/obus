@@ -816,6 +816,30 @@ what obus exports and what was verified, all of it already stated better in
       smaller that year, and the row count is exactly what the haul count
       predicts.
 
+      1. **HH is down too.** 249 hauls, against 325-387 in every other year
+         2014-2026. A truncated HL would leave HH untouched.
+      2. **Rows per haul is normal** — 131.6, inside the 117-145 range of
+         neighbouring years. Regressing rows on hauls over the other twelve
+         years predicts 37,755 rows for 249 hauls, 95% PI 25,207-50,303.
+         Observed 32,767 sits inside it, so there is no shortfall to explain.
+      3. **No truncated tail.** A file cut mid-stream would leave its last
+         hauls abnormally short. The 2022 rows-per-haul distribution
+         (min 3, median 129, max 344) matches 2021 (1 / 134 / 259) and 2023
+         (3 / 142.5 / 263) — and 2022's *maximum* is the largest of the three.
+
+      **What actually happened: reduced survey effort, concentrated in two
+      countries.** NS-IBTS Q1 hauls, 2021 -> 2022 -> 2023: DE 67 -> **10** ->
+      22; GB-SCT 61 -> **15** -> 54; DK 45 -> 27 -> 45. FR/NL/NO/SE are flat.
+      Across all surveys in 2022, GB-SCT ran 307 hauls against 428 in 2021
+      (-28%), so its reduction was fleet-wide; DE's total was steady
+      (461 -> 428), so its shortfall was specific to NS-IBTS Q1.
+
+      The original reasoning contained a base-rate error worth remembering:
+      "it is the only one of 971 groups sitting on exactly that value" is not
+      evidence of anything — nearly every specific row count is hit at most
+      once. The question that settles it is whether the count is anomalous
+      *given the haul count*, and it is not.
+
 - [x] **RESOLVED — `Inf` from `HaulDuration <= 0`.** An hourly rate is
       undefined with no time fished, so `*_hour` is now `NA`, not `Inf`.
       `DataType == "C"` is the mirror image — it reports a rate directly, so
@@ -843,3 +867,194 @@ what obus exports and what was verified, all of it already stated better in
       count but not the raised one, which is the only figure directly
       comparable to `n_totalnumber`. That was arbitrary. Verified after the
       change: zero of 1,912,256 groups differ from summing `HL_length`.
+
+---
+
+## 2026-09-08 -- the archive verified live, and two findings it will not support
+
+Committed the same day: the conventions article rebuilt around what the two
+catch tables are *for* (`17b73e3`, `46022c1`) and a QC check suite proposed
+for HH, HL and CA (`7d1bd5c`, `5415117`). What follows is the evidence that
+did not fit in either.
+
+### All ten published tables answer, and match the code
+
+The "Publish" item had been open since 2026-09-03. Checked against the live
+server rather than against `data-raw/to_https/`: every table answers with
+exactly the columns the code produces, and the relation obus leans on --
+`dr_con(tbl)` is `dr_con_raw(tbl)` plus `.id` and nothing else -- holds for
+`HH`, `HL` and `CA`. Row counts: HH 150,217; HL 14,423,771; CA 5,968,027;
+`HL_length` 14,001,605; `HL_summary` 2,291,457; `hl_flag` 1,422,576;
+`hl_flag_code` 19; `species` 2,022; `length_weight` 2,022;
+`length_type_conversion` 2.
+
+Two files at the server root are **not** produced by any current build script
+and are not read by anything in obus: `HL_standardised.parquet` (15,483,270
+rows, the deprecated stacked shape, still carrying the abandoned `aphia`
+rename) and `LT.parquet` (79,451 rows, a retired-era build at the root, where
+`dr_con_raw("LT")` in fact reads `raw/LT.parquet`). Left in place they look
+current. The deletion command is in `TODO.md`. `CPUEL.parquet` at the root is
+deliberate -- it is ICES's own product, mirrored.
+
+### A realised unit error in BITS catch weights, 1991-2002
+
+Found while writing `datrasdoodle2`'s plaice chapter. Catch weight per fish in
+**BITS Q1** is implausible by roughly two orders of magnitude for two country
+blocks, and it is the same story in every species checked -- cod, plaice,
+herring:
+
+| country | affected years | median g/fish in block | first normal year |
+|---|---|---:|---|
+| DK | 1991-1994 | 0.4 - 8.2 | **1995** (201.0) |
+| DE | 1991-2002 | 1.4 - 3.0 | **2003** (224.1) |
+
+Sweden reads 155-337 g/fish over the same years, which rules out the survey,
+the species and obus's arithmetic and leaves the submission. Each block ends
+abruptly on a year, which is the signature of a corrected submission format
+rather than of drift, and it matches the pattern IBTSWG 2025 Table 3.8.1
+already records for CEFAS (`CatCatchWgt` "per 100g (/100)").
+
+Two consequences worth carrying. `w_haul`/`w_hour` are unusable for BITS
+before 2003, so any biomass series crossing that boundary is wrong by ~100x on
+most of its early hauls. And **no `hl_flag` code fires on it**: the records are
+internally consistent, and what fails is a biological plausibility check, of
+which the flag table contains none. That is the generic H-W4 hypothesis in
+`TODO.md`, now with a known positive to validate a check against.
+
+### HH's hydrography cannot carry an environmental explanation
+
+Measured on BITS Q1 (11,753 hauls) while scoping whether `datrasdoodle2` could
+test an anoxia hypothesis against the survey's own fields. It cannot, for four
+separate reasons: there is **no oxygen field in HH at all** (absent, not
+sparse); `BottomSalinity` is on 0% of BITS Q1 hauls before 2000 and reaches
+~60% only in the 2010s, so a before/after comparison reaching to the 1990s has
+hydrography on one side only; among deep, eastern hauls that do carry a
+salinity reading, hauls recorded `HaulValidity == "N"` are indistinguishable
+from hauls that fished normally and caught nothing (11.0 PSU against 10.7,
+6.3 C against 6.0); and `HaulValidity == "N"` first appears in BITS in 2001
+with a non-monotonic frequency thereafter, so its absence earlier is a
+recording change rather than a signal.
+
+What the fields *do* support is a positive statement, and it is a live rival
+to an oxygen story rather than a version of one: plaice abundance is ordered
+by `BottomSalinity` **within** every longitude band, so salinity is not
+standing in for "west". East of 17E, the ~75 hauls above 13 PSU carry about
+ten times the plaice of their fresher neighbours.
+
+---
+
+## 2026-09-09 -- the grain was documented wrong, and the adapter was in three places
+
+### Both catch tables were keyed wrong in the documentation
+
+`dr_con()`'s roxygen described `HL_length` as one row per `.id` x
+`Valid_Aphia` x `length_mm` x `SpeciesSex`, and `HL_summary` as one row per
+`.id` x `Valid_Aphia`. Both are wrong. `HL_length` needs **all eight** key
+fields and `HL_summary` needs **three**:
+
+| table | documented | actual |
+|---|---|---|
+| `HL_length` | 4 fields | `.id`, `Valid_Aphia`, `length_mm`, `accuracy`, `LengthType`, `SpeciesSex`, `DevelopmentStage`, `SpeciesValidity` |
+| `HL_summary` | 2 fields | `.id`, `Valid_Aphia`, `SpeciesValidity` |
+
+All 15 shorter subsets of `HL_length`'s key were measured, and every one fans
+out. The four-field key in the roxygen duplicates 9,581 of 14,001,605 rows;
+`HL_summary`'s two-field key collapses 2,291,457 rows onto 2,290,235 groups,
+losing 1,222. **The near misses are the trap**, not
+the documented key: dropping `SpeciesValidity` alone leaves 15 duplicated
+rows, and dropping `accuracy` alone leaves 15. Fifteen rows survive any spot
+check a consumer is likely to run, and still double-count.
+
+`SpeciesValidity` on `HL_summary` is part of the key rather than a carried
+attribute because HL deliberately allows more than one record type per species
+per haul -- 1,219 of 2,290,235 groups carry two or more, commonly a full
+length-frequency series (`"1"`) alongside a presence marker (`"5"`), or a
+count-only row (`"4"`) with `"7"`. Within a single code the pair is exactly
+unique, and that now holds for **all eight** codes the table carries
+(`"0" "1" "2" "4" "5" "6" "7" "10"`), not merely the common four checked in
+August.
+
+**Nothing failed, because nothing asserted it.** The grain had already been
+"fixed in the docs rather than the code" once before, which is precisely why
+prose is not enough: a wrong key in a test fails, a wrong key in a sentence
+does not. So `PUBLISHED_GRAIN` now sits beside `PUBLISHED_SCHEMA` in
+`tests/testthat/test-published-schema.R` and is asserted twice -- once against
+the code on synthetic fixtures, once against the **published files**. The
+second is the one that would have caught this, and it is cheap: both counts
+push down to SQL, so the 14M-row tables cost the same as the 19-row one.
+
+### The adapter was in three places, and is now one exported function
+
+`data-raw/CHECK_datras_adapter.R` defined a ~60-line `dr_as_datras()` locally,
+and the same function had been pasted verbatim into `datrasdoodle2`'s
+interoperability chapter. Three copies, no owner. It is now
+`dr_get_datras()` in `R/dr_get_datras.R`, and the CHECK script calls the
+shipped function rather than a local definition, so the harness validates what
+consumers actually get. Re-run 2026-09-11 against the shipped function:
+**11/11, every gap 0**, including an identical stratified index.
+
+Why obus builds a `DATRASraw` rather than calling {DATRAS} to do it:
+{DATRAS} publishes no constructor. `readExchange()`, `readExchangeDir()`,
+`readICES()`, `getDatrasExchange()`, `downloadExchange()` and
+`DATRASextra::read_datras()` all parse a DATRAS exchange file, and
+`write_datras()` writes one back rather than serialising the object, so every
+documented route in goes through the CSV parser. `addExtraVariables()`, which
+derives everything the object carries beyond the submitted columns, is
+unexported. obus therefore reproduces that derivation -- and needs no {DATRAS}
+code to do it, since a `DATRASraw` is a three-element list (CA, HH, HL,
+indexed positionally) with a class attribute. {DATRAS} is `Suggests`, used
+only for the optional `Roundfish` column, which lives in a CSV inside that
+package.
+
+The function is split into `.dr_datras_fetch()` (everything touching
+`dr_con()`) and the pure `.dr_as_datras_build()`, for the same reason
+`dr_HL_length()` takes its tables as arguments: the reshape is then testable
+offline on synthetic frames, which is where the 17 new tests live.
+
+Two traps it inherits and cannot fix, both documented on it. {DATRAS}'s
+derived quantities are `haul` x `length` matrices on HH with **no species
+dimension**, so everything from `add_numbers_at_length()` onward is one
+species at a time -- and because HL keeps `Valid_Aphia` untouched, subsetting
+*after* deriving looks like it worked and does not (`HaulN` measured 19x too
+high on DATRASextra's own `mini`). And `$.DATRASraw` redirects `x$foo` into
+HH with partial matching, registered when the namespace *loads*, not when it
+is attached, so `x$HH` is `NULL` on a machine that has {DATRAS} installed.
+Use `x[["HH"]]`.
+
+### `dr_get()`, and the measurements that justify its NULL defaults
+
+`dr_get()` is `dr_con()` plus `collect()`, with the three filters worth
+pushing down first. It exists to *name* the lazy/eager boundary rather than to
+hide it. An earlier obus had a `dr_get()` that was deliberately left out of
+the rebuild; this one is a different function -- it fetches from the parquet
+archive, not from the live XML service.
+
+It does not warn about an unfiltered pull, and that is a measured decision
+rather than an assumption. **DATRAS is not big data** (24 GB Mac, one table at
+a time with `gc()` between):
+
+| table | rows | collect | peak |
+|---|---:|---:|---:|
+| `HL` | 14,423,771 | 12.1 s | 2.9 GB |
+| `HL_length` | 14,001,605 | 25.0 s | 1.8 GB |
+| `CA` | 5,968,027 | 5.5 s | 1.5 GB |
+| `HL_summary` | 2,291,457 | 6.9 s | |
+| `HH` | 150,217 | 1.0 s | |
+| `species` | 2,022 | 0.6 s | |
+
+Every published table, end to end, in under a minute. There is nothing to warn
+about.
+
+The one genuinely heavy call is `dr_get_datras(survey = NULL)`: 63.5 s wall
+and **peak RSS 10.4 GB** for a 2.7 GB object. The ~4x transient is the
+*reshape* -- `bind_rows` over 14M rows, two joins, and factorising every
+character column -- not the collect. It is the wrong thing to run on a 16 GB
+machine. Its row counts double as a check: CA is 5,968,027 less 305,976
+orphans, and HL is `HL_length`'s 14,001,605 plus 366,013 bulk-only rows from
+`HL_summary`.
+
+Also re-measured, because an earlier note in `AGENTS.md` put it at ~43 s: an
+unfiltered `head()` on the **raw** archive costs 7-8 s against 0.4 s for
+obus's own parquet. A bare `LIMIT` has no predicate to push down and opus's
+raw row groups are large; obus's own files, written by `build_helpers.R`'s
+zstd writer, do not inherit it. The 43 s figure is not reproducible.

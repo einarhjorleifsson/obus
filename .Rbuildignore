@@ -9,3 +9,7 @@
 ^README_files$
 ^DEVLOG\.md$
 ^vignettes/\.quarto$
+^_pkgdown\.yml$
+^PLAN-qc-checks\.md$
+^PLAN-qc-checks\.html$
+^NS-IBTS$

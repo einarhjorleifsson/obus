@@ -17,19 +17,32 @@ lines of which four fifths was history; the convention follows opus's.*
 
 ## Immediate
 
-- [ ] **Publish.** All four files are in `data-raw/to_https/` and none are
-      on the server. `species.parquet` and `HH.parquet` *overwrite* what is
-      already published, so this is not purely additive — the currently
-      published `HH.parquet` is the previous generation.
+- [x] **Publish — DONE.** Verified live 2026-09-08: all ten tables answer on
+      the server with exactly the columns the code produces, and
+      `dr_con(tbl) == dr_con_raw(tbl) + ".id"` holds for `HH`, `HL` and `CA`.
+      Row counts as documented (HH 150,217; HL 14,423,771; CA 5,968,027;
+      HL_length 14,001,605; HL_summary 2,291,457; hl_flag 1,422,576;
+      hl_flag_code 19; species 2,022; length_weight 2,022;
+      length_type_conversion 2). `data-raw/to_https/` still holds the copies
+      that were pushed; harmless, but they are no longer pending.
+
+- [ ] **Two orphan files are still on the server root and should be deleted.**
+      Both re-confirmed live 2026-09-08. Neither is produced by any current
+      build script, and nothing in obus reads either, so they will sit there
+      looking current until someone removes them:
+
+      | file | rows | why it is wrong |
+      |---|---:|---|
+      | `HL_standardised.parquet` | 15,483,270 | the deprecated stacked shape — carries the abandoned `aphia` rename and a `type` column to tell the two catch tables apart. Superseded by `HL_length` + `HL_summary`. |
+      | `LT.parquet` | 79,451 | retired-era build at the *root*. `dr_con_raw("LT")` reads `raw/LT.parquet`, which is the live one. |
 
       ```
-      scp data-raw/to_https/{species,HH,HL_length,HL_summary}.parquet \
-          einarhj@heima.hafro.is:~/public_html/datras/
+      ssh einarhj@heima.hafro.is 'rm ~/public_html/datras/{HL_standardised,LT}.parquet'
       ```
 
-      Note `HL_standardised.parquet` stays on the server, stale and now
-      superseded. Decide whether to delete it or leave it; it is
-      demonstrably wrong (see below) and nothing in this obus reads it.
+      Note `CPUEL.parquet` at the root is **not** in this list — it is ICES's
+      own product, mirrored deliberately, and both obus's article and
+      datrasdoodle2's Appendix A read it.
 
 ## Later
 
@@ -90,34 +103,59 @@ lines of which four fifths was history; the convention follows opus's.*
       *missing* end position, not a zero-length tow. Worth a `dr_check_*`-style
       report rather than a silent repair, per the house rule.
 
-- [ ] **`CA` is fetched by `DATASET_species.R` but nothing else uses it.**
-      It contributes aphia codes to the species lookup and is otherwise
-      untouched. An `age`/`length` product would be the natural next thing
-      to build, and `dr_add_id()` already works on it unchanged.
+- [ ] **HH's hydrography cannot support an environmental explanation, and it
+      is worth knowing before anyone tries.** Measured on BITS Q1 (11,753
+      hauls) 2026-09-08, while scoping whether datrasdoodle2 could test an
+      anoxia hypothesis against the survey's own fields. obus computes
+      nothing from these today; this is a note for whoever reaches for them.
 
-      1. **HH is down too.** 249 hauls, against 325-387 in every other year
-         2014-2026. A truncated HL would leave HH untouched.
-      2. **Rows per haul is normal** — 131.6, inside the 117-145 range of
-         neighbouring years. Regressing rows on hauls over the other twelve
-         years predicts 37,755 rows for 249 hauls, 95% PI 25,207-50,303.
-         Observed 32,767 sits inside it, so there is no shortfall to explain.
-      3. **No truncated tail.** A file cut mid-stream would leave its last
-         hauls abnormally short. The 2022 rows-per-haul distribution
-         (min 3, median 129, max 344) matches 2021 (1 / 134 / 259) and 2023
-         (3 / 142.5 / 263) — and 2022's *maximum* is the largest of the three.
+      1. **There is no oxygen field in HH at all** — not sparse, absent.
+         What the water column gets is surface/bottom temperature,
+         surface/bottom salinity, a thermocline flag and depth, Secchi depth
+         and turbidity.
+      2. **Coverage starts late.** `BottomSalinity` is on **0%** of BITS Q1
+         hauls before 2000, 6.6% in 2000-2004, and reaches ~60% only in the
+         2010s. `ThermoCline` starts in 2010 and never passes 16%. So any
+         before/after comparison that reaches back to the 1990s has no
+         hydrography on one side of it.
+      3. **Where the fields exist they do not discriminate.** Among deep
+         (>70 m), eastern (>17E) BITS hauls with a salinity reading, hauls
+         recorded `HaulValidity == "N"` (no oxygen) are indistinguishable
+         from hauls that fished normally and caught nothing — 11.0 PSU
+         against 10.7, 6.3 C against 6.0, 92 m against 84. Whatever
+         separates dead water from live water is not written down.
+      4. **`N` is not a time series.** It appears in BITS in 2001 and its
+         frequency is non-monotonic thereafter (1.4% -> 5.2% -> 4.0% -> 4.6%
+         -> 7.0% -> 3.7% by five-year block). Its absence before 2001 is a
+         recording change.
 
-      **What actually happened: reduced survey effort, concentrated in two
-      countries.** NS-IBTS Q1 hauls, 2021 -> 2022 -> 2023: DE 67 -> **10** ->
-      22; GB-SCT 61 -> **15** -> 54; DK 45 -> 27 -> 45. FR/NL/NO/SE are flat.
-      Across all surveys in 2022, GB-SCT ran 307 hauls against 428 in 2021
-      (-28%), so its reduction was fleet-wide; DE's total was steady
-      (461 -> 428), so its shortfall was specific to NS-IBTS Q1.
+      What the fields *do* support is a positive statement: plaice abundance
+      is ordered by `BottomSalinity` **within** every longitude band, so
+      salinity is not merely standing in for "west". East of 17E the ~75
+      hauls above 13 PSU carry about ten times the plaice of their fresher
+      neighbours. That is a salinity-tolerance signal, and it is a live rival
+      to any oxygen story rather than a version of one.
 
-      The original reasoning contained a base-rate error worth remembering:
-      "it is the only one of 971 groups sitting on exactly that value" is not
-      evidence of anything — nearly every specific row count is hit at most
-      once. The question that settles it is whether the count is anomalous
-      *given the haul count*, and it is not.
+      Written up in `datrasdoodle2/before-the-model.qmd`. An oxygen series
+      would have to come from the ICES oceanographic database, which is a
+      different archive and outside both packages' scope.
+
+- [ ] **`CA` still has no derived table, though it is no longer untouched.**
+      As of 2026-09-09 `dr_get_datras(ca = TRUE)` assembles CA into a
+      `DATRASraw`, and datrasdoodle2's `interoperability` chapter uses it to
+      show that an age-length key built from obus's parquet is identical to
+      one built from the exchange file (`rawALK()` max gap 0 over 41 length
+      bins x 6 ages; `weightAtAge()` to 1.7e-13, on 370 aged dab in 2021).
+      So the record layer is proven to travel. What is still missing is an
+      `age`/`length` *product* — a published CA-derived table the way
+      `HL_length` is for catch. `dr_add_id()` already works on CA unchanged.
+
+      Two things to carry into that work, both measured this session:
+      `rawALK()` errors whenever `Age` has `NA`s (its own guard,
+      `xtabs(Age == minAge ~ Year)`, propagates the NA) — it fails on
+      DATRASextra's bundled `dab` too, so it is a DATRAS bug, not ours. And
+      empty `Year` factor levels survive `subset()`, so years with no ageing
+      still trip the per-year guard until dropped.
 
 ## Open, not resolved
 
@@ -177,6 +215,35 @@ scaling weight without scaling count leaves a self-normalising signature.
   filtered to ratio ~ 1 and `SubFactor > 1.5`, tabulated by survey x year x
   country.
 - **H-W4 — unit errors**, kilograms or 100-gram units in a grams field.
+  **A realised case is now located and dated (2026-09-08, found while writing
+  datrasdoodle2's plaice chapter).** In **BITS Q1**, catch weight per fish is
+  implausible by roughly two orders of magnitude for two country blocks,
+  across *every* species checked (cod, plaice, herring):
+
+  | country | affected years | median g/fish in block | first normal year |
+  |---|---|---:|---|
+  | DK | 1991-1994 | 0.4 - 8.2 | **1995** (201.0) |
+  | DE | 1991-2002 | 1.4 - 3.0 | **2003** (224.1) |
+
+  Sweden over the same years reads 155-337 g/fish, which rules out the
+  survey, the species and obus's arithmetic and leaves the submission. The
+  blocks end abruptly on a year, which is the signature of a corrected
+  submission format rather than drift. This matches the IBTSWG 2025
+  Table 3.8.1 pattern (`CatCatchWgt` "per 100g (/100)") already cited below.
+
+  **Consequences worth acting on:**
+  - `w_haul`/`w_hour` are unusable for BITS before 2003. Any biomass series
+    crossing that boundary is wrong by ~100x on most of its early hauls.
+  - **No `hl_flag` code fires on it.** The records are internally consistent;
+    what fails is a biological plausibility check, and there is no code of
+    that kind in the table. Candidate new code — `WGT_IMPLAUSIBLE`, kind
+    `suspect`, evidence `derived` — testing `SpeciesCategoryWeight /
+    TotalNumber` against a per-species archive-wide reference. That is the
+    generic H-W4 test the hypothesis already specifies, now with a known
+    positive to validate against.
+  - Worth checking whether the same two country blocks are affected in
+    the other surveys DE and DK submit to.
+
   Partly answered: IBTSWG 2025 Table 3.8.1 records a realised case (CEFAS
   NS-IBTS Q1 1978, `TotalNo` "122->244", `CatCatchWgt` "2750->55", comments
   "No per hr (*2)" and "No per hour (*2) per 100g (/100)"). *Test:* per species
