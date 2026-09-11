@@ -1,10 +1,12 @@
 # obus — TODO
 
 **Status:** Rebuilt 2026-08-31 from an empty `R/`; length-weight added
-2026-09-02. Thirteen exported functions, `R CMD check` clean (0/0/0), 243 tests
-passing including the online schema check. **All eight tables are published**
-and verified against the full archive. The DATRAS/DATRASextra interop
-harnesses in `data-raw/` pass 11/11 and 25/25.
+2026-09-02; `dr_get()` and `dr_get_datras()` added 2026-09-09. Fifteen
+exported functions, `R CMD check` clean (0/0/0), 337 tests passing including
+the online schema check. **All ten tables are published** and verified live
+against the code's schema (re-checked 2026-09-08). The DATRAS/DATRASextra
+interop harnesses in `data-raw/` pass 11/11 and 25/25 — the adapter they test
+is now `dr_get_datras()` itself, not a script-local copy.
 
 *This file tracks outstanding work only. Dated development history — what was
 done, when, and why — lives in `DEVLOG.md`; settled design lives in

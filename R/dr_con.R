@@ -234,3 +234,69 @@ dr_con <- function(type, path = "https://heima.hafro.is/~einarhj/datras",
 
   full_path
 }
+
+
+#' Collect a published table into memory
+#'
+#' \code{\link{dr_con}} plus \code{\link[dplyr]{collect}}, with the three
+#' filters worth pushing down before the pull. It exists to name the lazy/eager
+#' boundary rather than to hide it: a \code{tbl_lazy} from \code{dr_con()} is
+#' the right thing to keep passing around, and this is what you call when you
+#' want a data frame.
+#'
+#' \strong{An unfiltered pull is fine.} DATRAS is not big data. Measured on the
+#' published archive, one table at a time: \code{HL} 14,423,771 rows in 12.1 s
+#' and 2.9 GB; \code{HL_length} 14,001,605 in 25.0 s and 1.8 GB; \code{CA}
+#' 5,968,027 in 5.5 s and 1.5 GB; \code{HL_summary} in 6.9 s; \code{HH} in
+#' 1.0 s; \code{species} in 0.6 s. Every published table, end to end, in under
+#' a minute. Leaving all three filters \code{NULL} is a supported thing to do,
+#' not a mistake the function needs to talk you out of.
+#'
+#' The slow case is elsewhere, and \code{dr_get()} does not touch it: an
+#' unfiltered \code{head()} on the \emph{raw} archive via
+#' \code{\link{dr_con_raw}} costs 7-8 s against 0.4 s for obus's own parquet,
+#' because a bare \code{LIMIT} has no predicate to push down and the raw row
+#' groups are large.
+#'
+#' @param type A published table name, as taken by \code{\link{dr_con}}.
+#' @param survey,years,quarters Optional filters, applied lazily before
+#'   collecting. \code{NULL} (the default) means no filter. Supplying one for a
+#'   table that has no such column is an error rather than a silent no-op --
+#'   \code{species}, \code{hl_flag}, \code{hl_flag_code}, \code{length_weight}
+#'   and \code{length_type_conversion} carry none of the three.
+#' @param ... Passed to \code{\link{dr_con}} (\code{path}, \code{quiet}).
+#'
+#' @return A data frame (tibble) with the whole filtered table in memory.
+#'
+#' @seealso \code{\link{dr_con}} for the lazy view this collects, and
+#'   \code{\link{dr_get_datras}} for the same idea returning a
+#'   \code{DATRASraw}.
+#'
+#' @examples
+#' \dontrun{
+#' hh  <- dr_get("HH", survey = "NS-IBTS", years = 2022, quarters = 1)
+#' sp  <- dr_get("species")            # no filter columns, none needed
+#' all <- dr_get("HL_summary")         # 2.3M rows, ~7 s -- this is fine
+#' }
+#' @export
+dr_get <- function(type, survey = NULL, years = NULL, quarters = NULL, ...) {
+
+  # `...` rather than restating dr_con()'s path/quiet defaults: the archive
+  # root is declared in exactly one place and this must not become a second.
+  x   <- dr_con(type, ...)
+  ask <- list(Survey = survey, Year = years, Quarter = quarters)
+  ask <- ask[!vapply(ask, is.null, logical(1))]
+
+  unsupported <- setdiff(names(ask), colnames(x))
+  if (length(unsupported) > 0)
+    stop(sprintf("dr_get(): table '%s' has no %s column%s, so that filter ",
+                 type, paste(unsupported, collapse = "/"),
+                 if (length(unsupported) > 1) "s" else ""),
+         "cannot be applied. Drop it, or filter the collected result.",
+         call. = FALSE)
+
+  for (k in names(ask)) {
+    x <- dplyr::filter(x, !!rlang::sym(k) %in% !!ask[[k]])
+  }
+  dplyr::collect(x)
+}

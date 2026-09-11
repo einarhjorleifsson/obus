@@ -5,12 +5,15 @@
 # downstream functions on it, unmodified, and compares against the same
 # functions run on DATRASextra's bundled `dab`.
 #
-# The adapter below is the whole "minor tweak": one opus::op_rename() call,
-# DATRAS's five derived HH columns, and a reshape of the two catch tables into
-# the one long HL frame DATRAS expects. ~60 lines, no arithmetic on counts.
+# The adapter is the whole "minor tweak": one opus::op_rename() call, DATRAS's
+# derived HH columns, and a reshape of the two catch tables into the one long
+# HL frame DATRAS expects. No arithmetic on counts. It used to be defined
+# below; it now ships as obus::dr_get_datras(), and this script is what
+# validates it.
 #
-# CA is out of scope by construction -- obus publishes no CA-derived table, so
-# nothing age- or individual-weight-based is testable here.
+# CA is out of scope here (`ca = FALSE`) -- obus publishes no CA-derived
+# table, so nothing age- or individual-weight-based is testable against the
+# two catch tables, which is what this script is about.
 
 suppressMessages({
   library(dplyr)
@@ -18,7 +21,9 @@ suppressMessages({
   ## calc_stratified_index() exists only in the latter:
   ##   remotes::install_github("DTUAqua/DATRAS/DATRAS")
   ##   remotes::install_github("tokami/DATRASextra")
-  ## Verified against 1.1.1 / 0.4.0 on 2026-09-04: adapter 11/11, interop 25/25.
+  ## Verified against 1.1.1 / 0.4.0 on 2026-09-04: adapter 11/11, interop
+  ## 25/25; re-run 2026-09-11 against the shipped dr_get_datras(), still 11/11
+  ## with every gap 0.
   ## (This used to pkgload::load_all() the repos from absolute paths, which
   ## only worked on one machine.)
   library(DATRAS)
@@ -34,111 +39,23 @@ ok <- function(label, passed, detail = "") {
 hdr <- function(x) cat(sprintf("\n== %s %s\n", x, strrep("=", max(0, 62 - nchar(x)))))
 
 # ---------------------------------------------------------------------------
-# THE ADAPTER
+# THE ADAPTER is now obus::dr_get_datras(), promoted out of this script on
+# 2026-09-09 -- it had also been pasted verbatim into
+# datrasdoodle2/interoperability.qmd, so there were three copies to drift.
+# This script is what validates it, so it deliberately calls the SHIPPED
+# function rather than a local definition.
+#
+# haulval/stdspec are passed explicitly because the packaged defaults are NULL
+# (obus does not filter unless asked); `dab` came through clean_datras(), which
+# applies both, so matching it needs them named.
 # ---------------------------------------------------------------------------
-dr_as_datras <- function(survey, years, quarters, aphia,
-                         haulval = "V", stdspec = "1") {
-
-  ## HH -- raw + .id, renamed to ICES legacy names, plus the five columns
-  ## DATRAS::addExtraVariables() derives and DATRASextra's defaults expect.
-  hh <- dr_con("HH") |>
-    filter(Survey == survey, Year %in% years, Quarter %in% quarters,
-           HaulValidity %in% haulval, StandardSpeciesCode %in% stdspec) |>
-    collect() |>
-    opus::op_rename("HH", to = "legacy") |>
-    mutate(
-      haul.id      = .id,
-      lon          = ShootLong,
-      lat          = ShootLat,
-      abstime      = Year + (Month - 1) / 12 + (Day - 1) / 365,
-      timeOfYear   = (Month - 1) / 12 + (Day - 1) / 365,
-      ## opus stages TimeShot as character (HHMM keeps its leading zero), so
-      ## it needs coercing -- the same assumption that currently breaks
-      ## DATRAS::addExtraVariables() on Year.
-      TimeShotHour = as.integer(as.integer(TimeShot) / 100) +
-                     (as.integer(TimeShot) %% 100) / 60
-    )
-
-  ## HL -- from the two published catch tables ONLY.
-  len <- dr_con("HL_length") |>
-    filter(Survey == survey, Year %in% years, Quarter %in% quarters,
-           Valid_Aphia %in% aphia) |> collect() |> filter(.id %in% hh$haul.id)
-  smry <- dr_con("HL_summary") |>
-    filter(Survey == survey, Year %in% years, Quarter %in% quarters,
-           Valid_Aphia %in% aphia) |> collect() |> filter(.id %in% hh$haul.id)
-
-  ## accuracy <-> LngtCode is a bijection on the five valid codes, and
-  ## LengthClass is mm-scaled for "." and "0", cm-scaled for "1"/"2"/"5".
-  code_of <- c("0.1" = ".", "0.5" = "0", "1" = "1", "2" = "2", "5" = "5")
-  totals  <- smry |> select(haul.id = .id, Valid_Aphia, SpeciesValidity,
-                            TotalNo = n_totalnumber, CatCatchWgt = w_haul)
-
-  hl_len <- len |>
-    transmute(
-      haul.id = .id, Survey, Year, Quarter, Valid_Aphia,
-      Species     = latin,
-      SpecCode    = Valid_Aphia,
-      SpecVal     = as.integer(SpeciesValidity),
-      SpeciesValidity,
-      Sex         = coalesce(SpeciesSex, ""),
-      DevStage    = DevelopmentStage,
-      LenMeasType = LengthType,
-      LngtCode    = unname(code_of[as.character(accuracy)]),
-      LngtClas    = as.integer(if_else(accuracy <= 0.5, length_mm,
-                                       as.integer(length_mm / 10L))),
-      LngtCm      = length_cm,
-      HLNoAtLngt  = n_measured,
-      ## Count is DATRAS's raised number-at-length, which IS n_haul.
-      Count       = n_haul,
-      ## SubFactor is not in the published grain; the raised count already
-      ## carries it, and nothing downstream reads it. Reported where it is
-      ## recoverable so the column is not a lie.
-      SubFactor   = n_haul / n_measured
-    )
-
-  ## Species recorded for a haul but never measured: no row in HL_length, so
-  ## they come from HL_summary with a missing length -- which is exactly how
-  ## DATRAS carries them, and what species richness needs.
-  hl_bulk <- smry |>
-    anti_join(distinct(len, .id, Valid_Aphia, SpeciesValidity),
-              by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
-    transmute(
-      haul.id = .id, Survey, Year, Quarter, Valid_Aphia,
-      Species = latin, SpecCode = Valid_Aphia,
-      SpecVal = as.integer(SpeciesValidity), SpeciesValidity,
-      Sex = "", DevStage = NA_character_, LenMeasType = NA_character_,
-      LngtCode = NA_character_, LngtClas = NA_integer_, LngtCm = NA_real_,
-      HLNoAtLngt = NA_real_, Count = NA_real_, SubFactor = NA_real_
-    )
-
-  hl <- bind_rows(hl_len, hl_bulk) |>
-    left_join(totals, by = c("haul.id", "Valid_Aphia", "SpeciesValidity"),
-              na_matches = "na") |>
-    left_join(select(hh, haul.id, HaulDur, DataType), by = "haul.id") |>
-    select(-SpeciesValidity)
-
-  ## DATRAS's own type conventions: factors everywhere a string lives, Year and
-  ## Quarter as factors, haul.id levelled on HH so subset() stays consistent.
-  lev <- levels(factor(hh$haul.id))
-  facify <- function(d) {
-    for (k in names(d)) if (is.character(d[[k]])) d[[k]] <- factor(d[[k]])
-    d$haul.id <- factor(as.character(d$haul.id), levels = lev)
-    d$Year    <- factor(d$Year)
-    d$Quarter <- factor(d$Quarter)
-    d
-  }
-  hh <- facify(hh); hl <- facify(hl)
-
-  d <- list(CA = NULL, HH = as.data.frame(hh), HL = as.data.frame(hl))
-  class(d) <- c("datras_raw", "DATRASraw")
-  d
-}
 
 # ---------------------------------------------------------------------------
 hdr("0. build a datras_raw from HL_length + HL_summary")
 dab <- get("dab")
 APHIA <- 127139L
-obj <- dr_as_datras("NS-IBTS", 2020:2023, c(1L, 3L), APHIA)
+obj <- dr_get_datras("NS-IBTS", 2020:2023, c(1L, 3L), aphia = APHIA,
+                    ca = FALSE, haulval = "V", stdspec = "1")
 cat(sprintf("  HH %s rows, %s cols | HL %s rows, %s cols\n",
             nrow(obj[["HH"]]), ncol(obj[["HH"]]),
             nrow(obj[["HL"]]), ncol(obj[["HL"]])))

@@ -31,5 +31,9 @@ utils::globalVariables(c(
   "length_cm_mid", "length_cm_tl", "length_type_source",
   "from_type", "intercept", "slope",
   "IndividualWeight", "w_ind", "w_haul_pred", "w_hour_pred",
-  "w_modelled", "w_measured", "n_rows", "data", "fit", "glance", "n_len"
+  "w_modelled", "w_measured", "n_rows", "data", "fit", "glance", "n_len",
+  # dr_get_datras(): the legacy ICES names {DATRAS} expects, after
+  # opus::op_rename(to = "legacy"), plus the haul key it derives itself
+  "haul.id", "ShootLong", "ShootLat", "Month", "Day", "TimeShot", "HaulDur",
+  "StandardSpeciesCode", "LngtCode", "LngtClas", "AreaCode"
 ))

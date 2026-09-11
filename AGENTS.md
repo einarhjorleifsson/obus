@@ -4,8 +4,9 @@
 
 **Status:** Rebuilt from an empty `R/`, 2026-08-31; length-weight added
 2026-09-02; `n_measured` on `HL_length`, eight-field `.id` and the published
-`HL`/`CA` added 2026-09-03. **Version:** 2026.08 — 13 exported functions, all
-ten published tables live, `R CMD check` 0/0/0.
+`HL`/`CA` added 2026-09-03; `dr_get()` and `dr_get_datras()` added
+2026-09-09. **Version:** 2026.08 — 15 exported functions, all ten published
+tables live, `R CMD check` 0/0/0.
 
 ------------------------------------------------------------------------
 
@@ -171,43 +172,77 @@ property of the source data, not of the split.
 |---|---|
 | length spectra, numbers/biomass per haul, CPUE, stratified indices, species composition | analysis (`HL_length` + `HL_summary`) |
 | subsampling QC, anything keyed on `SpeciesCategory`, per-category weights, provenance, rebuilding an exchange file | record (`HL`) |
-| age, individual weight, maturity, ALKs | record (`CA`) — obus publishes no CA-derived table |
+| age, individual weight, maturity, ALKs | record (`CA`) — obus publishes no CA-derived table, but `dr_get_datras()` assembles one for {DATRAS} |
 
-The first row is demonstrated, not asserted: `data-raw/CHECK_datras_adapter.R`
-builds a `datras_raw` whose HL comes only from the two derived tables and runs
-DATRASextra's own downstream functions on it unmodified — 11/11 checks, every
-one max gap 0, including an identical stratified index.
-`data-raw/CHECK_datras_interop.R` is the field-by-field comparison, 25/25.
+The first row is demonstrated, not asserted: `dr_get_datras()` builds a
+`datras_raw` whose HL comes only from the two derived tables, and
+`data-raw/CHECK_datras_adapter.R` runs DATRASextra's own downstream functions
+on it unmodified — 11/11 checks, every one max gap 0, including an identical
+stratified index. `data-raw/CHECK_datras_interop.R` is the field-by-field
+comparison, 25/25.
+
+**`dr_get_datras()` is the only way into a `DATRASraw` that is not an exchange
+file.** {DATRAS} publishes no constructor: `readExchange()`,
+`readExchangeDir()`, `readICES()`, `getDatrasExchange()`, `downloadExchange()`
+and `DATRASextra::read_datras()` all parse one, `write_datras()` writes one
+back rather than serialising, and `addExtraVariables()` — which derives
+everything beyond the submitted columns — is unexported. obus therefore
+reproduces that derivation. It needs no {DATRAS} code to do it: a `DATRASraw`
+is a three-element list (CA, HH, HL, positionally) with a class attribute, and
+`DATRASextra:::.add_class_datras()` is exactly
+`class(x) <- c("datras_raw", "DATRASraw")`. {DATRAS} is `Suggests`, used only
+for the optional `Roundfish` column, which lives in a CSV inside that package.
+
+Two things the function inherits and cannot fix, both documented on it.
+{DATRAS}'s derived quantities are `haul` × `length` matrices on HH with no
+species dimension, so everything from `add_numbers_at_length()` onward is one
+species at a time — and because HL keeps `Valid_Aphia` untouched, subsetting
+*after* deriving looks like it worked and does not (`HaulN` measured 19× too
+high on DATRASextra's own `mini`). And `$.DATRASraw` redirects `x$foo` into
+HH with partial matching, registered when the namespace *loads*, not when it
+is attached — so use `x[["HH"]]`.
 
 **Deliberately absent** — every one of these existed in `obus_retired` and
-was left out, not overlooked: `dr_get()` (eager fetch, live XML,
-submission status), `dr_settypes()`/`dr_translate()`, `dr_HL_standardised()`
-(the deprecated union of the two catch tables), `dr_add_record_type()`,
-`dr_add_starttime()`, `swept_area`, the areas/shapes lookups, and all of the
-`dr_check_*` family. Reintroduce one when something real needs it.
+was left out, not overlooked: `dr_settypes()`/`dr_translate()`,
+`dr_HL_standardised()` (the deprecated union of the two catch tables),
+`dr_add_record_type()`, `dr_add_starttime()`, `swept_area`, the areas/shapes
+lookups, and all of the `dr_check_*` family. Reintroduce one when something
+real needs it.
 
 `length_weight` was on that list until 2026-09-02 and came back, with its
 `length_type_conversion` companion and the shared `.dr_resolve.R` cascade
 primitive.
+
+`dr_get()` was on it until 2026-09-09 and came back as a **different
+function**. The retired one fetched from the live XML service and reported
+submission status; this one is `dr_con()` + `collect()` against the published
+parquet, and exists to name the lazy/eager boundary rather than to hide it.
+Nothing of the live-service half came back with it.
 
 ------------------------------------------------------------------------
 
 ## Implementation
 
 **Exported** (`R/`):
-- `dr_con_raw(table, path, quiet)`, `dr_con(type, path, quiet)` — `R/dr_con.R`
+- `dr_con_raw(table, path, quiet)`, `dr_con(type, path, quiet)`,
+  `dr_get(type, survey, years, quarters, ...)` — `R/dr_con.R`
 - `dr_add_id(d)` — `R/dr_add_id.R`
 - `dr_add_length_mm(d)`, `dr_add_length_cm(d)`, `dr_add_length_mid(d)`,
   `dr_add_n_and_cpue(d)`, `dr_join_species(x, species)` —
   `R/dr_transformation.R`
 - `dr_HL_length(hh, hl, species, haulval)`,
   `dr_HL_summary(hh, hl, species, haulval)` — `R/dr_standardize.R`
+- `dr_get_datras(survey, years, quarters, aphia, ca, haulval, stdspec)` —
+  `R/dr_get_datras.R`
 - `dr_add_length_tl(catch, conv, length_col)`,
   `dr_add_predicted_weight(catch, lw, length_col, bias_correct, exclude_tiers)`,
   `dr_compare_length_weight(len, smry, lw, tol, flag)` — `R/dr_length_weight.R`
 
 **Internal:** `.dr_resolve_parquet_path()`, `.dr_concat_ws()`,
 `.dr_hh_cols_for_hl()`, `.dr_require_cols()`, `.dr_maybe_collect()`;
+`.dr_datras_fetch()` and the pure `.dr_as_datras_build()` with its
+`.dr_datras_hh()`/`.dr_datras_hl()`/`.dr_datras_ca()` helpers, split so the
+reshape is testable offline the way `dr_HL_length()` is (`R/dr_get_datras.R`);
 `.dr_coalesce_with_provenance()` (`R/dr_resolve.R`, eager + lazy) and the
 length-weight tier producers `.dr_lw_fit_ca()`, `.dr_lw_from_estimate()`,
 `.dr_lw_consensus()`, `.dr_lw_from_sealifebase()`.
@@ -232,6 +267,31 @@ neither script publishes anything.
 ------------------------------------------------------------------------
 
 ## Key Facts
+
+**DATRAS is not big data, and `dr_get()`'s NULL defaults rest on measuring
+that** (2026-09-09, 24 GB Mac, one table at a time with `gc()` between).
+Unfiltered `collect()`: `HL` 14,423,771 x 30 in 12.1s / 2.9 GB; `HL_length`
+14,001,605 x 18 in 25.0s / 1.8 GB; `CA` 5,968,027 x 35 in 5.5s / 1.5 GB;
+`HL_summary` 2,291,457 in 6.9s; `HH` 150,217 x 70 in 1.0s; `species` 0.6s.
+Every published table, end to end, under a minute. So `dr_get()` does not warn
+about an unfiltered pull -- there is nothing to warn about.
+
+`dr_get_datras(survey = NULL)` is the one call that is genuinely heavy, and
+not because of the download: 63.5s wall, **peak RSS 10.4 GB** for a 2.7 GB
+object (CA 5,662,051 x 40, HH 150,217 x 77, HL 14,367,618 x 21), zero swaps.
+The ~4x transient is the reshape -- `bind_rows` over 14M rows, two joins, and
+factorising every character column -- not the collect. It completes on a
+24 GB machine with roughly 10 GB free; it is the wrong thing to run on 16 GB.
+The row counts double as a check: CA is 5,968,027 - 305,976 orphans, and HL is
+HL_length's 14,001,605 + 366,013 bulk-only rows from `HL_summary`.
+
+**The `head()` caution applies to the RAW archive only.** `dr_con_raw("HL") |>
+head(3)` costs 7-8s against 0.4s for `dr_con("HL")`: a bare `LIMIT` has no
+predicate to push down and opus's raw row groups are large, while obus's own
+parquet, written by `build_helpers.R`'s zstd writer, does not inherit it. An
+earlier note in this file put the raw figure at ~43s; re-measured 2026-09-09
+and not reproducible.
+
 
 **`.id` is obus's, not ICES's.** Eight fields joined with `:` —
 `Survey:Year:Quarter:Country:Platform:Gear:StationName:HaulNumber`, e.g.
