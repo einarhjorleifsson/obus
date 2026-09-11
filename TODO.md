@@ -8,432 +8,81 @@ against the code's schema (re-checked 2026-09-08). The DATRAS/DATRASextra
 interop harnesses in `data-raw/` pass 11/11 and 25/25 — the adapter they test
 is now `dr_get_datras()` itself, not a script-local copy.
 
-*This file tracks outstanding work only. Dated development history — what was
+*This file tracks outstanding work only.* Dated development history — what was
 done, when, and why — lives in `DEVLOG.md`; settled design lives in
-`AGENTS.md`. The split was made 2026-09-04, when this file had reached 1,156
-lines of which four fifths was history; the convention follows opus's.*
+`AGENTS.md`; stated-but-untested hypotheses live in `PLAN-qc-checks.md`.
+
+**The intake rule, because this file has now overrun twice.** It was split on
+2026-09-04 at 1,156 lines, four fifths of which was history. One week later it
+was back to 439 lines, of which 54 were work — seven eighths. The rule that
+would have caught both: **an entry that has no next action is not a TODO.** If
+it records what was measured, it is `DEVLOG.md`. If it constrains what anyone
+may build next, it is `AGENTS.md`. If it names a test nobody has run, it is
+`PLAN-qc-checks.md`. Keep each item to the action, why it matters, and what
+done looks like — the evidence lives at the pointer, not here.
 
 ---
 
 ## Immediate
 
-- [x] **Publish — DONE.** Verified live 2026-09-08: all ten tables answer on
-      the server with exactly the columns the code produces, and
-      `dr_con(tbl) == dr_con_raw(tbl) + ".id"` holds for `HH`, `HL` and `CA`.
-      Row counts as documented (HH 150,217; HL 14,423,771; CA 5,968,027;
-      HL_length 14,001,605; HL_summary 2,291,457; hl_flag 1,422,576;
-      hl_flag_code 19; species 2,022; length_weight 2,022;
-      length_type_conversion 2). `data-raw/to_https/` still holds the copies
-      that were pushed; harmless, but they are no longer pending.
-
-- [ ] **Two orphan files are still on the server root and should be deleted.**
-      Both re-confirmed live 2026-09-08. Neither is produced by any current
-      build script, and nothing in obus reads either, so they will sit there
-      looking current until someone removes them:
+- [ ] **Delete two orphan files from the server root.** Neither is produced by
+      any current build script and nothing in obus reads either, so they sit
+      there looking current. Re-confirmed live 2026-09-08.
 
       | file | rows | why it is wrong |
       |---|---:|---|
-      | `HL_standardised.parquet` | 15,483,270 | the deprecated stacked shape — carries the abandoned `aphia` rename and a `type` column to tell the two catch tables apart. Superseded by `HL_length` + `HL_summary`. |
-      | `LT.parquet` | 79,451 | retired-era build at the *root*. `dr_con_raw("LT")` reads `raw/LT.parquet`, which is the live one. |
+      | `HL_standardised.parquet` | 15,483,270 | the deprecated stacked shape, carrying the abandoned `aphia` rename and a `type` column. Superseded by `HL_length` + `HL_summary`. |
+      | `LT.parquet` | 79,451 | retired-era build at the *root*; `dr_con_raw("LT")` reads `raw/LT.parquet`, which is the live one. |
 
       ```
       ssh einarhj@heima.hafro.is 'rm ~/public_html/datras/{HL_standardised,LT}.parquet'
       ```
 
-      Note `CPUEL.parquet` at the root is **not** in this list — it is ICES's
-      own product, mirrored deliberately, and both obus's article and
-      datrasdoodle2's Appendix A read it.
+      `CPUEL.parquet` at the root is **not** in this list — see `AGENTS.md`.
 
 ## Later
 
-- [ ] **DATRASextra's `mid_lengths` is one bin width high, and neither CHECK
-      script notices.** `R/weight.R:641` and `R/length.R:572` compute
-      `cm_breaks[-1] + dls/2`. With `addSpectrum()`'s `cut(..., right = FALSE)`,
-      bin *j* is `[cm_breaks[j], cm_breaks[j+1])`, so its midpoint is
-      `cm_breaks[j] + dls[j]/2` — one bin lower. `:576` then rewrites only the
-      last element to the lower-bound form, which is itself evidence the two
-      conventions are mixed. Confirmed against the bin definition, not measured
-      against data.
+- [ ] **Embed metadata in the derived parquet files.** Design settled
+      2026-09-04 and written up in `AGENTS.md`; needs the opus-side writer
+      exported first. Done looks like: every file obus publishes answers
+      `parquet_kv_metadata()` with a dict for obus's own columns, a provenance
+      block carrying the source archive's `dict_sha256`, and a
+      machine-readable grain.
 
-      This is a **live loose end, not a note**: both `data-raw/CHECK_datras_*.R`
-      run DATRASextra's stack unmodified and pass 11/11 and 25/25 without
-      touching it, so obus's own evidence does not cover it. Either extend a
-      CHECK script to catch it or raise it with DATRASextra.
+- [ ] **Raise `mid_lengths` with DATRASextra, or catch it in a CHECK script.**
+      `R/weight.R:641` and `R/length.R:572` compute `cm_breaks[-1] + dls/2`,
+      but with `addSpectrum()`'s `cut(..., right = FALSE)` bin *j* is
+      `[cm_breaks[j], cm_breaks[j+1])`, so its midpoint is one bin lower.
+      `:576` then rewrites only the last element to the lower-bound form,
+      which is itself evidence the two conventions are mixed. Confirmed
+      against the bin definition, not measured against data.
 
-- [ ] **Embed metadata in the derived parquet files** — dict for obus's own
-      columns, provenance carrying the source archive's `dict_sha256`, and a
-      machine-readable grain. Design decision recorded at the end of this file
-      (2026-09-04); needs the opus-side writer first.
+      This is live rather than a note: both `data-raw/CHECK_datras_*.R` run
+      DATRASextra's stack unmodified and pass 11/11 and 25/25 without touching
+      it, so obus's own evidence does not cover it.
 
-- [ ] **HH positions carry two traps that swept-area work will walk into.**
-      Measured on the published archive 2026-09-02 over 150,217 hauls, while
-      writing `datrasdoodle2`'s HH chapter. Nothing is wrong in obus today —
-      obus computes nothing from these fields yet — but whatever builds
-      `dr_impute_spread()` / towed distance needs both facts up front.
+- [ ] **Build a CA-derived product — an `age`/`length` table the way
+      `HL_length` is for catch.** The record layer is already proven to
+      travel: `dr_get_datras(ca = TRUE)` assembles CA into a `DATRASraw`, and
+      an age-length key built from obus's parquet is identical to one built
+      from the exchange file. `dr_add_id()` works on CA unchanged.
 
-      1. **31,038 hauls (20.7%) have no haul (end) position at all** — only
-         `ShootLatitude`/`ShootLongitude`. Any distance-from-positions
-         calculation needs a documented fallback for a fifth of the archive.
-
-      2. **2,780 hauls record an end position identical to the shoot
-         position**, which yields a *zero-distance tow* — a plausible-looking
-         number rather than an honest `NA`, which is the more dangerous of the
-         two failure modes. This has historically been flagged as a Norwegian
-         quirk; that undersells it badly. By country, share of hauls with an
-         identical pair, against the share recorded at one-decimal precision:
-
-         | country | hauls | identical | 1-decimal |
-         |---|---:|---:|---:|
-         | RU | 1,059 | **41.8%** | 11.0% |
-         | EE | 306 | **40.2%** | 12.4% |
-         | NO | 1,746 | 14.3% | 3.6% |
-         | LV | 1,255 | 12.5% | 2.8% |
-         | GB-SCT | 12,280 | 8.4% | 5.8% |
-         | PL | 2,166 | 6.7% | 2.4% |
-
-         The precision column is there to kill the innocent explanation:
-         if identical pairs were a rounding artefact, the 1-decimal share
-         would have to be at least as large as the identical share. It is
-         three to four times *smaller* on every affected country. So these
-         are fine-grained positions that have been **copied**, almost
-         certainly the shoot position written into both slots — not coarse
-         positions colliding with themselves.
-
-      Recommended treatment when the time comes: an identical pair is a
-      *missing* end position, not a zero-length tow. Worth a `dr_check_*`-style
-      report rather than a silent repair, per the house rule.
-
-- [ ] **HH's hydrography cannot support an environmental explanation, and it
-      is worth knowing before anyone tries.** Measured on BITS Q1 (11,753
-      hauls) 2026-09-08, while scoping whether datrasdoodle2 could test an
-      anoxia hypothesis against the survey's own fields. obus computes
-      nothing from these today; this is a note for whoever reaches for them.
-
-      1. **There is no oxygen field in HH at all** — not sparse, absent.
-         What the water column gets is surface/bottom temperature,
-         surface/bottom salinity, a thermocline flag and depth, Secchi depth
-         and turbidity.
-      2. **Coverage starts late.** `BottomSalinity` is on **0%** of BITS Q1
-         hauls before 2000, 6.6% in 2000-2004, and reaches ~60% only in the
-         2010s. `ThermoCline` starts in 2010 and never passes 16%. So any
-         before/after comparison that reaches back to the 1990s has no
-         hydrography on one side of it.
-      3. **Where the fields exist they do not discriminate.** Among deep
-         (>70 m), eastern (>17E) BITS hauls with a salinity reading, hauls
-         recorded `HaulValidity == "N"` (no oxygen) are indistinguishable
-         from hauls that fished normally and caught nothing — 11.0 PSU
-         against 10.7, 6.3 C against 6.0, 92 m against 84. Whatever
-         separates dead water from live water is not written down.
-      4. **`N` is not a time series.** It appears in BITS in 2001 and its
-         frequency is non-monotonic thereafter (1.4% -> 5.2% -> 4.0% -> 4.6%
-         -> 7.0% -> 3.7% by five-year block). Its absence before 2001 is a
-         recording change.
-
-      What the fields *do* support is a positive statement: plaice abundance
-      is ordered by `BottomSalinity` **within** every longitude band, so
-      salinity is not merely standing in for "west". East of 17E the ~75
-      hauls above 13 PSU carry about ten times the plaice of their fresher
-      neighbours. That is a salinity-tolerance signal, and it is a live rival
-      to any oxygen story rather than a version of one.
-
-      Written up in `datrasdoodle2/before-the-model.qmd`. An oxygen series
-      would have to come from the ICES oceanographic database, which is a
-      different archive and outside both packages' scope.
-
-- [ ] **`CA` still has no derived table, though it is no longer untouched.**
-      As of 2026-09-09 `dr_get_datras(ca = TRUE)` assembles CA into a
-      `DATRASraw`, and datrasdoodle2's `interoperability` chapter uses it to
-      show that an age-length key built from obus's parquet is identical to
-      one built from the exchange file (`rawALK()` max gap 0 over 41 length
-      bins x 6 ages; `weightAtAge()` to 1.7e-13, on 370 aged dab in 2021).
-      So the record layer is proven to travel. What is still missing is an
-      `age`/`length` *product* — a published CA-derived table the way
-      `HL_length` is for catch. `dr_add_id()` already works on CA unchanged.
-
-      Two things to carry into that work, both measured this session:
-      `rawALK()` errors whenever `Age` has `NA`s (its own guard,
-      `xtabs(Age == minAge ~ Year)`, propagates the NA) — it fails on
-      DATRASextra's bundled `dab` too, so it is a DATRAS bug, not ours. And
+      Two things to carry in, both measured 2026-09-09: `rawALK()` errors
+      whenever `Age` has `NA`s (its own guard propagates the NA) — it fails on
+      DATRASextra's bundled `dab` too, so it is a DATRAS bug, not ours; and
       empty `Year` factor levels survive `subset()`, so years with no ageing
-      still trip the per-year guard until dropped.
+      trip the per-year guard until dropped.
 
-## Open, not resolved
+- [ ] **Give towed distance a documented fallback before building swept
+      area.** A fifth of the archive has no end position at all, and 2,780
+      hauls record an end position identical to the shoot position, which
+      yields a plausible-looking zero-distance tow rather than an honest `NA`.
+      Both traps and the evidence are in `AGENTS.md`; the decision to make is
+      what `dr_impute_spread()` does about each, and the house rule says a
+      `dr_check_*` report rather than a silent repair.
 
-### Labelled hypotheses moved out of the conventions article (2026-09-08)
-
-Trimmed from `vignettes/articles/catch-tables.qmd` to keep it readable.
-None is a finding; each has a stated test. Kept here because the article was
-their only home.
-
-**Can-Mar's whole-fish disagreement** — 31,047 groups, 41.8% of the residual;
-median gap 13 fish, 98% with `TotalNo` higher, 88.2% carrying
-`SubsamplingFactor == 1`. Two rival mechanisms, both live:
-
-- **H-C1a — lost raising factor.** A provider-side historical conversion
-  dropped the real sub-sampling factor to 1 while `TotalNo` kept the raised
-  value, so `TotalNo / length_sum` *is* the lost factor. *Test:* histogram
-  `TotalNo / length_sum` over Can-Mar whole-fish groups. Clustering at small
-  integers, or a smooth distribution centred well above 1, supports it; a
-  distribution centred near 1 with a long tail does not. Stronger still: if
-  `CatCatchWgt / SubWgt` recovers a factor above 1 where `SubFactor` reads 1,
-  that is close to proof.
-- **H-C1b — counted but not measured.** Fish counted into `TotalNo` that never
-  entered a length row: a bulk count plus a measured sub-sample, the residual
-  never distributed over length classes. *Test:* regress the gap on `TotalNo`
-  and on the number of occupied length classes separately. H-C1a predicts the
-  gap scales with the length sum; H-C1b predicts it scales with `TotalNo` with
-  no length-class term. These separate cleanly.
-- **Refuted:** a per-length-class half-fish truncation. `gap / n_length_classes`
-  has median 1.000 (Q1 0.333, Q3 3.333), not 0.5, and median gap 13 against
-  median 14 occupied classes — far too dispersed for any per-class mechanism.
-
-**Weight-path hypotheses.** All share one instrument that has not been built:
-mean weight per fish, `w_haul / n_haul`, stratified by species, which is
-biologically bounded within roughly an order of magnitude, so any mechanism
-scaling weight without scaling count leaves a self-normalising signature.
-
-- **H-W0 — `SubFactor = CatCatchWgt / SubWgt`.** True arithmetically in the
-  Example file (343666 / 8340 = 41.207, and 237 x 41.207 = 9766.059 exactly),
-  stated in words nowhere. *Test:* over all HL rows with `SubWgt`,
-  `CatCatchWgt` and `SubFactor` populated, compare the ratio with the reported
-  factor, stratified by survey x year x `DataType`. This one is still cited in
-  the article; the rest below are not.
-- **H-W1 — `DataType` C weight standardisation handled asymmetrically.** HL
-  row 22 makes `CatCatchWgt` for C a rate. If `w_haul` treats C weights as
-  per-haul while `n_haul` back-multiplies C counts by `HaulDuration/60`, then
-  `w_haul / n_haul` for C is wrong by `60 / HaulDuration` — roughly a third of
-  the archive. *Test:* for the 200 most abundant aphia codes plot median
-  g/fish by `DataType`, and within C regress `log(g/fish)` on
-  `log(HaulDuration)`. Slope near +1 confirms; near 0 refutes.
-- **H-W2 — dropping `SpeciesSex` from the weight key** halves genuinely
-  separate per-sex weights that happen to be equal. *Test:* isolate groups with
-  >=2 sexes in one `(.id, aphia, SpeciesCategory)` and identical non-zero
-  weights; compare their g/fish with single-sex groups of the same species and
-  year.
-- **H-W3 — `SubWgt` written into `CatCatchWgt` or vice versa.** Adjacent
-  fields, both integer grams, only one mandatory. *Test:* H-W0's ratio test
-  filtered to ratio ~ 1 and `SubFactor > 1.5`, tabulated by survey x year x
-  country.
-- **H-W4 — unit errors**, kilograms or 100-gram units in a grams field.
-  **A realised case is now located and dated (2026-09-08, found while writing
-  datrasdoodle2's plaice chapter).** In **BITS Q1**, catch weight per fish is
-  implausible by roughly two orders of magnitude for two country blocks,
-  across *every* species checked (cod, plaice, herring):
-
-  | country | affected years | median g/fish in block | first normal year |
-  |---|---|---:|---|
-  | DK | 1991-1994 | 0.4 - 8.2 | **1995** (201.0) |
-  | DE | 1991-2002 | 1.4 - 3.0 | **2003** (224.1) |
-
-  Sweden over the same years reads 155-337 g/fish, which rules out the
-  survey, the species and obus's arithmetic and leaves the submission. The
-  blocks end abruptly on a year, which is the signature of a corrected
-  submission format rather than drift. This matches the IBTSWG 2025
-  Table 3.8.1 pattern (`CatCatchWgt` "per 100g (/100)") already cited below.
-
-  **Consequences worth acting on:**
-  - `w_haul`/`w_hour` are unusable for BITS before 2003. Any biomass series
-    crossing that boundary is wrong by ~100x on most of its early hauls.
-  - **No `hl_flag` code fires on it.** The records are internally consistent;
-    what fails is a biological plausibility check, and there is no code of
-    that kind in the table. Candidate new code — `WGT_IMPLAUSIBLE`, kind
-    `suspect`, evidence `derived` — testing `SpeciesCategoryWeight /
-    TotalNumber` against a per-species archive-wide reference. That is the
-    generic H-W4 test the hypothesis already specifies, now with a known
-    positive to validate against.
-  - Worth checking whether the same two country blocks are affected in
-    the other surveys DE and DK submit to.
-
-  Partly answered: IBTSWG 2025 Table 3.8.1 records a realised case (CEFAS
-  NS-IBTS Q1 1978, `TotalNo` "122->244", `CatCatchWgt` "2750->55", comments
-  "No per hr (*2)" and "No per hour (*2) per 100g (/100)"). *Test:* per species
-  compute the archive-wide median g/fish; per (survey, year, country, platform)
-  compute the median ratio to that reference and look for blocks near 1e-3,
-  1e-2, 1e2 or 1e3. Discrete blocks confirm; a continuous spread is biology.
-- **H-W6 — the 36 P blocks sharing one weight across main categories** are
-  either genuinely equal catches or a wider repeat than the pseudo-category
-  memo describes. *Test:* g/fish against the species norm for those blocks,
-  plus whether `SubWgt` also repeats across main categories — a repeated
-  `SubWgt` is much harder to call coincidence.
-- **H-W7 — the R duplicates.** The 56 sub-1 kg blocks may be coincidence; the
-  153 above 1 kg (matching to the gram, up to 1.9 tonnes, identical
-  `TotalNo` in 160 of 209) are not. *Test:* model the coincidence rate — for R
-  groups with 2+ categories, what fraction have equal weights as a function of
-  weight magnitude?
-- **H-W8 — weight with no count.** Groups with a missing `SubFactor` have
-  `w_haul` populated and `n_haul` `NA`, so no g/fish diagnostic exists for
-  them at all. *Test:* count groups with non-`NA` `w_haul` and `NA` `n_haul`,
-  by survey and era. Every g/fish result above is conditioned on excluding
-  them, which must be stated.
-
-
-- [ ] **Can-Mar `SpeciesValidity = "5"` rows carry real length data**, unlike
-      every other survey. ICES documents this as unresolved. Separately,
-      Can-Mar's lost raising factor is 30,214 of the 73,596 real disagreements
-      (41%), median gap 13 fish, 98% one-directional — a documented
-      provider-side conversion, not something obus can fix.
-
-      Original reasoning, kept for the record: ICES's row-level formula is fully derivable from `HL_length`:
-      summing its `n_haul` over `.id x aphia x SpeciesValidity` reproduces
-      Sum(NumberAtLength x SubsamplingFactor) **exactly** — verified over
-      1,925,444 groups with 0 differing, 0 present on only one side. So
-      `HL_summary` should NOT carry a second, length-derived total: it would
-      duplicate derivable information across two tables, which is precisely
-      what the split exists to avoid.
-
-      The division of labour is the right one:
-        - `HL_length`, summed  -> the raised length-frequency total (ICES's
-          recommended row-level formula)
-        - `HL_summary$n_totalnumber` -> the reported `TotalNumber`
-        - their disagreement (3.44%) -> visible by construction, which is the
-          point
-
-      `HL_summary` earns its `TotalNumber` because it is the *only* universal
-      per-species total: 366,013 of its 2,291,457 rows (16%) are species with
-      no length data at all, where no length-derived figure exists. The other
-      84% have one available on demand.
-
-      The join is clean — `aphia` and `SpeciesValidity` are never NA in
-      `HL_summary`, so no `na_matches` is needed for this one:
-
-      ```r
-      dr_con("HL_summary") |>
-        left_join(
-          dr_con("HL_length") |>
-            group_by(.id, aphia, SpeciesValidity) |>
-            summarise(n_length = sum(n_haul), .groups = "drop"),
-          by = c(".id", "aphia", "SpeciesValidity")
-        )
-      ```
-
-      One caveat worth keeping: `HL_length$n_haul` embeds the documented
-      `DataType == "R"` + NA `SubsamplingFactor` -> treat as 1 convention, so
-      a naive `NumberAtLength * SubsamplingFactor` done by hand is NOT
-      equivalent — it returns NA for those rows (5.35% of BTS's R rows,
-      2.46% of NS-IBTS's). Sum `n_haul`; don't re-multiply the raw columns.
-
-### A fourth eager/lazy divergence, found by the new duration tests
-
-`sum(x, na.rm = TRUE)` over an all-`NA` group is **0** in R but **NULL** in
-SQL. That silently converted the deliberate zero-duration `NA` straight back
-into the false `0` it was meant to prevent — on the eager path only. Both
-count and weight aggregations now carry an explicit non-NA counter and restore
-`NA` when nothing was present, so the two backends agree. It also settles the
-672,065 rows with no recorded weight as `NA` in both: "not weighed" is not
-"weighed nothing".
-
-This is the second bug in this pass caused by R and SQL disagreeing about
-`NA` (the first was `NULL = NULL` in the joins). Anything aggregating or
-joining in these two functions should be assumed to differ between backends
-until checked both ways — the synthetic tests run eager, the build runs lazy,
-so keeping both is what catches these.
-
-## Metadata on the derived tables (design decision, 2026-09-04)
-
-**Recorded, not implemented.** Raised while considering a datrasdoodle2 chapter
-on how a consumer reads the archive's metadata.
-
-### The measured asymmetry
-
-Every raw file is self-describing; none of obus's published files are. Measured
-2026-09-04 with `parquet_kv_metadata()` over the live server:
-
-| file | `datras:dict` | `provenance` | `sentinels` | `coverage` | `known_issues` |
-|---|--|--|--|--|--|
-| `raw/{HH,HL,CA,LT}.parquet` | yes, 59 KB on HH | yes | yes | yes | yes |
-| `{HH,HL,CA}.parquet` | — | — | — | — | — |
-| `HL_length.parquet`, `HL_summary.parquet` | — | — | — | — | — |
-| `species`, `length_weight`, `hl_flag` | — | — | — | — | — |
-
-All five blocks are JSON. opus's provenance is a build receipt:
-
-```json
-{"table":"HH","n_rows":150217,"n_cols":69,"source":"ICES DATRAS ASMX web service",
- "built_utc":"2026-08-29T19:19:21Z","opus_version":"0.2.0","opus_git_sha":"00d9b7f",
- "dict_sha256":"d74c9e38…","writer":"nanoparquet 0.5.1",
- "pipeline":"archive_02_download -> … -> archive_06_consolidate"}
-```
-
-And opus reads it **out of the file**, not from the installed package —
-`op_dict()`, `op_provenance()`, `op_coverage()`, `op_known_issues()`,
-`op_catalog()`, `op_keys()`, `op_relationships()` and `op_definitions()` all
-resolve through `.op_kv(table, "datras:dict", path)` (`opus/R/archive.R:71`).
-`op_sentinels()` is the deliberate exception: no `path` argument, so it is
-opus's *policy*, while a file's `datras:sentinels` records what was applied to
-that file. `dict_sha256` ties the two together.
-
-### The decision
-
-A three-way split, chosen so that one access idiom keeps working across the
-whole server directory:
-
-1. **Format and writer belong to opus.** It owns how a DATRAS-family parquet
-   describes itself. If obus invents its own key names or JSON shapes then
-   `op_dict()` stops working on half the published files and a consumer needs
-   two idioms for one folder. opus should export the writer, or at minimum the
-   block schema.
-2. **Content for the derived columns belongs to obus.** `n_haul`, `n_hour`,
-   `n_measured`, `length_mm`, `length_cm`, `length_cm_mid`, `accuracy`,
-   `w_haul` and `.id` are obus's own inventions. Working Principle 1 forbids
-   re-deriving *DATRAS* names; it says nothing against documenting columns obus
-   created, and not documenting them is the worse outcome.
-3. **`dict_sha256` of the source archive is non-negotiable.** Today, given
-   `HL_length.parquet`, there is no way to tell which archive build produced
-   it.
-
-**Why (3) is the load-bearing one.** This project has already been bitten by
-exactly the failure it prevents: the server root held retired-era `HL.parquet`,
-`CA.parquet` and `LT.parquet` carrying abandoned renames and *filtered* row
-counts, and nothing noticed for weeks because `dr_con()` simply refused the
-names (see "The server root still carries retired-era files no build script
-owns" in `AGENTS.md`). A provenance block makes a stale file self-evident
-rather than invisible.
-
-**Grain should go in too.** Neither catch table's grain was what its
-documentation claimed, and both were fixed in the docs rather than the code. A
-machine-readable grain block is testable; prose in `AGENTS.md` is not.
-
-### Implementation notes
-
-Feasible cheaply and it preserves the streaming property — nothing needs
-`collect()`ing. Verified 2026-09-04 on duckdb 1.5.5: `COPY … (FORMAT PARQUET,
-KV_METADATA {key: 'value'})` is supported and round-trips through
-`parquet_kv_metadata()`. `data-raw/build_helpers.R:56` is currently
-
-```r
-duckdbfs::write_dataset(x, out, options = "COMPRESSION 'zstd'")
-```
-
-**Resolved 2026-09-04 by test — no fallback needed, and only
-`build_helpers.R` is affected.** `duckdbfs::write_dataset()` builds
-`options_vec <- c(format_by, partition_by, allow_overwrite, options)` and
-collapses it with `glue_collapse(sep = ", ")` into the `COPY` parens
-(duckdbfs 0.1.2), so a multi-element `options` **vector or list** is forwarded
-verbatim. Verified on a lazy `tbl_duckdb_connection` input, exactly what
-`dr_write()` passes:
-
-| case | result |
-|---|---|
-| single option (today's call) | ok, 0 kv blocks |
-| `c("COMPRESSION 'zstd'", "KV_METADATA {test: 'hello'}")` | ok, 1 block |
-| quoted key + JSON value | ok, round-trips |
-| two keys in one `KV_METADATA` block | ok, 2 blocks |
-| `list()` instead of `c()` | ok |
-
-glue does **not** choke on the literal braces in `KV_METADATA {…}`, and the
-table stays lazy — no `collect()`.
-
-**One escaping trap, worth writing into the helper rather than rediscovering
-at build time.** These are single-quoted SQL literals, and
-`datras:known_issues` is 8 KB of English prose, so apostrophes are close to
-certain. A raw apostrophe fails with `Parser Error: syntax error at or near
-"s"`. Do not hand-roll `gsub("'", "''", …)`; use DBI:
-
-```r
-clause <- paste0("KV_METADATA {'datras:known_issues': ",
-                 DBI::dbQuoteString(con, json), "}")
-duckdbfs::write_dataset(x, out, options = c("COMPRESSION 'zstd'", clause))
-```
-
-Verified byte-identical on round-trip through `parquet_kv_metadata()` with a
-payload containing `ICES's` and `don't`.
+- [ ] **Start the QC check suite.** `PLAN-qc-checks.md` is a proposal —
+      twelve check families, pseudocode only, nothing built — and it carries
+      its own start sequence in section 7, which begins with the snapshot and
+      the measurable extents rather than with checks. Its section 8 holds the
+      labelled hypotheses that have a stated test and no owner.

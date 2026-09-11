@@ -1058,3 +1058,61 @@ unfiltered `head()` on the **raw** archive costs 7-8 s against 0.4 s for
 obus's own parquet. A bare `LIMIT` has no predicate to push down and opus's
 raw row groups are large; obus's own files, written by `build_helpers.R`'s
 zstd writer, do not inherit it. The 43 s figure is not reproducible.
+
+---
+
+## 2026-09-11 -- TODO.md overran a second time, and the intake rule that follows
+
+`TODO.md` was split on 2026-09-04 at 1,156 lines, four fifths of which was
+history. One week later it stood at 439 lines of which **54 were outstanding
+work** -- seven eighths non-task, a worse ratio than the one that triggered
+the split. The split had treated the symptom. What leaked was the intake rule,
+which did not exist.
+
+The rule now stated in the file's header: **an entry with no next action is
+not a TODO.** Measured against it, what the file was actually holding:
+
+| content | lines | moved to |
+|---|---:|---|
+| Open tasks | 54 | stayed |
+| Labelled hypotheses (H-C1a/b, H-W0-W8) | 108 | `PLAN-qc-checks.md` s8 |
+| "Metadata on the derived tables (**design decision**)" | 109 | `AGENTS.md` |
+| HH position traps, hydrography, Can-Mar totals | 120 | `AGENTS.md` Key Facts |
+| The eager/lazy `NA` divergence | 16 | `AGENTS.md` Working Principle 6 |
+| `- [x] Publish -- DONE` | 9 | dropped; the 09-08 entry above records it |
+
+Three of those had said so in their own text -- the HH-positions item opened
+"Nothing is wrong in obus today", the hydrography item called itself "a note
+for whoever reaches for them", and the hypotheses block was headed "Kept here
+because the article was their only home". A file that admits its contents do
+not belong is not short of evidence, only of a rule.
+
+The hypotheses went to `PLAN-qc-checks.md` rather than to `AGENTS.md` because
+a hypothesis with a stated test is a **specification for work**, not settled
+design. That plan was already reaching back the other way -- its
+`BIO_MEAN_WEIGHT_SHIFT` check carried the note "TODO.md carries the
+neighbouring observation already" -- so the cross-reference is now a real one.
+
+`AGENTS.md` was reviewed with the same eyes in the same pass, and was carrying
+three things it should not have:
+
+1. **An open action item.** "Still open as of 2026-09-08" duplicated the
+   orphan-server-files TODO almost word for word. A file for settled design
+   should carry no open items at all; it now points at `TODO.md` instead.
+2. **A claim that had gone stale that morning.** "Neither catch table's grain
+   is what its documentation used to claim, and both were fixed in the docs
+   rather than the code" stopped being true at commit 49732c4, which put the
+   grain in a test. It now describes the assertion rather than the error.
+3. **A dangling pointer.** The `HL_summary` grain paragraph ended "**Open
+   decision, see `TODO.md`**", and no such open decision was in `TODO.md`.
+   The decision had in fact been made -- `HL_summary` deliberately carries no
+   length-derived total, because summing `HL_length`'s `n_haul` reproduces
+   ICES's row-level formula exactly over 1,925,444 groups -- so the reasoning
+   moved to `AGENTS.md` as settled, which is what it is.
+
+One number was also dropped as history rather than fact: `AGENTS.md` carried a
+parenthetical that its `HL_length` row count "read 13,996,129 until
+2026-09-03 -- exactly 5,476 short, which is the count of groups that split on
+`DevelopmentStage`. It was a pre-`DevelopmentStage`-grain number left behind;
+the roxygen already carried 14,001,605." Recorded here; the current figure
+stands unannotated there.

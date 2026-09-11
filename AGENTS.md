@@ -97,7 +97,21 @@ a split. It has now been found three times over, in `sex`, in
 grouping dimension added to `dr_HL_summary()` should be assumed guilty
 until measured.
 
-**6. Only ICES's own published documents are evidence for what a field
+**6. R and SQL disagree about `NA`, so anything that aggregates or joins is
+assumed to differ between the two backends until checked both ways.** Two
+bugs in one pass came from this and nothing else: `NULL = NULL` is *unknown*
+in SQL, so every `NA`-`sex` row failed to match its own expectation and fell
+to the fallback collapse (fixed with `na_matches = "na"`); and
+`sum(x, na.rm = TRUE)` over an all-`NA` group is `0` in R but `NULL` in SQL,
+which silently converted the deliberate zero-duration `NA` straight back into
+the false `0` it was meant to prevent — on the eager path only. The
+aggregations now carry an explicit non-`NA` counter and restore `NA` when
+nothing was present, which also settles the 672,065 rows with no recorded
+weight as `NA` on both paths: *not weighed* is not *weighed nothing*. The
+synthetic tests run eager and the build runs lazy; keeping both is what
+catches these, so neither may be dropped for the other.
+
+**7. Only ICES's own published documents are evidence for what a field
 means.** That is `~/R/Pakkar/imbus/DATRAS/external/` — chiefly
 `DATRAS_Field_descriptions_and_example_file_December2025.xlsx` (including its
 `General Notes` sheet), the SISP manuals, and the ICES workshop and
@@ -342,13 +356,13 @@ Valid_Aphia (15 not WoRMS-accepted, 11 forwarding elsewhere — the same counts
 the retired build measured in July). HL_length 14,001,605 rows.
 HL_summary 2,291,457 rows.
 
-(The HL_length figure here read 13,996,129 until 2026-09-03 — exactly 5,476
-short, which is the count of groups that split on `DevelopmentStage`. It was
-a pre-`DevelopmentStage`-grain number left behind; the roxygen already
-carried 14,001,605.)
-
-**Neither catch table's grain is what its documentation used to claim, and
-both were fixed in the docs rather than the code.**
+**Both catch tables' grain is asserted in code, not just documented.**
+`PUBLISHED_GRAIN` in `tests/testthat/test-published-schema.R` is checked
+twice — against the code on synthetic fixtures, and against the **published
+files**, where both counts push down to SQL so the 14M-row tables cost the
+same as the 19-row one. It is there because the grain was wrong in the
+roxygen twice, and both times was fixed in the docs rather than in the code;
+a wrong key in a test fails, a wrong key in a sentence does not.
 - `HL_length` is keyed by `.id x Valid_Aphia x length_mm x accuracy x
   LengthType x SpeciesSex x DevelopmentStage x SpeciesValidity` -- eight
   fields, 0 duplicated groups over all 14,001,605 rows (re-verified
@@ -361,7 +375,21 @@ both were fixed in the docs rather than the code.**
   (0.05%) split — and 97% of the sub-groups that do are the
   repeated-total pattern of Working Principle 5, not a real split. Summing
   `n_haul`/`w_haul` per `.id x Valid_Aphia` without collapsing first
-  double-counts them. **Open decision, see `TODO.md`.**
+  double-counts them. For most surveys, filter to `SpeciesValidity == "1"`.
+
+**`HL_summary` deliberately carries no length-derived total**, and that is
+settled rather than pending. ICES's row-level formula is fully derivable from
+`HL_length`: summing its `n_haul` over `.id x Valid_Aphia x SpeciesValidity`
+reproduces `Sum(NumberAtLength x SubsamplingFactor)` exactly — 1,925,444
+groups, 0 differing, 0 one-sided. Carrying it in both tables would duplicate
+derivable information across two files, which is what the split exists to
+avoid. `HL_summary` earns its `TotalNumber` instead because it is the only
+*universal* per-species total: 366,013 of its 2,291,457 rows (16%) are species
+with no length data at all. Their 3.44% disagreement is visible by
+construction, which is the point. When joining the two, sum `n_haul` — do not
+re-multiply `NumberAtLength * SubsamplingFactor` by hand, because `n_haul`
+embeds the documented `DataType == "R"` + `NA` `SubsamplingFactor` convention
+and the hand-rolled version returns `NA` for those rows.
 
 **`HL_length` carries both the raised and the un-raised count** (added
 2026-09-03, 18 columns). `n_haul` is `NumberAtLength × SubsamplingFactor`;
@@ -451,6 +479,40 @@ and the mixes differ (raw HL 39.65% mm / 57.73% cm, raw CA 48.23% / 51.77%).
 Found 2026-09-02, after the retired implementation had predicted from the
 lower bound throughout.
 
+**HH positions carry two traps, and swept-area work will walk into both.**
+Measured over all 150,217 hauls, 2026-09-02. obus computes nothing from these
+fields today, so nothing is wrong; whatever builds towed distance needs both
+facts before it starts.
+- **31,038 hauls (20.7%) have no haul (end) position at all** — only
+  `ShootLatitude`/`ShootLongitude`. Any distance-from-positions calculation
+  needs a documented fallback for a fifth of the archive.
+- **2,780 hauls record an end position identical to the shoot position**,
+  which yields a *zero-distance tow* — a plausible-looking number rather than
+  an honest `NA`, and the more dangerous of the two. This is usually written
+  off as a Norwegian quirk, which undersells it badly: RU 41.8% of hauls and
+  EE 40.2%, against NO's 14.3%. The innocent explanation dies on precision —
+  if identical pairs were a rounding artefact, the share recorded at one
+  decimal would have to be at least as large as the identical share, and it is
+  three to four times *smaller* on every affected country. These are
+  fine-grained positions that were **copied**, almost certainly the shoot
+  position written into both slots.
+
+The right treatment, when the time comes, is that an identical pair is a
+*missing* end position and not a zero-length tow — and a `dr_check_*` report
+rather than a silent repair, per the house rule.
+
+**HH's hydrography cannot carry an environmental explanation**, which is worth
+knowing before anyone reaches for it. There is **no oxygen field in HH at
+all** — absent, not sparse. Coverage of what does exist starts late
+(`BottomSalinity` is on 0% of BITS Q1 hauls before 2000). And where the fields
+exist they do not discriminate: hauls recorded `HaulValidity == "N"` are
+indistinguishable from hauls that fished normally and caught nothing. An
+oxygen series has to come from the ICES oceanographic database, a different
+archive and outside both packages' scope. What the fields *do* support is a
+positive statement — plaice abundance is ordered by `BottomSalinity` within
+every longitude band — which is a live rival to an oxygen story rather than a
+version of one. Measurements in `DEVLOG.md`, 2026-09-08.
+
 **Two lookups at one grain, kept in two files.** `species` and `length_weight`
 are both exactly one row per `Valid_Aphia`, and merging them was considered and
 rejected: they rebuild against different remotes (WoRMS vs FishBase/
@@ -471,17 +533,66 @@ and `LT.parquet` from `obus_retired`, carrying its abandoned renames
 5,966,950 against 5,968,027. `dr_con()` refused those names, so nothing in
 obus read them and nothing noticed. This rebuild overwrites `HL` and `CA`.
 
-**Still open as of 2026-09-08, re-confirmed live.** Two orphans remain at the
-server root, neither produced by any current build script: `LT.parquet`
-(79,451 rows, retired-era build — `dr_con_raw("LT")` reads `raw/LT.parquet`,
-which is the live one) and `HL_standardised.parquet` (15,483,270 rows, the
-deprecated stacked shape, still carrying the abandoned `aphia` rename and a
-`type` column). Both should be deleted rather than left to look current; see
-`TODO.md` for the command. `CPUEL.parquet` at the root is deliberate — it is
-ICES's own product, mirrored, and both the article and `datrasdoodle2` read
-it.
+Two of those orphans are still there, re-confirmed live 2026-09-08, and
+deleting them is an open item in `TODO.md` — not repeated here, because this
+file is for settled design and that is work. `CPUEL.parquet` at the root is
+**not** one of them: it is ICES's own product, mirrored deliberately, and both
+the article and `datrasdoodle2` read it.
 
 **`obus_retired` is a reference, never a source of settled fact.** It is
 archived intact at `../obus_retired`. Several of its own documented
 "facts" turned out to be stale — including, concretely, the published
 parquet it left on the server. Re-verify anything found there.
+
+------------------------------------------------------------------------
+
+## Metadata on the derived tables — decided 2026-09-04, not implemented
+
+Every raw file opus writes is self-describing; **none of obus's published
+files are**. Measured with `parquet_kv_metadata()` over the live server:
+`raw/{HH,HL,CA,LT}.parquet` carry all five JSON blocks (`datras:dict` — 59 KB
+on HH — plus `provenance`, `sentinels`, `coverage`, `known_issues`), and every
+file obus publishes carries none. opus reads those blocks **out of the file**
+rather than from the installed package, which is what makes them worth
+writing: `op_dict()`, `op_provenance()`, `op_coverage()`, `op_catalog()` and
+the rest all resolve through `.op_kv(table, "datras:dict", path)`.
+
+The decision is a three-way split, chosen so that one access idiom keeps
+working across the whole server directory:
+
+1. **Format and writer belong to opus.** It owns how a DATRAS-family parquet
+   describes itself. If obus invents its own key names or JSON shapes then
+   `op_dict()` stops working on half the published files and a consumer needs
+   two idioms for one folder. opus should export the writer, or at minimum the
+   block schema.
+2. **Content for the derived columns belongs to obus.** `n_haul`, `n_hour`,
+   `n_measured`, `length_mm`, `length_cm`, `length_cm_mid`, `accuracy`,
+   `w_haul` and `.id` are obus's own inventions. Working Principle 1 forbids
+   re-deriving *DATRAS* names; it says nothing against documenting columns
+   obus created, and not documenting them is the worse outcome.
+3. **`dict_sha256` of the source archive is non-negotiable**, and it is the
+   load-bearing one. Given `HL_length.parquet` today there is no way to tell
+   which archive build produced it — and this project has already been bitten
+   by exactly that failure, with retired-era files sitting on the server for
+   weeks carrying abandoned renames and filtered row counts, invisible because
+   `dr_con()` simply refused the names. A provenance block makes a stale file
+   self-evident rather than invisible.
+
+Grain belongs in the block too: a machine-readable grain is testable, and
+prose in this file is not.
+
+**It is cheap, and it preserves the streaming property** — nothing needs
+`collect()`ing. `COPY … (FORMAT PARQUET, KV_METADATA {key: 'value'})` is
+supported on duckdb 1.5.5 and round-trips, and `duckdbfs::write_dataset()`
+forwards a multi-element `options` vector verbatim into the `COPY` parens, so
+`data-raw/build_helpers.R`'s single `"COMPRESSION 'zstd'"` becomes a vector
+and nothing else changes. Verified five ways, including JSON payloads and two
+keys in one block, on a lazy input.
+
+**One escaping trap, worth writing into the helper rather than rediscovering
+at build time.** These are single-quoted SQL literals and
+`datras:known_issues` is 8 KB of English prose, so apostrophes are close to
+certain; a raw one fails with `Parser Error: syntax error at or near "s"`.
+Do not hand-roll `gsub("'", "''", …)` — use `DBI::dbQuoteString(con, json)`.
+Verified byte-identical on round-trip with a payload containing `ICES's` and
+`don't`.

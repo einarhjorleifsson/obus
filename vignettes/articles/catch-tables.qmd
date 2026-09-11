@@ -1232,7 +1232,7 @@ Q3 3.333) rather than 0.5, far too dispersed for any per-class mechanism.
 
 Treat Can-Mar separately, and prefer the reported total there. Both candidate
 mechanisms, with the test that would separate them, are in the package's
-`TODO.md` under *Open, not resolved*.
+`PLAN-qc-checks.md`, section 8.
 
 ### Duplicated length series {#duplicated-length-series}
 
@@ -1483,7 +1483,7 @@ The remainder — swapped `SubWgt`/`CatCatchWgt`, unit errors in a grams field
 (a realised case is minuted in IBTSWG 2025 Table 3.8.1), the P blocks sharing a
 weight across main categories, the R duplicates, and the groups carrying weight
 with no number at all — are recorded with their tests in the package's
-`TODO.md` under *Open, not resolved*.
+`PLAN-qc-checks.md`, section 8.
 
 ## 4. Length classes and their units {#length-classes-and-their-units}
 
@@ -1892,7 +1892,7 @@ Stated plainly, because a reader is entitled to know the edges of this.
 
 | Open item | Size |
 |---|---|
-| Can-Mar's whole-fish disagreement — two candidate mechanisms, with a test that would separate them (`TODO.md`) | 31,047 groups |
+| Can-Mar's whole-fish disagreement — two candidate mechanisms, with a test that would separate them (`PLAN-qc-checks.md` s8) | 31,047 groups |
 | The >50 tail after both the duplication and factor-rounding accounts | 165 `TotalNo`-higher + 43 length-higher, of 443 |
 | The 6–50 bucket where neither identity reconciles | ~301 of 3,885 |
 | Whether `SubFactor = CatCatchWgt / SubWgt` generalises, which would give the weight path its first arithmetic cross-check | untested |
