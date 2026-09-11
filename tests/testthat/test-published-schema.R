@@ -61,6 +61,36 @@ PUBLISHED_SCHEMA <- list(
                              "source")
 )
 
+# The published GRAIN: the columns each table is unique on. PUBLISHED_SCHEMA
+# above says which columns exist; this says which of them identify a row, and
+# it is the half a consumer actually joins against.
+#
+# WHY THIS EXISTS. Both catch tables were documented on the wrong key until
+# 2026-09-09 -- HL_length on four fields where it needs eight, HL_summary on
+# two where it needs three -- and nothing failed, because nothing asserted it.
+# A consumer following dr_con()'s roxygen got silent fan-out on 9,581 and
+# 1,222 rows. The grain had already been "fixed in the docs rather than the
+# code" once before, which is exactly why prose is not enough: a wrong key
+# here fails, a wrong key in a sentence does not.
+#
+# HH is keyed on `.id` alone and HL/CA deliberately are not -- `.id` is the
+# haul, and those two carry many records per haul. HH's uniqueness is the one
+# that matters, because every join in the package binds to it.
+PUBLISHED_GRAIN <- list(
+  HH         = ".id",
+  HL_summary = c(".id", "Valid_Aphia", "SpeciesValidity"),
+  HL_length  = c(".id", "Valid_Aphia", "length_mm", "accuracy", "LengthType",
+                 "SpeciesSex", "DevelopmentStage", "SpeciesValidity"),
+  hl_flag      = c(".id", "Valid_Aphia", "code"),
+  hl_flag_code = "code",
+  species      = "Valid_Aphia",
+  length_weight = "Valid_Aphia",
+  # Unique on Valid_Aphia alone today (two rows), but the key is the pair:
+  # that is what dr_add_length_tl() joins on (dr_length_weight.R:262), and a
+  # species measured from two landmarks would need both.
+  length_type_conversion = c("Valid_Aphia", "from_type")
+)
+
 # The tables dr_con() serves. Adding one is fine; removing or renaming one
 # breaks every caller that names it.
 PUBLISHED_TABLES <- c("HH", "HL", "CA", "species", "HL_length", "HL_summary",
@@ -116,6 +146,19 @@ test_that("dr_HL_length() returns exactly the published columns, in order", {
   expect_identical(names(out), PUBLISHED_SCHEMA$HL_length)
 })
 
+test_that("the two catch tables are unique at their declared grain", {
+  f <- .schema_fixture()
+  for (tbl in c("HL_length", "HL_summary")) {
+    out <- if (tbl == "HL_length") dr_HL_length(f$hh, f$hl, species = f$species)
+           else                    dr_HL_summary(f$hh, f$hl, species = f$species)
+    key <- PUBLISHED_GRAIN[[tbl]]
+    expect_true(all(key %in% names(out)),
+                info = paste(tbl, "is missing a grain column"))
+    expect_identical(nrow(out), nrow(dplyr::distinct(out[key])),
+                     info = paste(tbl, "has duplicate rows at its own grain"))
+  }
+})
+
 test_that("dr_con() serves exactly the published set of tables", {
   expect_identical(DR_TABLES, PUBLISHED_TABLES)
   expect_error(dr_con("HL_standardised"), "Invalid table")
@@ -146,6 +189,32 @@ test_that("the published files carry the same columns as the code produces", {
     skip_if(is.null(got), paste("could not reach the published", tbl))
     expect_identical(got, PUBLISHED_SCHEMA[[tbl]],
                      info = paste("published", tbl, "disagrees with the code"))
+  }
+})
+
+# The same contract against the FILES. This is the one that would have caught
+# the roxygen error: it asks the server, not the code, and it costs one
+# aggregate per table because both counts push down to SQL -- nothing is
+# collected, so the 14M-row tables are as cheap as the 19-row one.
+test_that("each published file is unique at its declared grain", {
+  skip_on_cran()
+  skip_if_offline()
+  for (tbl in names(PUBLISHED_GRAIN)) {
+    x <- tryCatch(dr_con(tbl), error = function(e) NULL)
+    skip_if(is.null(x), paste("could not reach the published", tbl))
+
+    key <- PUBLISHED_GRAIN[[tbl]]
+    expect_true(all(key %in% colnames(x)),
+                info = paste("published", tbl, "is missing a grain column"))
+
+    n_rows <- dplyr::pull(dplyr::summarise(x, n = dplyr::n()), n)
+    n_keys <- dplyr::pull(dplyr::summarise(
+      dplyr::distinct(x, !!!rlang::syms(key)), n = dplyr::n()), n)
+    expect_identical(
+      n_rows, n_keys,
+      info = sprintf("published %s fans out %s rows over %s",
+                     tbl, format(n_rows - n_keys, big.mark = ","),
+                     paste(key, collapse = " x ")))
   }
 })
 

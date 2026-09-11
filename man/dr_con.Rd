@@ -17,20 +17,33 @@ between any two of them needs no \code{dr_add_id()} call and no
 eight-field concatenation over 14.4M HL rows.
 \code{.id} is not a guarantee of a matching haul, though. Every HL row
 matches an HH haul (verified: 0 orphans), but \strong{305,976 CA rows
-do not}, which is 5.13\% of the table: they have both
-\code{StationName} and
-\code{HaulNumber} missing, so their \code{.id} ends \code{":NA:NA"}
-and identifies no haul. That is a property of the submissions, not of
-\code{.id}; an \code{inner_join} to HH silently drops them, so check
-with \code{\link[dplyr]{anti_join}} first if it matters. See
-\code{\link{dr_add_id}}.}
+do not}, which is 5.13\% of the table. 305,276 of those have both
+\code{StationName} and \code{HaulNumber} missing, so their \code{.id}
+ends \code{":NA:NA"} and identifies no haul. That is a property of
+the submissions, not of \code{.id}; an \code{inner_join} to HH
+silently drops them, so check with \code{\link[dplyr]{anti_join}}
+first if it matters. See \code{\link{dr_add_id}}.}
 \item{\code{"species"}}{WoRMS lookup: \code{Valid_Aphia}, \code{latin},
 \code{species} (English common name), \code{rank}, the higher
 classification, and WoRMS \code{status}/\code{worms_aphia}.}
 \item{\code{"HL_length"}}{One row per \code{.id} x \code{Valid_Aphia} x
-\code{length_mm} x \code{SpeciesSex}; see \code{\link{dr_HL_length}}.}
-\item{\code{"HL_summary"}}{One row per \code{.id} x \code{Valid_Aphia};
-see \code{\link{dr_HL_summary}}.}
+\code{length_mm} x \code{accuracy} x \code{LengthType} x
+\code{SpeciesSex} x \code{DevelopmentStage} x \code{SpeciesValidity}
+-- all eight of them. Every shorter key fans out: all 15 subsets were
+measured (2026-09-09), and the four-field \code{.id} x
+\code{Valid_Aphia} x \code{length_mm} x \code{SpeciesSex} duplicates
+9,581 of 14,001,605 rows. The near misses are the real trap, since
+they survive a spot check and still double-count: dropping
+\code{SpeciesValidity} alone leaves 15 duplicated rows, and dropping
+\code{accuracy} alone leaves 15. See \code{\link{dr_HL_length}}.}
+\item{\code{"HL_summary"}}{One row per \code{.id} x \code{Valid_Aphia} x
+\code{SpeciesValidity}. The third field is part of the key, not a
+carried attribute: HL deliberately allows more than one record type
+per species per haul, so 1,219 of the 2,290,235 \code{.id} x
+\code{Valid_Aphia} groups carry two or more (measured 2026-09-09).
+Aggregating without it mixes record types and double-counts -- for
+most surveys filter to \code{SpeciesValidity == "1"} first. See
+\code{\link{dr_HL_summary}}.}
 \item{\code{"hl_flag"}}{One row per \code{.id} x \code{Valid_Aphia} x
 \code{code}, for records carrying a flag. Long, so a record with
 several flags has several rows. Joins onto \code{"HL_summary"}

@@ -32,9 +32,10 @@ A lazy table, one row per \code{.id} \eqn{\times} \code{Valid_Aphia}
 \code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 }
 \description{
-One row per \code{.id} \eqn{\times} \code{Valid_Aphia} -- every species recorded
-in \code{hl} for that haul, whether or not it was individually measured
-(unlike \code{\link{dr_HL_length}}, which covers only the length-measured
+One row per \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
+\code{SpeciesValidity} -- every species recorded in \code{hl} for that
+haul, whether or not it was individually measured (unlike
+\code{\link{dr_HL_length}}, which covers only the length-measured
 subset). \code{n_totalnumber}/\code{n_totalnumber_hour} come from the
 recorded \code{TotalNumber}, present regardless of length data and so the
 one universal per-species haul total, rather than being reconstructed by
@@ -108,12 +109,15 @@ mixed together." The typical case is a full length-frequency series
 (\code{"1"}) alongside a supplementary presence marker (\code{"5"}) or a
 count-only row (\code{"4"}) carrying the same \code{TotalNumber} again.
 
-Measured over the whole archive (2026-08-31): 1,219 of 2,290,203 groups
+Measured over the whole archive (2026-09-09): 1,219 of 2,290,235 groups
 (0.05\%) carry more than one record type, the commonest pairs being
-\code{\{1,5\}} and \code{\{4,7\}} -- matching ICES's own reported
-pattern independently. Filtering to a single \code{SpeciesValidity} makes
-\code{.id} \eqn{\times} \code{Valid_Aphia} exactly unique (verified: 0
-duplicates at codes \code{"1"}, \code{"4"}, \code{"5"} and \code{"7"}).
+\code{\{1,5\}} (539 groups) and \code{\{4,7\}} (276) -- matching ICES's
+own reported pattern independently. Filtering to a single
+\code{SpeciesValidity} makes \code{.id} \eqn{\times} \code{Valid_Aphia}
+exactly unique, and that holds within \emph{every} one of the eight codes
+the table carries, not merely the common ones (verified: 0 duplicates at
+\code{"0"}, \code{"1"}, \code{"2"}, \code{"4"}, \code{"5"}, \code{"6"},
+\code{"7"} and \code{"10"}).
 For most surveys, filter to \code{SpeciesValidity == "1"} before
 aggregating. Summing \code{n_haul} or \code{w_haul} per \code{.id}
 \eqn{\times} \code{Valid_Aphia} without filtering mixes record types and
