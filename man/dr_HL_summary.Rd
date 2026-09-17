@@ -118,10 +118,15 @@ exactly unique, and that holds within \emph{every} one of the eight codes
 the table carries, not merely the common ones (verified: 0 duplicates at
 \code{"0"}, \code{"1"}, \code{"2"}, \code{"4"}, \code{"5"}, \code{"6"},
 \code{"7"} and \code{"10"}).
-For most surveys, filter to \code{SpeciesValidity == "1"} before
-aggregating. Summing \code{n_haul} or \code{w_haul} per \code{.id}
-\eqn{\times} \code{Valid_Aphia} without filtering mixes record types and
-double-counts.
+Summing \code{n_haul} or \code{w_haul} per \code{.id} \eqn{\times}
+\code{Valid_Aphia} without accounting for \code{SpeciesValidity} mixes
+record types and double-counts. \strong{The remedy is to sum across it,
+not to filter to \code{"1"}} -- it is a record type rather than a quality
+flag, so filtering discards real records: 464,858 of 2,291,457
+\code{HL_summary} records (20.3\\%), and in \code{\link{dr_HL_length}}
+691,163 of 14,001,605 rows covering 37,302,307 fish (measured 2026-09-17).
+Can-Mar is the only survey putting real length data on validity-\code{5}
+rows, so a blanket filter deletes one survey's measurements outright.
 
 Where \code{HaulDuration} is 0 or negative,
 \code{n_totalnumber_hour}/\code{w_hour} are \code{NA} rather than

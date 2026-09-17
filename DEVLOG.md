@@ -1116,3 +1116,364 @@ parenthetical that its `HL_length` row count "read 13,996,129 until
 `DevelopmentStage`. It was a pre-`DevelopmentStage`-grain number left behind;
 the roxygen already carried 14,001,605." Recorded here; the current figure
 stands unannotated there.
+
+### Later the same day: the server root cleaned, and a function named wrongly
+
+**The two orphans are gone.** `LT.parquet` and `HL_standardised.parquet` were
+deleted from the server root; verified 404 on both, while `raw/LT.parquet` and
+`CPUEL.parquet` still answer 200, so nothing was over-deleted. That closes the
+last Immediate item. The lesson worth keeping is not the cleanup but why it
+took so long to notice: **a published file that nothing reads is invisible,
+not harmless.** `dr_con()`'s refusal to serve the retired-era names is exactly
+what kept them undiscovered for weeks, and a provenance block carrying
+`dict_sha256` is the fix that would make the next one self-evident.
+
+**`dr_impute_spread()` was the wrong function, and it does not exist here.**
+`TODO.md` had been telling whoever builds swept area that the decision to make
+was "what `dr_impute_spread()` does about" the two HH position traps. Two
+errors in one clause. The function is not in obus at all -- it is in
+`obus_retired/R/dr_swept_area.R`, along with the rest of the family, and
+resurrecting it is pending rather than done. And it is the wrong member of
+that family regardless: `dr_impute_spread()` fills *gear opening*
+(WingSpread/DoorSpread); positions are `dr_impute_distance()`'s business.
+
+Reading the retired code then changed the item rather than just renaming it.
+`dr_impute_distance()` takes positions at **tier 3 of 11**
+(`haversine_positions`, capped at 10 km), and its `fill()` helper accepts a
+tier's value only where it is `> 0` -- commented, in the retired source, as
+"Positive guard prevents zero-distance artefacts from perfectly coincident
+positions or zero speed." So the trap that looked like the dangerous one, 2,780
+hauls whose end position repeats the shoot position, is already handled: the
+haul is demoted to a coarser tier rather than anchoring a zero-distance tow.
+The 20.7% with no end position need nothing special either; tier 3 is simply
+unavailable and the cascade continues.
+
+What is actually open is **reporting**, which is a different piece of work
+from the fallback the item had been asking for. After the guard fires, a
+demoted haul is indistinguishable from one that never carried a position --
+and at RU 41.8% and EE 40.2% of hauls, that is a data-quality signal being
+routed around silently. A `dr_check_*` surfacing it is the house-rule answer.
+
+Both errors are the same shape as the intake problem above, one level down: a
+TODO written from memory of the retired package rather than from reading it.
+The check that catches it is cheap -- grep the repo for a function name before
+putting it in a sentence.
+
+---
+
+---
+
+## 2026-09-11 -- should obus own swept area? No. And a conversion table that fires once
+
+Raised as a challenge before writing any code: DATRAS and DATRASextra already
+do this, so why would obus? Four rounds of measurement, and the answer changed
+three times. What follows is the settled position, not the route to it.
+
+**All statistics below exclude beam trawls** (gear labelled "beam" in opus's
+dictionary, or a `BT*` code — 44,063 hauls, 29.3% of the archive). For a beam
+trawl the spread *is* the beam width, a known gear constant, so including them
+in spread-coverage figures measures nothing. That leaves **106,154 otter-trawl
+and other hauls**, and it materially changes the picture: counted over the
+whole archive, FishGlob's spread models look like they cover 56.2%; counted
+where a spread model is actually needed, they cover **79.5%**.
+
+### There are three implementations and two methods
+
+| | what it is | where |
+|---|---|---|
+| ICES WKSAE-DATRAS | sr.2021.10 Component 1, the OSPAR request method | `~/R/Pakkar/WKSAE-DATRAS/`; `obus_retired` implements it |
+| FishGlob | per-survey `lm()` fits, Maureaud + van Denderen | `FishGlob_data/cleaning_codes/source_DATRAS_wing_doorspread.R`, ported into DATRASextra as `method = "fishglob"` |
+| DATRASextra "simple" | gear-median spread and speed, ~90 lines | `DATRASextra` only, the default |
+
+`DATRAS` itself exports nothing for swept area. So "DATRASextra or obus_retired"
+was the wrong question throughout: **neither method is DATRASextra's**, and the
+two real ones disagree by construction. Which to stand behind is a science
+decision, parked in `TODO.md`.
+
+Both are the same *shape* — a per-stratum spread-rule table plus a distance
+cascade — and differ in the strata, the numbers, and one substantive point:
+**ICES uses positions and FishGlob does not.** WKSAE's scripts carry
+`1.852*360*60/2*pi*acos(...)`, a spherical law of cosines, where `Distance` is
+missing. So the position tier is ICES-official rather than an obus invention,
+which is worth knowing before anyone defends it as ours.
+
+Spread-rule coverage of the 106,154 hauls that need one: FishGlob 84,431
+(79.5%), ICES 66,120 (62.3%), either 88,065 (83.0%), **neither 18,089
+(17.0%)**. Ten surveys have both, which is where a comparison would be
+meaningful. ICES-only: IE-IAMS, SCOROC, SCOWCGFS. FishGlob-only: BITS,
+PT-IBTS.
+
+### Publish the rules, not the results
+
+The first design here was wrong and is worth recording as such. The proposal
+was an eleventh published table keyed `.id x method`. That fails on a fact the
+key makes obvious in hindsight: **`.id` grows.** Every archive refresh brings
+hauls that a published per-haul table would not cover, and a consumer holding
+last quarter's file against this quarter's HH gets `NA` on every new haul --
+indistinguishable from "not computable here", which is the exact failure this
+whole investigation was complaining about elsewhere.
+
+The test that settles it: **is deriving it expensive?** `HL_length` and
+`HL_summary` are published because they are 14.4M-row reconciliations.
+Swept area is per-row arithmetic on 150k hauls against a 116-row lookup --
+about two seconds. Publishing it saves nothing and buys a staleness liability.
+
+So the durable artefact is the **rule table**, and `obus_retired` already
+distilled the WKSAE scripts into one: `dr_lookup_spread_algorithm`, 116 rules
+keyed `Country x Survey x Ship x Quarter x year-range x Target x Priority`,
+13 formula shapes with coefficients `a`-`d`. **77 of the 116 (66%) are
+open-ended** (`FinalYear = Inf`), so they already apply to hauls not yet
+collected. That is what belongs on the server, served like `hl_flag_code`
+(19 rows) and `length_type_conversion` (2 rows) already are. The values get
+computed on demand, and `method` becomes a function argument rather than a
+table key — which dissolves the long-vs-wide question entirely.
+
+### Reaching DATRASextra is cheaper than it looks
+
+It does **not** need `dr_get_datras()`. A bare data.frame fails
+(`$.DATRASraw` is `x[[2]][[name]]`, so `x[[2]]` is the second *column*), but
+`.check_class_datras()` only tests the class attribute — there is no
+structural validation — so a three-line wrapper suffices:
+`list(CA = NULL, HH = df, HL = df[0, ])` with
+`class(o) <- c("datras_raw", "DATRASraw")`. Fourteen HH columns are enough, of
+which `opus::op_rename(to = "legacy")` renames seven in one call. The whole
+archive costs 0.7 s to collect and 1.8 s to wrap and compute. The 63.5 s /
+10.4 GB figure for `dr_get_datras(survey = NULL)` is all HL and CA, and swept
+area needs neither.
+
+Nothing is renamed on the way back, because HH is not brought back: only
+`SweptArea` and `SweptArea_imputed`, joined onto obus's untouched HH on `.id`.
+Verified on NS-IBTS 2018-2023 — 4,188 rows in, 4,188 out, all matched, obus's
+names and parquet types intact. The lossy return leg documented on
+`dr_get_datras()` is about round-tripping; this is extraction.
+
+And the haversine tier is no reason to go eager: it pushes down to DuckDB in
+full (`ASIN`, `SQRT`, `POW`, `SIN`, `COS` all translate) over 119,179 hauls,
+median 3,215 m, with 2,780 exactly zero — independently reproducing the
+identical-shoot-and-haul-position count in `AGENTS.md`, of which **2,774 are
+otter trawls**. The retired functions' `stop("requires an eager data frame")`
+is an implementation artefact, not a necessity; only the GAM depth fill is
+inherently eager.
+
+### What neither method does, measured where it matters
+
+Of the 20,207 otter-trawl hauls with no recorded `Distance`, **3,428 (17.0% of
+them, 3.2% of otter hauls) carry both shoot and haul positions but no ground
+speed**. FishGlob gives those a modelled speed; the ICES method would compute
+a great-circle distance. That is the one input gap, and it is smaller than the
+whole-archive figure of 7,967 suggested.
+
+Separately, DATRASextra's `max_dist_dev` plausibility gate **fails open**:
+`badDist` is `NA` wherever `GroundSpeed` is missing, and R's assignment with
+an NA logical index skips those rows rather than erroring. So a recorded
+`Distance` goes unchecked on 18,999 of 85,947 otter hauls that carry one
+(22.1%) — the hauls with least corroborating evidence, with nothing in the
+output saying which.
+
+### DATRASextra is a lossy port, and the same is true for length-weight
+
+| | FishGlob `length.weight_DATRAS.csv` | DATRASextra `species_info` |
+|---|---|---|
+| rows | 1,652 — 371 taxa x 9 surveys x 5 LMEs | 467 flat `a`/`b` |
+| regional | median 3 coefficients per taxon | one global value |
+| provenance | `level_inferred`, six levels | none |
+| length type | `type.length` + a 21-taxon conversion file | none |
+
+An earlier claim in this conversation that "this ecosystem has no provenance"
+was wrong: FishGlob has a six-level inference cascade and the port collapses
+it. Against FishGlob rather than the port, obus's `length_weight` wins on
+breadth (1,124 species with a coefficient against 371 taxa), on fit quality
+(`r2`, `sigma`, `n_ca` — FishGlob has none, so no bias correction is
+possible), on having a `ca_fit` tier at all (242 species fitted from DATRAS's
+own CA), and on survey coverage. It loses on regional specificity, and on
+length-type conversions.
+
+The interop route already exists: `add_weight_at_length(lw_pars = ...)` takes a
+user table and `.normalize_lw_pars()` even renames `aphia` to `Valid_Aphia`.
+obus's table feeds DATRASextra unchanged. That is the pattern to copy, not a
+fork.
+
+### The finding nobody was looking for
+
+Chasing whether obus should adopt FishGlob's 21 length-type conversions turned
+up something worse in obus. **`length_type_conversion` fires on exactly one
+record in 14,001,605.**
+
+Both rows are keyed `from_type = 4` (Pre Anal-Fin Length). Archive-wide,
+`LengthType` is `NA` on 70.74% of `HL_length`, Total Length on 20.98%,
+Standard Length on 6.66%, and Pre Anal-Fin on **602 rows** — of which one
+belongs to a species the table covers. The table is **structurally inert**,
+not merely narrow, and nothing caught it because no test asserts that a lookup
+matches anything.
+
+The cause is the key, not the row count. `dr_add_length_tl()` reads a missing
+`LengthType` as "assume Total Length", so on 70.74% of the table the question
+never arises; keying the rest on `(Valid_Aphia, from_type)` reduces it to a
+rounding error. FishGlob keys on **taxon alone** — a claim about how a species
+is measured in practice rather than about what a submitter typed — which is
+why its equivalent applies and obus's does not.
+
+What it costs: 17 taxa carry an obus length-weight coefficient and no
+conversion, over 317,406 measured fish. With `W = a*L^b` and b around 3.15, an
+unconverted Pre-Anal-Fin length is wrong by **19x to 118x** — *Malacocephalus
+laevis* 118x, *Nezumia sclerorhynchus* 76x, *Nezumia aequalis* 63x. obus does
+not decline to predict for these; it predicts from the wrong length.
+
+A neat irony sits in the roxygen. `dr_add_length_tl()` records that it excluded
+Alepocephalidae and Chimaeridae because Marine Scotland's `7_Species_QA` gave
+no primary citation — the right call on the evidence then available. FishGlob
+carries those same families cited to Mindel et al. 2016, so the citation obus
+was waiting for exists. But they are the *mild* cases, 1-2x; the severe ones
+are Macrouridae obus never had at all. Still open beyond that:
+`LengthType == "2"` (Standard Length) covers 932,218 rows with no conversion
+available at all.
+
+---
+
+## 2026-09-17 — `dr_HL_collapse()`, and two facts the TODO had backwards
+
+Built the collapse verb. It is 16 exports now, `R CMD check` 0/0/0, 387 tests
+(up 50). The function itself was the easy part; what is worth recording is
+that writing it corrected the item that specified it, twice.
+
+### `SpeciesValidity` is a record type, and it collapses
+
+`TODO.md` said "`SpeciesValidity` is a filter, not a collapse — like
+`haulval`", so the first implementation refused it and the error message told
+the caller to `filter(SpeciesValidity == "V")` first. Both halves wrong.
+
+`"V"` is a `HaulValidity` code. `SpeciesValidity` is numeric —
+`1` on 13,310,442 rows, then `2` (393,143), `0` (71,070), `10` (218,076),
+`5` (8,863), `6` (10), `4` (1). The roxygen example as first written returned
+**zero rows**, and passed `R CMD check` because it was in `\dontrun{}`. That
+is the second `\dontrun{}` example in this package to be wrong in a way only
+running it catches.
+
+The advice was worse than the typo. `datrasdoodle2`'s `catch-and-length.qmd`
+has a section headed "`SpeciesValidity` separates records; it is not a
+filter": it is a **record type**, DATRAS deliberately allows several per
+species per haul — lengths on one row, a total-only count on another — so
+filtering to `1` discards real records rather than bad ones. It then says
+plainly that summing over it "is the right operation for a total and costs
+nothing measurable — but do it deliberately."
+
+Which is exactly what the verb is for. Naming a dimension in `collapse` *is*
+the deliberateness. So `SpeciesValidity` moved from refused to freely
+collapsible, and the CPUEL example lost its filter and got simpler:
+obus's eight fields reduce to CPUEL's three in one call, no filtering at all.
+The Can-Mar caveat — real length data on validity-`5` rows where no other
+survey does that — is carried in the roxygen.
+
+### `accuracy` and `LengthType` are refused by the data, not by the signature
+
+The TODO said the argument "refuses two fields", full stop. But its own
+done-criterion was "a one-line example turning obus's eight fields into
+CPUEL's three", and CPUEL's three are haul × species × length class — which
+you cannot reach without dropping `accuracy` and `LengthType`. An
+unconditional refusal makes the stated goal unreachable, so the refusal has to
+be data-dependent.
+
+Measured 2026-09-17 to settle it. Collapsing to `.id` × `Valid_Aphia` ×
+`length_mm` gives **13,214,965 groups**, of which **18 mix `accuracy`** and
+**4,051 mix `LengthType`** — 0.031%. (Higher than the per-dimension 15 and
+3,909 in `dr_HL_length()`'s roxygen, because dropping five dimensions at once
+merges more rows than dropping one.) So the check errors on exactly the 4,069
+groups where summing would invent a count, and lets the other 99.969% through.
+`{DATRAS}`'s `addSpectrum()` collapses a mixed `LngtCode` to the coarsest with
+only a warning; this errors and names the group.
+
+Two things fell out of building it:
+
+- **The check is against the *resulting* grain, not the input.** Two rows that
+  differ in `LengthType` but also in `SpeciesSex` never land in one group, so
+  collapsing `LengthType` alone is safe there. A test asserted the wrong thing
+  first and the code was right — worth a regression test, which it now has.
+- **The full-archive example errors**, correctly, because the archive does mix
+  `LengthType`. The roxygen example is scoped to one survey, which is how
+  anyone works anyway. Scoping an example to make it pass would have been the
+  wrong fix; scoping it because the unscoped claim is false is not.
+
+### The `DataType == "C"` guard needs no `DataType` column
+
+`HL_length` does not carry `DataType`, so `dr_HL_length()`'s
+`first(DataType) == "C"` rule cannot be re-applied here. It does not need to
+be: `DataType` is haul-level and `.id` is never collapsed, so every row of an
+output group shares it, and a group's `n_measured` is therefore all-`NA` or
+none. The ordinary all-`NA` guard reproduces the rule exactly. Verified on
+BITS 2019 (a genuinely mixed survey): 16,589 `NA` on both backends, zero
+spurious zeros. That is also why `.id` is refused in `collapse` — the error
+message says so, because collapsing it would silently break the guard.
+
+### Testing across backends, offline
+
+The two guards only *diverge* across backends — `sum(x, na.rm = TRUE)` over an
+empty group is `0` in R and `NULL` in SQL — so testing one proves nothing. The
+new test file runs every aggregation assertion twice: once on a synthetic
+eager data frame and once on the same rows in an **in-memory DuckDB**, which
+is the same SQL translation the published tables use and needs no network.
+`DBI`, `duckdb` and `withr` added to `Suggests` for it.
+
+The same divergence bites the mixing check itself: `n_distinct()` counts `NA`
+as a level in R while `COUNT(DISTINCT)` ignores `NULL` in SQL, and
+`LengthType` is `NA` on 70.74% of `HL_length` — so the backends would have
+disagreed on exactly the rows that matter. Coalescing to a sentinel string
+before counting makes them agree; there is a test for it.
+
+### The `mid_lengths` citations were wrong
+
+Fixed in `TODO.md` the same day. The item cited `R/weight.R:641` and
+`R/length.R:572`. There is no `length.R:572` — **all three sites are
+`DATRASextra/R/weight.R`**, at `:572` (`.get_wgt_one_custom()`), `:641`
+(`.get_wgt_one_lookup()`) and `:688` (`.get_wgt_one_ca()`), and the item named
+two of the three. The bug is confirmed: `cm_breaks[-1] + dls/2` is the upper
+bound plus half a width, i.e. the midpoint of the bin *above*, against
+`addSpectrum()`'s `cut(right = FALSE)`.
+
+The evidence is stronger than the item claimed. At `:576` and `:692` the
+plus-group branch rewrites the last element as `cm_breaks[nl-1] +
+dls[nml-1]/2` — the *correct* lower-bound form — so the right formula is
+sitting in the same function, applied to one bin only.
+`.get_wgt_one_lookup()` has no such branch at all.
+
+Same shape as the 09-11 `dr_impute_spread()` error: a TODO written from memory
+of a package rather than from reading it. Third instance. The check is still
+cheap — open the file before citing a line in it.
+
+### Same day: the `SpeciesValidity` filter advice was wrong in four places
+
+Following the finding above to its sources. `AGENTS.md` said "for most
+surveys, filter to `SpeciesValidity == \"1\"`", and the same advice had been
+copied into `dr_HL_summary()`'s roxygen, `dr_con()`'s table description, and
+the `catch-tables.qmd` article. It was wrong in all of them, and it is the
+kind of wrong that deletes data rather than merely misleading.
+
+Measured 2026-09-17 before changing anything, since the claim that it was
+wrong needed to be measured too:
+
+- Filtering `HL_summary` to `"1"` drops **464,858 of 2,291,457 records
+  (20.3%)**. The codes are `1` (1,826,599), `4` (169,955), `7` (90,803),
+  `5` (76,762), `2` (49,882), `10` (37,371), `0` (20,523), `6` (19,562).
+- Filtering `HL_length` drops **691,163 of 14,001,605 rows (4.9%)**, covering
+  **37,302,307 fish**.
+- **Can-Mar is the only survey with validity-`5` rows in `HL_length`** — 8,863
+  of them, and no other survey has a single one. So a blanket filter does not
+  thin a survey's data, it deletes that survey's measurements outright.
+
+The remedy is to sum across `SpeciesValidity`, which is what
+`dr_HL_collapse()` now names. Corrected in `AGENTS.md` (which says what it
+used to say, so the change is auditable) and in both roxygen sites. The
+article's line at `catch-tables.qmd:1574` is left alone — it is a deliverable,
+and editing one is a separate decision from reporting the defect.
+
+Worth naming the pattern rather than just the fix: the wrong advice was in
+four files because it was *copied*, and the correct reasoning was sitting in
+`datrasdoodle2` the whole time. That is the four-repo drift problem in its
+most concrete form yet — obus was not stale relative to ICES, it was stale
+relative to its own downstream consumer.
+
+`TODO.md` trimmed the same day, under its own intake rule: the status line had
+started accumulating a changelog, and the swept-area and
+`length_type_conversion` items had grown into ~60 lines of evidence that
+`DEVLOG.md` already carries verbatim. Checked key by key that nothing existed
+only in `TODO.md` before removing it. 168 lines down to 105, six items, each
+now action + why + done + pointer.

@@ -21,6 +21,8 @@ Suggests:
     broom,
     DATRAS,
     DATRASextra,
+    DBI,
+    duckdb,
     knitr,
     purrr,
     rfishbase,
@@ -28,6 +30,7 @@ Suggests:
     testthat (>= 3.0.0),
     tibble,
     tidyr,
+    withr,
     worrms
 Remotes:
     DTUAqua/DATRAS/DATRAS,

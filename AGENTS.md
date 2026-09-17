@@ -81,12 +81,13 @@ decision, never a blanket rule, and is not implemented here at all.
 claim.** Everything asserted in this file and in the roxygen was measured,
 not reasoned about. Two examples from the 2026-08-31 rebuild, neither of
 which was anticipated:
-   - The published `HL_standardised.parquet` disagrees with a fresh build
-     on 33 of 4,880 NS-IBTS 2022 Q1 groups, always by a factor of two. The
-     *published file* is stale: it predates the `SpeciesCategory` fix its
-     own source code documents. Checking the direction of the difference
+   - The then-published `HL_standardised.parquet` disagreed with a fresh
+     build on 33 of 4,880 NS-IBTS 2022 Q1 groups, always by a factor of two.
+     The *published file* was stale: it predated the `SpeciesCategory` fix
+     its own source code documents. Checking the direction of the difference
      is what distinguished "my port is broken" from "the reference is old."
-   - Both catch tables have a **finer grain than their own documentation
+     (That file was deleted from the server 2026-09-11.)
+   - Both catch tables had a **finer grain than their own documentation
      claimed** (see below). Found by counting distinct grain tuples, not
      by reading the code.
 
@@ -141,8 +142,9 @@ is what Working Principle 1 forbids. The contract tested instead is the
 relation `dr_con(tbl) == dr_con_raw(tbl) + ".id"`.
 
 `LT` is served raw-only, on purpose: it is litter data, unrelated to the
-catch tables, and nothing asks for it. Note the server root still holds a
-retired-era `LT.parquet` that no build script produces — see below.
+catch tables, and nothing asks for it. `dr_con_raw("LT")` reads
+`raw/LT.parquet`, which is the live one; a retired-era copy at the server
+*root* was deleted 2026-09-11 — see below.
 
 ------------------------------------------------------------------------
 
@@ -232,6 +234,14 @@ function**. The retired one fetched from the live XML service and reported
 submission status; this one is `dr_con()` + `collect()` against the published
 parquet, and exists to name the lazy/eager boundary rather than to hide it.
 Nothing of the live-service half came back with it.
+
+`swept_area` is the next candidate: bringing the family back is an open item
+in `TODO.md` as of 2026-09-11, pending rather than decided. The whole of it —
+`dr_impute_distance()`, `dr_impute_depth()`, `dr_impute_spread()`,
+`dr_add_midpoint()`, `dr_join_beam_width()`, `dr_add_swept_area()`,
+`dr_add_density()` — is in `obus_retired/R/dr_swept_area.R` and nothing of it
+is in obus today, so any reference to one of those names here describes
+retired code, not something callable.
 
 ------------------------------------------------------------------------
 
@@ -369,13 +379,53 @@ a wrong key in a test fails, a wrong key in a sentence does not.
   2026-09-08). Every one is load-bearing; leaving one out introduces
   duplicated groups: `SpeciesSex` 741,219, `DevelopmentStage` 5,476,
   `LengthType` 3,909, `accuracy` 15, `SpeciesValidity` 15. These are
-  genuinely separate counts and must not be collapsed. (`length_cm` is
+  genuinely separate counts and must not be collapsed *accidentally* --
+  `dr_HL_collapse()` (2026-09-17) is the deliberate route, and exists because
+  a hand-rolled `group_by()` loses the guards. (`length_cm` is
   `length_mm / 10`, carried for convenience, not part of the key.)
 - `HL_summary` is keyed by `.id x Valid_Aphia x SpeciesValidity`. 1,219 groups
   (0.05%) split — and 97% of the sub-groups that do are the
   repeated-total pattern of Working Principle 5, not a real split. Summing
   `n_haul`/`w_haul` per `.id x Valid_Aphia` without collapsing first
-  double-counts them. For most surveys, filter to `SpeciesValidity == "1"`.
+  double-counts them.
+
+  **The remedy is to sum across `SpeciesValidity`, not to filter to `"1"`.**
+  This file said "for most surveys, filter to `SpeciesValidity == "1"`"
+  until 2026-09-17; that was wrong. `SpeciesValidity` is a *record type*, not
+  a quality flag — DATRAS deliberately allows several per species per haul,
+  lengths on one row and a total-only count on another — so filtering
+  discards real records rather than bad ones. Measured: it would drop
+  **464,858 of 2,291,457 `HL_summary` records (20.3%)**, and in `HL_length`
+  **691,163 of 14,001,605 rows (4.9%), covering 37,302,307 fish**. Can-Mar is
+  the only survey that puts real length data on validity-`5` rows (8,863 of
+  them, and no other survey has any), so a blanket filter silently deletes one
+  survey's measurements. `dr_HL_collapse()` names it as a collapse for exactly
+  this reason. The same point is argued from the ICES side in
+  `datrasdoodle2`'s `catch-and-length.qmd`, "`SpeciesValidity` separates
+  records; it is not a filter".
+
+**obus publishes at the finest grain and reduces on request**, never the
+other way round: you can collapse down and never back up. `dr_HL_collapse()`
+is that reduction, and the reason it is a verb on the table rather than an
+argument on `dr_HL_length()` is that the builder is the minority path --
+`dr_con("HL_length")` returns the same 18 columns and is how the table is
+actually read. What it exists for is the two guards a downstream `group_by()`
+silently loses: the all-`NA` `0`-in-R / `NULL`-in-SQL divergence, and the
+`DataType == "C"` rule for `n_measured`. The second needs no `DataType`
+column -- `DataType` is haul-level and `.id` is never collapsed, so every row
+of a group shares it and the all-`NA` guard reproduces the rule exactly. That
+is also why `.id` is refused: collapsing it would break the guard silently.
+
+`accuracy` and `LengthType` are refused **by the data, not by the signature**.
+Summing across a 1 cm and a 5 cm bin at the same `length_mm`, or across total
+and standard length, invents a count for a bin nobody measured -- but that is
+rare rather than universal. Collapsing to `.id x Valid_Aphia x length_mm`
+gives 13,214,965 groups, of which 18 mix `accuracy` and 4,051 mix
+`LengthType` (0.031%, measured 2026-09-17). So the check errors on exactly
+those and lets the rest through, and it is evaluated against the *resulting*
+grain rather than the input. `{DATRAS}`'s `addSpectrum()` collapses a mixed
+`LngtCode` to the coarsest with only a warning; obus errors and names the
+group.
 
 **`HL_summary` deliberately carries no length-derived total**, and that is
 settled rather than pending. ICES's row-level formula is fully derivable from
@@ -497,9 +547,23 @@ facts before it starts.
   fine-grained positions that were **copied**, almost certainly the shoot
   position written into both slots.
 
-The right treatment, when the time comes, is that an identical pair is a
-*missing* end position and not a zero-length tow — and a `dr_check_*` report
-rather than a silent repair, per the house rule.
+The function these bite is `dr_impute_distance()`, which does not exist in
+obus — it is in `obus_retired/R/dr_swept_area.R`, and resurrecting it is
+pending (`TODO.md`). Read it before rebuilding it, because it already answers
+the second trap: positions enter at **tier 3 of an 11-tier cascade**
+(`haversine_positions`, capped at 10 km), and its `fill()` helper accepts a
+tier's value only where it is `> 0`, with the comment "Positive guard prevents
+zero-distance artefacts from perfectly coincident positions or zero speed." So
+a copied position is demoted to a coarser tier rather than anchoring a
+zero-distance tow. Trap one needs nothing special either: a missing end
+position simply leaves tier 3 unavailable and the cascade continues.
+
+What is *not* answered is reporting. A haul demoted by that guard is
+indistinguishable afterwards from one that never had a position, and the
+country pattern above says these are a data-quality signal rather than noise
+to route around. So the open piece is coverage — a `dr_check_*` report, per
+the house rule that obus reports rather than silently repairs — not the
+fallback itself.
 
 **HH's hydrography cannot carry an environmental explanation**, which is worth
 knowing before anyone reaches for it. There is **no oxygen field in HH at
@@ -523,21 +587,24 @@ and `sigma` at all. The build cycle that looked like it would force the issue
 does not exist — `length_bearing` comes straight from raw HL, not from
 `HL_length` (verified identical, 1,176 either way).
 
-**The server root still carries retired-era files no build script owns.**
-Found 2026-09-03 by the new `dr_con(tbl) == dr_con_raw(tbl) + ".id"` test,
-which failed before publication and turned out to be reporting the *server*,
-not the code. Before this rebuild the root held `HL.parquet`, `CA.parquet`
-and `LT.parquet` from `obus_retired`, carrying its abandoned renames
-(`aphia`, `sex`, `age`), `Survey`/`Year` appended out of position, and
+**The server root carried retired-era files no build script owned, and it is
+now clean.** Found 2026-09-03 by the new `dr_con(tbl) == dr_con_raw(tbl) +
+".id"` test, which failed before publication and turned out to be reporting
+the *server*, not the code. Before this rebuild the root held `HL.parquet`,
+`CA.parquet` and `LT.parquet` from `obus_retired`, carrying its abandoned
+renames (`aphia`, `sex`, `age`), `Survey`/`Year` appended out of position, and
 **filtered row counts** — HL 14,400,747 against raw's 14,423,771, CA
 5,966,950 against 5,968,027. `dr_con()` refused those names, so nothing in
-obus read them and nothing noticed. This rebuild overwrites `HL` and `CA`.
+obus read them and nothing noticed. This rebuild overwrote `HL` and `CA`, and
+the last two orphans — root `LT.parquet` and `HL_standardised.parquet` — were
+deleted 2026-09-11 (verified 404; `raw/LT.parquet` and `CPUEL.parquet` still
+answer 200).
 
-Two of those orphans are still there, re-confirmed live 2026-09-08, and
-deleting them is an open item in `TODO.md` — not repeated here, because this
-file is for settled design and that is work. `CPUEL.parquet` at the root is
-**not** one of them: it is ICES's own product, mirrored deliberately, and both
-the article and `datrasdoodle2` read it.
+The standing lesson is the one that outlives the cleanup: **a published file
+nothing reads is invisible, not harmless.** `dr_con()`'s refusal to serve the
+bad names is exactly what kept them undiscovered for weeks. `CPUEL.parquet` at
+the root is *not* an orphan — it is ICES's own product, mirrored deliberately,
+and both the article and `datrasdoodle2` read it.
 
 **`obus_retired` is a reference, never a source of settled fact.** It is
 archived intact at `../obus_retired`. Several of its own documented

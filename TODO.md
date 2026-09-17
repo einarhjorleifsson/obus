@@ -1,12 +1,11 @@
 # obus — TODO
 
-**Status:** Rebuilt 2026-08-31 from an empty `R/`; length-weight added
-2026-09-02; `dr_get()` and `dr_get_datras()` added 2026-09-09. Fifteen
-exported functions, `R CMD check` clean (0/0/0), 337 tests passing including
-the online schema check. **All ten tables are published** and verified live
-against the code's schema (re-checked 2026-09-08). The DATRAS/DATRASextra
-interop harnesses in `data-raw/` pass 11/11 and 25/25 — the adapter they test
-is now `dr_get_datras()` itself, not a script-local copy.
+**Status (2026-09-17):** Sixteen exported functions, `R CMD check` clean
+(0/0/0), 387 tests passing including the online schema check. **All ten tables
+are published** and verified live against the code's schema (re-checked
+2026-09-08). The DATRAS/DATRASextra interop harnesses in `data-raw/` pass
+11/11 and 25/25 — the adapter they test is now `dr_get_datras()` itself, not a
+script-local copy. What was built when is in `DEVLOG.md`.
 
 *This file tracks outstanding work only.* Dated development history — what was
 done, when, and why — lives in `DEVLOG.md`; settled design lives in
@@ -23,23 +22,6 @@ done looks like — the evidence lives at the pointer, not here.
 
 ---
 
-## Immediate
-
-- [ ] **Delete two orphan files from the server root.** Neither is produced by
-      any current build script and nothing in obus reads either, so they sit
-      there looking current. Re-confirmed live 2026-09-08.
-
-      | file | rows | why it is wrong |
-      |---|---:|---|
-      | `HL_standardised.parquet` | 15,483,270 | the deprecated stacked shape, carrying the abandoned `aphia` rename and a `type` column. Superseded by `HL_length` + `HL_summary`. |
-      | `LT.parquet` | 79,451 | retired-era build at the *root*; `dr_con_raw("LT")` reads `raw/LT.parquet`, which is the live one. |
-
-      ```
-      ssh einarhj@heima.hafro.is 'rm ~/public_html/datras/{HL_standardised,LT}.parquet'
-      ```
-
-      `CPUEL.parquet` at the root is **not** in this list — see `AGENTS.md`.
-
 ## Later
 
 - [ ] **Embed metadata in the derived parquet files.** Design settled
@@ -50,12 +32,20 @@ done looks like — the evidence lives at the pointer, not here.
       machine-readable grain.
 
 - [ ] **Raise `mid_lengths` with DATRASextra, or catch it in a CHECK script.**
-      `R/weight.R:641` and `R/length.R:572` compute `cm_breaks[-1] + dls/2`,
-      but with `addSpectrum()`'s `cut(..., right = FALSE)` bin *j* is
-      `[cm_breaks[j], cm_breaks[j+1])`, so its midpoint is one bin lower.
-      `:576` then rewrites only the last element to the lower-bound form,
-      which is itself evidence the two conventions are mixed. Confirmed
+      All three sites are in **`DATRASextra/R/weight.R`** — `:572` in
+      `.get_wgt_one_custom()`, `:641` in `.get_wgt_one_lookup()`, `:688` in
+      `.get_wgt_one_ca()` — and each computes `cm_breaks[-1] + dls/2`. But
+      with `addSpectrum()`'s `cut(..., right = FALSE)` bin *j* is
+      `[cm_breaks[j], cm_breaks[j+1])`, so that expression is the upper bound
+      plus half a bin width: the midpoint of the bin *above*. Confirmed
       against the bin definition, not measured against data.
+
+      **The correct form is already in the file, applied to one bin.** At
+      `:576` and `:692` the plus-group branch rewrites the last element as
+      `cm_breaks[nl-1] + dls[nml-1]/2` — the lower-bound form — so the two
+      conventions are mixed inside single functions rather than merely across
+      them. `.get_wgt_one_lookup()` has no such branch at all, which is worth
+      naming separately in any report.
 
       This is live rather than a note: both `data-raw/CHECK_datras_*.R` run
       DATRASextra's stack unmodified and pass 11/11 and 25/25 without touching
@@ -73,13 +63,40 @@ done looks like — the evidence lives at the pointer, not here.
       empty `Year` factor levels survive `subset()`, so years with no ageing
       trip the per-year guard until dropped.
 
-- [ ] **Give towed distance a documented fallback before building swept
-      area.** A fifth of the archive has no end position at all, and 2,780
-      hauls record an end position identical to the shoot position, which
-      yields a plausible-looking zero-distance tow rather than an honest `NA`.
-      Both traps and the evidence are in `AGENTS.md`; the decision to make is
-      what `dr_impute_spread()` does about each, and the house rule says a
-      `dr_check_*` report rather than a silent repair.
+- [ ] **Swept area: decide the method, then ship a thin wrapper.** Parked
+      2026-09-11 pending a science call. Two methods — ICES WKSAE-DATRAS
+      sr.2021.10 and FishGlob — disagree by construction, so obus cannot pick
+      one on engineering grounds. Excluding beam trawls (for which the spread
+      *is* the beam width), they cover 62.3% and 79.5% of the 106,154 hauls
+      needing a spread model; 17.0% get neither. **That choice is the only
+      blocker**; the design and the measurements behind it are settled in
+      `DEVLOG.md` (2026-09-11) and `AGENTS.md`.
+
+      Done looks like: the WKSAE rule table served alongside `hl_flag_code`
+      and `length_type_conversion` — publish the *rules*, compute the
+      *values*, because a per-haul table goes stale on every archive refresh —
+      plus `dr_add_swept_area(hh, method = )` wrapping DATRASextra rather than
+      reimplementing it, and a `dr_check_*` for the coverage neither method
+      reports.
+
+- [ ] **Re-key `length_type_conversion` — it currently fires on ONE record.**
+      Measured 2026-09-11. Both rows are keyed `from_type = 4`, and exactly
+      one record in the 14,001,605-row archive is ever converted, because
+      `LengthType` is `NA` on 70.74% of `HL_length` and `dr_add_length_tl()`
+      reads `NA` as Total Length. The table is structurally inert, and adding
+      rows without re-keying changes nothing. FishGlob keys its equivalent on
+      **taxon alone** — a claim about how a species is measured in practice
+      rather than about what a submitter typed — which is why theirs applies.
+
+      It matters because obus does not decline to predict for the affected
+      taxa; it predicts from the wrong length, by 19x to 118x. Full figures
+      and the candidate source (21 taxa cited to Mindel et al. 2016, to be
+      verified against the paper before adoption) are in `DEVLOG.md`
+      (2026-09-11).
+
+      Done looks like: the lookup re-keyed on taxon, the assume-TL default
+      made explicit rather than silent, and a stated position on Standard
+      Length, for which no conversion exists at all.
 
 - [ ] **Start the QC check suite.** `PLAN-qc-checks.md` is a proposal —
       twelve check families, pseudocode only, nothing built — and it carries
