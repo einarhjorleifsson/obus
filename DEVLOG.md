@@ -1711,3 +1711,57 @@ species list taken from it is not a list of what was caught.
 Two pointers updated for the move: the introduction now says two parts *with
 appendices* and names what is in them, and the proof-of-concept reference that
 read "which is shown below" now says "worked through in the appendices".
+
+### Legacy field names out of the prose, current names in
+
+The article had accumulated ICES's legacy field names — `CatIdentifier`,
+`TotalNo`, `SubFactor`, `HLNoAtLngt`, `NoMeas` and a dozen more — in ordinary
+prose, where the current names belong. **90 replacements across 69 lines.**
+The mapping is opus's `op_field_spec()`, not a hand-written list: 65 old/new
+pairs, of which 13 actually occur here.
+
+**What the pass had to protect, which is most of the interest.** A blanket
+replace would have been wrong in five distinct ways, and the first attempt
+committed one of them:
+
+- **`Sex` is not a single mapping.** ICES's legacy `Sex` is `SpeciesSex` in HL
+  and `IndividualSex` in CA. Excluded entirely — and it turned out every
+  occurrence was either an English word ("Sex-specific numbers") or CPUEL's
+  own lower-case `sex` column, so nothing needed changing anyway.
+- **Quotations must keep the quoted document's spelling.** The first
+  implementation protected quotes per line and so rewrote `HaulDur` *inside* a
+  quotation that wrapped across two lines. Caught in the preview, not after.
+  Rewritten to mask protected spans globally across the document.
+- **Claims about what a document literally contains.** "…contains no
+  occurrence of `SpecVal`" becomes false if you rename it. Also "zero grep
+  hits". Excluded by pattern.
+- **Fields ICES did *not* rename.** `Ship`, `StNo` and `HaulNo` appear in a
+  sentence saying exactly that they are not renamed.
+- **The register and the documentation-error section** are about what ICES
+  documents say, so legacy names are the subject there, not an artefact.
+
+The bounded-quote regex needed two passes: unbounded, any two quote marks
+anywhere in the file protected everything between them, which silently cut the
+change set from 85 to 17. Both failure directions were only visible because
+the script printed a diff preview before writing.
+
+**Two things the pass exposed.** The field glossary read `Legacy (current)`;
+it now reads `Field (legacy name)` with the current name leading, which is the
+whole point. And the stated identities were left inconsistent by an earlier
+edit — one instance converted, four siblings still legacy — so
+`TotalNumber = SubsampledNumber × SubsamplingFactor` and
+`SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight` now read the
+same way everywhere.
+
+### "HL row 20" identified nothing to a reader
+
+Raised in the same pass. The article cites ICES's field descriptions as "HL
+row 20", "HH row 29", "HL row 17" — which is precise for anyone with the
+spreadsheet open and opaque to everyone else. Added a short note where the
+citations first appear saying what the form means (one sheet per record type,
+one row per field), and **named the field each cited row defines** at every
+remaining bare occurrence: `HH row 29 (DataType)`, `HL row 17, TotalNumber`,
+`HL row 19 (SubsampledNumber)`, `HL row 25 (NumberAtLength)`. Several already
+did this; now they all do.
+
+405 internal links, 0 broken, renders clean.
