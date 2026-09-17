@@ -28,9 +28,48 @@ of the archive, and the measurements are given as code you can run. The
 examples read the published tables directly, so they need nothing but the
 package:
 
+**A note on the numbers, because DATRAS grows.** The structural counts — how
+many rows each table has, how many haul x species groups, how many of those
+carry no length data — are **measured when this article is rendered**, not
+typed in, so they cannot drift apart from each other or from the archive.
+The analytical figures are different: the CPUEL reconciliation, the rounding
+regimes, the confidence intervals took real work to establish and re-running
+them on every render would embed whole analyses in a reference article. Those
+are stated once, as dated evidence, and the claims they support are written in
+the form that survives the archive growing — *only*, *exactly one*, *never* —
+so that if one ever stops being true, that is a finding rather than a stale
+number.
+
 ```{r}
 library(obus)
 library(dplyr)
+```
+
+```{r, include = FALSE}
+# Structural counts, measured once here and referenced inline throughout, so
+# they cannot drift apart as the archive grows (Working Principle 8). Before
+# this block they were typed into the prose, and HL_summary's group count had
+# already been written down at two different vintages in two different files.
+# Analytical findings below -- reconciliation buckets, confidence intervals,
+# rounding regimes -- are NOT computed here: they are dated evidence, and
+# re-running them on every render would embed whole analyses in the article.
+M <- list(
+  len_rows   = dr_con("HL_length")  |> count() |> pull(n),
+  sum_rows   = dr_con("HL_summary") |> count() |> pull(n),
+  sum_groups = dr_con("HL_summary") |> distinct(.id, Valid_Aphia) |>
+                 count() |> pull(n),
+  # HL_summary rows with no HL_length rows behind them. Stated in the prose
+  # AND computed by the displayed chunk just below it, so a drift here would
+  # show up as the article contradicting itself on the same screen.
+  sum_nolen  = dr_con("HL_summary") |>
+                 anti_join(dr_con("HL_length") |>
+                             distinct(.id, Valid_Aphia, SpeciesValidity),
+                           by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
+                 count() |> pull(n)
+)
+M$sum_nolen_pct <- 100 * M$sum_nolen / M$sum_rows
+# Thousands separators, so the prose reads the way it always has.
+N <- function(x) formatC(as.numeric(x), format = "d", big.mark = ",")
 ```
 
 The article is in two parts. **Part I** is what `HL_length` and `HL_summary`
@@ -348,7 +387,7 @@ agree.
 | Numbers | `n_haul`, `n_hour` — raised; `n_measured` — as measured | `n_totalnumber`, `n_totalnumber_hour` — as reported; `n_haul` — reconstructed from the length frequencies; `n_measured` |
 | Weight | — | `w_haul`, `w_hour` |
 | Sex | `SpeciesSex` carried as reported | summarised as `p_females` |
-| Rows | 14,001,605 | 2,291,457 |
+| Rows | `r N(M$len_rows)` | `r N(M$sum_rows)` |
 | Reach for it for | length spectra, size-based indices, ALK inputs, length–weight work | abundance and biomass per haul, CPUE, species composition, stratified indices |
 
 Both are published as parquet files and read lazily: ask for one survey, year
@@ -364,8 +403,8 @@ open, adding a column later is disruptive and removing one is not.
 
 Three of the redundancies are worth naming, because a reader will spot them:
 
-- **`length_cm` is exactly `length_mm / 10`** — checked on all 14,001,605
-  rows, no exceptions. It is carried because the two communities that would
+- **`length_cm` is exactly `length_mm / 10`** — checked on all
+  `r N(M$len_rows)` rows, no exceptions. It is carried because the two communities that would
   use these tables count in different units. The exchange format and CPUEL are
   millimetre; `{DATRAS}`, `{DATRASextra}` and the length–weight relationship
   *W = aL^b* are centimetre, as is `accuracy`. Carrying both means neither side
@@ -407,8 +446,9 @@ Two reasons, and both come from the data rather than from convenience.
 
 **Most of a haul's species roster is not length-measured.** A haul's record
 routinely includes species that were only counted in bulk, only weighed, or
-only noted as present. 366,013 of `HL_summary`'s 2,291,457 rows — **16.0%** —
-have no length rows behind them at all:
+only noted as present. `r N(M$sum_nolen)` of `HL_summary`'s
+`r N(M$sum_rows)` rows — **`r sprintf("%.1f%%", M$sum_nolen_pct)`** — have no
+length rows behind them at all:
 
 ```{r}
 dr_con("HL_summary") |>
@@ -491,7 +531,8 @@ the package.
 `NumberAtLength` is a genuine per-sex, per-length count, and — checked over the
 whole archive — never repeats one placeholder value across a species' sex rows.
 `TotalNumber` does: across the 212,497 haul × species records reporting more
-than one sex (9.3% of 2,290,235), it varies genuinely by sex for 66% of them
+than one sex (9.3% of `r N(M$sum_groups)`), it varies genuinely by sex for 66%
+of them
 and is a species-level figure written identically onto every sex row for the
 other 34%. Per-sex arithmetic can tell those two apart, and `{obus}` does exactly
 that (see [how `{obus}` resolves a repeated
@@ -540,7 +581,8 @@ the field mandatory. That is a choice, argued in [sub-sampling and the raising
 factor](#sub-sampling-the-raising-factor-and-datatype), not an error.
 
 The tables are faithful but they are **not lossless**. 13,957,390 of
-`HL_length`'s 14,001,605 rows (99.68%) come from exactly one submitted HL row;
+`HL_length`'s `r N(M$len_rows)` rows (99.68%) come from exactly one submitted
+HL row;
 44,215 combine several, and there the raising factor (42,089 rows) and the
 sub-sampling category (43,989 rows) are summed away. Also absent at this level:
 `SubsampledNumber`, `SubsampleWeight`, per-category `SpeciesCategoryWeight`
@@ -1554,7 +1596,8 @@ There is no ordering, so there is no "most valid" code to collapse to, and the
 format deliberately allows more than one record type per species per haul.
 
 **`{obus}`:** `SpeciesValidity` is part of what makes an `HL_summary` row unique.
-1,219 haul × species records (0.05% of 2,290,203) carry more than one record
+1,219 haul × species records (0.05% of `r N(M$sum_groups)`) carry more than one
+record
 type; the commonest pairs are `{1,5}` and `{4,7}`:
 
 ```{r}
@@ -1572,8 +1615,9 @@ Filtering to a single code does make `.id` × `Valid_Aphia` exactly unique
 (verified at codes `"1"`, `"4"`, `"5"` and `"7"`), and it is what most
 pipelines do. But the codes say *what was recorded*, not *how good it is* --
 so a filter answers a question about record completeness by throwing records
-away. Filtering `HL_summary` to `"1"` discards **464,858 of its 2,291,457
-rows (20.3%)**; on `HL_length` it discards **691,163 of 14,001,605 rows**,
+away. Filtering `HL_summary` to `"1"` discards **464,858 of its
+`r N(M$sum_rows)` rows (20.3%)**; on `HL_length` it discards **691,163 of
+`r N(M$len_rows)` rows**,
 covering **37,302,307 fish** (measured 2026-09-17).
 
 Summing across the codes keeps them, and is the right operation whenever what
@@ -1590,7 +1634,7 @@ dr_con("HL_summary") |>
 Sum only what a sum means: `p_females` is a proportion, so it has to be
 re-derived from counts rather than added up. On `HL_length`, `dr_HL_collapse()`
 does this for you and carries the guards with it -- and it is close to free
-there, merging 15 rows out of 14,001,605:
+there, merging 15 rows out of `r N(M$len_rows)`:
 
 ```{r, eval = FALSE}
 dr_con("HL_length") |>

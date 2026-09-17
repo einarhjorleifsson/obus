@@ -1542,3 +1542,47 @@ the other files safe.
 
 Not acted on yet. The article pass and the §7 snapshot mechanism are the work
 this implies; the principle only says which numbers are worth the effort.
+
+### The article pass, and why it converted 11 numbers and not 115
+
+Applied Working Principle 8 to `vignettes/articles/catch-tables.qmd`. The
+naive reading of "convert the hard-coded numbers" would have been wrong and
+expensive, so this records the line that was drawn.
+
+**Most of the 115 are not counts.** They are results of analyses that took
+real work — the CPUEL reconciliation buckets, a 95% CI of [49.69-50.85] on
+directional noise, the rounding-regime classification, the `SpeciesCategory`
+multiplier comparison. Computing those inline would embed whole analyses in a
+reference article and add minutes to every render, to re-derive a figure whose
+*claim* does not move. Those stay as dated evidence, which is what Principle 8
+asks for.
+
+**What did convert is the structural counts**, which are the ones that
+actually drifted: `HL_length` rows (5 occurrences), `HL_summary` rows (3), and
+`HL_summary`'s `.id x Valid_Aphia` group count — the last recorded as
+**2,290,203** in the article and **2,290,235** in `dr_con()`'s roxygen, two
+vintages of one quantity. Measured today: 2,290,235, so the article's copy was
+the stale one. It is now computed, so that particular disagreement cannot
+recur.
+
+A hidden setup block measures them once (11.4 s for three queries, against a
+render already in minutes) into a list `M`, with an `N()` formatter so the
+prose reads exactly as before. Nine inline `` `r ` `` references replace the
+typed figures. Verified in the rendered HTML that every one prints the same
+string it used to — except the stale one, which now prints 2,290,235.
+
+**One case earned a fourth query on its own.** The prose said "366,013 of
+`HL_summary`'s rows have no length rows behind them", and the displayed chunk
+*immediately below it* computes that same number. Matching today, but on the
+next refresh the article would have contradicted itself on the same screen —
+the worst shape this failure can take, because it discredits the surrounding
+prose too. Both the count and the percentage are now computed; the chunk stays
+displayed, because it is also the runnable example.
+
+Added a short note to the introduction saying which numbers re-measure and
+which are dated, so the distinction is visible to a reader rather than being a
+private convention. Article renders clean, 53/53 chunks, no warnings.
+
+Cost worth recording: the setup block adds ~13 s to every render, and the
+`.qmd` can no longer be read as plain text for those figures. That was the
+trade Principle 8 named in advance; it applies to one file.
