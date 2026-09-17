@@ -72,11 +72,14 @@ M$sum_nolen_pct <- 100 * M$sum_nolen / M$sum_rows
 N <- function(x) formatC(as.numeric(x), format = "d", big.mark = ",")
 ```
 
-The article is in two parts. **Part I** is what `HL_length` and `HL_summary`
-are, what they answer, and why they are worth using instead of the raw record.
-**Part II** is the conventions and contradictions in the exchange format that
-decide what numbers come out of them, ordered by how far each one can move a
-result.
+The article is in two parts, with appendices. **Part I** is what `HL_length`
+and `HL_summary` are, what they answer, and why they are worth using instead
+of the raw record. **Part II** is the conventions and contradictions in the
+exchange format that decide what numbers come out of them, ordered by how far
+each one can move a result. The **appendices** hold the reference and evidence
+material — the CPUEL reconstruction, the `{DATRAS}` interoperability run, the
+name crosswalk, the register of cross-document discrepancies — cited from the
+text where it matters but not in the reading path.
 
 **What this is arguing for is the tables, not the package.** `HL_length` and
 `HL_summary` are the calculation nearly every DATRAS analysis performs before
@@ -93,7 +96,8 @@ document below; every figure is reproducible from the published archive with
 the code shown. If ICES served these two tables, this package would not need
 to exist — and that would be the better outcome. The nearest thing to a proof
 of the proposal is that [CPUEL itself can be rebuilt from
-`HL_length`](#building-cpuel-from-hl_length), which is shown below.
+`HL_length`](#building-cpuel-from-hl_length), worked through in the
+appendices.
 
 Read the balance right. [`{obus}`](https://github.com/einarhjorleifsson/obus)
 applies ICES's own procedures throughout, and each of them is a document you
@@ -287,129 +291,6 @@ for more of. The argument is narrower than it may sound: the length-frequency
 half of that suite does not need the zero-fill question answered first, so it
 can be built for every survey.
 
-### Building CPUEL from `HL_length` {#building-cpuel-from-hl_length}
-
-The clearest way to see that these are the same table is to build one from the
-other. CPUEL's payload is numbers per hour by haul, species and length class —
-`.id`, `aphia`, `length_mm`, `n_hour` — with `sex` empty throughout.
-`HL_length` is finer than that in three ways it keeps on purpose (sex,
-development stage and length measurement type), so CPUEL is one aggregation
-away:
-
-```{r}
-cpuel_like <- dr_con("HL_length") |>
-  filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1) |>
-  group_by(.id, Valid_Aphia, length_mm) |>
-  summarise(n_hour = sum(n_hour, na.rm = TRUE), .groups = "drop")
-```
-
-Set that against ICES's own file for the same hauls:
-
-```{r}
-cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet") |>
-  filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1, n_hour > 0) |>
-  select(.id, Valid_Aphia = aphia, length_mm, cpuel = n_hour)
-
-cpuel_like |>
-  inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
-  summarise(cells = n(),
-            agree = sum(ifelse(abs(n_hour - cpuel) < 0.001, 1, 0))) |>
-  collect()
-```
-
-Over the 317 hauls both sides cover, the rebuild matches **96.6% of CPUEL's
-non-zero cells** and agrees with **96.45%** of those to a thousandth of a fish
-per hour; the median ratio is exactly 1.000. A worked haul, three cod:
-
-```{r}
-cpuel_like |>
-  inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
-  filter(.id == "NS-IBTS:2023:1:DE:06NI:GOV:104:22", Valid_Aphia == 126436) |>
-  arrange(length_mm) |>
-  collect()
-```
-
-The residual is accounted for and none of it is arithmetic. The two files are
-independent downloads with their own calculation vintages, so a haul revised
-on one side and not the other differs. On BITS two further, documented things
-apply: CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
-always preserve the submitted length grid ([D22](#d22)) — both of which a
-generalised product would have to decide about explicitly rather than inherit.
-
-**The zero rows are the part that is not one aggregation away**, and
-deliberately so. Half of CPUEL is explicit zeros — 5,874,543 of 11,774,468
-rows, each carrying `length_mm = 0` — and they encode a judgement about which
-species were in scope for a haul. Add them yourself and the judgement stays
-yours:
-
-```{r}
-hauls   <- cpuel_like |> distinct(.id) |> collect()
-species <- cpuel_like |> distinct(Valid_Aphia) |> collect()    # your universe, not ours
-
-tidyr::crossing(hauls, species) |>
-  left_join(collect(cpuel_like), by = c(".id", "Valid_Aphia")) |>
-  tidyr::replace_na(list(n_hour = 0, length_mm = 0))
-```
-
-On this one survey-quarter that turns 318 hauls and 141 species into 81,557
-rows, 38,513 of them explicit zeros — the same roughly-half proportion CPUEL
-carries, arrived at from a universe you chose rather than one you inherited.
-
-That is the whole distance between `HL_length` and a CPUEL product covering
-29 surveys rather than 8: one `group_by()`, plus a species universe that only a
-survey group can properly set.
-
-### Existing analyses run on them unchanged
-
-A product also has to leave standing what is already built on the exchange
-tables. So: starting from these two tables instead of the raw HL record, can
-the usual chain still be run — numbers at length raised to the haul, summed to
-total numbers and weight per haul, divided by swept area and carried through to
-a stratified abundance index?
-
-`data-raw/CHECK_datras_adapter.R` answers that against real numbers. It
-assembles an object whose HL comes **only** from `HL_length` and `HL_summary`,
-never from raw HL, runs [`{DATRAS}`](https://github.com/DTUAqua/DATRAS) and
-`{DATRASextra}` on it unmodified, and compares with the same steps run on their
-own bundled fixture — NS-IBTS 2020–2023, quarters 1 and 3, dab (*Limanda
-limanda*), 2,651 valid hauls. The adapter is about 60 lines: rename to the
-legacy field names, add the five HH quantities the packages derive for
-themselves, and reshape the two catch tables into the single HL frame they
-expect. **No arithmetic on any number** — the raised number at length is
-`n_haul` exactly as published.
-
-| Step | Quantity | Difference |
-|---|---|---|
-| numbers at length, by length class | `N`, 41 classes | same classes, **max gap 0** over 108,691 cells |
-| total numbers per haul | `HaulN` | **max gap 0** over 2,651 hauls |
-| total weight per haul, from the length–weight lookup | `HaulWgt` | **max gap 0** |
-| swept area | `SweptArea` | **max gap 0** |
-| stratified abundance index, per hour, by statistical rectangle | index and CV | **identical** |
-
-Eleven checks, no differences (re-run 2026-09-08). The last of them is the
-figure a survey working group would report, and it comes out the same to every
-digit:
-
-```
-  Year    index         cv
-  2020 771.7314 0.07114170
-  2021 712.8609 0.09926699
-  2022 823.4249 0.06559173
-  2023 739.3506 0.05788805
-```
-
-Two caveats. Species recorded in a haul but never measured enter through
-`HL_summary`, carrying no length — which is how the exchange format carries
-them, and what a species-richness count needs; a length table alone would lose
-them. And **CA is out of scope**: `{obus}` derives no age table, so nothing
-age-, maturity- or individual-weight-based is exercised.
-
-Underneath sits the field-by-field comparison,
-`data-raw/CHECK_datras_interop.R` — 25 checks, no differences, including the
-raised number at length (max gap 2.3 × 10⁻¹³ over 24,960 cells) and the
-measured number at length, `HLNoAtLngt`, against `n_measured` (max gap 0 over
-16,196 cells).
-
 ### What that saves you downstream
 
 `HL_length` and `HL_summary` exist so this is done once, the same way for the
@@ -477,17 +358,23 @@ raising factor applied to whole fish does. [Two routes to a catch
 total](#two-routes-to-a-catch-total) is about the hauls where they do not
 agree.
 
-### What each table answers
+### Which table for which job
+
+The columns are specified in [The two tables,
+formally](#the-two-tables-formally); what that table cannot show is which one
+to reach for, and the one distinction that is not visible in a column list:
 
 | | `HL_length` | `HL_summary` |
 |---|---|---|
-| One row is | a species at one length class in one haul | a species in one haul |
 | Which species | only those actually measured | every species recorded, measured or not |
-| Numbers | `n_haul`, `n_hour` — raised; `n_measured` — as measured | `n_totalnumber`, `n_totalnumber_hour` — as reported; `n_haul` — reconstructed from the length frequencies; `n_measured` |
-| Weight | — | `w_haul`, `w_hour` |
-| Sex | `SpeciesSex` carried as reported | summarised as `p_females` |
 | Rows | `r N(M$len_rows)` | `r N(M$sum_rows)` |
 | Reach for it for | length spectra, size-based indices, ALK inputs, length–weight work | abundance and biomass per haul, CPUE, species composition, stratified indices |
+
+**Which species is the distinction that catches people out.** A haul's record
+routinely includes species that were only counted in bulk, only weighed, or
+only noted as present; those have no `HL_length` row at all, not a zero. A
+species list taken from `HL_length` is therefore a list of what was
+*measured*, not of what was *caught*.
 
 Both are published as parquet files and read lazily: ask for one survey, year
 or species and only those rows are fetched, so a single haul can be inspected
@@ -720,83 +607,6 @@ sub-sampling category (43,989 rows) are summed away. Also absent at this level:
 
 The first row is demonstrated rather than asserted — see [existing analyses run
 on them unchanged](#existing-analyses-run-on-them-unchanged) above.
-
-## Field names: two layers, both ICES's {#two-naming-layers}
-
-Field names in this codebase come from two places — **both of them ICES's** —
-and there is deliberately no third.
-
-| Layer | What it is | Example |
-|---|---|---|
-| **1. ICES legacy exchange names** | The names the exchange file still carries, and the ones the older ICES documents quoted here use. | `HLNoAtLngt`, `SubFactor`, `CatIdentifier` |
-| **2. ICES current names** | ICES's replacement names, published in the current field descriptions. What the raw parquet archive carries, and what every `{obus}` table carries too. | `NumberAtLength`, `SubsamplingFactor`, `SpeciesCategory` |
-
-**The translation between the two layers is ICES's own, not this package's.**
-ICES is renaming DATRAS's fields table by table, and publishes the
-old-to-new pairs itself in two places: the `getDatrasFieldList` operation on
-the DATRAS web service, which returns each current `FieldName` alongside the
-`FieldNameOld` it was renamed from, and the *DATRAS New Headers Lookup*
-spreadsheet of December 2024 [@ices2024newheaders], which carries the same
-pairs in one sheet per record type. Layer 2 is therefore not a scheme `{opus}`
-invented and `{obus}` adopted — it is ICES's own target naming, taken up ahead of
-the migration's completion. The migration's progress is visible in the service:
-HL has flipped, and `getHLdataNewHeaders` returns all 29 of its fields under
-the current names, while HH, CA and LT are still served under legacy names
-only.
-
-The documentation has already moved ahead of the service: the current field
-descriptions name every field in layer 2, so a reader working from ICES's
-workbook and a reader working from the `{obus}` tables see the same column names.
-Legacy names survive in four places:
-
-- the exchange files themselves;
-- the web-service operations that have not yet flipped;
-- the older ICES documents quoted later in this article;
-- and, in a handful of cells, the current descriptions' own prose — where
-  formulas still read `TotalNo=SUM(HLNoAtLngt)` and *"If DataType is C,
-  CatIdentifier is always 1"* beneath fields now called `TotalNumber` and
-  `SpeciesCategory`.
-
-Quotations below keep whatever names the quoted document uses.
-
-**`{obus}` invents no field names.** `dr_con_raw("HL")` and `dr_con("HL_length")`
-both carry `Valid_Aphia` and `SpeciesSex`, so a join between the raw archive and
-a derived table needs no name mapping, and the crosswalk below describes every
-column in every table.
-
-A shorter `sex` column is a tempting simplification, and it is the wrong one.
-ICES's legacy `Sex` maps to `SpeciesSex` in HL but to `IndividualSex` in CA —
-two genuinely different measurements, one a property of a length-frequency
-record and the other of an individual fish. A single `sex` column flattens
-them.
-
-### The legacy-to-current crosswalk
-
-The mapping is neither hand-authored here nor taken from ICES's published
-lists on trust. `{opus}` checks every pair ICES publishes against the field names
-the corresponding operation actually returns, keeps what survives
-(`opus::op_datras_field_list()`), reduces that to a collision-checked 1:1 map
-(`opus::op_datras_rename_crosswalk()`), and embeds the result in the raw
-parquet footer. `{obus}` reads it back from the same file as the data, so it
-cannot describe a different vintage than the data it accompanies:
-
-```{r}
-opus::op_crosswalk("HL")
-```
-
-29 rows — two more than either ICES list. Neither `getDatrasFieldList` nor the
-December 2024 lookup documents HL's `DateofCalculation` or `Valid_Aphia` under
-any name, though both are real fields that `getHLdata` and
-`getHLdataNewHeaders` alike return; they appear here unrenamed, which is what
-those two operations show them to be.
-
-Check names against this output rather than from memory. Most pairs
-are guessable; at least one is not — **`LenMeasType` maps to `LengthType`**,
-which is easy to mistake for a length *unit* field when it is a measurement
-*convention* field. `Sex` → `SpeciesSex` is the pair worth memorising, because ICES's one legacy
-`Sex` splits across two current names — `SpeciesSex` in HL and
-`IndividualSex` in CA — so it is the clearest case of why the crosswalk is
-per table rather than global.
 
 ## The haul identifier, `.id`
 
@@ -1890,6 +1700,229 @@ reconciliation of counts. (An earlier reading of this record placed the `0` in
 the `CatIdentifier` position; it does not fall there, and the FAQ's
 `CatIdentifier` rule is untouched by it.)
 
+## What remains open
+
+Stated plainly, because a reader is entitled to know the edges of this.
+
+| Open item | Size |
+|---|---|
+| Can-Mar's whole-fish disagreement — two candidate mechanisms, with a test that would separate them (`PLAN-qc-checks.md` s8) | 31,047 groups |
+| The >50 tail after both the duplication and factor-rounding accounts | 165 `TotalNo`-higher + 43 length-higher, of 443 |
+| The 6–50 bucket where neither identity reconciles | ~301 of 3,885 |
+| Whether `SubFactor = CatCatchWgt / SubWgt` generalises, which would give the weight path its first arithmetic cross-check | untested |
+| `DataType` C weight standardisation — potentially a third of the archive, against 0.08% for the weight repeats that remain | untested |
+| Whether excluding `SpeciesSex` from the weight key loses anything ([D11](#d11)) | untested |
+| The intersection of the 428 duplicated length series with the 247 records whose weight is still summed twice — predicted empty | not computed |
+
+
+# Appendices
+
+Reference and evidence material, moved out of the reading path. Nothing
+here is required to follow the argument; all of it is cited from the text
+where it matters.
+
+## Building CPUEL from `HL_length` {#building-cpuel-from-hl_length}
+
+The clearest way to see that these are the same table is to build one from the
+other. CPUEL's payload is numbers per hour by haul, species and length class —
+`.id`, `aphia`, `length_mm`, `n_hour` — with `sex` empty throughout.
+`HL_length` is finer than that in three ways it keeps on purpose (sex,
+development stage and length measurement type), so CPUEL is one aggregation
+away:
+
+```{r}
+cpuel_like <- dr_con("HL_length") |>
+  filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1) |>
+  group_by(.id, Valid_Aphia, length_mm) |>
+  summarise(n_hour = sum(n_hour, na.rm = TRUE), .groups = "drop")
+```
+
+Set that against ICES's own file for the same hauls:
+
+```{r}
+cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet") |>
+  filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1, n_hour > 0) |>
+  select(.id, Valid_Aphia = aphia, length_mm, cpuel = n_hour)
+
+cpuel_like |>
+  inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
+  summarise(cells = n(),
+            agree = sum(ifelse(abs(n_hour - cpuel) < 0.001, 1, 0))) |>
+  collect()
+```
+
+Over the 317 hauls both sides cover, the rebuild matches **96.6% of CPUEL's
+non-zero cells** and agrees with **96.45%** of those to a thousandth of a fish
+per hour; the median ratio is exactly 1.000. A worked haul, three cod:
+
+```{r}
+cpuel_like |>
+  inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
+  filter(.id == "NS-IBTS:2023:1:DE:06NI:GOV:104:22", Valid_Aphia == 126436) |>
+  arrange(length_mm) |>
+  collect()
+```
+
+The residual is accounted for and none of it is arithmetic. The two files are
+independent downloads with their own calculation vintages, so a haul revised
+on one side and not the other differs. On BITS two further, documented things
+apply: CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
+always preserve the submitted length grid ([D22](#d22)) — both of which a
+generalised product would have to decide about explicitly rather than inherit.
+
+**The zero rows are the part that is not one aggregation away**, and
+deliberately so. Half of CPUEL is explicit zeros — 5,874,543 of 11,774,468
+rows, each carrying `length_mm = 0` — and they encode a judgement about which
+species were in scope for a haul. Add them yourself and the judgement stays
+yours:
+
+```{r}
+hauls   <- cpuel_like |> distinct(.id) |> collect()
+species <- cpuel_like |> distinct(Valid_Aphia) |> collect()    # your universe, not ours
+
+tidyr::crossing(hauls, species) |>
+  left_join(collect(cpuel_like), by = c(".id", "Valid_Aphia")) |>
+  tidyr::replace_na(list(n_hour = 0, length_mm = 0))
+```
+
+On this one survey-quarter that turns 318 hauls and 141 species into 81,557
+rows, 38,513 of them explicit zeros — the same roughly-half proportion CPUEL
+carries, arrived at from a universe you chose rather than one you inherited.
+
+That is the whole distance between `HL_length` and a CPUEL product covering
+29 surveys rather than 8: one `group_by()`, plus a species universe that only a
+survey group can properly set.
+
+## Existing analyses run on them unchanged
+
+A product also has to leave standing what is already built on the exchange
+tables. So: starting from these two tables instead of the raw HL record, can
+the usual chain still be run — numbers at length raised to the haul, summed to
+total numbers and weight per haul, divided by swept area and carried through to
+a stratified abundance index?
+
+`data-raw/CHECK_datras_adapter.R` answers that against real numbers. It
+assembles an object whose HL comes **only** from `HL_length` and `HL_summary`,
+never from raw HL, runs [`{DATRAS}`](https://github.com/DTUAqua/DATRAS) and
+`{DATRASextra}` on it unmodified, and compares with the same steps run on their
+own bundled fixture — NS-IBTS 2020–2023, quarters 1 and 3, dab (*Limanda
+limanda*), 2,651 valid hauls. The adapter is about 60 lines: rename to the
+legacy field names, add the five HH quantities the packages derive for
+themselves, and reshape the two catch tables into the single HL frame they
+expect. **No arithmetic on any number** — the raised number at length is
+`n_haul` exactly as published.
+
+| Step | Quantity | Difference |
+|---|---|---|
+| numbers at length, by length class | `N`, 41 classes | same classes, **max gap 0** over 108,691 cells |
+| total numbers per haul | `HaulN` | **max gap 0** over 2,651 hauls |
+| total weight per haul, from the length–weight lookup | `HaulWgt` | **max gap 0** |
+| swept area | `SweptArea` | **max gap 0** |
+| stratified abundance index, per hour, by statistical rectangle | index and CV | **identical** |
+
+Eleven checks, no differences (re-run 2026-09-08). The last of them is the
+figure a survey working group would report, and it comes out the same to every
+digit:
+
+```
+  Year    index         cv
+  2020 771.7314 0.07114170
+  2021 712.8609 0.09926699
+  2022 823.4249 0.06559173
+  2023 739.3506 0.05788805
+```
+
+Two caveats. Species recorded in a haul but never measured enter through
+`HL_summary`, carrying no length — which is how the exchange format carries
+them, and what a species-richness count needs; a length table alone would lose
+them. And **CA is out of scope**: `{obus}` derives no age table, so nothing
+age-, maturity- or individual-weight-based is exercised.
+
+Underneath sits the field-by-field comparison,
+`data-raw/CHECK_datras_interop.R` — 25 checks, no differences, including the
+raised number at length (max gap 2.3 × 10⁻¹³ over 24,960 cells) and the
+measured number at length, `HLNoAtLngt`, against `n_measured` (max gap 0 over
+16,196 cells).
+
+
+## Field names: two layers, both ICES's {#two-naming-layers}
+
+Field names in this codebase come from two places — **both of them ICES's** —
+and there is deliberately no third.
+
+| Layer | What it is | Example |
+|---|---|---|
+| **1. ICES legacy exchange names** | The names the exchange file still carries, and the ones the older ICES documents quoted here use. | `HLNoAtLngt`, `SubFactor`, `CatIdentifier` |
+| **2. ICES current names** | ICES's replacement names, published in the current field descriptions. What the raw parquet archive carries, and what every `{obus}` table carries too. | `NumberAtLength`, `SubsamplingFactor`, `SpeciesCategory` |
+
+**The translation between the two layers is ICES's own, not this package's.**
+ICES is renaming DATRAS's fields table by table, and publishes the
+old-to-new pairs itself in two places: the `getDatrasFieldList` operation on
+the DATRAS web service, which returns each current `FieldName` alongside the
+`FieldNameOld` it was renamed from, and the *DATRAS New Headers Lookup*
+spreadsheet of December 2024 [@ices2024newheaders], which carries the same
+pairs in one sheet per record type. Layer 2 is therefore not a scheme `{opus}`
+invented and `{obus}` adopted — it is ICES's own target naming, taken up ahead of
+the migration's completion. The migration's progress is visible in the service:
+HL has flipped, and `getHLdataNewHeaders` returns all 29 of its fields under
+the current names, while HH, CA and LT are still served under legacy names
+only.
+
+The documentation has already moved ahead of the service: the current field
+descriptions name every field in layer 2, so a reader working from ICES's
+workbook and a reader working from the `{obus}` tables see the same column names.
+Legacy names survive in four places:
+
+- the exchange files themselves;
+- the web-service operations that have not yet flipped;
+- the older ICES documents quoted later in this article;
+- and, in a handful of cells, the current descriptions' own prose — where
+  formulas still read `TotalNo=SUM(HLNoAtLngt)` and *"If DataType is C,
+  CatIdentifier is always 1"* beneath fields now called `TotalNumber` and
+  `SpeciesCategory`.
+
+Quotations below keep whatever names the quoted document uses.
+
+**`{obus}` invents no field names.** `dr_con_raw("HL")` and `dr_con("HL_length")`
+both carry `Valid_Aphia` and `SpeciesSex`, so a join between the raw archive and
+a derived table needs no name mapping, and the crosswalk below describes every
+column in every table.
+
+A shorter `sex` column is a tempting simplification, and it is the wrong one.
+ICES's legacy `Sex` maps to `SpeciesSex` in HL but to `IndividualSex` in CA —
+two genuinely different measurements, one a property of a length-frequency
+record and the other of an individual fish. A single `sex` column flattens
+them.
+
+### The legacy-to-current crosswalk
+
+The mapping is neither hand-authored here nor taken from ICES's published
+lists on trust. `{opus}` checks every pair ICES publishes against the field names
+the corresponding operation actually returns, keeps what survives
+(`opus::op_datras_field_list()`), reduces that to a collision-checked 1:1 map
+(`opus::op_datras_rename_crosswalk()`), and embeds the result in the raw
+parquet footer. `{obus}` reads it back from the same file as the data, so it
+cannot describe a different vintage than the data it accompanies:
+
+```{r}
+opus::op_crosswalk("HL")
+```
+
+29 rows — two more than either ICES list. Neither `getDatrasFieldList` nor the
+December 2024 lookup documents HL's `DateofCalculation` or `Valid_Aphia` under
+any name, though both are real fields that `getHLdata` and
+`getHLdataNewHeaders` alike return; they appear here unrenamed, which is what
+those two operations show them to be.
+
+Check names against this output rather than from memory. Most pairs
+are guessable; at least one is not — **`LenMeasType` maps to `LengthType`**,
+which is easy to mistake for a length *unit* field when it is a measurement
+*convention* field. `Sex` → `SpeciesSex` is the pair worth memorising, because ICES's one legacy
+`Sex` splits across two current names — `SpeciesSex` in HL and
+`IndividualSex` in CA — so it is the clearest case of why the crosswalk is
+per table rather than global.
+
+
 ## Register of cross-document discrepancies
 
 Every entry below was checked by opening the cited file. Where an earlier
@@ -2079,19 +2112,6 @@ BITS gear-conversion scope stated three ways in one document: cod only (*"In cas
 - `Indices_Calculation_Steps_BITS` Annex 6 duplicates its five Quarter-1 lookup rows verbatim after the Quarter-4 block.
 - The 2006 variance-estimation report contains `Error! Bookmark not defined.` as body text.
 
-## What remains open
-
-Stated plainly, because a reader is entitled to know the edges of this.
-
-| Open item | Size |
-|---|---|
-| Can-Mar's whole-fish disagreement — two candidate mechanisms, with a test that would separate them (`PLAN-qc-checks.md` s8) | 31,047 groups |
-| The >50 tail after both the duplication and factor-rounding accounts | 165 `TotalNo`-higher + 43 length-higher, of 443 |
-| The 6–50 bucket where neither identity reconciles | ~301 of 3,885 |
-| Whether `SubFactor = CatCatchWgt / SubWgt` generalises, which would give the weight path its first arithmetic cross-check | untested |
-| `DataType` C weight standardisation — potentially a third of the archive, against 0.08% for the weight repeats that remain | untested |
-| Whether excluding `SpeciesSex` from the weight key loses anything ([D11](#d11)) | untested |
-| The intersection of the 428 duplicated length series with the 247 records whose weight is still summed twice — predicted empty | not computed |
 
 ## An engineering note: R and SQL disagree about `NA`
 
@@ -2139,6 +2159,7 @@ onto one `.id`.
 Each of these produced a real, silent, wrong number at some point. Keeping
 both an eager test suite and a lazy build is what catches them; neither does
 alone.
+
 
 ## References {.unnumbered}
 

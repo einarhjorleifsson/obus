@@ -1675,3 +1675,39 @@ inside the chunk, which pandoc converts properly. Em dashes in the prose are
 untouched -- this is a chunk-string problem, not a file-wide one.
 
 Article renders clean at 2,146 lines.
+
+### Appendices, and a table that had become redundant
+
+Moved the reference and evidence material out of the reading path rather than
+splitting the article in two. The split was the other option and was
+deliberately not taken: Part II would stand alone — it is about the exchange
+format and would be almost unchanged if obus did not exist — but Part I's
+central claim, that every analysis performs these same steps and everyone gets
+them subtly wrong, is *proved* by Part II's eight ranked obstacles. Separating
+them leaves the proposal without its evidence and the catalogue without its
+motivation. Appendices are also reversible, where a split changes anchors and
+the pkgdown index.
+
+Four blocks moved, 446 lines: the CPUEL reconstruction, the
+`{DATRAS}`/`{DATRASextra}` interoperability run, the field-name crosswalk, and
+the register of cross-document discrepancies, plus the R/SQL `NA` note.
+Reading path **2,142 -> 1,717 lines**; Part I is now 502 and Part II 1,090.
+
+Heading text was left byte-identical on every moved section, deliberately.
+Auto-generated anchors derive from heading text, so renaming them to
+"Appendix A" and so on would have silently broken every inbound link for a
+cosmetic gain. Verified after rendering: **405 internal links, 0 broken**, and
+81 headings against 80 before — the one addition being `# Appendices` itself.
+
+**"What each table answers" was the casualty of the new spec section.** Adding
+a formal field listing made four of its seven rows redundant — `One row is`,
+`Numbers`, `Weight`, `Sex` all restate column meanings now stated once. Cut to
+three rows and renamed **"Which table for which job"**, which is what it was
+actually for and what a column list genuinely cannot show. The one distinction
+worth keeping got promoted out of the table into prose, because it is the one
+that catches people out: `HL_length` holds only what was *measured*, so a
+species list taken from it is not a list of what was caught.
+
+Two pointers updated for the move: the introduction now says two parts *with
+appendices* and names what is in them, and the proof-of-concept reference that
+read "which is shown below" now says "worked through in the appendices".
