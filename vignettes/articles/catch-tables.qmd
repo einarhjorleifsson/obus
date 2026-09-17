@@ -1145,140 +1145,19 @@ actively misleading here: the overall direction split is 55/45, which looks
 like noise and is not — it is a symmetric population, a strongly directional
 one, and a reversed tail added together.
 
-### What explains the disagreement
+**What explains the gap, in short.** Most of it is arithmetic rather than
+error: rounding of the raising factor, `DataType` C rates re-rounded per length
+row, and a few hundred duplicated length series. The decomposition — the
+provider-by-provider rounding regimes, the directional tests, and the Can-Mar
+population that resists all of them — is in [What explains the
+disagreement](#what-explains-the-disagreement) and the sections after it in the
+appendices.
 
-The whole-fish residual breaks down as follows. Established causes and
-labelled hypotheses are marked.
-
-| Population | Groups | Cause | Status |
-|---|---|---|---|
-| Can-Mar | 31,047 | — | **hypothesis only** (see below) |
-| 1–2 fish, five directional pockets | 9,452 of ~38,700 | Can-Mar, non-unit `SubsamplingFactor`, PT-IBTS / FR-CGFS, BTS, EVHOE | established |
-| 1–2 fish, remainder | 29,145 | genuine symmetric noise — 50.27% one way, 95% CI [49.69–50.85], p = 0.36 | established |
-| 6–50 fish | 2,738 of 3,885 | `DataType` C with a non-integer raising factor, rounded by the submitter **per length row** | established |
-| 6–50 fish | 618 | `DataType` C, `SubsampledNumber` missing — same family by `DataType` and direction | probable |
-| 6–50 fish | 112 | exact 2× / 3× integer-ratio scaling error | established |
-| 6–50 fish | 116 | non-C, `SubsampledNumber` arbitrates one side as the outlier | established |
-| 6–50 fish | 301 | non-C where neither identity reconciles; C with integer factor | **unexplained** |
-| >50 fish | 214 of 443 | [duplicated length series](#duplicated-length-series) | established |
-| >50 fish | 21+ of 64 | `SubsamplingFactor` reported as a rounded integer, over-raising `TotalNumber` | established |
-| >50 fish | 165 `TotalNumber`-higher + 43 length-higher | — | **unexplained** |
-
-(The 6–50 and >50 sub-counts were computed on an independent reproduction of
-the same buckets, with denominators 3,885 and 443, which is why they do not
-sum to the 3,891 and 462 in the direction table above.)
-
-**The strongest single result.** Define `F = TotalNumber / SubsampledNumber` in submission
-units — the whole multiplier the submitter actually used. Over 404,833
-non-Can-Mar `DataType` C groups:
-
-| `F` | Groups | Whole-fish disagreement rate |
-|---|---|---|
-| Integer | 298,653 | **0.16%** |
-| Non-integer | 106,180 | **29.35%** |
-
-A relative risk of **187×**, using no reconstruction whatsoever. Haul-duration
-divisibility alone does not produce it: even where `60 %% HaulDuration == 0`,
-the rate is 32.83% with a non-integer factor against 0.14% with an integer
-one.
-
-The mechanism is reconstructible. `m_i = round(NumberAtLength_i / F)` recovers
-the submitter's raw integer counts, and those `m_i` sum **exactly** to the
-independently reported `SubsampledNumber` in 87–96% of groups. So the submitter computed
-`NumberAtLength = round(m_i × F)` row by row while computing
-`TotalNumber = F × Σm_i` once. The per-row residuals do not cancel; their sum is
-the gap. **The fish are missing from the submitted file before `{obus}` ever reads
-it.**
-
-**The 1–2 fish and 6–50 fish populations are one mechanism, not two.** Inside
-the 6–50 bucket, classified by the provider's rounding regime (n = 2,393
-classifiable): symmetric rounders (n = 326) are 26.1% `TotalNumber`-higher; mixed
-(n = 363) 89.5%; **truncators — providers flooring more than 90% of rows
-(n = 1,704) — 99.9%**. Truncating providers, as a share of their own groups:
-PT-IBTS 46.1%, FR-WCGFS 30.4%, FR-CGFS 15.1%, BITS 10.8%, NS-IBTS 9.6%,
-SE-SOUND 4.9%. Magnitude scales with the number of occupied length classes;
-direction is set by floor-versus-round-half. Catch size is not a driver
-(median |gap| = 0.02 in every `TotalNumber` size class from under 50 to over
-5,000).
-
-### Can-Mar, unexplained
-
-Can-Mar alone contributes 31,047 whole-fish groups — **41.8% of the residual**.
-The shape is distinctive: median gap **13 fish**, **98%** with `TotalNumber` the
-higher side, and **88.2%** carrying `SubsamplingFactor == 1`. Two mechanisms
-fit — a raising factor lost in a provider-side conversion, or fish counted into
-`TotalNumber` that never entered a length row — and nothing yet separates them, so
-neither is claimed here. One thing is ruled out: a per-length-class half-fish
-truncation, since `gap / n_length_classes` has median 1.000 (Q1 0.333,
-Q3 3.333) rather than 0.5, far too dispersed for any per-class mechanism.
-
-Treat Can-Mar separately, and prefer the reported total there. Both candidate
-mechanisms, with the test that would separate them, are in the package's
-`PLAN-qc-checks.md`, section 8.
-
-### Duplicated length series {#duplicated-length-series}
-
-This is the one place where `{obus}`'s choice of what makes a row unique
-measurably moves the number.
-
-Worked case, `BITS:2017:4:DK:26HF:TVS:552:42`, aphia 127082: 38 raw HL rows —
-19 under `LengthType` `1` and 19 under `LengthType` `6`, with the **same 19
-`LengthClass` values, the same 19 `NumberAtLength` values, the same `SubsamplingFactor` 1,
-the same `SubsampledNumber` 57, the same `TotalNumber` 57, and the same `SpeciesCategoryWeight`
-4500**. One length series written twice under two measurement-type codes.
-
-`dr_HL_length()` treats `LengthType` and `DevelopmentStage` as part of what
-makes a row unique, and therefore adds both copies together (114); the
-`TotalNumber` route reports them once (57). Ratio exactly 2.000.
-
-Archive-wide, **428 of 1,925,444 records (0.022%)** shrink if identical length
-rows — same sex, category, length code, length class, number and factor — are
-counted once. **426 of those 428 land in the whole-fish
-gap class**, and 221 of them in the >50 band. In the units `HL_length`
-actually carries — `n_haul`, haul-scaled for `DataType` C — the duplicated
-copies are worth **195,059 of the 394,993 raised fish in those groups**. (In
-submission units, i.e. before the `DataType` C scaling, the same excess is
-228,904; the two figures must not be interchanged.)
-
-By survey:
-
-| Survey | Groups |
-|---|---|
-| BITS | 124 |
-| NSSS | 97 |
-| PT-IBTS | 93 |
-| BTS | 80 |
-| NS-IBTS | 22 |
-| SCOWCGFS | 7 |
-| DYFS | 4 |
-| FR-CGFS | 1 |
-
-This is why NSSS is 100% length-sum-higher in the >50 tail (69 of 69 groups
-resolved) and PT-IBTS 95%.
-
-**Hypothesis: these are coding artefacts, not two real measurement
-conventions.** `LengthType` codes such as `1` and `6` should be genuinely
-different length definitions, so the *same fish* measured both ways would give
-*different* `LengthClass` values. The observed series are identical in
-`LengthClass` **and** `NumberAtLength` **and** `SubsampledNumber` **and** `TotalNumber` **and**
-`SpeciesCategoryWeight`, which is physically impossible under a genuine dual-measurement
-reading. *What would settle it:* resolving ICES vocabulary `ref=1392` and
-confirming the codes are non-convertible measurement definitions, plus
-confirming 100% series identity across all 428 groups.
-
-Keeping `LengthType` distinct is justified by the 885 records that genuinely
-split on it; these 428 are the subset where the two series are copies. `{obus}`
-does not merge them.
-
-### What is *not* responsible
-
-Negative results worth recording, because each was a plausible suspect:
-
-| Suspect | Verdict |
-|---|---|
-| Rows `{obus}` drops (`LengthClass` `NA`, `NumberAtLength == 0`) | Present in only 97 of 3,885 target groups, and in **zero** of them does the gap equal the raised value on the dropped rows. Dead. |
-| `LengthCode` / `LengthClass` mis-binning | Enriched (2.57% against a 0.11% baseline) but mechanically inert — re-binning cannot change a sum taken over all lengths. Refuted. |
-| `{obus}`'s own way of resolving repeats | Multi-sex groups are *less* common in the target bucket (4.94%) than among exactly-agreeing groups (8.69%). Multi-devstage 2.50% against 0.02%; `SpeciesValidity ≠ 1` 1.57% against 5.53%. Not the driver. |
+What matters here is the shape, not the accounting. **The gap is a property of
+the submissions, not of the two tables**, and it is the reason both numbers are
+published rather than reconciled into one: a consumer who is handed a single
+"catch total" cannot tell the two routes apart, and a consumer who is handed
+both can see immediately where a submission does not add up.
 
 ## 3. Catch weight {#catch-weight-catcatchwgt}
 
@@ -1321,94 +1200,14 @@ against single-sex groups of the same species and year; a clean ~0.5 offset
 would confirm a loss, no offset would confirm the equal weights were genuine
 repeats.
 
-### The same weight written on two category codes
-
-Keeping the category is right when two categories are two separately weighed
-parts of the catch. It is wrong when the same weight has simply been written on
-two codes — and under **pseudo-category sampling (`DataType` P) that is the
-documented convention**, not an error. The pseudo-category memo states
-*"CatCatchweight value is same in each subcategory"*, and the archive agrees:
-of 1,464 P main categories with more than one sub-category, **1,456 (99.5%)
-carry a single identical weight**. The structural reason is in the sampling
-itself — under P the raising factor *is* category weight divided by sample
-weight, so the category weight must appear on every sub-category row of that
-category.
-
-**`{obus}` therefore collapses P weights on the main category**, not on the
-reported code. Under P the `SpeciesCategory` is two digits, the first being the
-main category, so `11`, `12` and `13` are one weighing and not three. Take the
-worked case that used to be wrong:
-
-```{r}
-dr_con_raw("HL") |>
-  dr_add_id() |>
-  filter(.id == "NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12", Valid_Aphia == 126437) |>
-  distinct(SpeciesCategory, TotalNumber, SpeciesCategoryWeight) |>
-  collect()
-```
-
-Both sub-categories carry 105,300 g, which is one catch weighed once.
-`HL_summary` returns it once:
-
-```{r}
-dr_con("HL_summary") |>
-  filter(.id == "NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12", Valid_Aphia == 126437) |>
-  select(n_totalnumber, w_haul) |> collect()
-```
-
-Left uncollapsed this one haul would report 210,600 g for a 105,300 g catch,
-and archive-wide the P repeats were worth 410,122,351 g — close to 29% of all
-`DataType` P weight mass, because sub-category sampling is used precisely on
-the big catches. The records are still marked, as `WGT_CAT_REPEAT_P` in
-`dr_con("hl_flag")`, with `kind` `property`: the flag records that the
-submission carries the repetition, not that the published weight is wrong.
-
-**What is deliberately not collapsed.** The same shape occurs under `DataType`
-R, where ICES documents no sub-category convention at all, and there the cause
-is not established: of 209 such records, 135 are a single vessel and year
-(NS-IBTS 2025 Q3, GB, platform 74E9), and among those where `TotalNumber` also
-differs some ties look implausible (two categories both at exactly 9,992 g) and
-some entirely plausible (two tiny catches both at 12 g). Collapsing them would
-assert a convention no document states, so `{obus}` sums them and flags them
-`WGT_CAT_REPEAT_R`, `kind` `unexplained`. A further 36 P records share one
-weight *across* main categories, which the memo does not describe either.
-
-Together those are the whole of the remaining excess. Set the published
-`w_haul` against the alternative of collapsing every repeated weight whatever
-the `DataType`:
-
-```{r}
-published <- dr_con("HL_summary") |>
-  group_by(.id, Valid_Aphia, SpeciesValidity) |>
-  summarise(w_pub = sum(w_haul, na.rm = TRUE), .groups = "drop")
-
-collapsed <- dr_con_raw("HL") |>
-  dr_add_id() |>
-  inner_join(dr_con_raw("HH") |> dr_add_id() |> select(.id, DataType), by = ".id") |>
-  filter(DataType != "C") |>
-  distinct(.id, Valid_Aphia, SpeciesValidity, SpeciesCategoryWeight, DataType) |>
-  group_by(.id, Valid_Aphia, SpeciesValidity, DataType) |>
-  summarise(w_alt = sum(SpeciesCategoryWeight, na.rm = TRUE), .groups = "drop")
-
-published |>
-  inner_join(collapsed, by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
-  filter(w_pub > w_alt + 0.5) |>
-  group_by(DataType) |>
-  summarise(records = n(), excess_g = sum(w_pub - w_alt)) |>
-  collect()
-```
-
-**18,513,763 g in all — 0.080% of the archive's `w_haul` mass** of
-23,263,243,838 g. Before the P collapse the same comparison returned
-428,460,512 g, or 1.84%. The flag table marks 1,491 P and 209 R records.
-
-**The numbers are unaffected either way.** For all 1,491 P repeated-weight
-records the underlying length frequencies **differ**, so the mechanism that
-repeats a weight never touches `n_haul`. Conversely the weight path ignores
-`DevelopmentStage` and `LengthType`, so the [duplicated length
-series](#duplicated-length-series) that inflate `n_haul` in 428 records cannot
-inflate `w_haul` there. The two affected sets are expected to be disjoint; that
-has **not been computed**, and a non-empty result would be a new finding.
+**The same weight is sometimes written on two category codes**, and a naive sum
+then counts it twice. Under pseudo-category sampling (`DataType` P) that
+repetition is the documented convention rather than an error — the memo states
+*"CatCatchweight value is same in each subcategory"* — so `{obus}` collapses P
+weights on the **main** category rather than on the reported code. The worked
+case, the `R` and `S` residue, and the measured effect on the published figure
+are in [The same weight written on two category
+codes](#the-same-weight-written-on-two-category-codes) in the appendices.
 
 `w_haul` is `NA`, not `0`, for a species with no recorded weight at all —
 672,076 `HL_summary` rows archive-wide, which is 671,937 haul × species
@@ -1440,33 +1239,6 @@ documentarily: a submitter deriving `TotalNumber` from the **unrounded** factor
 while writing the rounded four-decimal factor into the rows produces a forced
 sub-fish gap (237 × 41.206954 = 9766.048 against the reported 9766.059). That
 too is a hypothesis, testable the same way.
-
-### Other weight questions, all open
-
-None of these is a finding, and they share one instrument that has not been
-built: **mean weight per fish, `w_haul / n_haul`, stratified by species**.
-That quantity is biologically bounded within roughly an order of magnitude, so
-any mechanism that scales weight without scaling number leaves a
-self-normalising signature — which is what makes the whole family testable at
-once.
-
-Two of them could move a published figure:
-
-- **`DataType` C weight standardisation.** HL row 22 (`SpeciesCategoryWeight`) makes `SpeciesCategoryWeight` for C
-  a rate — *"For datatype C, values should be standardised to 60 minutes"*. If
-  `w_haul` treats those weights as per-haul while `n_haul` back-multiplies C
-  numbers by `HaulDuration/60`, then `w_haul / n_haul` for C is wrong by
-  `60 / HaulDuration`. That would touch roughly a third of the archive, against
-  the 0.08% of weight mass the repeated weights above account for. Untested.
-- **Sex excluded from the weight key.** Two genuinely separate per-sex weights
-  that happen to be numerically equal are indistinguishable from one weight
-  written twice, and would be counted once. Untested ([D11](#d11)).
-
-The remainder — swapped `SubsampleWeight`/`SpeciesCategoryWeight`, unit errors in a grams field
-(a realised case is minuted in IBTSWG 2025 Table 3.8.1), the P blocks sharing a
-weight across main categories, the R duplicates, and the groups carrying weight
-with no number at all — are recorded with their tests in the package's
-`PLAN-qc-checks.md`, section 8.
 
 ## 4. Length classes and their units {#length-classes-and-their-units}
 
@@ -1730,6 +1502,14 @@ Stated plainly, because a reader is entitled to know the edges of this.
 Reference and evidence material, moved out of the reading path. Nothing
 here is required to follow the argument; all of it is cited from the text
 where it matters.
+
+
+The weight questions that remain share one instrument that has not been built:
+**mean weight per fish, `w_haul / n_haul`, stratified by species**. That
+quantity is biologically bounded within roughly an order of magnitude, so any
+mechanism that scales weight without scaling number leaves a self-normalising
+signature — which is what makes the whole family testable at once. The
+individual cases, with their tests, are in `PLAN-qc-checks.md` section 8.
 
 ## Building CPUEL from `HL_length` {#building-cpuel-from-hl_length}
 
@@ -2169,6 +1949,232 @@ onto one `.id`.
 Each of these produced a real, silent, wrong number at some point. Keeping
 both an eager test suite and a lazy build is what catches them; neither does
 alone.
+
+
+## What explains the disagreement
+
+The whole-fish residual breaks down as follows. Established causes and
+labelled hypotheses are marked.
+
+| Population | Groups | Cause | Status |
+|---|---|---|---|
+| Can-Mar | 31,047 | — | **hypothesis only** (see below) |
+| 1–2 fish, five directional pockets | 9,452 of ~38,700 | Can-Mar, non-unit `SubsamplingFactor`, PT-IBTS / FR-CGFS, BTS, EVHOE | established |
+| 1–2 fish, remainder | 29,145 | genuine symmetric noise — 50.27% one way, 95% CI [49.69–50.85], p = 0.36 | established |
+| 6–50 fish | 2,738 of 3,885 | `DataType` C with a non-integer raising factor, rounded by the submitter **per length row** | established |
+| 6–50 fish | 618 | `DataType` C, `SubsampledNumber` missing — same family by `DataType` and direction | probable |
+| 6–50 fish | 112 | exact 2× / 3× integer-ratio scaling error | established |
+| 6–50 fish | 116 | non-C, `SubsampledNumber` arbitrates one side as the outlier | established |
+| 6–50 fish | 301 | non-C where neither identity reconciles; C with integer factor | **unexplained** |
+| >50 fish | 214 of 443 | [duplicated length series](#duplicated-length-series) | established |
+| >50 fish | 21+ of 64 | `SubsamplingFactor` reported as a rounded integer, over-raising `TotalNumber` | established |
+| >50 fish | 165 `TotalNumber`-higher + 43 length-higher | — | **unexplained** |
+
+(The 6–50 and >50 sub-counts were computed on an independent reproduction of
+the same buckets, with denominators 3,885 and 443, which is why they do not
+sum to the 3,891 and 462 in the direction table above.)
+
+**The strongest single result.** Define `F = TotalNumber / SubsampledNumber` in submission
+units — the whole multiplier the submitter actually used. Over 404,833
+non-Can-Mar `DataType` C groups:
+
+| `F` | Groups | Whole-fish disagreement rate |
+|---|---|---|
+| Integer | 298,653 | **0.16%** |
+| Non-integer | 106,180 | **29.35%** |
+
+A relative risk of **187×**, using no reconstruction whatsoever. Haul-duration
+divisibility alone does not produce it: even where `60 %% HaulDuration == 0`,
+the rate is 32.83% with a non-integer factor against 0.14% with an integer
+one.
+
+The mechanism is reconstructible. `m_i = round(NumberAtLength_i / F)` recovers
+the submitter's raw integer counts, and those `m_i` sum **exactly** to the
+independently reported `SubsampledNumber` in 87–96% of groups. So the submitter computed
+`NumberAtLength = round(m_i × F)` row by row while computing
+`TotalNumber = F × Σm_i` once. The per-row residuals do not cancel; their sum is
+the gap. **The fish are missing from the submitted file before `{obus}` ever reads
+it.**
+
+**The 1–2 fish and 6–50 fish populations are one mechanism, not two.** Inside
+the 6–50 bucket, classified by the provider's rounding regime (n = 2,393
+classifiable): symmetric rounders (n = 326) are 26.1% `TotalNumber`-higher; mixed
+(n = 363) 89.5%; **truncators — providers flooring more than 90% of rows
+(n = 1,704) — 99.9%**. Truncating providers, as a share of their own groups:
+PT-IBTS 46.1%, FR-WCGFS 30.4%, FR-CGFS 15.1%, BITS 10.8%, NS-IBTS 9.6%,
+SE-SOUND 4.9%. Magnitude scales with the number of occupied length classes;
+direction is set by floor-versus-round-half. Catch size is not a driver
+(median |gap| = 0.02 in every `TotalNumber` size class from under 50 to over
+5,000).
+
+## Can-Mar, unexplained
+
+Can-Mar alone contributes 31,047 whole-fish groups — **41.8% of the residual**.
+The shape is distinctive: median gap **13 fish**, **98%** with `TotalNumber` the
+higher side, and **88.2%** carrying `SubsamplingFactor == 1`. Two mechanisms
+fit — a raising factor lost in a provider-side conversion, or fish counted into
+`TotalNumber` that never entered a length row — and nothing yet separates them, so
+neither is claimed here. One thing is ruled out: a per-length-class half-fish
+truncation, since `gap / n_length_classes` has median 1.000 (Q1 0.333,
+Q3 3.333) rather than 0.5, far too dispersed for any per-class mechanism.
+
+Treat Can-Mar separately, and prefer the reported total there. Both candidate
+mechanisms, with the test that would separate them, are in the package's
+`PLAN-qc-checks.md`, section 8.
+
+## Duplicated length series {#duplicated-length-series}
+
+This is the one place where `{obus}`'s choice of what makes a row unique
+measurably moves the number.
+
+Worked case, `BITS:2017:4:DK:26HF:TVS:552:42`, aphia 127082: 38 raw HL rows —
+19 under `LengthType` `1` and 19 under `LengthType` `6`, with the **same 19
+`LengthClass` values, the same 19 `NumberAtLength` values, the same `SubsamplingFactor` 1,
+the same `SubsampledNumber` 57, the same `TotalNumber` 57, and the same `SpeciesCategoryWeight`
+4500**. One length series written twice under two measurement-type codes.
+
+`dr_HL_length()` treats `LengthType` and `DevelopmentStage` as part of what
+makes a row unique, and therefore adds both copies together (114); the
+`TotalNumber` route reports them once (57). Ratio exactly 2.000.
+
+Archive-wide, **428 of 1,925,444 records (0.022%)** shrink if identical length
+rows — same sex, category, length code, length class, number and factor — are
+counted once. **426 of those 428 land in the whole-fish
+gap class**, and 221 of them in the >50 band. In the units `HL_length`
+actually carries — `n_haul`, haul-scaled for `DataType` C — the duplicated
+copies are worth **195,059 of the 394,993 raised fish in those groups**. (In
+submission units, i.e. before the `DataType` C scaling, the same excess is
+228,904; the two figures must not be interchanged.)
+
+By survey:
+
+| Survey | Groups |
+|---|---|
+| BITS | 124 |
+| NSSS | 97 |
+| PT-IBTS | 93 |
+| BTS | 80 |
+| NS-IBTS | 22 |
+| SCOWCGFS | 7 |
+| DYFS | 4 |
+| FR-CGFS | 1 |
+
+This is why NSSS is 100% length-sum-higher in the >50 tail (69 of 69 groups
+resolved) and PT-IBTS 95%.
+
+**Hypothesis: these are coding artefacts, not two real measurement
+conventions.** `LengthType` codes such as `1` and `6` should be genuinely
+different length definitions, so the *same fish* measured both ways would give
+*different* `LengthClass` values. The observed series are identical in
+`LengthClass` **and** `NumberAtLength` **and** `SubsampledNumber` **and** `TotalNumber` **and**
+`SpeciesCategoryWeight`, which is physically impossible under a genuine dual-measurement
+reading. *What would settle it:* resolving ICES vocabulary `ref=1392` and
+confirming the codes are non-convertible measurement definitions, plus
+confirming 100% series identity across all 428 groups.
+
+Keeping `LengthType` distinct is justified by the 885 records that genuinely
+split on it; these 428 are the subset where the two series are copies. `{obus}`
+does not merge them.
+
+## What is *not* responsible
+
+Negative results worth recording, because each was a plausible suspect:
+
+| Suspect | Verdict |
+|---|---|
+| Rows `{obus}` drops (`LengthClass` `NA`, `NumberAtLength == 0`) | Present in only 97 of 3,885 target groups, and in **zero** of them does the gap equal the raised value on the dropped rows. Dead. |
+| `LengthCode` / `LengthClass` mis-binning | Enriched (2.57% against a 0.11% baseline) but mechanically inert — re-binning cannot change a sum taken over all lengths. Refuted. |
+| `{obus}`'s own way of resolving repeats | Multi-sex groups are *less* common in the target bucket (4.94%) than among exactly-agreeing groups (8.69%). Multi-devstage 2.50% against 0.02%; `SpeciesValidity ≠ 1` 1.57% against 5.53%. Not the driver. |
+
+
+## The same weight written on two category codes
+
+Keeping the category is right when two categories are two separately weighed
+parts of the catch. It is wrong when the same weight has simply been written on
+two codes — and under **pseudo-category sampling (`DataType` P) that is the
+documented convention**, not an error. The pseudo-category memo states
+*"CatCatchweight value is same in each subcategory"*, and the archive agrees:
+of 1,464 P main categories with more than one sub-category, **1,456 (99.5%)
+carry a single identical weight**. The structural reason is in the sampling
+itself — under P the raising factor *is* category weight divided by sample
+weight, so the category weight must appear on every sub-category row of that
+category.
+
+**`{obus}` therefore collapses P weights on the main category**, not on the
+reported code. Under P the `SpeciesCategory` is two digits, the first being the
+main category, so `11`, `12` and `13` are one weighing and not three. Take the
+worked case that used to be wrong:
+
+```{r}
+dr_con_raw("HL") |>
+  dr_add_id() |>
+  filter(.id == "NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12", Valid_Aphia == 126437) |>
+  distinct(SpeciesCategory, TotalNumber, SpeciesCategoryWeight) |>
+  collect()
+```
+
+Both sub-categories carry 105,300 g, which is one catch weighed once.
+`HL_summary` returns it once:
+
+```{r}
+dr_con("HL_summary") |>
+  filter(.id == "NS-IBTS:2016:1:GB-SCT:748S:GOV:12:12", Valid_Aphia == 126437) |>
+  select(n_totalnumber, w_haul) |> collect()
+```
+
+Left uncollapsed this one haul would report 210,600 g for a 105,300 g catch,
+and archive-wide the P repeats were worth 410,122,351 g — close to 29% of all
+`DataType` P weight mass, because sub-category sampling is used precisely on
+the big catches. The records are still marked, as `WGT_CAT_REPEAT_P` in
+`dr_con("hl_flag")`, with `kind` `property`: the flag records that the
+submission carries the repetition, not that the published weight is wrong.
+
+**What is deliberately not collapsed.** The same shape occurs under `DataType`
+R, where ICES documents no sub-category convention at all, and there the cause
+is not established: of 209 such records, 135 are a single vessel and year
+(NS-IBTS 2025 Q3, GB, platform 74E9), and among those where `TotalNumber` also
+differs some ties look implausible (two categories both at exactly 9,992 g) and
+some entirely plausible (two tiny catches both at 12 g). Collapsing them would
+assert a convention no document states, so `{obus}` sums them and flags them
+`WGT_CAT_REPEAT_R`, `kind` `unexplained`. A further 36 P records share one
+weight *across* main categories, which the memo does not describe either.
+
+Together those are the whole of the remaining excess. Set the published
+`w_haul` against the alternative of collapsing every repeated weight whatever
+the `DataType`:
+
+```{r}
+published <- dr_con("HL_summary") |>
+  group_by(.id, Valid_Aphia, SpeciesValidity) |>
+  summarise(w_pub = sum(w_haul, na.rm = TRUE), .groups = "drop")
+
+collapsed <- dr_con_raw("HL") |>
+  dr_add_id() |>
+  inner_join(dr_con_raw("HH") |> dr_add_id() |> select(.id, DataType), by = ".id") |>
+  filter(DataType != "C") |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, SpeciesCategoryWeight, DataType) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, DataType) |>
+  summarise(w_alt = sum(SpeciesCategoryWeight, na.rm = TRUE), .groups = "drop")
+
+published |>
+  inner_join(collapsed, by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
+  filter(w_pub > w_alt + 0.5) |>
+  group_by(DataType) |>
+  summarise(records = n(), excess_g = sum(w_pub - w_alt)) |>
+  collect()
+```
+
+**18,513,763 g in all — 0.080% of the archive's `w_haul` mass** of
+23,263,243,838 g. Before the P collapse the same comparison returned
+428,460,512 g, or 1.84%. The flag table marks 1,491 P and 209 R records.
+
+**The numbers are unaffected either way.** For all 1,491 P repeated-weight
+records the underlying length frequencies **differ**, so the mechanism that
+repeats a weight never touches `n_haul`. Conversely the weight path ignores
+`DevelopmentStage` and `LengthType`, so the [duplicated length
+series](#duplicated-length-series) that inflate `n_haul` in 428 records cannot
+inflate `w_haul` there. The two affected sets are expected to be disjoint; that
+has **not been computed**, and a non-empty result would be a new finding.
 
 
 ## References {.unnumbered}

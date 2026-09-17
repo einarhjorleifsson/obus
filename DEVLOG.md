@@ -1798,3 +1798,53 @@ for this class of phrasing both use "oversight" in the opposite direction, to
 say explicitly that something is *not* one. The register entry built on the
 same evidence (D13) was already clean — "carries an unresolved editorial query
 in its body text" — which is why this stood out.
+
+### Trimming the nit-picking: 225 lines out of the reading path
+
+The test applied was "does this matter for *selling* `HL_length` and
+`HL_summary`?", and it turns out the article had two jobs fighting each other.
+Selling the tables needs enough evidence that the format is genuinely hard,
+stated crisply. Being a complete forensic record needs exhaustiveness. The
+second actively damages the first: it buries the three or four findings that
+would persuade an ICES audience under a mass of equally-weighted detail.
+
+The sharper version of the problem, which is what decided the cuts:
+**spending 340 lines decomposing a 3.85% disagreement makes the disagreement
+look like a defect of the tables rather than of the submissions.**
+Over-documenting a flaw invites a reader to file it as yours. The finding that
+sells the tables is that the two routes disagree and the gap is *information* —
+which is why both numbers are published. The bucket-by-bucket forensics argue
+against the product.
+
+Moved to the appendices, not deleted, so nothing is lost:
+
+- From obstacle 2, the forensic decomposition — *What explains the
+  disagreement*, *Can-Mar, unexplained*, *Duplicated length series*, *What is
+  not responsible* (135 lines). The headline finding, *Where the two routes
+  disagree*, stays in the flow, followed by a short paragraph saying what the
+  decomposition found and why the gap is a property of the submissions.
+- From obstacle 3, *The same weight written on two category codes* (89 lines),
+  with the finding and `{obus}`'s treatment kept in the flow.
+
+Folded rather than moved: *Other weight questions, all open* (27 lines). Two
+of its three bullets were already in *What remains open* verbatim — the
+`DataType` C standardisation and the `SpeciesSex` weight-key item, both
+carrying their `[D11]` reference — so it was a second list of unfinished
+business running beside the first, which is the one thing that genuinely
+weakens a proposal. Its unique contribution, the `w_haul / n_haul` instrument
+that would make the whole family testable at once, is preserved as a closing
+paragraph there.
+
+**Part II 1,090 -> 876 lines; reading path 1,717 -> 1,503.** 404 internal
+links, 0 broken; 80 headings against 81, the one loss being the folded
+section. Verified line by line against the pre-trim copy that the only text
+not carried forward is the folded block and five headings promoted from `###`
+to `##`.
+
+One splice bug caught in verification rather than by eye: the paragraph
+establishing that `w_haul` is `NA` and not `0` for an unweighed species sits
+at the end of the weight-forensics section but is a core statement about a
+published column, so it was kept in the flow — and the splice inserted a copy
+while the original was still there. It rendered twice. Fixed, and the check
+that caught it was searching the rendered HTML for `WGT_NONE` rather than
+re-reading the source.
