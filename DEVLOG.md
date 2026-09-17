@@ -1512,3 +1512,33 @@ using the API in prose has caught something the tests did not.
 Confirmed while checking the article's chunks that collapsing
 `SpeciesValidity` on `HL_length` returns 14,001,590 rows from 14,001,605 —
 exactly the 15 merged groups the roxygen claims, arrived at independently.
+
+### Working Principle 8: stop writing down numbers that were never the argument
+
+Prompted by the obvious objection to the day's work — DATRAS grows, so every
+count anyone states is already stale, and chasing them is unbounded. True, and
+the repo had already diagnosed it: `PLAN-qc-checks.md` §7 says opus's 13
+curated findings "cannot be re-measured, because their extents are prose".
+
+Counted the exposure before writing the rule. Hard-coded grouped numbers in
+prose: `DEVLOG.md` 143, article 115, `AGENTS.md` 72, `PLAN-qc-checks.md` 30,
+`TODO.md` 3. And the article runs **26 evaluated chunks against the live
+archive while using inline `` `r ` `` for none of its 115** — it has the
+machinery to measure itself and uses it only for displayed code, never for
+sentences.
+
+The principle refuses the framing that this is one problem. The numbers do
+three jobs: **invariants** (belong in tests, not prose), **load-bearing
+findings** (which are nearly always a qualitative claim — *only, exactly one,
+none* — wearing a number, and the qualitative form survives growth), and
+**denominators** (backdrop, always stale, nothing moves). Only the middle kind
+needs a mechanism. The test before writing any number: if it were 10%
+different, would the sentence change?
+
+Deliberately paired with Principle 4 rather than qualifying it — measure
+everything, write down only what argues. And `DEVLOG.md` is explicitly exempt:
+frozen numbers in a dated notebook are correct, and are what make stripping
+the other files safe.
+
+Not acted on yet. The article pass and the §7 snapshot mechanism are the work
+this implies; the principle only says which numbers are worth the effort.

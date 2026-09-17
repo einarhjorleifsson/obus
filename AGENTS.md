@@ -122,6 +122,71 @@ Findings get written up in `vignettes/articles/catch-tables.qmd`. (Standing rule
 since 2026-08-31; it lived in `TODO.md` until the 2026-09-04 split, where it
 was the only entry that was a rule rather than a task.)
 
+**8. The archive grows, so a number in prose is a liability unless it is
+carrying an argument.** This does not soften Principle 4 — it is its other
+half. Measure everything; *write down* only what argues. A number that was
+never the argument is not evidence of rigour, it is an unfunded maintenance
+commitment.
+
+Every count obus states goes stale on the next
+DATRAS refresh, and re-measuring them all is unbounded work that nobody will
+do twice — the same failure §7 of `PLAN-qc-checks.md` diagnoses for opus's
+curated findings, which "cannot be re-measured, because their extents are
+prose". It has already produced a live contradiction there (the CA-orphan
+rate recorded as 305,276 of 5,968,027 in `DATRAS-data-dict.yaml` and 288,581
+of 5,865,076 in `DATRAS-known-issues.yaml`, with neither naming an archive),
+and a smaller one here: `HL_summary`'s `.id x Valid_Aphia` group count
+appears as 2,290,203 in the article and 2,290,235 in `dr_con()`'s roxygen,
+two vintages of the same quantity, sitting near a row count of 2,291,457 that
+reads like a third.
+
+The cure is not to count less. It is to notice that these numbers do three
+different jobs, and only one of them needs re-measuring:
+
+- **An invariant** — "0 duplicated groups at the eight-field key" — is a
+  property that must hold forever, not a measurement. Prose is the wrong
+  home: it belongs in a test that fails when it stops being true, and the
+  sentence should read "unique at this key" with no number at all.
+- **A load-bearing finding** — "exactly one record in the archive is ever
+  converted", "Can-Mar is the only survey with length data on validity-`5`
+  rows" — is where the number carries the argument. But look at what these
+  actually are: qualitative claims wearing a number. *Only. Exactly one.
+  None. Never.* The qualitative form survives archive growth; the count does
+  not. Write the stable claim and let the count be dated evidence under it —
+  and if the qualitative claim ever breaks, that is a **finding**, not
+  staleness.
+- **A denominator** — "of 14,001,605 rows" — is backdrop. It is always stale
+  and no conclusion moves when it changes. This is the bean-counting, and it
+  is most of them.
+
+The test to apply to any number before writing it: **if this were 10%
+different, would the sentence change?** If not, it should not be a number.
+Where magnitude genuinely matters, prefer the **ratio**, which is stable
+under growth, over the count, which is not: `0.031%` survives the next
+refresh and `4,051 groups` does not.
+
+Per file, because the four have different jobs:
+
+- **`DEVLOG.md` — leave it alone.** It is a dated lab notebook, and frozen
+  numbers are *correct* there. It is what makes stripping the others safe,
+  because the evidence stays preserved at a date.
+- **`vignettes/articles/catch-tables.qmd`** — it already runs 26 evaluated
+  chunks against the live archive and uses inline `` `r ` `` for exactly none
+  of its 115 hard-coded prose numbers. Load-bearing numbers belong inline, so
+  they re-measure on render and a change shows up in the diff instead of
+  rotting; denominators should go. The trade, which is real: the `.qmd` then
+  cannot be read as text without rendering, and a render takes minutes
+  against the live server.
+- **This file** — numbers here should be invariants, so a figure that needs
+  refreshing is a sign the claim was the wrong shape.
+- **`TODO.md`** — "done looks like" must not depend on a count.
+
+The general mechanism is already scoped in `PLAN-qc-checks.md` §7 (pin a
+snapshot, make the findings measurable, recompute as a **diff** rather than a
+flag table). It was written for the 13 YAML findings; it generalises to prose
+numbers for free, and building it is what turns "the counts are stale" from a
+chore into an output.
+
 ------------------------------------------------------------------------
 
 ## Scope
