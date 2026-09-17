@@ -1564,14 +1564,37 @@ dr_con("HL_summary") |>
   count() |>
   collect()
 ```
- Filtering to a single code makes `.id` × `Valid_Aphia`
-exactly unique (verified at codes `"1"`, `"4"`, `"5"` and `"7"`). Aggregating
-over `.id` × `Valid_Aphia` without also grouping on `SpeciesValidity` mixes record
-types and double-counts.
+ Aggregating over `.id` × `Valid_Aphia` without accounting for
+`SpeciesValidity` mixes record types and double-counts. There are two ways to
+account for it, and they are not equivalent.
+
+Filtering to a single code does make `.id` × `Valid_Aphia` exactly unique
+(verified at codes `"1"`, `"4"`, `"5"` and `"7"`), and it is what most
+pipelines do. But the codes say *what was recorded*, not *how good it is* --
+so a filter answers a question about record completeness by throwing records
+away. Filtering `HL_summary` to `"1"` discards **464,858 of 2,291,457 records
+(20.3%)**; on `HL_length` it discards **691,163 of 14,001,605 rows**, covering
+**37,302,307 fish** (measured 2026-09-17).
+
+Summing across the codes keeps them, and is the right operation whenever what
+you want is a total:
 
 ```{r, eval = FALSE}
 dr_con("HL_summary") |>
-  dplyr::filter(SpeciesValidity == "1")   # the usual starting point
+  dplyr::group_by(.id, Valid_Aphia) |>
+  dplyr::summarise(n_totalnumber = sum(n_totalnumber, na.rm = TRUE),
+                   w_haul        = sum(w_haul, na.rm = TRUE),
+                   .groups = "drop")
+```
+
+Sum only what a sum means: `p_females` is a proportion, so it has to be
+re-derived from counts rather than added up. On `HL_length`, `dr_HL_collapse()`
+does this for you and carries the guards with it -- and it is close to free
+there, merging 15 rows out of 14,001,605:
+
+```{r, eval = FALSE}
+dr_con("HL_length") |>
+  dr_HL_collapse("SpeciesValidity")
 ```
 
 **The documents disagree on which codes are valid, and this is
@@ -1587,8 +1610,12 @@ the format.
 
 **Can-Mar is the exception that breaks the usual filter.** It puts real
 `LngtClass`/`HLNoAtLngt` data on `"5"` rows, where every other survey uses
-`"5"` for a length-free presence marker. Filtering to `"1"` there discards
-genuine length data. Treat Can-Mar separately.
+`"5"` for a length-free presence marker -- and it is the *only* survey that
+does: of the 8,863 validity-`"5"` rows in `HL_length`, every one is Can-Mar
+(measured 2026-09-17). So filtering to `"1"` does not thin Can-Mar's length
+data, it removes all of it, while leaving every other survey untouched --
+which is the most misleading shape a filter can have. Treat Can-Mar
+separately, or sum across the codes instead.
 
 ## 6. Haul duration and hourly rates {#haul-duration-and-hourly-rates}
 

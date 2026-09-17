@@ -1477,3 +1477,38 @@ started accumulating a changelog, and the swept-area and
 `DEVLOG.md` already carries verbatim. Checked key by key that nothing existed
 only in `TODO.md` before removing it. 168 lines down to 105, six items, each
 now action + why + done + pointer.
+
+### And the article, plus a hole in the verb it exposed
+
+Fixed `catch-tables.qmd:1574` too, on request. The section around it was
+already better than `AGENTS.md` had been — it says the codes describe *what
+data is present, not how good it is*, that there is no ordering and so no
+"most valid" code to collapse to, and it already carried the Can-Mar warning.
+The defect was narrower than expected: a single chunk labelled `# the usual
+starting point` presented the filter as the default, contradicting the
+section's own reasoning four paragraphs further down. Replaced with the two
+options stated as not equivalent, the measured cost of the filter, and a
+worked sum. Can-Mar strengthened with the measurement: **all 8,863
+validity-`"5"` rows in `HL_length` are Can-Mar's**, so the filter does not
+thin that survey, it removes its length data entirely while leaving every
+other survey untouched — the most misleading shape a filter can have.
+
+Writing the replacement found a hole in `dr_HL_collapse()`, shipped an hour
+earlier. The obvious thing to write in an `HL_summary` section is
+`dr_con("HL_summary") |> dr_HL_collapse("SpeciesValidity")` — and it would
+have **silently done the wrong thing**. `HL_summary` carries `n_haul` and
+`n_measured`, so the "does this look like a length table" test passed, and the
+verb would then have put `w_haul`, `n_totalnumber` and `p_females` into the
+*grain* rather than summing them: a result that is not wrong-looking, just
+wrong. Now refused by name, with the reason `p_females` cannot be summed at
+all. Test added; 388.
+
+The general point is worth keeping. `dr_HL_collapse()` identified its input by
+the columns it *needs* rather than by the columns that would disqualify it,
+and a sibling table satisfied the first test while failing the intent. Writing
+the documentation is what found it, which is the second time this week that
+using the API in prose has caught something the tests did not.
+
+Confirmed while checking the article's chunks that collapsing
+`SpeciesValidity` on `HL_length` returns 14,001,590 rows from 14,001,605 —
+exactly the 15 merged groups the roxygen claims, arrived at independently.

@@ -149,6 +149,23 @@ dr_HL_collapse <- function(x, collapse, check = TRUE) {
          call. = FALSE)
   }
 
+  # HL_summary carries n_haul and n_measured too, so the measure test below
+  # would pass and the verb would quietly group by w_haul/n_totalnumber/
+  # p_females instead of summing them. Its grain and its guards are different
+  # -- n_totalnumber comes from the submitted TotalNumber, not from raising --
+  # so refuse it by name rather than doing something plausible-looking.
+  summary_only <- intersect(c("n_totalnumber", "n_totalnumber_hour", "w_haul",
+                              "w_hour", "p_females"), nm)
+  if (length(summary_only)) {
+    stop("`x` looks like dr_HL_summary(), not dr_HL_length() -- it carries ",
+         paste(sQuote(summary_only), collapse = ", "),
+         ". This verb is for the length table; it would leave those columns ",
+         "in the grain rather than summing them. To collapse HL_summary over ",
+         "SpeciesValidity, group and sum the columns you want explicitly, ",
+         "choosing for each whether a sum is meaningful (p_females is a ",
+         "proportion, not a count).", call. = FALSE)
+  }
+
   measures <- intersect(.DR_HL_MEASURES, nm)
   if (!length(measures)) {
     stop("`x` carries none of ", paste(sQuote(.DR_HL_MEASURES), collapse = ", "),

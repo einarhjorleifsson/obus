@@ -205,3 +205,12 @@ test_that("a table with no measure columns is refused", {
   f <- .collapse_fixture()[, c(".id", "Valid_Aphia", "length_mm", "SpeciesSex")]
   expect_error(dr_HL_collapse(f, "SpeciesSex"), "does not look like")
 })
+
+test_that("an HL_summary table is refused by name, not quietly mishandled", {
+  # HL_summary carries n_haul and n_measured, so the measure test passes and
+  # the verb would group by w_haul/n_totalnumber/p_females instead of summing.
+  f <- .collapse_fixture()
+  f$n_totalnumber <- 99
+  f$p_females <- 0.5
+  expect_error(dr_HL_collapse(f, "SpeciesSex"), "looks like dr_HL_summary")
+})
