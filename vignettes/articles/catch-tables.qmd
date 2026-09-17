@@ -1572,9 +1572,9 @@ Filtering to a single code does make `.id` × `Valid_Aphia` exactly unique
 (verified at codes `"1"`, `"4"`, `"5"` and `"7"`), and it is what most
 pipelines do. But the codes say *what was recorded*, not *how good it is* --
 so a filter answers a question about record completeness by throwing records
-away. Filtering `HL_summary` to `"1"` discards **464,858 of 2,291,457 records
-(20.3%)**; on `HL_length` it discards **691,163 of 14,001,605 rows**, covering
-**37,302,307 fish** (measured 2026-09-17).
+away. Filtering `HL_summary` to `"1"` discards **464,858 of its 2,291,457
+rows (20.3%)**; on `HL_length` it discards **691,163 of 14,001,605 rows**,
+covering **37,302,307 fish** (measured 2026-09-17).
 
 Summing across the codes keeps them, and is the right operation whenever what
 you want is a total:
