@@ -142,6 +142,105 @@ in the archive:
 Nearly every DATRAS analysis begins there, and they are the same steps every
 time.
 
+### The two tables, formally {#the-two-tables-formally}
+
+Before the argument for them, what they actually are. Both are one flat
+parquet file, read lazily.
+
+```{r, include = FALSE}
+# The column list is READ FROM THE PUBLISHED FILES; only the descriptions are
+# authored here. A column added to obus and not described below renders as a
+# visible gap rather than quietly vanishing from this article (Principle 8).
+# n_haul and n_measured mean different things in the two tables, so the
+# descriptions are per-table rather than per-name.
+KEY <- list(
+  HL_length  = c(".id", "Valid_Aphia", "length_mm", "accuracy", "LengthType",
+                 "SpeciesSex", "DevelopmentStage", "SpeciesValidity"),
+  HL_summary = c(".id", "Valid_Aphia", "SpeciesValidity")
+)
+COMMON <- c(
+  .id         = "Haul identifier, built by obus from the eight fields ICES uses to identify a haul",
+  Survey      = "Survey code, e.g. `NS-IBTS`",
+  Year        = "Year of the haul",
+  Quarter     = "Quarter of the haul",
+  Valid_Aphia = "WoRMS AphiaID of the accepted taxon",
+  latin       = "Accepted scientific name",
+  species     = "Common name",
+  rank        = "Taxonomic rank of the identification (`Species`, `Genus`, `Family`, ...)",
+  SpeciesValidity = "ICES `SpecVal` -- the *record type*, i.e. what data is present; not a quality flag"
+)
+DESC <- list(
+  HL_length = c(COMMON,
+    length_mm  = "Lower bound of the length bin, in millimetres",
+    length_cm  = "`length_mm / 10`, carried because the two user communities count in different units",
+    accuracy   = "Bin width in centimetres, from ICES `LngtCode`",
+    LengthType = "ICES `LenMeasType` -- which landmark was measured (total, standard, pre-anal-fin, ...)",
+    SpeciesSex = "ICES `Sex`, as reported: `F`, `M`, `U`, `B` (berried) or `NA` (never assessed)",
+    DevelopmentStage = "ICES `DevStage`, as reported",
+    n_haul     = "Number at this length in the whole haul: `NumberAtLength` x `SubsamplingFactor`",
+    n_hour     = "`n_haul` standardised to one hour fished",
+    n_measured = "`NumberAtLength` as submitted, before raising -- how many fish went through the calipers. `NA` where `DataType == \"C\"`, which reports a rate"),
+  HL_summary = c(COMMON,
+    n_totalnumber = "The submitted `TotalNo` -- the one per-species haul total present whether or not anything was measured",
+    n_totalnumber_hour = "`n_totalnumber` standardised to one hour fished",
+    n_haul     = "The same quantity reached the other way, by raising the length frequencies. The two do not always agree, and that gap is a finding",
+    w_haul     = "Submitted `CatCatchWgt` for the species in the haul",
+    w_hour     = "`w_haul` standardised to one hour fished",
+    n_measured = "Fish actually measured, before raising. `0` for a species with no length data; `NA` where `DataType == \"C\"`",
+    p_females  = "Proportion female, derived from the per-sex counts")
+)
+spec_table <- function(tbl) {
+  x  <- dr_con(tbl) |> head(1) |> collect()
+  d  <- DESC[[tbl]]
+  nm <- names(x)
+  data.frame(
+    Column = sprintf("`%s`", nm),
+    Type   = vapply(x, function(v) class(v)[1], character(1)),
+    Key    = ifelse(nm %in% KEY[[tbl]], "*", ""),
+    Meaning = ifelse(nm %in% names(d), d[nm],
+                     "**undocumented — add it to `DESC` in this article**"),
+    row.names = NULL, check.names = FALSE)
+}
+```
+
+**`HL_length`** — one row per species at one length class in one haul, for
+species that were actually measured. `*` marks the fields that together
+identify a row.
+
+```{r, echo = FALSE}
+knitr::kable(spec_table("HL_length"))
+```
+
+**`HL_summary`** — one row per species in one haul, for *every* species
+recorded, measured or not.
+
+```{r, echo = FALSE}
+knitr::kable(spec_table("HL_summary"))
+```
+
+Three things are worth saying about those keys before Part II takes them
+apart. `HL_length` is identified by eight fields because ICES's own record
+identity puts them there, and dropping one silently merges counts that were
+separate observations — [what makes a row
+unique](#what-makes-a-row-unique) measures how often. If you need a coarser
+grain, `dr_HL_collapse()` is the sanctioned route and carries the guards a
+hand-rolled `group_by()` loses; it is described under [record
+types](#record-types-what-speciesvalidity-means). And `SpeciesValidity` is in
+both keys because it is a record type rather than a quality flag — filtering
+it away discards real records.
+
+**You never need an AphiaID.** Both tables carry `latin`, `species` and
+`rank` alongside `Valid_Aphia`, so a species is selected by name:
+
+```{r, eval = FALSE}
+dr_con("HL_length") |> filter(species == "Atlantic herring")
+dr_con("HL_length") |> filter(latin == "Sprattus sprattus")
+```
+
+That is not cosmetic. `Valid_Aphia == 126425` is unreadable, unverifiable on
+sight, and a typo in it returns an empty table rather than an error — which is
+the same failure mode as a wrong survey code, and just as quiet.
+
 ### `HL_length` is CPUEL, generalised
 
 ICES already publishes this table. It is called **CPUEL** — catch per unit
@@ -518,6 +617,29 @@ Over the 13,992,024 combinations at the coarser `.id` × `Valid_Aphia` ×
 `accuracy` (0.0001%). Rare — but each split is a separate count, and collapsing
 one is silent. `DevelopmentStage` is the easiest to overlook, being `NA` for
 99.8% of rows, and dropping it would add a berried record to an unstaged one.
+
+**If you need a coarser grain, ask for it — do not roll it by hand.**
+Everyone else's table is one of these with dimensions summed away, so the
+reduction is a normal thing to want. `dr_HL_collapse()` performs it, on the
+lazy table or a collected one:
+
+```{r, eval = FALSE}
+dr_con("HL_length") |>
+  dr_HL_collapse(c("SpeciesSex", "DevelopmentStage", "SpeciesValidity"))
+```
+
+It exists for what a `group_by()` silently loses rather than for the grouping
+itself: the all-`NA` case, where `sum(x, na.rm = TRUE)` over a group with
+nothing in it is `0` in R and `NULL` in SQL, so an unknown raising comes back
+as a confident zero; and the `DataType == "C"` rule, which keeps a rate from
+being reported as a count. It also refuses what cannot be summed —
+`accuracy` and `LengthType` where a group actually mixes them, since two
+records at one `length_mm` measured to 1 cm and to 5 cm are different bins.
+`{DATRAS}`'s `addSpectrum()` collapses a mixed `LngtCode` to the coarsest with
+only a warning; this errors and names the group. It does not reproduce
+`HL_summary`: that table's totals come from the submitted `TotalNumber`, which
+is a different quantity, as [two routes to a catch
+total](#two-routes-to-a-catch-total) sets out.
 
 That choice has one measurable cost, in [duplicated length
 series](#duplicated-length-series) below.

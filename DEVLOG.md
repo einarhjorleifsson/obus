@@ -1634,3 +1634,44 @@ move — "DATRAS is not big data", "under a minute" — which is the form
 Principle 8 asks for.
 
 `R CMD check` 0/0/0, 388 tests.
+
+### The article gains a formal specification, and the collapse verb
+
+Two gaps, both found by reading the article as a newcomer would rather than as
+its author.
+
+**It never said what the tables contain.** For a document that calls itself a
+reference article, `HL_length` and `HL_summary` were introduced only
+obliquely: "What each table answers" is a *comparison* (one row is / which
+species / numbers / weight), 350 lines in, and "Why these columns, and which
+of them could go" argues about trimming them. Nowhere was there a plain
+field-by-field statement. A reader had to reconstruct the schema from prose or
+go read the roxygen.
+
+New section **"The two tables, formally"**, placed immediately after the
+opening motivation and before any argument. It is built the Principle 8 way:
+**the column list and types are read from the published files at render**, and
+only the meanings are authored. A column added to obus and not described shows
+up in the rendered table as "undocumented -- add it to `DESC`", so the article
+cannot silently fall behind the data. Currently 0 such gaps across 18 + 16
+columns. `n_haul` and `n_measured` are described per-table rather than per-
+name, because they are genuinely different quantities in the two.
+
+**"You never need an AphiaID"** earned its own note. Both tables carry
+`latin`, `species` and `rank`, so `filter(species == "Atlantic herring")`
+works. That is not cosmetic: `Valid_Aphia == 126425` is unverifiable on sight
+(it is *Sprattus sprattus*), and a typo returns an empty table rather than an
+error -- the same quiet failure as a wrong survey code.
+
+**`dr_HL_collapse()` now appears where the reader meets the problem**, in
+"What makes a row unique", which is the section explaining the eight
+identifying fields and warning that dropping one is silent. It is introduced
+as what a hand-rolled `group_by()` loses rather than as a convenience, and it
+says plainly that it does not reproduce `HL_summary`.
+
+One rendering defect fixed on the way: em dashes inside the R description
+strings came out as literal `<U+2014>` through `kable()`. Replaced with `--`
+inside the chunk, which pandoc converts properly. Em dashes in the prose are
+untouched -- this is a chunk-string problem, not a file-wide one.
+
+Article renders clean at 2,146 lines.
