@@ -371,8 +371,11 @@ object (CA 5,662,051 x 40, HH 150,217 x 77, HL 14,367,618 x 21), zero swaps.
 The ~4x transient is the reshape -- `bind_rows` over 14M rows, two joins, and
 factorising every character column -- not the collect. It completes on a
 24 GB machine with roughly 10 GB free; it is the wrong thing to run on 16 GB.
-The row counts double as a check: CA is 5,968,027 - 305,976 orphans, and HL is
-HL_length's 14,001,605 + 366,013 bulk-only rows from `HL_summary`.
+The row counts double as a check, and the useful form is the **relation**
+rather than the three figures it happened to produce: the adapter's CA is raw
+CA minus its HH-orphans, and its HL is `HL_length` plus `HL_summary`'s
+bulk-only rows. Those identities survive the archive growing; the counts do
+not. Re-verified per-survey 2026-09-17 (NIGFS, both exact).
 
 **The `head()` caution applies to the RAW archive only.** `dr_con_raw("HL") |>
 head(3)` costs 7-8s against 0.4s for `dr_con("HL")`: a bare `LIMIT` has no
@@ -425,8 +428,14 @@ identifies no haul. `DATASET_products.R` prints the figure per build but does
 not enforce it — filtering would be obus inventing a rule. An `inner_join`
 to HH drops them silently, so `anti_join` first if it matters.
 
-**Measured on the full archive, 2026-08-31.** HH 150,217 hauls, `.id`
-unique, zero `NA`, zero orphan HL rows. HL 14,423,771 rows. species 2,022
+**Measured on the full archive, 2026-08-31 -- a dated snapshot, deliberately
+frozen.** These are the reference figures for that archive, not claims about
+the current one; the archive grows, and anything that must stay true is
+asserted in the tests instead (Principle 8). Of the claims below, `.id`
+uniqueness is one of those -- `PUBLISHED_GRAIN` carries `HH = ".id"`, so it is
+checked on every run and is not resting on this snapshot. Zero orphan HL rows
+is **not** asserted anywhere, which is worth knowing before relying on it.
+HH 150,217 hauls, `.id` unique, zero `NA`, zero orphan HL rows. HL 14,423,771 rows. species 2,022
 Valid_Aphia (15 not WoRMS-accepted, 11 forwarding elsewhere — the same counts
 the retired build measured in July). HL_length 14,001,605 rows.
 HL_summary 2,291,457 rows.
@@ -440,9 +449,14 @@ roxygen twice, and both times was fixed in the docs rather than in the code;
 a wrong key in a test fails, a wrong key in a sentence does not.
 - `HL_length` is keyed by `.id x Valid_Aphia x length_mm x accuracy x
   LengthType x SpeciesSex x DevelopmentStage x SpeciesValidity` -- eight
-  fields, 0 duplicated groups over all 14,001,605 rows (re-verified
-  2026-09-08). Every one is load-bearing; leaving one out introduces
-  duplicated groups: `SpeciesSex` 741,219, `DevelopmentStage` 5,476,
+  fields, and the table is **exactly unique at them**. That is a property
+  rather than a measurement, so it lives in
+  `tests/testthat/test-published-schema.R`, which asserts it against the
+  published files on every run -- there is no row count to restate here and
+  nothing to re-measure by hand (Principle 8). Every one of the eight is
+  load-bearing; leaving one out introduces duplicated groups, and the
+  relative sizes are what make the point (measured 2026-09-08):
+  `SpeciesSex` 741,219, `DevelopmentStage` 5,476,
   `LengthType` 3,909, `accuracy` 15, `SpeciesValidity` 15. These are
   genuinely separate counts and must not be collapsed *accidentally* --
   `dr_HL_collapse()` (2026-09-17) is the deliberate route, and exists because

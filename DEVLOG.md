@@ -1586,3 +1586,51 @@ private convention. Article renders clean, 53/53 chunks, no warnings.
 Cost worth recording: the setup block adds ~13 s to every render, and the
 `.qmd` can no longer be read as plain text for those figures. That was the
 trade Principle 8 named in advance; it applies to one file.
+
+### The AGENTS.md pass — four edits, not seventy-two
+
+Applied Principle 8 to `AGENTS.md`. Inline `` `r ` `` is not available here
+(the file is never rendered), so the moves are different from the article's:
+an invariant goes to a test, a relation replaces the figures it produced, and
+a snapshot gets labelled as one. Four edits, from 72 numbers.
+
+**The grain invariant left the prose.** It read "eight fields, 0 duplicated
+groups over all 14,001,605 rows (re-verified 2026-09-08)" — a *property*
+dressed as a measurement, complete with a hand-re-verification date. It is
+already asserted by `PUBLISHED_GRAIN` in `test-published-schema.R` against the
+published files on every run, so the prose now says the table is exactly
+unique at those eight fields and points at the test. No row count, nothing to
+re-verify by hand. The per-dimension duplicate counts stay, dated, because
+there the *relative sizes* are the argument for why all eight are
+load-bearing.
+
+**A relation replaced three counts.** "CA is 5,968,027 - 305,976 orphans, and
+HL is HL_length's 14,001,605 + 366,013 bulk-only rows" is really two
+identities that survive the archive growing, stated in the one form that does
+not. Verified both per-survey before rewriting (NIGFS, 2026-09-17, exact on
+CA and HL).
+
+I had meant to make those identities a test, and stopped. Two reasons, both
+worth recording rather than quietly dropping: `dr_get_datras()` takes **93 s
+for a single small survey**, against a whole suite that runs in ~60 s, so it
+does not belong in `R CMD check`; and NIGFS turns out to have zero orphans and
+zero bulk-only rows, so it would have asserted `x == x + 0` and proved
+nothing. Putting it in `data-raw/CHECK_datras_adapter.R` would be the right
+home, but doing it properly means replicating that script's exact
+survey/year/quarter/aphia/haulval/stdspec filter, and a check that is subtly
+mis-filtered is worse than none. Left undone deliberately.
+
+**The full-archive block is now labelled a dated snapshot, deliberately
+frozen** — which is what it always was. While labelling it I checked which of
+its claims are actually load-bearing elsewhere: `.id` uniqueness is asserted
+(`PUBLISHED_GRAIN` carries `HH = ".id"`), so it is not resting on the
+snapshot; **zero orphan HL rows is asserted nowhere**, and the file now says
+so, because that is exactly the kind of claim someone would rely on assuming
+it was checked.
+
+The performance block (2026-09-09 timings) and the historical findings in
+Principles 4-6 were left alone: they are dated evidence for claims that do not
+move — "DATRAS is not big data", "under a minute" — which is the form
+Principle 8 asks for.
+
+`R CMD check` 0/0/0, 388 tests.
