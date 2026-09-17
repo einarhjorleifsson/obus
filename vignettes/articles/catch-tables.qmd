@@ -1646,8 +1646,9 @@ duration term at all:
 
 ([D13](#d13).)
 
-Its 2007 successor **deleted the question and kept the formula**. ICES's own
-authors were not certain whether duration belongs in the divisor.
+Its 2007 successor **deleted the question and kept the formula**. So the query
+was closed by removal rather than by an answer: what survives in print is a
+CPUE formula with no duration term, and no longer the note that challenged it.
 
 ## 7. Which hauls count {#which-hauls-count}
 

@@ -1765,3 +1765,36 @@ remaining bare occurrence: `HH row 29 (DataType)`, `HL row 17, TotalNumber`,
 did this; now they all do.
 
 405 internal links, 0 broken, renders clean.
+
+### One sentence that claimed to know what ICES's authors were thinking
+
+"ICES's own authors were not certain whether duration belongs in the divisor."
+Removed, and worth recording why rather than just fixing it.
+
+The evidence behind it is a bracketed editorial query in the 2006
+variance-estimation report — *"[Are they assuming each haul is one hour? If
+not should number of hours fished be included in the division?]"* — beside a
+CPUE formula with no duration term, and the 2007 successor's deletion of the
+question while keeping the formula. That is good documentary evidence. The
+sentence drawn from it was not a reading of the evidence but an inference
+about people's state of mind, and it fails the article's own opening standard:
+every claim is either a quotation from an ICES document or a measurement of
+the archive, and this was neither.
+
+It was also loose on its own terms. The query reads "Are **they** assuming" —
+a reviewer questioning someone else's formula in a document marked `DRAFT` on
+its cover. So it is not evidence of *the authors'* uncertainty even taken at
+face value; it is evidence that a reviewer raised a question.
+
+What the documents actually support is narrower and, as it turns out, sharper:
+the query was **closed by removal rather than by an answer**. What survives in
+print is a CPUE formula with no duration term, and no longer the note that
+challenged it. That is a statement about the documentation, which is the
+article's subject, rather than about the competence of the people who wrote
+it, which is not.
+
+Swept the article for the same move and found none: the only two other hits
+for this class of phrasing both use "oversight" in the opposite direction, to
+say explicitly that something is *not* one. The register entry built on the
+same evidence (D13) was already clean — "carries an unresolved editorial query
+in its body text" — which is why this stood out.
