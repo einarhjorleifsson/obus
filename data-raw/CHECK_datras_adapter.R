@@ -142,4 +142,44 @@ ok("HL carries bulk-recorded species too, not only measured ones",
    sprintf("%s rows have no length (from HL_summary), %s have one",
            sum(is.na(obj[["HL"]]$LngtCm)), sum(!is.na(obj[["HL"]]$LngtCm))))
 
+hdr("7. row-count identity -- HL is HL_length + HL_summary's bulk-only rows")
+# AGENTS.md states this as a relation rather than as row counts, because the
+# identity survives the archive growing and the counts do not (Working
+# Principle 8). This is where it is actually checked.
+#
+# The filters are not re-specified: the haul set comes from obj's own HH and
+# the species from APHIA, which is exactly what .dr_datras_hl()'s keep() and
+# .dr_datras_fetch()'s by_species() apply. Re-typing survey/years/quarters
+# here would be a second copy to drift, and a mis-filtered check is worse
+# than none.
+ids <- obj[["HH"]][["haul.id"]]
+src_len <- dr_con("HL_length") |>
+  dplyr::filter(.id %in% ids, Valid_Aphia %in% APHIA) |>
+  dplyr::collect()
+src_smry <- dr_con("HL_summary") |>
+  dplyr::filter(.id %in% ids, Valid_Aphia %in% APHIA) |>
+  dplyr::collect()
+n_len  <- nrow(src_len)
+n_bulk <- nrow(dplyr::anti_join(
+  src_smry, dplyr::distinct(src_len, .id, Valid_Aphia, SpeciesValidity),
+  by = c(".id", "Valid_Aphia", "SpeciesValidity")))
+
+ok("HL row count is HL_length + HL_summary bulk-only, exactly",
+   nrow(obj[["HL"]]) == n_len + n_bulk,
+   sprintf("HL %s | HL_length %s + bulk-only %s = %s",
+           nrow(obj[["HL"]]), n_len, n_bulk, n_len + n_bulk))
+
+# Stronger than the total: the two sources must land on the right side of the
+# LngtCm split, so a compensating error in both cannot pass.
+ok("the length/no-length split matches the two sources row for row",
+   sum(!is.na(obj[["HL"]]$LngtCm)) == n_len &&
+     sum(is.na(obj[["HL"]]$LngtCm)) == n_bulk,
+   sprintf("with length %s (expect %s) | without %s (expect %s)",
+           sum(!is.na(obj[["HL"]]$LngtCm)), n_len,
+           sum(is.na(obj[["HL"]]$LngtCm)), n_bulk))
+
+# The sibling identity -- CA is raw CA minus its HH-orphans -- is NOT checked
+# here: this script runs ca = FALSE by design (see the header), so there is no
+# CA component to count. Verified by hand per-survey 2026-09-17 (NIGFS, exact).
+
 hdr(sprintf("RESULT: %d checks passed, %d showed a difference", PASS, FAIL))
