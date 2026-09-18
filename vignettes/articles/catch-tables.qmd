@@ -135,16 +135,26 @@ prominence in the data.
 ## Why these two tables exist
 
 An HL record is a **submission**, not a catch. What a country sends ICES for
-one haul is a set of length rows: a length class, the number of fish measured
-in that class, the raising factor relating the measured sub-sample to the
-whole catch, and — repeated on every row — the totals for that species
-category in number and weight. Taken at face value a length row says "*n* fish
-measured", not "*n* fish caught".
+one haul is a set of length rows: a length class, a number, a raising factor
+relating a measured sub-sample to the whole catch, and — repeated on every
+row — the totals for that species category in number and weight.
 
-Getting from one to the other is the same short list of steps for every survey
-in the archive:
+**What that number means depends on how the country chose to submit.** Under
+most conventions it is fish *measured*, and the raising factor is what relates
+it to fish caught. Under `DataType` C it is neither: the submitter has already
+raised it *and* already divided by the hours fished, so the row carries a
+catch rate and the factor is 1. That is not a corner case — it is 49,717 of
+150,217 hauls and a third of every length row in the archive. So a length row
+does not say "*n* fish caught", and it does not reliably say "*n* fish
+measured" either: **the same column does not carry the same quantity in every
+submission**, and which one it carries is not visible in HL at all. It is in
+`DataType`, over in the haul record.
 
-- raise the measured numbers by the sub-sampling factor;
+Getting from a submission to a catch is the same short list of steps for every
+survey in the archive:
+
+- raise the measured numbers by the sub-sampling factor — except where the
+  convention has already done it;
 - turn the length class into a length, in known units;
 - decide what to do when the raising factor is missing, or the haul lasted no
   time at all;

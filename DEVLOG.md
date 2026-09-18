@@ -2037,3 +2037,44 @@ This is the same shape as the four seams fixed yesterday — a passage that was
 correct when written and was invalidated by something inserted above it. Worth
 noting that moving material is not a free operation even when nothing is
 deleted: every relocation lengthens some back-reference somewhere.
+
+### The article's opening sentence was wrong for a third of the archive
+
+Challenged, and correctly. The framing sentence read:
+
+> Taken at face value a length row says "*n* fish measured", not "*n* fish
+> caught".
+
+Under `DataType` C that is false in both halves. The submitter has already
+raised the number *and* already divided by the hours fished, so the row
+carries a catch rate; `SubsamplingFactor` is 1 and no physical count of
+measured fish survives at that grain. Measured today: **4,651,701 of
+14,001,605 length rows (33.2%), from 49,717 of 150,217 hauls.**
+
+Two things make this worth more than a correction. First, **the article
+already knew**: obstacle 1 says `n_measured` is `NA` for C precisely because
+the convention reports a rate, the field glossary says "Per-hour for
+`DataType` C only", and the worked C example added two days ago shows five
+measured fish appearing as a `NumberAtLength` column summing to 10. The
+opening paragraph and the body had been contradicting each other, and the body
+was right. Second, it is the **first substantive sentence of the argument** —
+the one a reader uses to decide whether the author understands the format.
+
+Rewritten to make the variability the point rather than a caveat: under most
+conventions the number is fish measured and the factor relates it to fish
+caught; under C it is neither; so **the same column does not carry the same
+quantity in every submission** — and which one it carries is not visible in HL
+at all, only in `DataType`, over in the haul record. That is a stronger
+opening than the original, because it is the actual hazard, and it sets up the
+raising section instead of having to be walked back there.
+
+The first of the four steps gained its exception in the same edit: "raise the
+measured numbers by the sub-sampling factor — *except where the convention has
+already done it*". Swept for the same error elsewhere and found none; the
+glossary and the obstacle sections had it right all along.
+
+The general lesson is about where errors of this kind survive. This one lived
+in the **introduction**, which is the part least likely to be re-read against
+the evidence, and it was contradicted by three separate passages further down
+without anyone noticing — including by an example I added myself while
+believing the opening was fine.
