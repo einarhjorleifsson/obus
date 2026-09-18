@@ -609,19 +609,32 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # rather than a grouped join across two, and a naive left_join() to
   # HL_length fans out and silently multiplies, which is a trap worth removing.
   #
-  # The same all-NA guard as everywhere else: a group whose raising is unknown
-  # (missing SubsamplingFactor, non-positive HaulDuration) must come back NA,
-  # not the 0 that sum(x, na.rm = TRUE) yields in R.
+  # ANY unraisable length row blanks the total, not just all of them. A group
+  # whose raising is unknown (missing SubsamplingFactor, non-positive
+  # HaulDuration) must come back NA, not the 0 that sum(x, na.rm = TRUE) yields
+  # in R -- and not a partial sum either.
+  #
+  # The all-NA form of this guard was wrong in one real record:
+  # NS-IBTS:2024:3:NO:58G2:GOV:60235:300, Hippoglossoides platessoides, is
+  # submitted in two SpeciesCategory codes. The first carries
+  # SubsamplingFactor 1 and raises to 2 fish; the second carries no factor at
+  # all, so its two length rows cannot be raised. Summing only what raised
+  # published n_haul = 2 against n_measured = 4 -- a catch smaller than the
+  # sub-sample it came from, which cannot happen. A partial raise is not a
+  # catch, so it is NA. Archive-wide this is the only group affected: no group
+  # at dr_HL_length()'s own level mixes raisable and unraisable rows, so the
+  # matching guard there needs no change.
   hl_raised <- hl_len_base |>
     dr_add_n_and_cpue() |>
     dplyr::mutate(.r_raw = n_haul) |>
     dplyr::group_by(.id, Valid_Aphia, SpeciesValidity) |>
     dplyr::summarise(
       n_haul = sum(.r_raw, na.rm = TRUE),
+      .r_n   = dplyr::n(),
       .r_ok  = sum(as.integer(!is.na(.r_raw)), na.rm = TRUE),
       .groups = "drop"
     ) |>
-    dplyr::mutate(n_haul = dplyr::if_else(.r_ok == 0, NA_real_, n_haul)) |>
+    dplyr::mutate(n_haul = dplyr::if_else(.r_ok < .r_n, NA_real_, n_haul)) |>
     dplyr::select(.id, Valid_Aphia, SpeciesValidity, n_haul)
 
   # ---- n_measured: raw, un-raised count actually run through calipers ----

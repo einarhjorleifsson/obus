@@ -450,3 +450,55 @@ test_that("n_haul is NA, not 0, for a species with no length data", {
   expect_true(is.na(out$n_haul))      # nothing to reconstruct from
   expect_equal(out$n_measured, 0)     # a known zero: never measured
 })
+
+# --- a partly-unraisable group must not publish a partial sum -----------------
+# Modelled on NS-IBTS:2024:3:NO:58G2:GOV:60235:300 (Hippoglossoides
+# platessoides), submitted in two SpeciesCategory codes: the first carries
+# SubsamplingFactor 1, the second carries none. Summing only the rows that
+# could be raised published n_haul = 2 against n_measured = 4 -- a catch
+# smaller than the sub-sample drawn from it.
+
+test_that("a group with any unraisable length row returns NA n_haul, not a partial sum", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2024L, Quarter = 3L,
+                   DataType = "R", HaulDuration = 28, HaulValidity = "V")
+  hl <- data.frame(
+    .id                   = 1L,
+    Valid_Aphia           = 127137L,
+    NumberAtLength        = c(1, 1, 1, 1),
+    LengthClass           = c(145, 185, 130, 180),
+    LengthCode            = ".", LengthType = "1",
+    SubsamplingFactor     = c(1, 1, NA, NA),      # category 2 has no factor
+    SpeciesSex            = NA_character_,
+    SpeciesValidity       = 1L,
+    DevelopmentStage      = NA_character_,
+    TotalNumber           = c(2, 2, NA, NA),
+    SpeciesCategoryWeight = c(59, 59, NA, NA),
+    SpeciesCategory       = c(1L, 1L, 2L, 2L),
+    stringsAsFactors      = FALSE
+  )
+  sp <- data.frame(Valid_Aphia = 127137L, latin = "Hippoglossoides platessoides",
+                   species = "long rough dab", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_true(is.na(out$n_haul))        # NOT 2
+  expect_equal(out$n_measured, 4)       # all four fish were measured
+})
+
+test_that("a group whose length rows all raise still returns the sum", {
+  hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2024L, Quarter = 3L,
+                   DataType = "R", HaulDuration = 28, HaulValidity = "V")
+  hl <- data.frame(
+    .id = 1L, Valid_Aphia = 127137L, NumberAtLength = c(1, 1),
+    LengthClass = c(145, 185), LengthCode = ".", LengthType = "1",
+    SubsamplingFactor = c(2, 2), SpeciesSex = NA_character_, SpeciesValidity = 1L,
+    DevelopmentStage = NA_character_, TotalNumber = c(4, 4),
+    SpeciesCategoryWeight = c(59, 59), SpeciesCategory = 1L,
+    stringsAsFactors = FALSE
+  )
+  sp <- data.frame(Valid_Aphia = 127137L, latin = "Hippoglossoides platessoides",
+                   species = "long rough dab", rank = "Species")
+  out <- dr_HL_summary(hh, hl, species = sp)
+
+  expect_equal(out$n_haul, 4)
+  expect_equal(out$n_measured, 2)
+})
