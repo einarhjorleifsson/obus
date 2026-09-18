@@ -25,27 +25,19 @@ options(width = 120)
 options(pillar.sigfig = 7)
 ```
 
-This is a reference article about the two catch tables `{obus}` derives from the
-DATRAS HL record — `HL_length` and `HL_summary` — and about the parts of the
-ICES exchange format that decide what numbers come out of them. It describes
-what the package does now. It does not propose changes to it.
+This article is about two tables — `HL_length` and `HL_summary` — that
+`{obus}` derives from the DATRAS HL record, and about why the record makes
+them necessary. It describes what the package does now; it does not propose
+changes to it.
 
-Every claim below is either a quotation from an ICES document or a measurement
-of the archive, and the measurements are given as code you can run. The
-examples read the published tables directly, so they need nothing but the
-package:
-
-**A note on the numbers, because DATRAS grows.** The structural counts — how
-many rows each table has, how many haul x species groups, how many of those
-carry no length data — are **measured when this article is rendered**, not
-typed in, so they cannot drift apart from each other or from the archive.
-The analytical figures are different: the CPUEL reconciliation, the rounding
-regimes, the confidence intervals took real work to establish and re-running
-them on every render would embed whole analyses in a reference article. Those
-are stated once, as dated evidence, and the claims they support are written in
-the form that survives the archive growing — *only*, *exactly one*, *never* —
-so that if one ever stops being true, that is a finding rather than a stale
-number.
+**What it argues for is the tables, not the package.** They are the
+calculation nearly every DATRAS analysis performs before it does anything
+else, and the right home for them is ICES's own product suite, next to CPUEL —
+computed once, centrally, and served to everyone. Not re-implemented once per
+institute, once per language, once per working group, each version quietly
+differing from the others in exactly the places Part III catalogues. If ICES
+served these two tables, [`{obus}`](https://github.com/einarhjorleifsson/obus)
+would not need to exist, and that would be the better outcome.
 
 ```{r}
 library(obus)
@@ -74,82 +66,55 @@ M <- list(
                            by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
                  count() |> pull(n)
 )
+# Hauls touched by that, so the prose can say whether it is concentrated or
+# spread. The claim it supports is "a third of hauls", which will drift.
+M$sum_hauls <- dr_con("HL_summary") |> distinct(.id) |> count() |> pull(n)
+M$sum_nolen_hauls <- dr_con("HL_summary") |>
+  anti_join(dr_con("HL_length") |>
+              distinct(.id, Valid_Aphia, SpeciesValidity),
+            by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
+  distinct(.id) |> count() |> pull(n)
 M$sum_nolen_pct <- 100 * M$sum_nolen / M$sum_rows
+M$sum_nolen_haul_pct <- 100 * M$sum_nolen_hauls / M$sum_hauls
 # Thousands separators, so the prose reads the way it always has.
 N <- function(x) formatC(as.numeric(x), format = "d", big.mark = ",")
 ```
 
-The article is in three parts, with appendices. **Part I** is what is wrong
-with the HL record as it stands. **Part II** is the two tables that follow
-from it — what they are, what they answer, and why they are worth using
-instead of the raw record. **Part III** is the conventions and contradictions
-in the exchange format that decide what numbers come out of them, ordered by
-how far each one can move a result. The **appendices** hold the reference and evidence
-material — the CPUEL reconstruction, the `{DATRAS}` interoperability run, the
-name crosswalk, the register of cross-document discrepancies — cited from the
-text where it matters but not in the reading path.
-
-**What this is arguing for is the tables, not the package.** `HL_length` and
-`HL_summary` are the calculation nearly every DATRAS analysis performs before
-it does anything else, and the right home for them is ICES's own product
-suite, next to CPUEL — computed once, centrally, and served to everyone. Not
-re-implemented once per institute, once per language, once per working group,
-each version quietly differing from the others in exactly the places Part III
-catalogues.
-
-[`{obus}`](https://github.com/einarhjorleifsson/obus) is a reference
-implementation of that idea and a demonstration that it holds for the whole
-archive rather than part of it. Every rule it applies is quoted from an ICES
-document below; every figure is reproducible from the published archive with
-the code shown. If ICES served these two tables, this package would not need
-to exist — and that would be the better outcome. The nearest thing to a proof
-of the proposal is that [CPUEL itself can be rebuilt from
-`HL_length`](#building-cpuel-from-hl_length), worked through in the
-appendices.
-
-Read the balance right. [`{obus}`](https://github.com/einarhjorleifsson/obus)
-applies ICES's own procedures throughout, and each of them is a document you
-can open:
-
-- the **raising steps** come from the index-calculation procedures —
-  [`Indices_Calculation_Steps_IBTS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_IBTS.pdf)
-  [@ices2022ibtsindices] and
-  [`Indices_Calculation_Steps_BITS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_BITS.pdf)
-  [@ices2013bitsindices];
-- the **field meanings** come from the
-  [field descriptions](https://www.ices.dk/data/Documents/DATRAS/DATRAS_Field_descriptions_and_example_file_December2025.xlsx)
-  [@ices2026fielddesc], and the worked Example file in the same workbook;
-- the **field names** come from ICES's own crosswalk — the
-  [`getDatrasFieldList`](https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList)
-  web service and the
-  [New Headers lookup](https://www.ices.dk/data/Documents/DATRAS/DATRAS_NewHeaders_Lookup_Dec2024.xlsx)
-  [@ices2024newheaders].
-
-For most of the format that is the whole story, so it is not written about
-here. The later sections concentrate on the small number of places where two
-ICES statements pull in different directions, or where the format says nothing
-and `{obus}` had to choose. Their prominence in this article is not their
-prominence in the data.
+Every claim below is either a quotation from an ICES document or a measurement
+of the archive, given as code you can run. [How this article was
+made](#how-this-article-was-made), in the appendices, says what counts as
+evidence and how the figures are kept from drifting as the archive grows.
 
 # Part I. What is wrong with the HL table
 
-## From a submission to a catch
+## A good record, and a poor table
 
-An HL record is a **submission**, not a catch. What a country sends ICES for
-one haul is a set of length rows: a length class, a number, a raising factor
-relating a measured sub-sample to the whole catch, and — repeated on every
-row — the totals for that species category in number and weight.
+HL does the job it was designed for — capturing, faithfully and completely,
+what a country submitted for a haul. That is not the same job as being the
+table you analyse from, and this part is about the difference. Nothing
+below is an argument that the format is broken; it is an argument that the
+record and the analysis want different shapes, and that the conversion between
+them is being done separately by everyone who needs it.
+
+What a country sends ICES for one haul is a set of length rows: a length
+class, a number, a raising factor relating a measured sub-sample to the whole
+catch, and — repeated on every row — the totals for that species category in
+number and weight.
 
 **What that number means depends on how the country chose to submit.** Under
 most conventions it is fish *measured*, and the raising factor is what relates
 it to fish caught. Under `DataType` C it is neither: the submitter has already
-raised it *and* already divided by the hours fished, so the row carries a
-catch rate and the factor is 1. That is not a corner case — it is 49,717 of
-150,217 hauls and a third of every length row in the archive. So a length row
-does not say "*n* fish caught", and it does not reliably say "*n* fish
-measured" either: **the same column does not carry the same quantity in every
-submission**, and which one it carries is not visible in HL at all. It is in
-`DataType`, over in the haul record.
+raised it *and* already scaled it to one hour of towing, so the row carries a
+catch rate and the factor is 1. Note which way that scaling goes: 88% of `C`
+hauls are shorter than an hour and the median is a 30-minute tow, so the
+number on the row is usually **larger** than the number of fish caught, not
+smaller. That is not a corner case either — `C` is 49,717 of 150,217 hauls and
+a third of every length row in the archive.
+
+Given the `DataType`, any one row is unambiguous. **It is the column that is
+ambiguous**, across submissions — and the `DataType` is not in HL at all. It
+is in the haul record, which is why no amount of reading an HL row tells you
+what its numbers are.
 
 Getting from a submission to a catch is the same short list of steps for every
 survey in the archive:
@@ -249,30 +214,40 @@ rather than between them.
 
 The tidy prescription for the first problem — several observational units in
 one table — is to give each its own, and that is what `HL_length` and
-`HL_summary` are — not a
-packaging decision but the normalisation the record has been asking for. Each
-carries one row per observation of one kind, with each column a single
-variable in a stated unit: `length_mm` is always millimetres, `n_haul` is
+`HL_summary` are: not a packaging decision but the normalisation the record
+has been asking for. Each carries one row per observation of one kind, with
+each column a single variable in a stated unit: `length_mm` is always millimetres, `n_haul` is
 always a whole-haul count, `n_hour` is always a rate. The branching on
 `DataType` and `LengthCode` is resolved once, when the tables are built,
 instead of in every analysis that reads them.
 
-**Two tables, three tallies — the arithmetic there does not work, and the gap
-is worth stating.** `HL_length` is the length tally and `HL_summary` the catch
-tally. The sub-sample tally gets no table: `SubsamplingFactor`,
-`SubsampledNumber` and `SubsampleWeight` appear in neither file. What survives
+**Two tables, three tallies.** `HL_length` is the length tally and
+`HL_summary` the catch tally. The sub-sample tally gets no table:
+`SubsamplingFactor`, `SubsampledNumber` and `SubsampleWeight` appear in
+neither file. What survives
 of it is `n_measured`, the un-raised count, carried at the length grain in
 both tables; the factor is applied and then discarded.
 
-That is defensible for most uses — once the raising is done, how it was done
-is a property of the sampling rather than of the catch — but it is a real
-loss, and the article does not pretend otherwise. `n_measured` is [not
-recoverable](#why-these-columns-and-which-of-them-could-go) from `n_haul`
-where one output row aggregates raw rows raised by different factors, and
-`SubsampleWeight` disappears entirely, taking with it the only candidate
-cross-check the weight path has. **Whether the sub-sample deserves a table of
-its own is open**, and a serious proposal to ICES would have to answer it
-rather than inherit this article's two.
+**Is a third table warranted? Probably not, and the reason is what it would be
+used for.** The sub-sample tally answers questions about *method* — how much
+of the catch was examined, whether a raising factor is plausible, how a
+provider's sampling changed over time. Those are quality-control and
+methodological questions, and they are asked at the record level by people who
+want the records: HH and HL themselves, which ICES already serves and which
+`{obus}` exposes unchanged through `dr_con_raw()`. A derived table would be a
+second copy of something nobody was struggling to obtain. The catch tables
+exist because the catch questions need arithmetic that is easy to get wrong;
+the sampling questions need the raw fields undisturbed, which is a different
+service.
+
+One piece of the sub-sample tally does earn a place in both tables, and it is
+carried: `n_measured`. How much of a length distribution was measured rather
+than raised is a question asked *about a catch*, at the catch's grain, which
+is why it belongs here and the factor does not. What genuinely disappears is
+`SubsampleWeight`, and with it the only candidate cross-check the weight path
+has — that is a real loss rather than a tidy-up, and it is [an open
+question](#a-cross-check-that-exists-but-is-not-stated-in-words) rather than a
+settled one.
 
 # Part II. The two tables
 
@@ -541,11 +516,16 @@ argument would be academic if the split did not also fall along a seam the
 data actually has. It does, in two places, and both come from the data rather
 than from convenience.
 
-**Most of a haul's species roster is not length-measured.** A haul's record
+**Part of a haul's species roster is never length-measured.** A haul's record
 routinely includes species that were only counted in bulk, only weighed, or
 only noted as present. `r N(M$sum_nolen)` of `HL_summary`'s
 `r N(M$sum_rows)` rows — **`r sprintf("%.1f%%", M$sum_nolen_pct)`** — have no
-length rows behind them at all:
+length rows behind them at all. That is a minority of records, but it is not a
+rare corner of the archive: those records fall in
+`r N(M$sum_nolen_hauls)` of `r N(M$sum_hauls)` hauls,
+**`r sprintf("%.0f%%", M$sum_nolen_haul_pct)`** of them, so a length table
+alone would quietly drop at least one species from a third of the hauls it
+covers:
 
 ```{r}
 dr_con("HL_summary") |>
@@ -872,6 +852,13 @@ rest on them are flagged as such each time.
 
 ## The obstacles, in order
 
+**For most of the format there is nothing to say, and that is not said often
+enough.** The overwhelming majority of DATRAS fields mean what the field
+descriptions say they mean, and are used that way. What follows concentrates
+on the small number of places where two ICES statements pull in different
+directions, or where the format says nothing and `{obus}` had to choose — so
+their prominence here is not their prominence in the data.
+
 The rest of this article is one section per obstacle, ordered by how far it can
 move a number you would report, and by how much of it is still unsettled. The
 first three account for essentially all of it — and they are the three faces
@@ -956,7 +943,13 @@ reader who does not have the file open.
 
 ### The `SubsamplingFactor` rule by `DataType`
 
-The `DataType` vocabulary:
+The `DataType` vocabulary — and note that its `-9` is **a classification, not
+a blank**. `icesVocab`'s `TS_DataType` gives it a meaning of its own, and
+`{opus}`, which curates the archive's field dictionary, records it as one of
+the three sentinels it keeps rather than nulls, on the grounds that nulling it
+would erase the only marker distinguishing a haul known to be invalid from one
+whose `DataType` was never recorded (see [missing
+values](#missing-values-and-what--9-means)):
 
 | Code | Label |
 |---|---|
@@ -973,8 +966,15 @@ and the `SubsamplingFactor` rule:
 > depending on whether they were subsampled.
 
 So `1` is a specific claim — *this species was not sub-sampled* — and it is
-not the same statement as "no factor was supplied", which the format expects
-as `-9`.
+not the same statement as "no factor was supplied".
+
+**That absence is a second, unrelated `-9`.** The `General Notes` tell
+submitters to send `-9` for any field with no information, so a missing
+`SubsamplingFactor` arrives that way — but it carries none of the meaning
+`DataType`'s `-9` does. It is a blank: `{opus}`'s entry for the field records
+no sentinel at all, only ICES's rule and the fact that the field is required.
+So `{opus}` nulls it, and you never meet it in the archive as served —
+144,663 HL rows carry no factor, and not one carries a `-9`.
 
 **What that looks like in the file.** Two cod records, one of each convention.
 Under `R` the measured fish are a sub-sample and the factor raises them:
@@ -1398,11 +1398,16 @@ actively misleading here: the overall direction split is 55/45, which looks
 like noise and is not — it is a symmetric population, a strongly directional
 one, and a reversed tail added together.
 
-**What explains the gap, in short.** Most of it is arithmetic rather than
-error: rounding of the raising factor, `DataType` C rates re-rounded per length
-row, and a few hundred duplicated length series. The decomposition — the
-provider-by-provider rounding regimes, the directional tests, and the Can-Mar
-population that resists all of them — is in [What explains the
+**What explains the gap — and how much is still unexplained.** Two populations
+dominate the whole-fish residual, and neither is a tidy arithmetic story. The
+largest is **Can-Mar, 31,047 groups, 42% of it**, where two candidate
+mechanisms remain untested. Next is the 1–2 fish band, some 29,000 groups that
+test as genuine symmetric noise — 50.27% one way, with a confidence interval
+straddling even. Between them that is four fifths of the residual, none of it
+closed. The mechanisms that *are* established — a raising factor rounded to an
+integer, `DataType` C rates re-rounded per length row, duplicated length series
+— account for specific and comparatively small populations. The full
+decomposition, with the status of each, is in [What explains the
 disagreement](#what-explains-the-disagreement) and the sections after it in the
 appendices.
 
@@ -2472,6 +2477,34 @@ series](#duplicated-length-series) that inflate `n_haul` in 428 records cannot
 inflate `w_haul` there. The two affected sets are expected to be disjoint; that
 has **not been computed**, and a non-empty result would be a new finding.
 
+
+## How this article was made {#how-this-article-was-made}
+
+**What counts as evidence.** Every claim is either a quotation from an ICES
+document or a measurement of the archive, and the measurements are given as
+code that reads the published tables directly, so they need nothing but the
+package. The documents themselves are listed in [what ICES provides](#what-ices-provides-and-what-counts-as-evidence)
+at the head of Part III.
+
+**A note on the numbers, because DATRAS grows.** The structural counts — how
+many rows each table has, how many haul x species groups, how many of those
+carry no length data — are **measured when this article is rendered**, not
+typed in, so they cannot drift apart from each other or from the archive. The
+analytical figures are different: the CPUEL reconciliation, the rounding
+regimes, the confidence intervals took real work to establish, and re-running
+them on every render would embed whole analyses in a reference article. Those
+are stated once, as dated evidence, and the claims they support are written in
+the form that survives the archive growing — *only*, *exactly one*, *never* —
+so that if one ever stops being true, that is a finding rather than a stale
+number.
+
+**On the package.** [`{obus}`](https://github.com/einarhjorleifsson/obus) is a
+reference implementation of the proposal and a demonstration that it holds for
+the whole archive rather than part of it. Every rule it applies is quoted from
+an ICES document; every figure is reproducible from the published archive with
+the code shown. The nearest thing to a proof of the proposal is that [CPUEL
+itself can be rebuilt from `HL_length`](#building-cpuel-from-hl_length),
+worked through above.
 
 ## References {.unnumbered}
 
