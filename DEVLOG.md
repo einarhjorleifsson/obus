@@ -2293,3 +2293,163 @@ expected EVHOE's single anomalous `C` year (2018, in an otherwise `R` series
 zero `NA` in 2018 — because obus converts C to per-haul using the duration, so
 the series stays continuous. The guess was wrong and checking it cost one
 query.
+
+### A new check family: is a `DataType` label right?
+
+Prompted by a challenge — could EVHOE's single `C` year (2018, in an otherwise
+`R` series from 1997) be a mislabelling? Tested rather than guessed, and the
+answer is no, but the *test* turned out to be the interesting part and is now
+`PLAN-qc-checks.md` §3.13.
+
+**Why the label is checkable at all.** `C` means `NumberAtLength` is already
+standardised to one hour, `R` means it is a per-haul count. So at a boundary
+where a series switches between them with tow duration unchanged, the raw
+numbers must step by `60 / HaulDuration` — a prediction that comes from ICES's
+own definition and needs no external reference.
+
+**EVHOE 2018 corroborates its own label.** Everything else about the year
+matches its neighbours: 155 hauls against 151-161, median tow 30 minutes
+throughout, `SubsamplingFactor` of 1 in every year, so the label is the only
+thing that changes. Median summed `NumberAtLength` per haul x species over
+four common species: 2016 **49.00**, 2018 **73.50**, 2019 **32.50**. The 2018
+raw figure is about twice its neighbours, exactly as `C` on a half-hour tow
+requires, and obus's conversion returns it to **36.75**, back in range. Had
+the label been wrong the raw value would have sat at neighbour level and the
+conversion would have halved correct data.
+
+**The population is small and known**: over 51 `(survey, country)` series
+there are 25 convention changes between consecutive reported years, in 13
+series. Sixteen are `R` <-> `C` and therefore scale-testable; the `R` <-> `P`
+and `R` <-> `S` changes are not, since neither implies a scale factor.
+
+Three checks, and the third matters as much as the first two:
+`CNV_STEP_MISSING` (no step where one is required — the mislabel case),
+`CNV_STEP_WRONG_SIZE` (deliberately a separate code, because a wrong-sized
+step points at an unrecorded effort change rather than a wrong label), and
+`CNV_DURATION_CONFOUND` (duration also changed, so the test is *void*, not
+passed — emitted so a silent absence is not read as a clean bill).
+
+Scoped honestly in the plan: the same four species give 26.50 in 2020 and
+21.00 in 2021, so year-to-year variation is large and a boundary can only be
+judged where the flanking years are stable. The check reports observed and
+expected ratios and leaves the call to a reader.
+
+This is the only family in the plan that tests **ICES's metadata against ICES's
+data** rather than a record against a written rule, and it is cheap — 16
+boundaries, one profile query. Plan now has thirteen families; `TODO.md`
+updated from twelve.
+
+### `SubsamplingFactor` below 1: obus publishes an impossible number
+
+Followed up from a question about the observed minimum, 0.24, against ICES's
+rule that the factor is 1 or greater. It is a real defect, it is small, and
+obus carries it through.
+
+**The factor is the weight ratio.** On **342 of 342** rows where both weights
+are present, `SubsamplingFactor` equals `SpeciesCategoryWeight /
+SubsampleWeight` within 0.01. So a factor below 1 says the category weighed
+less than the sub-sample drawn from it, which cannot happen. Note the sample
+is biased — it was selected *by* the ratio — so this does not settle whether
+the identity generalises; the unbiased test in `PLAN-qc-checks.md` §8 is still
+unrun. What it does establish is that the factor is weight-derived for these
+providers, which is what makes the diagnosis below credible rather than
+speculative.
+
+**Extent.** 372 HL rows, 60 haul x species x category groups, 56 hauls, **all
+`DataType` R**. SP-NORTH ES 50 groups (2000, then 2020-2022), BITS DK/DE, one
+each EVHOE and SP-ARSA. Rare, concentrated, and recurring rather than one bad
+year.
+
+**Two populations, which is why the check reports in bands:**
+
+| band | groups | counts also inverted |
+|---|---:|---:|
+| 0.99-1.00 | 5 | 0 |
+| 0.90-0.99 | 28 | 12 |
+| below 0.90 | 27 | 21 |
+
+The top band is benign — the sub-sample *was* the whole catch and two
+weighings differ by rounding. Below 0.90, four in five have
+`TotalNumber < SubsampledNumber` as well, so the weight and the count agree
+that something is reversed.
+
+**The likely cause, with a worked case.** `SP-NORTH:2000:4:ES:29CS:BAK:066:66`,
+`Valid_Aphia` 126484: a sub-sample of 104 g and 11 fish against a category of
+25 g and 3 fish. The two ratios agree — 104/25 = 4.2, 11/3 = 3.7 — which is
+what a **swap of `SubsampleWeight`/`SpeciesCategoryWeight` and their counts**
+looks like, and what two independent errors would not. That promotes §8's
+labelled hypothesis from a guess to a diagnosis with an instance.
+
+**What it costs obus.** 512 `HL_length` rows, and on **372 of them
+`n_haul < n_measured`** — the raised whole-haul count below the number of fish
+actually measured. One row reads `n_haul` 0.24 against `n_measured` 1. This is
+the first case found where obus publishes a value that is not merely uncertain
+but physically impossible.
+
+**And the flag that exists makes it worse, not better.** All 56 hauls carry
+`CNT_ARITH` — but that code is `kind: intrinsic`, "sub-unit arithmetic
+difference", i.e. rounding. The article and the QC plan both tell consumers to
+filter on `kind` before treating a flag as a problem, which is right for the
+99% and precisely wrong here: following that advice discards these records as
+noise. An impossible input is not a rounding difference, which is the argument
+for `WGT_SUB_EXCEEDS_CAT` having its own code rather than widening an existing
+one.
+
+Check added to `PLAN-qc-checks.md` §3.8 (the weight chain), stating the rule
+and the bands, with the evidence here.
+
+### Keeping `PLAN-qc-checks.md` a plan
+
+Prompted by the question of whether it still is one. Measured: 1,188 lines, of
+which **434 inside spec blocks and 605 prose outside them** — 1.4 prose lines
+per spec line. Nothing is built, so it is still a proposal; but the two checks
+added on 2026-09-18 were the heaviest in the file and neither was pseudocode.
+They carried full investigations inside `note` blocks.
+
+That is exactly what `TODO.md` did before it was split twice, and the rule
+that file now carries applies here unchanged: **an entry that records what was
+measured is `DEVLOG.md`.** Both investigations moved here; the checks keep
+their rule, their severity bands and a pointer. The plan lost 45 lines and no
+information.
+
+The distinction worth holding to for the next one: the rule and its threshold
+belong in the plan, one line on why anyone should believe it fires belongs in
+the plan, and the measurement, the worked case and the diagnosis belong here.
+
+### A pkgdown by-product had quietly broken `R CMD check`
+
+`vignettes/_quarto.yaml` appeared during a `pkgdown::build_site()` run and was
+never tracked. Traced to `pkgdown:::build_quarto_articles`, which writes it
+deliberately and leaves it:
+
+```r
+project_path <- path(pkg$src_path, "vignettes", "_quarto.yaml")
+if (!file_exists(project_path)) {
+  yaml::write_yaml(list(project = list(render = list("*.qmd"))), project_path)
+}
+```
+
+Its effect on the package was not cosmetic. Because `vignettes/articles` and
+`vignettes/.quarto` are both build-ignored and there is no `VignetteBuilder`
+field, this file was the **only** thing shipping in `vignettes/` — a directory
+containing one non-vignette — which is exactly the shape that draws both
+messages:
+
+```
+> checking files in 'vignettes' ... WARNING
+  Files in the 'vignettes' directory but no files in 'inst/doc': '_quarto.yaml'
+> checking package vignettes ... NOTE
+  Package has 'vignettes' subdirectory but apparently no vignettes.
+```
+
+Check had been 0/0/0 before it existed, so this was latent: it would have
+surfaced at the next release check with no obvious connection to a pkgdown run
+weeks earlier.
+
+**The first instinct — gitignore it — was wrong, and wrong in an instructive
+way.** Git has no bearing on `R CMD build`. Two separate questions were being
+conflated: *is this part of the source* (yes — pkgdown writes it and reads it
+back, and committing it stops the article build depending on someone having
+run `build_site()` once), and *does it belong in the tarball* (no). So it is
+committed **and** added to `.Rbuildignore` as `^vignettes/_quarto\.yaml$`.
+Check back to 0/0/0.

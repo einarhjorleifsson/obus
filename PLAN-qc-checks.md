@@ -590,7 +590,35 @@ FAMILY weight
     note   WKDATR13's verdict on ICES's "TotalNo = 0 <=> CatchWeight = 0" is
            "not true. It is possible to have weight only." Weight-only records
            are legal. severity: info.
+
+  CHECK  WGT_SUB_EXCEEDS_CAT                 kind: suspect      severity: error
+    rule   SubsamplingFactor < 1, equivalently
+           SpeciesCategoryWeight < SubsampleWeight
+    note   ICES states the factor is 1 or greater, so a value below 1 says the
+           category weighed LESS than the sub-sample drawn from it. The one
+           check here whose rule needs no threshold and no judgement.
+
+           Report in three bands, because the population is not homogeneous:
+           >= 0.99 is two weighings of what was effectively the whole catch
+           differing by rounding (severity: info); < 0.90 is where the counts
+           invert too and the likely cause is SubsampleWeight and
+           SpeciesCategoryWeight swapped, which is s8's labelled hypothesis.
+
+           Needs its OWN code rather than leaning on CNT_ARITH, which these
+           records already carry: CNT_ARITH is kind: intrinsic, "sub-unit
+           arithmetic difference", and a consumer filtering on kind -- which
+           this suite tells them to do -- would discard an impossible input as
+           rounding noise.
+
+           Extent, bands, worked case and cost to obus: DEVLOG.md, 2026-09-18.
 ```
+
+**Related, and relevant to s8.** Testing that check's population showed
+`SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight` holding on every
+row where both weights are present. That is a biased sample — it was selected
+*by* the ratio — so it does not settle the general case, but it is enough to
+make the swap diagnosis credible. The unbiased test s8 specifies, over all HL
+rows with both weights populated, is still unrun.
 
 ### 3.9 Geospatial `[obus]`, needs external layers
 
@@ -749,6 +777,71 @@ yet, the request has been added to Section 4.2.1*". It was never built. But
 from outside — given snapshots to difference. Which is why §7 starts there.
 
 ---
+
+### 3.13 Convention changes — is a `DataType` label right? `[obus]`
+
+Not a per-record rule either. A per-`(survey, country)` time series across each
+**convention boundary**, and the only check in this plan that can call an
+ICES-supplied label wrong using nothing but the archive.
+
+**Why it is possible at all.** `DataType` `C` means `NumberAtLength` is already
+standardised to one hour; `R` means it is a per-haul count. So at a boundary
+where a series switches between them, and tow duration does not change, the
+raw numbers **must** step by a known factor: `60 / HaulDuration`. A half-hour
+survey switching `R` to `C` should roughly double. If the step is absent, the
+label is suspect; if it is present and the right size, the label is corroborated.
+Nothing external is needed — the prediction comes from ICES's own definition.
+
+**The population is small and known.** Over 51 `(survey, country)` series there
+are **25 convention changes between consecutive reported years**, in 13 series.
+Of those, **16 are `R` <-> `C`** (12 `C`->`R`, 4 `R`->`C`) and therefore
+scale-testable; the `R` <-> `P` (5) and `R` <-> `S` (4) changes are not, because
+neither implies a scale factor.
+
+```
+FAMILY convention
+profile = raw HL
+          join HH on .id
+          group_by(survey, country, year)
+          summarise(per_haul = median over (haul x species) of
+                               sum(NumberAtLength))        # RAW, never n_haul
+          join dominant DataType and median HaulDuration per cell
+
+  CHECK  CNV_STEP_MISSING                    kind: suspect      severity: warning
+    rule   at an R <-> C boundary where median HaulDuration is unchanged,
+           per_haul does NOT step by the expected 60 / HaulDuration,
+           within tolerance
+    note   this is the one that would flag a mislabelled year. The raw
+           numbers are already on the neighbouring scale, so the label
+           claims a standardisation that was never applied -- and any
+           consumer honouring the label silently rescales correct data.
+
+  CHECK  CNV_STEP_WRONG_SIZE                 kind: suspect      severity: warning
+    rule   the step is present but its size does not match 60 / HaulDuration
+    note   separate code from CNV_STEP_MISSING on purpose: a step of the
+           wrong size points at a duration or effort change that the
+           HaulDuration field did not record, which is a different defect
+           from a wrong label.
+
+  CHECK  CNV_DURATION_CONFOUND               kind: intrinsic    severity: info
+    rule   median HaulDuration also changed at the boundary
+    note   the test is void here, not passed. Must be emitted so that a
+           silent absence of CNV_STEP_* is not read as a clean bill.
+```
+
+**What it cannot do.** Year-to-year variation in catch is large enough that a
+boundary can only be judged where the flanking years are stable. The check
+reports the observed ratio against the expected one and leaves the call to a
+reader; it must not assert a label is wrong from one year against noisy
+neighbours. Tolerance, and how many flanking years to use, are the two
+parameters to tune before this is trusted.
+
+**Why it belongs in the suite.** Every other family here tests a record
+against a rule ICES wrote. This one tests **ICES's own metadata against its own
+data**, it needs no external reference, and it is cheap — 16 boundaries, one
+profile query. The worked case that motivated it (EVHOE's single `C` year,
+2018, which the check corroborates rather than refutes) is in `DEVLOG.md`,
+2026-09-18.
 
 ## 4. Output shape
 

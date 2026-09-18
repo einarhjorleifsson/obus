@@ -99,7 +99,7 @@ done looks like — the evidence lives at the pointer, not here.
       Length, for which no conversion exists at all.
 
 - [ ] **Start the QC check suite.** `PLAN-qc-checks.md` is a proposal —
-      twelve check families, pseudocode only, nothing built — and it carries
+      thirteen check families, pseudocode only, nothing built — and it carries
       its own start sequence in section 7, which begins with the snapshot and
       the measurable extents rather than with checks. Its section 8 holds the
       labelled hypotheses that have a stated test and no owner.
