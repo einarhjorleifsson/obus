@@ -2014,3 +2014,26 @@ above are that exact shape — an edit that was correct in itself and left its
 neighbours asserting something else.
 
 475 links, 0 broken.
+
+### "Those steps" pointed 180 lines uphill
+
+`What that saves you downstream` opened on "so **this** is done once" and
+"none of **those steps** is hard" — two unanchored back-references to the four
+bullets in the parent section. They were adjacent when written; the formal
+specification (99 lines) and the CPUEL section (46) have since been inserted
+between them, so the reader was being asked to hold a list from four screens
+earlier.
+
+Fixed by restating the four inline rather than by adding a link: a reader who
+has to jump back has already lost the thread, and the restatement is one
+sentence. Both references now resolve on the spot.
+
+One slip caught on re-reading the fix: the first attempt said "the four steps
+this section opened with", but the bullets open the parent `##` section, not
+the `###` the sentence sits in. Naming them makes any locator unnecessary, so
+it went.
+
+This is the same shape as the four seams fixed yesterday — a passage that was
+correct when written and was invalidated by something inserted above it. Worth
+noting that moving material is not a free operation even when nothing is
+deleted: every relocation lengthens some back-reference somewhere.

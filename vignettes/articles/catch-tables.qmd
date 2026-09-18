@@ -318,11 +318,14 @@ can be built for every survey.
 
 ### What that saves you downstream
 
-`HL_length` and `HL_summary` exist so this is done once, the same way for the
-whole archive, following ICES's own written procedure — and so that the hauls
-where it cannot be done cleanly are visible rather than quietly absorbed.
+`HL_length` and `HL_summary` exist so that those four steps — raise the
+measured numbers, resolve the length units, decide what to do when the factor
+or the duration is missing, and avoid adding up a total the submitter repeated
+— are done once, the same way for the whole archive,
+following ICES's own written procedure. And so that the hauls where they
+cannot be done cleanly are visible rather than quietly absorbed.
 
-Done by hand, none of those steps is hard, exactly. They are a lot of
+Done by hand, none of the four is hard, exactly. They are a lot of
 bookkeeping to get right every time, and easy to get subtly wrong once — and a
 species silently missing from a haul reads exactly like a species nobody ever
 looked for. Everything downstream starts from the same table: length spectra,
