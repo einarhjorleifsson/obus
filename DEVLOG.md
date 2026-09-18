@@ -1902,3 +1902,45 @@ Also corrected a species named from memory: 126444 is Norway pout, not
 haddock. Caught by running the example before describing it.
 
 475 internal links, 0 broken. Reading path 1,601 lines.
+
+### Reordering, and three kinds of number that were never doing any work
+
+**"Why these columns, and which of them could go" moved** to sit after "Why
+two tables and not one" rather than before it. It argues against the column
+set, and it was doing so before the reader had been given a reason to want the
+tables at all.
+
+**A refinement to Principle 8, learned by getting it wrong.** The sentence
+"`length_cm` is exactly `length_mm / 10` — checked on all 14,001,605 rows, no
+exceptions" was *converted to a computed figure* on 2026-09-17 and *cut*
+on 2026-09-18. Making a number re-measure itself fixes staleness, not
+relevance, and "no exceptions" had already said the whole thing. The
+denominator was never doing any work; automating it only meant it would be
+wrong less often. Principle 8 now says so explicitly, because the mechanism is
+seductive enough to substitute for the judgement. Swept for the same shape —
+a large count sitting beside an absolute claim — and found only this one; the
+others ("1,925,444 groups, zero differing") genuinely need their scope, since
+zero differing over a dozen groups is not the same claim as over 1.9 million.
+
+**The storage accounting is gone.** "That costs 3.3 MB against `n_hour`'s
+25.8", "13.5 MB of 190", "23.7 MB together", "`.id` … 66.6 MB, 35%". The
+figures argued *against* the section they were in: `HL_length` is under
+200 MB, so quoting megabytes invites the reader to conclude the redundancy
+costs nothing — which is true, and leaves the case for trimming with no force.
+The cost that actually matters is **interface**: every column is one more
+thing a user has to understand and a maintainer has to keep true. The section
+now says that instead, and the per-hour bullet makes the sharper point it was
+burying — publishing `HaulDuration` and letting the user standardise is the
+table that stops presuming what the next analysis needs.
+
+**Who decides was too narrow.** "What they should carry is for the survey
+groups to settle" named one constituency of three. The survey working groups
+know what their data can support, the Data Centre knows what it can build and
+keep correct, and the assessment and ecosystem groups downstream are who the
+columns are for. Saying "survey groups" alone also quietly wrote the Data
+Centre — who would actually host this — out of a decision about their own
+product.
+
+One transient render failure worth not mis-diagnosing: the archive was briefly
+unreachable mid-render and the run halted at chunk 3. Nothing to do with the
+edits; re-ran clean. 475 links, 0 broken.

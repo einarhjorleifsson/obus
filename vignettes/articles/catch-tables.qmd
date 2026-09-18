@@ -387,52 +387,6 @@ Both are published as parquet files and read lazily: ask for one survey, year
 or species and only those rows are fetched, so a single haul can be inspected
 without downloading the archive.
 
-### Why these columns, and which of them could go
-
-These two tables are a **proposal**, not a settled product, and the column set
-is deliberately generous. Several columns are derivable from others, and that
-is a choice rather than an oversight — while the shape of the tables is still
-open, adding a column later is disruptive and removing one is not.
-
-Three of the redundancies are worth naming, because a reader will spot them:
-
-- **`length_cm` is exactly `length_mm / 10`** — checked on all
-  `r N(M$len_rows)` rows, no exceptions. It is carried because the two communities that would
-  use these tables count in different units. The exchange format and CPUEL are
-  millimetre; `{DATRAS}`, `{DATRASextra}` and the length–weight relationship
-  *W = aL^b* are centimetre, as is `accuracy`. Carrying both means neither side
-  converts. Cost: 13.5 MB of 190.
-- **The per-hour columns are unit conversions.** No row in either table carries
-  an hourly value whose per-haul counterpart is missing — measured as zero for
-  `n_hour`, `n_totalnumber_hour` and `w_hour` alike — and the reconstruction
-  `n_haul / HaulDuration × 60` is exact to machine precision. They are carried
-  because per hour is what CPUEL publishes and what most downstream work asks
-  for. The alternative is to publish `HaulDuration` instead and let the user
-  standardise to an hour, a half hour or a swept area: that costs 3.3 MB
-  against `n_hour`'s 25.8, and is arguably the better table.
-- **`latin` and `species` are one join away** from `Valid_Aphia` and
-  `dr_con("species")`, and cost 23.7 MB together. They are carried so that
-  someone can filter on a common name without first knowing an AphiaID.
-
-`n_measured` is the one that is *not* derivable — 42,089 rows aggregate raw
-rows raised by different factors, so no single divisor recovers it — but it is
-also the one the analysis stack never reads: `{DATRAS}` consumes `NumberAtLength`
-once, at read, to produce `Count`, and never refers to it again. It is kept
-because it is the only number present on the 24,298 rows where the raising
-factor is missing, and because how much of a length distribution was measured
-rather than raised is a question worth being able to ask.
-
-`.id` is the largest single column at 66.6 MB, 35% of `HL_length`. It is not
-redundant: five of the eight haul fields it concatenates —
-`Country`, `Platform`, `Gear`, `StationName`, `HaulNumber` — appear nowhere
-else in the table.
-
-**Which of these survive is not a package author's decision.** If ICES adopts
-tables of this shape, what they should carry is for the survey groups to
-settle, and the sensible direction of travel is to trim. This article states
-what each column costs and what it duplicates so that the conversation can
-start from measurements.
-
 ### Why two tables and not one
 
 Two reasons, and both come from the data rather than from convenience.
@@ -463,6 +417,59 @@ repeats one weight across a species' sex rows — so a table split by sex would
 state a weight that was never weighed. Keeping the two quantities in tables of
 different shape is what lets each be right. This is worked through in [what
 makes a row unique](#what-makes-a-row-unique) below.
+
+### Why these columns, and which of them could go
+
+These two tables are a **proposal**, not a settled product, and the column set
+is deliberately generous. Several columns are derivable from others, and that
+is a choice rather than an oversight — while the shape of the tables is still
+open, adding a column later is disruptive and removing one is not.
+
+Three of the redundancies are worth naming, because a reader will spot them:
+
+- **`length_cm` is exactly `length_mm / 10`** — every row, no exceptions. It
+  is carried because the two communities that would use these tables count in
+  different units. The exchange format and CPUEL are
+  millimetre; `{DATRAS}`, `{DATRASextra}` and the length–weight relationship
+  *W = aL^b* are centimetre, as is `accuracy`. Carrying both means neither side
+  converts.
+- **The per-hour columns are unit conversions.** No row in either table carries
+  an hourly value whose per-haul counterpart is missing — measured as zero for
+  `n_hour`, `n_totalnumber_hour` and `w_hour` alike — and the reconstruction
+  `n_haul / HaulDuration × 60` is exact to machine precision. They are carried
+  because per hour is what CPUEL publishes and what most downstream work asks
+  for. The alternative is to publish `HaulDuration` instead and let the user
+  standardise to an hour, a half hour or a swept area — which is arguably the
+  better table, and the one that stops presuming what the next analysis
+  needs.
+- **`latin` and `species` are one join away** from `Valid_Aphia` and
+  `dr_con("species")`. They are carried so that someone can filter on a common
+  name without first knowing an AphiaID.
+
+`n_measured` is the one that is *not* derivable — 42,089 rows aggregate raw
+rows raised by different factors, so no single divisor recovers it — but it is
+also the one the analysis stack never reads: `{DATRAS}` consumes `NumberAtLength`
+once, at read, to produce `Count`, and never refers to it again. It is kept
+because it is the only number present on the 24,298 rows where the raising
+factor is missing, and because how much of a length distribution was measured
+rather than raised is a question worth being able to ask.
+
+`.id` is the largest single column in the table, and it is not redundant:
+five of the eight haul fields it concatenates — `Country`, `Platform`,
+`Gear`, `StationName`, `HaulNumber` — appear nowhere else.
+
+**Which of these survive is not a package author's decision** — and not any
+one group's either. The survey working groups know what their data can
+support; the Data Centre knows what it can build, serve and keep correct; and
+the assessment and ecosystem groups downstream are who the columns are
+actually for. If ICES adopts tables of this shape, what they carry is a
+decision for those three together, and the sensible direction of travel is to
+trim. The cost that matters
+is not storage — the whole of `HL_length` is under 200 MB and no column in it
+is expensive — but **interface**: every column is one more thing a user has to
+understand and a maintainer has to keep true. This section says what each one
+duplicates and why it is there, so that conversation starts from the design
+rather than from taste.
 
 ### What makes a row unique {#what-makes-a-row-unique}
 

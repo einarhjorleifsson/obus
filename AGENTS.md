@@ -161,6 +161,12 @@ different jobs, and only one of them needs re-measuring:
 
 The test to apply to any number before writing it: **if this were 10%
 different, would the sentence change?** If not, it should not be a number.
+And note the test applies *after* the mechanism, not instead of it: making a
+figure re-measure itself at render fixes staleness, not relevance. "`length_cm`
+is exactly `length_mm / 10` — checked on all 14,001,605 rows, no exceptions"
+was converted to a computed figure on 2026-09-17 and cut on 2026-09-18,
+because "no exceptions" had already said the whole thing and the denominator
+was never doing any work.
 Where magnitude genuinely matters, prefer the **ratio**, which is stable
 under growth, over the count, which is not: `0.031%` survives the next
 refresh and `4,051 groups` does not.
