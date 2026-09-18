@@ -1848,3 +1848,57 @@ published column, so it was kept in the flow — and the splice inserted a copy
 while the original was still there. It rendered twice. Fixed, and the check
 that caught it was searching the rendered HTML for `WGT_NONE` rather than
 re-reading the source.
+
+### Five worked examples in Part II, where the density was inverted
+
+Read the article through as a newcomer would and measured what was actually
+wrong, rather than guessing. The examples were in the wrong half:
+
+| | lines | examples |
+|---|---:|---|
+| Part I | 502 | one per **41** lines |
+| Part II | 872 | one per **96** lines |
+
+And inside Part II they were in the wrong *sections*. Obstacle 1 —
+sub-sampling and the raising factor, which the article's own roadmap says
+"sets every number in both tables" — ran 95 lines across three explanatory
+subsections **without showing a single record**, while obstacles 4-7, which
+the same roadmap says "no longer cost anything once handled", had six examples
+between them. Obstacle 3 and obstacle 8 had none at all.
+
+Five added, each a real record checked before it was written up:
+
+1. **`DataType` R against `DataType` C, side by side.** The R cod record raises
+   21 measured fish by 1.4466 to a reported 30; the C record shows five fish
+   measured in a 30-minute haul appearing as 10, with the factor at 1. The
+   same arithmetic is false under R and true under C, which is the whole of
+   the documentation error two sections later.
+2. **A pseudo-category record**, four rows, showing all three claims of the
+   `P` memo at once: `11`/`12` sharing a first digit so they are one main
+   category, factors 16.032 and 1.000 differing within it, and one
+   `SpeciesCategoryWeight` of 2020 written four times.
+3. **Both candidate formulas computed on a real record** — documented 21
+   against live rule 30.3786 against reported 30. The archive-wide version was
+   tried and rejected: 22 s to run and it *weakens* the point, because 79.8%
+   of `R` groups do satisfy the documented formula, simply because most were
+   never sub-sampled.
+4. **The same P record read back from `HL_summary`** — `w_haul` 2020, not
+   8080. The collapse demonstrated rather than asserted.
+5. **`SpeciesSex` counts**, showing `NA` (7.6M, not sampled) and `"U"` (3.3M,
+   unidentified) as genuinely separate populations.
+
+Part II 872 -> 967 lines, density one per 96 -> one per 64.
+
+**The examples exposed a display bug that had been there all along.** `pillar`
+prints three significant figures by default, so the raising factor rendered as
+`1.45` — and 1.45 x 21 does not give 30. Worse, the sprat walkthrough in Part I
+has said "1606.3 against 1606.304" since it was written, while the table above
+it printed `1606.3` in both columns: **the distinction the sentence is built on
+was never on screen.** Set `pillar.sigfig = 7` in the setup chunk. Seven rather
+than five because the two routes differ at the fourth decimal and that
+difference is the entire point of the comparison.
+
+Also corrected a species named from memory: 126444 is Norway pout, not
+haddock. Caught by running the example before describing it.
+
+475 internal links, 0 broken. Reading path 1,601 lines.

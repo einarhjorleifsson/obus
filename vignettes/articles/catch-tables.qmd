@@ -16,6 +16,13 @@ format:
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = TRUE,
                       message = FALSE, warning = FALSE)
 options(width = 120)
+# The argument in this article is arithmetic, so the default three significant
+# figures actively hide it: a raising factor of 1.4466 prints as 1.45, and
+# 1.45 x 21 does not give the reported 30. Five digits put the numbers the
+# prose quotes on the screen the reader is looking at. Seven, not five, because
+# HL_summary's two routes differ at the fourth decimal (1606.3 vs 1606.304)
+# and that difference is the point of the comparison.
+options(pillar.sigfig = 7)
 ```
 
 This is a reference article about the two catch tables `{obus}` derives from the
@@ -801,6 +808,38 @@ So `1` is a specific claim — *this species was not sub-sampled* — and it is
 not the same statement as "no factor was supplied", which the format expects
 as `-9`.
 
+**What that looks like in the file.** Two cod records, one of each convention.
+Under `R` the measured fish are a sub-sample and the factor raises them:
+
+```{r}
+dr_con_raw("HL") |> dr_add_id() |>
+  filter(.id == "BITS:2016:4:DE:06SL:TVS:22071:14", Valid_Aphia == 126436) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor,
+         SubsampledNumber, TotalNumber) |>
+  arrange(LengthClass) |> collect()
+```
+
+The nine `NumberAtLength` values sum to 21, which is exactly
+`SubsampledNumber`; multiply by 1.4466 and you get `TotalNumber`, 30. Note
+also that the 30 is written on **all nine rows** — adding that column up gives
+nine times the catch.
+
+Under `C` the factor is 1 and the numbers are already per hour:
+
+```{r}
+dr_con_raw("HL") |> dr_add_id() |>
+  filter(.id == "NS-IBTS:2007:1:FR:35HT:GOV:L0155:55", Valid_Aphia == 126436) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor,
+         SubsampledNumber, TotalNumber) |>
+  arrange(LengthClass) |> collect()
+```
+
+Five fish were measured — that is `SubsampledNumber` — in a 30-minute haul, so
+each appears as 2 in `NumberAtLength` and the column sums to 10, which is
+`TotalNumber`. **The same arithmetic that is false under `R` is true under
+`C`**, which is worth holding onto: it is the whole of [the documentation
+error](#the-documentation-error-totalnosumhlnoatlngt) below.
+
 **`{obus}`:** a missing `SubsamplingFactor` propagates to `NA` for every
 `DataType`, including `"R"`. This is a deliberate departure from the DATRAS R
 package, which treats `"R"` plus a missing factor as 1. That convention
@@ -831,6 +870,25 @@ and, in the same memo:
 > CatCatchweight value is same in each subcategory
 >
 > Length class are unique in each subcategory
+
+All three of those are visible in a single record — one Norway pout record,
+four rows:
+
+```{r}
+dr_con_raw("HL") |> dr_add_id() |>
+  filter(.id == "NS-IBTS:2023:3:GB-SCT:748S:GOV:193:193", Valid_Aphia == 126444) |>
+  select(SpeciesCategory, LengthClass, NumberAtLength,
+         SubsamplingFactor, SpeciesCategoryWeight) |>
+  arrange(SpeciesCategory, LengthClass) |> collect()
+```
+
+`11` and `12` share a first digit, so they are two grades of **one** main
+category, not two categories. The small-fish grade was sub-sampled at 16.032
+and the single large fish was not sub-sampled at all — that is the memo's
+"subfactors are not the same". And `SpeciesCategoryWeight` reads 2020 on every
+row: **one weighing of one main category, written four times.** Summing that
+column gives four times the weight, which is the trap [catch
+weight](#catch-weight-catcatchwgt) is about.
 
 Two-digit `SpeciesCategory` codes occur **only** under `DataType` `P` in the
 archive: `S` and `C` show zero affected blocks.
@@ -990,6 +1048,25 @@ rows 4–22, `SpecCode` 126417, HH `DataType` `R`:
 | Reported `NoMeas` | **237** — so `NoMeas = Sum(HLNoAtLngt)` is TRUE |
 | Reported `TotalNo` | **9766.059** — so `TotalNo = SUM(HLNoAtLngt)` is FALSE, by a factor of 41 |
 | Reported `SubFactor` | **41.207**, and 237 × 41.207 = **9766.059** exactly |
+
+The archive behaves the same way. Take the `R` cod record from
+[the `SubsamplingFactor` rule](#the-subsamplingfactor-rule-by-datatype) above
+and compute both candidate formulas side by side:
+
+```{r}
+dr_con_raw("HL") |> dr_add_id() |>
+  filter(.id == "BITS:2016:4:DE:06SL:TVS:22071:14", Valid_Aphia == 126436) |>
+  summarise(sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+            SubsamplingFactor  = max(SubsamplingFactor, na.rm = TRUE),
+            TotalNumber        = max(TotalNumber, na.rm = TRUE)) |>
+  mutate(documented_formula = sum_NumberAtLength,
+         live_rule          = sum_NumberAtLength * SubsamplingFactor) |>
+  collect()
+```
+
+The documented formula returns 21 against a reported `TotalNumber` of 30; the
+live rule returns 30.38, which is 30 once you allow that a non-integer factor
+applied to whole fish does not land on an integer.
 
 So `TotalNo = Sum(HLNoAtLngt) × SubFactor` is the live rule, and the workbook
 settles the question against its own sentence. Three further ICES statements
@@ -1181,6 +1258,19 @@ separate weight, and keeping the category:
 ```
 distinct(.id, Valid_Aphia, <category>, SpeciesValidity, SpeciesCategoryWeight)
 ```
+
+The effect is visible on the Norway pout record from
+[pseudo category sampling](#pseudo-category-sampling-p-and-the-two-part-category-identifier),
+whose `SpeciesCategoryWeight` of 2020 was written on four rows:
+
+```{r}
+dr_con("HL_summary") |>
+  filter(.id == "NS-IBTS:2023:3:GB-SCT:748S:GOV:193:193", Valid_Aphia == 126444) |>
+  select(species, n_totalnumber, n_haul, n_measured, w_haul) |>
+  collect()
+```
+
+`w_haul` is 2020, not 8080. One weighing, counted once.
 
 The reason for dropping sex is measured, not assumed: DATRAS repeats one weight
 across a species' sex rows whatever the specification says — confirmed as a
@@ -1462,6 +1552,18 @@ building the archive, nulling any whose vocabulary label means absence and
 keeping the three that assert something (`Tickler`, `AgePlusGroup`,
 `DataType`). That line — keep a sentinel that states a fact, null one that
 states nothing — is why an `NA` `SpeciesSex` in `{obus}` reads as "not sampled".
+
+That resolution is why an `NA` in `SpeciesSex` carries a meaning, and why it
+is not the same as `"U"`:
+
+```{r}
+dr_con("HL_length") |> count(SpeciesSex) |> arrange(desc(n)) |> collect()
+```
+
+`NA` is *not sampled* — nobody looked — and `"U"` is *unidentified*: somebody
+looked and could not tell. Collapsing the two, which is what a
+`replace_na(SpeciesSex, "U")` would do, throws away the distinction between an
+absent observation and a failed one.
 
 **`{obus}`:** never re-introduces a sentinel. It cannot tell which `NA`s were
 `-9`, and a sentinel placed back into a numeric column would corrupt any sum
