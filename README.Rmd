@@ -3,7 +3,13 @@ output: github_document
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE,
+                      # Figures must live under man/figures/ -- pkgdown reads
+                      # images only from there and from vignettes/, so a figure
+                      # written to the github_document default of
+                      # README_files/figure-gfm/ renders on GitHub but is
+                      # missing from the package website.
+                      fig.path = "man/figures/README-")
 # Pin duckdb's extension/secret home so it does not announce the location on
 # every connection; duckdbfs re-opens a connection per exit finalizer, and those
 # messages escape message = FALSE.
@@ -84,7 +90,7 @@ system.time({
 })
 ```
 
-```{r simple-plot}
+```{r simple-plot, fig.alt = "Mean numbers caught per hour by year, with bootstrap confidence intervals, for four species in separate panels. Atlantic cod falls steadily from about 75 per hour in the mid-1980s to under 15 by the 2020s. Atlantic herring, haddock and whiting fluctuate from year to year with no comparable trend."}
 ggplot(abundance, aes(Year, n_hour)) +
   stat_summary(fun.data = "mean_cl_boot") +
   facet_wrap(~species, scales = "free_y") +
