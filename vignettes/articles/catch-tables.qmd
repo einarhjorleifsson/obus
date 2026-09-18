@@ -173,8 +173,9 @@ class — `LengthClass` and `NumberAtLength`, one row per length. The rest
 describe the species category in the haul as a whole: `TotalNumber`,
 `SubsampledNumber`, `SubsamplingFactor`, `SpeciesCategoryWeight`. Those are
 one value each, and because the file has only one row shape available they are
-**written onto every length row of that category**. The sprat haul below shows
-it plainly: one total of 1606.3 fish, standing on all fourteen rows.
+**written onto every length row of that category**. [One haul, from submission
+to catch at length](#one-haul-from-submission-to-catch-at-length) below shows
+exactly this in a single sprat record.
 
 That is not a DATRAS eccentricity. It is the textbook case of what Wickham
 [@wickham2014tidy] calls untidy data — *multiple observational units stored in
@@ -192,8 +193,9 @@ Two related properties compound it:
   above, it is a measured count or an hourly rate depending on `DataType`,
   which lives in HH. You cannot tell from the HL row in front of you.
 
-The tidy prescription for the first of these is one table per observational
-unit, and that is precisely what `HL_length` and `HL_summary` are — not a
+The tidy prescription for the first problem — two observational units in one
+table — is to give each its own, and that is precisely what `HL_length` and
+`HL_summary` are — not a
 packaging decision but the normalisation the record has been asking for. Each
 carries one row per observation of one kind, with each column a single
 variable in a stated unit: `length_mm` is always millimetres, `n_haul` is
@@ -412,7 +414,9 @@ Four things have to happen before that is a catch at length:
   went through the calipers, not what came aboard.
 - **The total is written once but repeated everywhere.** `TotalNumber` 1606.3
   is one figure for the whole species in this haul, standing on all fourteen
-  rows — add the column up and you have fourteen times the catch.
+  rows — add the column up and you have fourteen times the catch. This is the
+  untidiness named [above](#what-is-wrong-with-hl), in one record: a
+  category-level value with nowhere of its own to live.
 
 `HL_length` carries the raised numbers at length, in resolved units:
 
@@ -803,8 +807,12 @@ rest on them are flagged as such each time.
 
 The rest of this article is one section per obstacle, ordered by how far it can
 move a number you would report, and by how much of it is still unsettled. The
-first three account for essentially all of it; the last four are conventions
-you need to know but which no longer cost anything once they are handled.
+first three account for essentially all of it — and they are the three faces
+of the one structural problem named in [what is wrong with the HL
+table](#what-is-wrong-with-hl): a category-level value with nowhere of its own
+to live, which is obstacles 2 and 3, and a column whose meaning is set in
+another table, which is obstacle 1. The last four are conventions you need to
+know but which no longer cost anything once they are handled.
 
 | | Obstacle | What it does to the catch you compute | Where `{obus}` lands |
 |---|---|---|---|

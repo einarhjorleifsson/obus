@@ -2127,3 +2127,32 @@ One lead-in needed fixing as a consequence: "The two tables, formally" began
 argument immediately above it.
 
 Part I 502 -> 587 lines. 477 links, 0 broken.
+
+### Read-through after the tidy section: it was spoiling its own worked example
+
+The framing lands, but adding a general statement ahead of a concrete
+demonstration created three problems that only a sequential read shows.
+
+**It gave away the punchline.** The new section said "the sprat haul below
+shows it plainly: one total of 1606.3 fish, standing on all fourteen rows" —
+and 220 lines later the sprat walkthrough reveals exactly that, with the same
+phrase "fourteen times the catch". The walkthrough is the better teacher, so
+the general section now only points forward, and the walkthrough's fourth
+bullet ties back: *this is the untidiness named above, in one record — a
+category-level value with nowhere of its own to live.* The abstraction states
+it, the record proves it, and neither pre-empts the other.
+
+**"The first of these" pointed at the wrong antecedent.** The sentence "the
+tidy prescription for the first of these is one table per observational unit"
+followed two bullets about compounding properties, so "these" read as those
+bullets — and one-table-per-unit does not fix `LengthClass`'s units. It names
+the problem explicitly now.
+
+**Part II's roadmap was left unconnected.** It says the first three obstacles
+"account for essentially all of it", which is true and, after this change,
+explicable: they are the three faces of the one structural fact. A
+category-level value with nowhere to live is obstacles 2 and 3; a column whose
+meaning is set in another table is obstacle 1. One sentence, and the two parts
+now share a spine instead of each having their own.
+
+Checked the mapping before asserting it rather than after.
