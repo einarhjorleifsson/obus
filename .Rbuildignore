@@ -9,6 +9,7 @@
 ^README_files$
 ^DEVLOG\.md$
 ^vignettes/\.quarto$
+^vignettes/_quarto\.yaml$
 ^_pkgdown\.yml$
 ^PLAN-qc-checks\.md$
 ^PLAN-qc-checks\.html$
