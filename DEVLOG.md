@@ -1944,3 +1944,43 @@ product.
 One transient render failure worth not mis-diagnosing: the archive was briefly
 unreachable mid-render and the run halted at chunk 3. Nothing to do with the
 edits; re-ran clean. 475 links, 0 broken.
+
+### The CPUEL claim was arguing against itself
+
+"`HL_length` is that same table for all 29" followed immediately by "98.5% of
+CPUEL's rows and 94.1% of its counts" is a sentence that undermines its own
+first half. For two tables that should be the same calculation, 1.5% and 5.9%
+are not rounding residuals — they are **roughly eighty thousand rows and three
+hundred thousand counts**, and quoting them as a match rate rather than as
+absolute numbers made them look smaller than they are.
+
+The hedging around them made it worse: "where the two snapshots are of the
+same vintage it reproduces CPUEL on effectively every haul and count that can
+be *fairly compared*" is three qualifiers deep before any figure appears, and
+reads as excuse-making rather than measurement.
+
+Rewritten to separate two claims that were tangled together:
+
+- **Definition and coverage** — `HL_length` computes the same quantity, by the
+  same arithmetic, for 29 surveys rather than 8. Unqualified, and the strong
+  claim.
+- **Numerical agreement** — closely, not exactly, and the gap is *not closed*.
+  The vintage confound is stated as a limitation of the comparison rather than
+  smuggled in as a precondition; BITS's two documented causes keep their D-
+  references; SWC-IBTS stays unexplained and is now said to remain so.
+
+It ends on "the same calculation, demonstrably; the same numbers, not yet",
+and says a reader should know which of the two claims they are relying on.
+Admitting the gap is the stronger position: the previous version invited a
+reader to find the 1.5% themselves and conclude it had been glossed.
+
+**An internal contradiction fell out of this.** The appendix asserted "the
+residual is accounted for and none of it is arithmetic" while the main text
+said SWC-IBTS was unexplained. "Accounted for" claims quantification that was
+never done — the causes are *named*, and their shares are not measured. The
+appendix now says exactly that, and that the comparison cannot separate a
+vintage difference from a real disagreement.
+
+Also dropped the article's only `datrasdoodle2` reference, which pointed at a
+chapter of another book for "the full comparison" — an article that argues a
+case should not send the reader elsewhere for its own central evidence.

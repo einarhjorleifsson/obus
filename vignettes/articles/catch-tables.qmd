@@ -268,15 +268,33 @@ duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet") |
 dr_con("HH") |> distinct(Survey) |> count() |> collect()
 ```
 
-`HL_length` is that same table for all 29. Where the two snapshots are of the
-same vintage it reproduces CPUEL on effectively every haul and count that can
-be fairly compared — 98.5% of CPUEL's rows and 94.1% of its counts across
-5.5 million records, and 97.4% of counts for six of the eight surveys once
-BITS and SWC-IBTS are set aside. BITS differs for reasons that are understood
-and documented here ([D20](#d20)–[D22](#d22): a cod-only gear conversion CPUEL
-applies and `{obus}` does not, and a length grid CPUEL does not preserve);
-SWC-IBTS is unexplained. The full comparison is a chapter of its own in the
-`datrasdoodle2` book.
+**`HL_length` computes the same quantity for all 29.** That is a claim about
+definition and coverage: raised numbers at length, per haul, species and
+length class, by the same arithmetic, for every survey in the archive rather
+than for eight of them.
+
+Whether the two also agree *number for number* where they overlap is a
+separate question, and it deserves a straight answer rather than a match rate.
+Across 5.5 million comparable records, **1.5% of CPUEL's rows have no
+`HL_length` partner and 5.9% of its counts differ** — roughly eighty thousand
+rows and three hundred thousand counts. For two tables that should be the same
+calculation, that is not a rounding residual.
+
+Some of it is understood. The two files are independent downloads with their
+own calculation vintages, so a haul revised on one side and not the other will
+differ, and the comparison cannot separate that from a real disagreement. On
+BITS, CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
+always preserve the submitted length grid ([D22](#d22)) — both documented, and
+both choices a generalised product would have to make deliberately rather than
+inherit. Set BITS and SWC-IBTS aside and counts agree on 97.4% for the
+remaining six surveys. **SWC-IBTS is unexplained, and remains so.**
+
+So: the same calculation, demonstrably; the same numbers, not yet. Closing
+that gap is work neither this article nor the package has finished, and a
+reader deciding whether to use one table in place of the other should know
+which of the two claims they are relying on. [Building CPUEL from
+`HL_length`](#building-cpuel-from-hl_length) in the appendices shows what the
+comparison looks like on a single survey-quarter.
 
 Two differences run the other way:
 
@@ -1662,10 +1680,11 @@ cpuel_like |>
   collect()
 ```
 
-The residual is accounted for and none of it is arithmetic. The two files are
-independent downloads with their own calculation vintages, so a haul revised
-on one side and not the other differs. On BITS two further, documented things
-apply: CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
+The causes of the residual are named, though not quantified: nothing in it has
+been traced to the arithmetic. The two files are independent downloads with
+their own calculation vintages, so a haul revised on one side and not the
+other differs, and this comparison cannot tell that apart from a genuine
+disagreement. On BITS two further, documented things apply: CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
 always preserve the submitted length grid ([D22](#d22)) — both of which a
 generalised product would have to decide about explicitly rather than inherit.
 
