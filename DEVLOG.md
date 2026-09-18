@@ -2239,3 +2239,57 @@ second value at the same level", which the `P` evidence shows is wrong.
 Part II's roadmap re-mapped to match: obstacle 1 is the bridges between the
 tallies, obstacle 2 is two of them disagreeing, obstacle 3 is the tally weight
 never reaches.
+
+### Two fixes from the flow review: the spread, and the missing third table
+
+**The conventions are now shown distributed, not just aggregated.** The
+article named surveys 118 times but almost always as *exceptions* — "Can-Mar
+puts length data on validity-5", "BITS differs". It never showed a convention
+spread across the archive, so `DataType` C read as "33.2% of rows", an
+abstract figure a reader working on one survey cannot place themselves in.
+
+Measured 2026-09-18, and the result is the best single argument in the article
+for why any of this needs saying at all: **20 of the 29 surveys submit under a
+single `DataType` for their whole history** — 14 only ever `R`, 6 only ever
+`C`. Within one survey `NumberAtLength` therefore has one stable meaning, and
+nothing in the record announces that it means something else in the next
+survey along. The column is unambiguous locally and ambiguous only
+archive-wide, which is exactly the kind of defect that survives decades:
+*every individual dataset is self-consistent.*
+
+Two refinements came from being challenged on it rather than from the first
+pass:
+
+- **The pattern nests by country.** Of the 17 survey x country combinations in
+  the two big mixed surveys, 8 use a single convention — BITS is `R`+`C`
+  overall, but PL, SE, LV, RU and EE are `C` throughout, and `P` in NS-IBTS is
+  GB-SCT's alone. So a national programme inside a mixed survey can still only
+  ever have seen one. Kept to one sentence deliberately; it refines the point
+  rather than replacing it.
+- **`S` and `P` never define a survey.** All 969 `S` hauls sit inside surveys
+  that otherwise submit `R`, and `P` appears only in three surveys that also
+  use `R` and `C`. The two conventions that stand alone are precisely the two
+  that disagree about what `NumberAtLength` counts, which is the whole point.
+
+Also noted, without building on it: length units run the other way — 20 of 29
+surveys use more than one `LengthCode`, so that variation is *inside* the
+series rather than between them.
+
+**The third tally now has an honest paragraph.** Naming HL as three tallies
+and then shipping two tables left an obvious question unanswered, which is the
+weakest place to leave a framing. `SubsamplingFactor`, `SubsampledNumber` and
+`SubsampleWeight` appear in **neither** published table — checked, not assumed.
+What survives is `n_measured`; the factor is applied and discarded. The
+article now says that, says it is a real loss rather than a tidy-up
+(`n_measured` is not recoverable where one row aggregates raw rows raised by
+different factors, and `SubsampleWeight` takes the weight path's only
+candidate cross-check with it), and says plainly that **whether the sub-sample
+deserves a table of its own is open** and a serious proposal to ICES would have
+to answer it rather than inherit this article's two.
+
+One hypothesis killed on the way, which is why it is not in the text: I
+expected EVHOE's single anomalous `C` year (2018, in an otherwise `R` series
+1997-2025) to surface in the published tables as `NA` `n_haul`. It does not —
+zero `NA` in 2018 — because obus converts C to per-haul using the duration, so
+the series stays continuous. The guess was wrong and checking it cost one
+query.

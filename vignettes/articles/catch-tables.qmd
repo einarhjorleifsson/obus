@@ -214,6 +214,38 @@ Two further properties compound it:
   above, it is a measured count or an hourly rate depending on `DataType`,
   which lives in HH. You cannot tell from the HL row in front of you.
 
+**Why this is easy to miss.** The conventions above vary across the archive
+far more than they vary within any one series. Of the 29 surveys, **20 submit
+under a single `DataType` for their whole history** — 14 only ever `R`, 6 only
+ever `C`. Neither `S` nor `P` ever defines a survey on its own: all 969 `S`
+hauls sit inside surveys that otherwise submit `R`, and `P` appears in three
+surveys that also use `R` and `C`. The conventions that stand alone are the
+two that disagree about what `NumberAtLength` counts.
+
+```{r}
+dr_con("HH") |>
+  filter(DataType != "-9") |>
+  distinct(Survey, DataType) |>
+  count(Survey, name = "conventions") |>
+  count(conventions) |>
+  arrange(conventions) |>
+  collect()
+```
+
+So within one survey `NumberAtLength` usually has one stable meaning, and
+nothing in the record announces that it means something else in the next
+survey along. The column is unambiguous locally and ambiguous only
+archive-wide, which is exactly the kind of defect that survives a long time:
+every individual dataset is self-consistent. The nine mixed surveys are where
+it becomes visible without leaving home — NS-IBTS carries `R`, `C` and `P`
+together, and BITS `R` and `C`. Even there the pattern tends to nest: 8 of the
+17 survey x country combinations in those two use a single convention, so a
+national programme inside a mixed survey can still only ever have seen one.
+
+Length units run the other way and are worse for it: **20 of the 29 surveys
+use more than one `LengthCode`**, so there the variation is inside the series
+rather than between them.
+
 The tidy prescription for the first problem — several observational units in
 one table — is to give each its own, and that is what `HL_length` and
 `HL_summary` are — not a
@@ -224,8 +256,25 @@ always a whole-haul count, `n_hour` is always a rate. The branching on
 `DataType` and `LengthCode` is resolved once, when the tables are built,
 instead of in every analysis that reads them.
 
-Both tables are deliberately *denormalised* in one respect — they carry a few
-columns derivable from others, for the convenience of two user communities
+**Two tables, three tallies — the arithmetic there does not work, and the gap
+is worth stating.** `HL_length` is the length tally and `HL_summary` the catch
+tally. The sub-sample tally gets no table: `SubsamplingFactor`,
+`SubsampledNumber` and `SubsampleWeight` appear in neither file. What survives
+of it is `n_measured`, the un-raised count, carried at the length grain in
+both tables; the factor is applied and then discarded.
+
+That is defensible for most uses — once the raising is done, how it was done
+is a property of the sampling rather than of the catch — but it is a real
+loss, and the article does not pretend otherwise. `n_measured` is [not
+recoverable](#why-these-columns-and-which-of-them-could-go) from `n_haul`
+where one output row aggregates raw rows raised by different factors, and
+`SubsampleWeight` disappears entirely, taking with it the only candidate
+cross-check the weight path has. **Whether the sub-sample deserves a table of
+its own is open**, and a serious proposal to ICES would have to answer it
+rather than inherit this article's two.
+
+Both tables are also deliberately *denormalised* in one respect — they carry a
+few columns derivable from others, for the convenience of two user communities
 that count in different units — and [which of those could
 go](#why-these-columns-and-which-of-them-could-go) is argued below rather than
 hidden.
