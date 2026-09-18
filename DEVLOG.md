@@ -2078,3 +2078,52 @@ in the **introduction**, which is the part least likely to be re-read against
 the evidence, and it was contradicted by three separate passages further down
 without anyone noticing — including by an example I added myself while
 believing the opening was fine.
+
+### Naming the actual defect: HL is untidy, and the two tables are its normal form
+
+A suggestion that turned out to be the missing spine of Part I. The article
+described the *symptoms* of HL's shape in five separate places — a total
+repeated across length rows, a weight repeated across sex rows, a weight
+shared across P sub-categories, `TotalNumber` standing on all fourteen rows of
+the sprat haul — and never once named the single structural fact underneath
+them. The word "tidy" appeared twice in the whole file, both times as a
+`tidyr::` call.
+
+New section, **"What is wrong with the HL table"**, placed after the four
+steps and before the specification, because it is the groundwork the
+specification was resting on unstated:
+
+- **HL is one table doing two jobs.** `LengthClass`/`NumberAtLength` describe
+  a length class; `TotalNumber`, `SubsampledNumber`, `SubsamplingFactor` and
+  `SpeciesCategoryWeight` describe the species category as a whole. The second
+  set is one value each, written onto every length row because the file has
+  only one row shape available. That is Wickham's *multiple observational
+  units in the same table* [@wickham2014tidy], and its consequence is the one
+  DATRAS users keep meeting: **a column you must not add up.**
+- Two properties compound it: `LengthClass` is a number whose unit lives in
+  another column (`LengthCode`), and `NumberAtLength` is a quantity whose
+  identity lives in another *table* (`DataType`, in HH) — which is the point
+  the opening paragraph gained yesterday, now doing structural work rather
+  than sitting as a caveat.
+
+The payoff is that **the split into two tables stops looking like a packaging
+decision**. One table per observational unit is the tidy prescription, and
+`HL_length` and `HL_summary` are exactly that: one row per observation of one
+kind, each column a single variable in a stated unit, with the `DataType` and
+`LengthCode` branching resolved once at build time instead of in every
+analysis. "Why two tables and not one" now opens by saying the structural
+answer is above, then keeps its two empirical reasons — which is the right
+order, since a normalisation argument that did not also fall along a seam the
+data has would be academic.
+
+Kept honest in two ways. The claim is scoped to "every repeated-value hazard
+in Part II", not every hazard — obstacles 5 to 8 are other things. And the
+section says outright that both tables are deliberately *denormalised* in
+carrying a few derivable columns, pointing at the section that argues which
+could go, rather than claiming a purity they do not have.
+
+One lead-in needed fixing as a consequence: "The two tables, formally" began
+"Before the argument for them, what they actually are", and there is now an
+argument immediately above it.
+
+Part I 502 -> 587 lines. 477 links, 0 broken.

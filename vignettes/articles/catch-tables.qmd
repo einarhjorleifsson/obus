@@ -163,10 +163,54 @@ survey in the archive:
 Nearly every DATRAS analysis begins there, and they are the same steps every
 time.
 
+### What is wrong with the HL table {#what-is-wrong-with-hl}
+
+The steps above are bookkeeping. The reason they are *easy to get wrong* is
+structural, and it is worth naming before the tables that fix it.
+
+**HL is one table doing two jobs.** Some of its columns describe a length
+class — `LengthClass` and `NumberAtLength`, one row per length. The rest
+describe the species category in the haul as a whole: `TotalNumber`,
+`SubsampledNumber`, `SubsamplingFactor`, `SpeciesCategoryWeight`. Those are
+one value each, and because the file has only one row shape available they are
+**written onto every length row of that category**. The sprat haul below shows
+it plainly: one total of 1606.3 fish, standing on all fourteen rows.
+
+That is not a DATRAS eccentricity. It is the textbook case of what Wickham
+[@wickham2014tidy] calls untidy data — *multiple observational units stored in
+the same table* — and the consequence is exactly the one the format's users
+keep meeting: **a column you must not add up.** Sum `TotalNumber` over a
+species' length rows and you get fourteen times the catch. Every repeated-value
+hazard in Part II is a symptom of this one thing.
+
+Two related properties compound it:
+
+- **`LengthClass` is a number whose unit is in another column.** It is
+  millimetres or centimetres depending on `LengthCode`, so the value alone
+  does not say what it measures.
+- **`NumberAtLength` is a quantity whose identity is in another *table*.** As
+  above, it is a measured count or an hourly rate depending on `DataType`,
+  which lives in HH. You cannot tell from the HL row in front of you.
+
+The tidy prescription for the first of these is one table per observational
+unit, and that is precisely what `HL_length` and `HL_summary` are — not a
+packaging decision but the normalisation the record has been asking for. Each
+carries one row per observation of one kind, with each column a single
+variable in a stated unit: `length_mm` is always millimetres, `n_haul` is
+always a whole-haul count, `n_hour` is always a rate. The branching on
+`DataType` and `LengthCode` is resolved once, when the tables are built,
+instead of in every analysis that reads them.
+
+Both tables are deliberately *denormalised* in one respect — they carry a few
+columns derivable from others, for the convenience of two user communities
+that count in different units — and [which of those could
+go](#why-these-columns-and-which-of-them-could-go) is argued below rather than
+hidden.
+
 ### The two tables, formally {#the-two-tables-formally}
 
-Before the argument for them, what they actually are. Both are one flat
-parquet file, read lazily.
+So much for why they have the shape they do. This is what they actually
+contain. Both are one flat parquet file, read lazily.
 
 ```{r, include = FALSE}
 # The column list is READ FROM THE PUBLISHED FILES; only the descriptions are
@@ -420,7 +464,11 @@ without downloading the archive.
 
 ### Why two tables and not one
 
-Two reasons, and both come from the data rather than from convenience.
+The structural answer is [above](#what-is-wrong-with-hl): HL holds two
+observational units, so tidying it yields two tables and not one. But that
+argument would be academic if the split did not also fall along a seam the
+data actually has. It does, in two places, and both come from the data rather
+than from convenience.
 
 **Most of a haul's species roster is not length-measured.** A haul's record
 routinely includes species that were only counted in bulk, only weighed, or
