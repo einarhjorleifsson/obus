@@ -2197,3 +2197,45 @@ of walking into it.
 
 Caught by reading the section the addition was about, which is the same check
 that the last three of these entries have turned on.
+
+### It is three tallies, not two — and the third is measurable
+
+Challenged on the framing added yesterday, and the challenge was right. HL is
+not one table doing two jobs but **three**:
+
+| Tally | Columns | What it counts |
+|---|---|---|
+| by length | `LengthClass`, `NumberAtLength` | fish in each length class |
+| of the sub-sample | `SubsampledNumber`, `SubsamplingFactor`, `SubsampleWeight` | what was examined, and how it scales |
+| of the catch | `TotalNumber`, `SpeciesCategoryWeight` | what came aboard |
+
+The two-way version had collapsed the sub-sample into the catch, on the
+reasoning that both carry one value per species category. That is true under
+`R` and `S` and **false under `P`**, and the archive says so plainly. Measured
+2026-09-18: of the 1,464 `DataType` `P` main categories carrying more than one
+sub-category, **1,463 have a `SubsamplingFactor` that varies between
+sub-categories** while `TotalNumber` stays constant in 1,452 and
+`SpeciesCategoryWeight` in 1,456. The factor belongs to the sub-category; the
+total and the weight belong to the main category. Three grains, one row shape.
+
+**That explains something the article had only asserted.** ICES's identity
+`TotalNumber = SubsampledNumber × SubsamplingFactor` cannot hold under `P`,
+because its three terms are not all at the same level — which is why pseudo
+category sampling needs a section of its own and why D6 records that no
+published document gives `P` a raising rule. The worked record shows it: 70
+fish at factor 16.032 plus 1 at factor 1.000 gives 1123.24, and
+`SubsampledNumber` x the larger factor gives 1138.
+
+The three-way scheme also improved the section it was not written for.
+Obstacle 3's claim is now exact rather than nearly right: **numbers appear in
+all three tallies, so ICES could state two bridges between them; weight
+appears in only two**, because nobody weighs a 20-centimetre cod separately
+from a 21-centimetre one. That leaves weight one possible bridge instead of
+two — and ICES states it nowhere, which is precisely what the
+`SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight` hypothesis is
+proposing. Yesterday's version of that passage called `SubsampleWeight` "a
+second value at the same level", which the `P` evidence shows is wrong.
+
+Part II's roadmap re-mapped to match: obstacle 1 is the bridges between the
+tallies, obstacle 2 is two of them disagreeing, obstacle 3 is the tally weight
+never reaches.

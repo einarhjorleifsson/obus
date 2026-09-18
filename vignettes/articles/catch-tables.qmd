@@ -168,14 +168,20 @@ time.
 The steps above are bookkeeping. The reason they are *easy to get wrong* is
 structural, and it is worth naming before the tables that fix it.
 
-**HL is one table doing two jobs.** Some of its columns describe a length
-class — `LengthClass` and `NumberAtLength`, one row per length. The rest
-describe the species category in the haul as a whole: `TotalNumber`,
-`SubsampledNumber`, `SubsamplingFactor`, `SpeciesCategoryWeight`. Those are
-one value each, and because the file has only one row shape available they are
-**written onto every length row of that category**. [One haul, from submission
-to catch at length](#one-haul-from-submission-to-catch-at-length) below shows
-exactly this in a single sprat record.
+**HL is one table doing three jobs.** Its columns are three different tallies
+of three different things:
+
+| Tally | Columns | What it counts |
+|---|---|---|
+| **by length** | `LengthClass`, `NumberAtLength` | fish in each length class |
+| **of the sub-sample** | `SubsampledNumber`, `SubsamplingFactor`, `SubsampleWeight` | what was examined, and how it scales to the catch |
+| **of the catch** | `TotalNumber`, `SpeciesCategoryWeight` | what came aboard |
+
+Only the first has a row of its own. The other two are one value each, and
+because the file has a single row shape available they are **written onto
+every length row of that category**. [One haul, from submission to catch at
+length](#one-haul-from-submission-to-catch-at-length) below shows exactly this
+in a sprat record.
 
 That is not a DATRAS eccentricity. It is the textbook case of what Wickham
 [@wickham2014tidy] calls untidy data — *multiple observational units stored in
@@ -184,7 +190,22 @@ keep meeting: **a column you must not add up.** Sum `TotalNumber` over a
 species' length rows and you get fourteen times the catch. Every repeated-value
 hazard in Part II is a symptom of this one thing.
 
-Two related properties compound it:
+**The three are not merely stacked — they can come apart.** Under
+pseudo-category sampling the sub-sample tally is genuinely finer than the
+catch tally: the factor belongs to the sub-category while the total and the
+weight belong to the main category. Measured over the whole archive
+(2026-09-18), of the 1,464 `DataType` `P` main categories carrying more than
+one sub-category, **1,463 have a `SubsamplingFactor` that varies between
+them** while `TotalNumber` stays constant in 1,452 and
+`SpeciesCategoryWeight` in 1,456. Three grains, one row shape.
+
+That is why ICES's own identity `TotalNumber = SubsampledNumber ×
+SubsamplingFactor` cannot hold under `P` — its three terms are not all at the
+same level — and why [pseudo category
+sampling](#pseudo-category-sampling-p-and-the-two-part-category-identifier)
+needs a section of its own rather than a sentence.
+
+Two further properties compound it:
 
 - **`LengthClass` is a number whose unit is in another column.** It is
   millimetres or centimetres depending on `LengthCode`, so the value alone
@@ -193,8 +214,8 @@ Two related properties compound it:
   above, it is a measured count or an hourly rate depending on `DataType`,
   which lives in HH. You cannot tell from the HL row in front of you.
 
-The tidy prescription for the first problem — two observational units in one
-table — is to give each its own, and that is precisely what `HL_length` and
+The tidy prescription for the first problem — several observational units in
+one table — is to give each its own, and that is what `HL_length` and
 `HL_summary` are — not a
 packaging decision but the normalisation the record has been asking for. Each
 carries one row per observation of one kind, with each column a single
@@ -809,9 +830,9 @@ The rest of this article is one section per obstacle, ordered by how far it can
 move a number you would report, and by how much of it is still unsettled. The
 first three account for essentially all of it — and they are the three faces
 of the one structural problem named in [what is wrong with the HL
-table](#what-is-wrong-with-hl): a category-level value with nowhere of its own
-to live, which is obstacles 2 and 3, and a column whose meaning is set in
-another table, which is obstacle 1. The last four are conventions you need to
+table](#what-is-wrong-with-hl): three tallies sharing one row shape. Obstacle
+1 is the bridges between them, obstacle 2 is two of them disagreeing, and
+obstacle 3 is the tally that weight never reaches. The last four are conventions you need to
 know but which no longer cost anything once they are handled.
 
 | | Obstacle | What it does to the catch you compute | Where `{obus}` lands |
@@ -860,10 +881,10 @@ check, and a consumer can tell a well-formed record from a malformed one
 without leaving the file. Almost everything this article is able to say about
 where submissions go wrong is said using that redundancy.
 
-Those identities are worth reading as what they are: **the bridge between the
-two observational units** crammed into HL. `NumberAtLength` belongs to the
-length class; `SubsampledNumber`, `SubsamplingFactor` and `TotalNumber` belong
-to the species category. ICES could not give each its own table, so it
+Those identities are worth reading as what they are: **the bridges between the
+observational units** crammed into HL. `NumberAtLength` belongs to the length
+tally, `SubsampledNumber` and `SubsamplingFactor` to the sub-sample, and
+`TotalNumber` to the catch. ICES could not give each its own table, so it
 specified the arithmetic that relates them instead — which is why a submission
 can be checked against itself at all, and why every check in this article runs
 across that boundary rather than within one side of it.
@@ -1104,9 +1125,9 @@ should be visible per record, not buried in a formula. Reproduced by
 There are two independent routes to the same number, and `{obus}` keeps both, in
 different tables, named apart on purpose.
 
-**They are the two observational units, asked the same question.** One is the
-species category in the haul, reporting its own total; the other is the set of
-length classes, summed up to that level. In a tidy record they would be two
+**They are two of HL's three tallies, asked the same question.** One is the
+catch tally reporting its own total; the other is the length tally, raised and
+summed up to that level. In a tidy record they would be two
 tables that happen to agree, and a disagreement between them would be an
 obvious thing to look at. In HL they are two columns of one row, which is why
 the disagreement is so easy to miss — and why `{obus}` publishes them apart and
@@ -1353,22 +1374,22 @@ this article, for one structural reason: the format gives it **no arithmetic
 cross-check**. Numbers have `TotalNumber = SubsampledNumber × SubsamplingFactor`, so a submission can
 be tested against itself. A weight can only be compared with other weights.
 
-The reason is the observational units again. Numbers are recorded at **both**
-levels — `NumberAtLength` per length class, `TotalNumber` per category — so
-the two can be set against each other, and that is the bridge every check in
-obstacles 1 and 2 runs across. **Weight is never recorded per length class.**
-Nobody weighs a 20-centimetre cod separately from a 21-centimetre one, so the
-length unit holds no weight to sum up and the category weight has nothing
-beneath it to be tested against.
+The reason is the three tallies again. **Numbers appear in all three** —
+`NumberAtLength` in the length tally, `SubsampledNumber` in the sub-sample,
+`TotalNumber` in the catch — so ICES could state two bridges between them, and
+every check in obstacles 1 and 2 runs across one or the other.
 
-Weight is not left with only one figure — `SubsampleWeight` records the
-weighed sub-sample — but that is a second value at the *same* level, not a
-finer one, and the identity relating the two is nowhere stated by ICES. That
-is [a cross-check that exists but is not stated in
-words](#a-cross-check-that-exists-but-is-not-stated-in-words) below: a
-candidate bridge, unverified. Until it is tested, this section can establish
-less than the two before it, which is what "the weaker of the two paths"
-above means concretely.
+**Weight appears in only two.** Nobody weighs a 20-centimetre cod separately
+from a 21-centimetre one, so the length tally holds no weight at all;
+`SubsampleWeight` and `SpeciesCategoryWeight` are the sub-sample and the
+catch, and there is nothing finer beneath them. That leaves one possible
+bridge instead of two — and ICES states it nowhere. [A cross-check that exists
+but is not stated in words](#a-cross-check-that-exists-but-is-not-stated-in-words)
+below proposes it, `SubsamplingFactor = SpeciesCategoryWeight /
+SubsampleWeight`, as the exact analogue of the number identity, and it remains
+a hypothesis. Until it is tested this section can establish less than the two
+before it, which is what "the weaker of the two paths" above means
+concretely.
 
 ### Which weights are the same weight
 
