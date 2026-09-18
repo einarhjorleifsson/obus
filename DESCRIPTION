@@ -19,6 +19,7 @@ Imports:
     rlang
 Suggests:
     broom,
+    ggplot2,
     DATRAS,
     DATRASextra,
     DBI,

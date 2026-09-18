@@ -20,7 +20,7 @@ options(width = 120)
 # figures actively hide it: a raising factor of 1.4466 prints as 1.45, and
 # 1.45 x 21 does not give the reported 30. Five digits put the numbers the
 # prose quotes on the screen the reader is looking at. Seven, not five, because
-# HL_summary's two routes differ at the fourth decimal (1606.3 vs 1606.304)
+# HL_summary's two routes differ at the fourth decimal (467.82 vs 467.824)
 # and that difference is the point of the comparison.
 options(pillar.sigfig = 7)
 ```
@@ -31,17 +31,25 @@ them necessary. It describes what the package does now; it does not propose
 changes to it.
 
 **What it argues for is the tables, not the package.** They are the
-calculation nearly every DATRAS analysis performs before it does anything
-else, and the right home for them is ICES's own product suite, next to CPUEL —
-computed once, centrally, and served to everyone. Not re-implemented once per
-institute, once per language, once per working group, each version quietly
-differing from the others in exactly the places Part III catalogues. If ICES
-served these two tables, [`{obus}`](https://github.com/einarhjorleifsson/obus)
+calculation nearly every DATRAS analysis performs before it does anything else,
+and the right home for them is ICES's own product suite, next to CPUEL —
+computed once, centrally, and served to everyone, rather than re-implemented
+once per institute, once per language and once per working group.
+
+This is not a proposal in the abstract. Built from these two tables and nothing
+else, `{obus}` rebuilds ICES's own CPUEL product and agrees with it on the
+overwhelming majority of cells; and the `{DATRAS}` and `{DATRASextra}` packages
+run on them **unmodified**, reproducing numbers at length, totals per haul,
+swept area and a stratified abundance index with no difference at all — the
+index a working group would report comes out the same to every digit. Both
+demonstrations are below, with the places they fall short named rather than
+glossed. If ICES served these two tables, [`{obus}`](https://github.com/einarhjorleifsson/obus)
 would not need to exist, and that would be the better outcome.
 
 ```{r}
 library(obus)
 library(dplyr)
+library(ggplot2)
 ```
 
 ```{r, include = FALSE}
@@ -105,11 +113,12 @@ number and weight.
 most conventions it is fish *measured*, and the raising factor is what relates
 it to fish caught. Under `DataType` C it is neither: the submitter has already
 raised it *and* already scaled it to one hour of towing, so the row carries a
-catch rate and the factor is 1. Note which way that scaling goes: 88% of `C`
-hauls are shorter than an hour and the median is a 30-minute tow, so the
-number on the row is usually **larger** than the number of fish caught, not
-smaller. That is not a corner case either — `C` is 49,717 of 150,217 hauls and
-a third of every length row in the archive.
+catch rate and the factor is 1. Note which way that scaling goes: nearly nine
+`C` hauls in ten are shorter than an hour, most of them half-hour tows, so the
+number written on the row is usually **larger** than the number of fish
+actually caught, not smaller. This is not a corner case. `C` covers about a
+third of all the hauls in the archive, and about a third of every length row
+in it.
 
 Given the `DataType`, any one row is unambiguous. **It is the column that is
 ambiguous**, across submissions — and the `DataType` is not in HL at all. It
@@ -144,89 +153,216 @@ of three different things:
 | **of the catch** | `TotalNumber`, `SpeciesCategoryWeight` | what came aboard |
 
 Only the first has a row of its own. The other two are one value each, and
-because the file has a single row shape available they are **written onto
+because the file offers only one kind of row they are **written onto
 every length row of that category**. [One haul, from submission to catch at
 length](#one-haul-from-submission-to-catch-at-length) below shows exactly this
 in a sprat record.
 
 That is not a DATRAS eccentricity. It is the textbook case of what Wickham
-[@wickham2014tidy] calls untidy data — *multiple observational units stored in
-the same table* — and the consequence is exactly the one the format's users
-keep meeting: **a column you must not add up.** Sum `TotalNumber` over a
-species' length rows and you get fourteen times the catch. Every repeated-value
-hazard in Part III is a symptom of this one thing.
+[@wickham2014tidy] describes as storing *multiple observational units* — several
+different things being counted — in one table, and the consequence is exactly
+the one the format's users keep meeting: **a column you must not add up.** Add `TotalNumber` down a
+species' length rows and you count the same catch once for every length class
+it happened to be measured in. Every repeated-value trap in Part III comes
+back to this one thing.
 
-**The three are not merely stacked — they can come apart.** Under
-pseudo-category sampling the sub-sample tally is genuinely finer than the
-catch tally: the factor belongs to the sub-category while the total and the
-weight belong to the main category. Measured over the whole archive
-(2026-09-18), of the 1,464 `DataType` `P` main categories carrying more than
-one sub-category, **1,463 have a `SubsamplingFactor` that varies between
-them** while `TotalNumber` stays constant in 1,452 and
-`SpeciesCategoryWeight` in 1,456. Three grains, one row shape.
+**The three tallies are not merely stacked — they can come apart.** Under
+pseudo-category sampling the sub-sample really is finer than the catch: the
+raising factor belongs to the sub-category, while the total and the weight
+belong to the main category above it. Take every `P` main category that was
+split into more than one sub-category, and ask which of the three fields move
+together:
 
-That is why ICES's own identity `TotalNumber = SubsampledNumber ×
-SubsamplingFactor` cannot hold under `P` — its three terms are not all at the
-same level — and why [pseudo category
-sampling](#pseudo-category-sampling-p-and-the-two-part-category-identifier)
-needs a section of its own rather than a sentence.
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "P", !is.na(SpeciesCategory)) |>
+  mutate(main_category = substr(SpeciesCategory, 1, 1)) |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, main_category, SpeciesCategory,
+           SubsamplingFactor, TotalNumber, SpeciesCategoryWeight) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, main_category) |>
+  summarise(sub_categories = n_distinct(SpeciesCategory),
+            factors = n_distinct(SubsamplingFactor),
+            totals  = n_distinct(TotalNumber),
+            weights = n_distinct(SpeciesCategoryWeight), .groups = "drop") |>
+  filter(sub_categories > 1) |>
+  summarise(main_categories = n(),
+            factor_varies   = sum(as.integer(factors > 1)),
+            total_constant  = sum(as.integer(totals == 1)),
+            weight_constant = sum(as.integer(weights == 1))) |>
+  collect()
+```
+
+In almost every one of them the raising factor changes from sub-category to
+sub-category while the total and the weight stay put. Three levels of
+description, and one kind of row to write them all on.
+
+That is why ICES's own sum `TotalNumber = SubsampledNumber ×
+SubsamplingFactor` cannot hold under `P`: its three terms do not all describe
+the same thing. [Pseudo category
+sampling](#totalnumber-across-categories) therefore needs treating on its own
+rather than in a sentence.
 
 Two further properties compound it:
 
-- **`LengthClass` is a number whose unit is in another column.** It is
-  millimetres or centimetres depending on `LengthCode`, so the value alone
-  does not say what it measures.
+- **`LengthClass` is a number whose unit *and resolution* are in another
+  column.** `LengthCode` says whether the value is millimetres or centimetres,
+  so the number alone does not say what it measures — but it also says how wide
+  the length class is, and that is the harder half.
 - **`NumberAtLength` is a quantity whose identity is in another *table*.** As
   above, it is a measured count or an hourly rate depending on `DataType`,
   which lives in HH. You cannot tell from the HL row in front of you.
 
-**Why this is easy to miss.** The conventions above vary across the archive
-far more than they vary within any one series. Of the 29 surveys, **20 submit
-under a single `DataType` for their whole history** — 14 only ever `R`, 6 only
-ever `C`. Neither `S` nor `P` ever defines a survey on its own: all 969 `S`
-hauls sit inside surveys that otherwise submit `R`, and `P` appears in three
-surveys that also use `R` and `C`. The conventions that stand alone are the
-two that disagree about what `NumberAtLength` counts.
+**The resolution is the harder half because the unit does not imply it.** Two
+codes report millimetres and two of the three centimetre codes are not 1 cm:
+`.` is 1 mm classes and `0` is 5 mm; `1`, `2` and `5` are 1, 2 and 5 cm. So a
+`LengthClass` of 150 is the same 15 cm fish under `.` and under `0`, but in one
+case it stands for a class 1 mm wide and in the other 5 mm. Across the archive
+the classes run from 1 mm to 5 cm — a fiftyfold range — and `LengthClass` is
+the class's **lower edge**, not the fish, so without the code you know neither
+where the class starts nor how far it extends.
+
+**Most of that variation is good practice, not sloppiness.** Resolution is
+chosen to suit the fish: within one country, platform and year, the code is
+constant for a given species in 96% of cases — and the choices are the ones a
+biologist would make, herring and sprat measured in 5 mm classes, cod, plaice,
+haddock and whiting in 1 cm.
+
+```{r}
+dr_con("HL") |>
+  filter(!is.na(LengthCode), LengthCode != "-9") |>
+  group_by(Country, Platform, Year, Valid_Aphia) |>
+  summarise(codes = n_distinct(LengthCode), .groups = "drop") |>
+  summarise(platform_year_species = n(),
+            one_code_throughout   = sum(as.integer(codes == 1)),
+            more_than_one         = sum(as.integer(codes > 1))) |>
+  collect()
+```
+
+**What bites is that the choice is the submitter's, not the species'.** The
+same fish is measured at different resolutions by different programmes:
+
+```{r}
+dr_con("HL") |>
+  filter(Valid_Aphia %in% c(126436, 126417), !is.na(LengthCode), LengthCode != "-9") |>
+  left_join(dr_con("species") |> select(Valid_Aphia, species), by = "Valid_Aphia") |>
+  count(species, LengthCode) |>
+  mutate(class_width = case_when(LengthCode == "." ~ "1 mm", LengthCode == "0" ~ "5 mm",
+                                 LengthCode == "1" ~ "1 cm", LengthCode == "2" ~ "2 cm",
+                                 LengthCode == "5" ~ "5 cm")) |>
+  arrange(species, desc(n)) |>
+  collect()
+```
+
+Cod arrives in all four widths — mostly 1 cm, but 122,188 length rows at 1 mm
+and a few thousand at 5 cm, a fiftyfold spread for one species. Herring is
+mostly 5 mm and substantially 1 mm. So the moment you pool a species across
+surveys — which is what a stratified index does — you are pooling classes of
+different widths.
+
+Why that matters is arithmetic, not bookkeeping. A count in a 5 cm class and a
+count in a 1 mm class are not the same measurement, and no unit conversion makes
+them so: at equal abundance the wider class simply collects more fish. Add them
+together and the result is not a length distribution that is wrong by some
+correctable factor — it is not a length distribution. `{obus}` therefore
+resolves `LengthCode` once, on reading, into `length_mm`, `length_cm` and
+`accuracy`, so the class width travels with every row instead of being
+recoverable only by going back to HL.
+
+**Why this is easy to miss.** The conventions vary far more between surveys
+than they do inside any one of them. Most surveys have submitted under a
+single convention for their whole history, and it is always either `R`
+throughout or `C` throughout:
 
 ```{r}
 dr_con("HH") |>
   filter(DataType != "-9") |>
   distinct(Survey, DataType) |>
-  count(Survey, name = "conventions") |>
-  count(conventions) |>
-  arrange(conventions) |>
+  group_by(Survey) |>
+  summarise(conventions = n(),
+            submits = ifelse(n() == 1, min(DataType, na.rm = TRUE), "mixed"),
+            .groups = "drop") |>
+  count(conventions, submits) |>
   collect()
 ```
 
-So within one survey `NumberAtLength` usually has one stable meaning, and
-nothing in the record announces that it means something else in the next
-survey along. The column is unambiguous locally and ambiguous only
-archive-wide, which is exactly the kind of defect that survives a long time:
-every individual dataset is self-consistent. The nine mixed surveys are where
-it becomes visible without leaving home — NS-IBTS carries `R`, `C` and `P`
-together, and BITS `R` and `C`. Even there the pattern tends to nest: 8 of the
-17 survey x country combinations in those two use a single convention, so a
-national programme inside a mixed survey can still only ever have seen one.
+Neither `S` nor `P` ever defines a survey on its own: every `S` haul in the
+archive sits inside a survey that otherwise submits `R`, and `P` appears only
+in surveys that also use `R` and `C`. So the two conventions that stand alone
+are exactly the two that disagree about what `NumberAtLength` counts.
+
+The practical effect is that within one survey `NumberAtLength` usually means
+one stable thing, and nothing in the record warns you that it means something
+else in the next survey along. The column is clear locally and ambiguous only
+archive-wide, which is the kind of problem that survives a long time, because
+every individual dataset is self-consistent. The mixed surveys are where it
+becomes visible without leaving home — NS-IBTS carries `R`, `C` and `P`
+together, BITS `R` and `C`. Even there it tends to nest: about half the
+national programmes inside those two surveys have only ever used one
+convention, so a single country's series can still look perfectly uniform.
+
+**And no one who submits ever uses the whole format.** The archive as a whole
+draws on five `DataType` conventions, five `LengthCode` values and fourteen
+`SpeciesCategory` codes. The unit that actually samples and uploads is nearer a
+platform than a country — `Platform` stands in for the institutes within a
+country, and Germany runs nineteen of them, the Netherlands thirteen, Norway
+twelve — so count what each country and platform between them ever uses:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  group_by(Country, Platform) |>
+  summarise(rows           = n(),
+            data_types     = n_distinct(DataType),
+            length_codes   = n_distinct(LengthCode),
+            category_codes = n_distinct(SpeciesCategory), .groups = "drop") |>
+  filter(rows >= 5000) |>
+  summarise(platforms                  = n(),
+            recording_one_way_only     = sum(as.integer(data_types == 1)),
+            most_data_types_by_any_one = max(data_types),
+            most_category_codes_by_any_one = max(category_codes)) |>
+  collect()
+```
+
+Eighty of the ninety-seven record their catch one way only, and no single
+platform ever uses more than three of the five conventions. The closer you look
+at the unit that does the work, the smaller its corner of the format gets: at
+country level thirteen of twenty-two never vary, at platform level eighty of
+ninety-seven. Adding time tightens it again — in 1,229 of 1,347 platform-years
+the catch is reported one way throughout.
+
+That is the position someone is in when they upload. They sample in a single,
+settled way, and must then express it in a format built wide enough to hold
+everybody else's way of working too — most of which is irrelevant to them, and
+therefore most of which they have little reason to understand well. The parts
+they never use are the parts they are most likely to fill in wrongly.
+
+This is worth stating plainly, because the register in Part III could otherwise
+read as a list of other people's mistakes. It is better read as the cost of one
+row shape serving every sampling practice in the community at once. It is better read as the cost of one
+row shape serving twenty different sampling practices.
+
 
 Length units run the other way and are worse for it: **20 of the 29 surveys
 use more than one `LengthCode`**, so there the variation is inside the series
 rather than between them.
 
-The tidy prescription for the first problem — several observational units in
-one table — is to give each its own, and that is what `HL_length` and
-`HL_summary` are: not a packaging decision but the normalisation the record
-has been asking for. Each carries one row per observation of one kind, with
-each column a single variable in a stated unit: `length_mm` is always millimetres, `n_haul` is
-always a whole-haul count, `n_hour` is always a rate. The branching on
-`DataType` and `LengthCode` is resolved once, when the tables are built,
-instead of in every analysis that reads them.
+The remedy for the first problem — several different things being counted in
+one table — is to give each of them a table of its own, and that is what
+`HL_length` and `HL_summary` are: not a packaging decision, but the splitting
+apart that the record has been asking for. Each holds one row per observation
+of one kind, and each column means one thing in one unit: `length_mm` is
+always millimetres, `n_haul` is always a whole-haul count, `n_hour` is always
+a rate per hour. The branching on `DataType` and `LengthCode` is worked out
+once, when the tables are built, instead of in every analysis that reads
+them.
 
 **Two tables, three tallies.** `HL_length` is the length tally and
-`HL_summary` the catch tally. The sub-sample tally gets no table:
+`HL_summary` the catch tally. The sub-sample tally gets no table of its own:
 `SubsamplingFactor`, `SubsampledNumber` and `SubsampleWeight` appear in
-neither file. What survives
-of it is `n_measured`, the un-raised count, carried at the length grain in
-both tables; the factor is applied and then discarded.
+neither file. What survives of it is `n_measured`, the count of fish actually
+put through the calipers, carried alongside the lengths in both tables; the
+raising factor is applied and then discarded.
 
 **Is a third table warranted? Probably not, and the reason is what it would be
 used for.** The sub-sample tally answers questions about *method* — how much
@@ -242,19 +378,18 @@ service.
 
 One piece of the sub-sample tally does earn a place in both tables, and it is
 carried: `n_measured`. How much of a length distribution was measured rather
-than raised is a question asked *about a catch*, at the catch's grain, which
+than raised is a question asked *about a catch*, at the level of the catch, which
 is why it belongs here and the factor does not. What genuinely disappears is
 `SubsampleWeight`, and with it the only candidate cross-check the weight path
 has — that is a real loss rather than a tidy-up, and it is [an open
-question](#a-cross-check-that-exists-but-is-not-stated-in-words) rather than a
-settled one.
+question](#what-remains-open) rather than a settled one.
 
 # Part II. The two tables
 
 ## The two tables, formally {#the-two-tables-formally}
 
 So much for why they have the shape they do. This is what they actually
-contain. Both are one flat parquet file, read lazily.
+contain. Both are one flat parquet file, read on demand.
 
 ```{r, include = FALSE}
 # The column list is READ FROM THE PUBLISHED FILES; only the descriptions are
@@ -331,8 +466,9 @@ Three things are worth saying about those keys before Part III takes them
 apart. `HL_length` is identified by eight fields because ICES's own record
 identity puts them there, and dropping one silently merges counts that were
 separate observations — [what makes a row
-unique](#what-makes-a-row-unique) measures how often. If you need a coarser
-grain, `dr_HL_collapse()` is the sanctioned route and carries the guards a
+unique](#what-makes-a-row-unique) measures how often. If you want the numbers
+added up more coarsely, `dr_HL_collapse()` is the route to use; it carries
+guards that a
 hand-rolled `group_by()` loses; it is described under [what makes a row
 unique](#what-makes-a-row-unique). And `SpeciesValidity` is in
 both keys because it is a record type rather than a quality flag — filtering
@@ -355,7 +491,7 @@ the same failure mode as a wrong survey code, and just as quiet.
 ICES already publishes this table. It is called **CPUEL** — catch per unit
 effort at length: numbers per hour by haul, species and length class,
 [@ices2021units] — and it is the natural starting point for length-based work,
-computed centrally so that nobody downstream has to raise a sub-sample again.
+computed centrally so that nobody has to raise a sub-sample again.
 
 It covers **8 of the archive's 29 surveys**:
 
@@ -381,8 +517,8 @@ calculation, that is not a rounding residual.
 Some of it is understood. The two files are independent downloads with their
 own calculation vintages, so a haul revised on one side and not the other will
 differ, and the comparison cannot separate that from a real disagreement. On
-BITS, CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
-always preserve the submitted length grid ([D22](#d22)) — both documented, and
+BITS, CPUEL gear-standardises cod and nothing else and does not
+always preserve the submitted length grid — both documented, and
 both choices a generalised product would have to make deliberately rather than
 inherit. Set BITS and SWC-IBTS aside and counts agree on 97.4% for the
 remaining six surveys. **SWC-IBTS is unexplained, and remains so.**
@@ -408,13 +544,13 @@ comparison looks like on a single survey-quarter.
 
 None of that is a complaint about CPUEL. ICES's Data Centre builds and
 maintains real, working products — CPUE by length, by age, catch weight,
-abundance indices — computed centrally so downstream tools call straight
-through. That is the right shape, and it is the shape this article is asking
+abundance indices — computed centrally so that the tools that use them can
+read them straight off. That is the right shape, and it is the shape this article is asking
 for more of. The argument is narrower than it may sound: the length-frequency
 half of that suite does not need the zero-fill question answered first, so it
 can be built for every survey.
 
-## What that saves you downstream
+## What this saves you later
 
 `HL_length` and `HL_summary` exist so that those four steps — raise the
 measured numbers, resolve the length units, decide what to do when the factor
@@ -426,92 +562,125 @@ cannot be done cleanly are visible rather than quietly absorbed.
 Done by hand, none of the four is hard, exactly. They are a lot of
 bookkeeping to get right every time, and easy to get subtly wrong once — and a
 species silently missing from a haul reads exactly like a species nobody ever
-looked for. Everything downstream starts from the same table: length spectra,
+looked for. Everything that follows starts from the same table: length spectra,
 abundance and biomass per haul, CPUE, stratified indices, species composition,
 age–length keys. Getting the first step wrong once is getting it wrong
 everywhere.
 
 ## One haul, from submission to catch at length
 
-A single sprat record shows the whole shape of it. Fourteen length rows as
-submitted:
+A single sprat record shows the whole shape of it — five length rows, exactly
+as the country submitted them:
 
 ```{r}
-dr_con_raw("HL") |>
-  dr_add_id() |>
-  filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
+dr_con("HL") |>
+  filter(.id == "NS-IBTS:2017:3:DK:26D4:GOV:68:33", Valid_Aphia == 126425) |>
   select(LengthCode, LengthClass, NumberAtLength, SubsamplingFactor,
          SubsampledNumber, TotalNumber, SpeciesCategoryWeight) |>
-  collect() |>
-  arrange(LengthClass)
+  arrange(LengthClass) |>
+  collect()
 ```
 
 Four things have to happen before that is a catch at length:
 
-- **The units have to be resolved.** `LengthCode` `.` declares `LengthClass` to
-  be in millimetres, so 55 is 5.5 cm and the class is 1 mm wide.
-- **The numbers have to be raised.** The six fish measured at 5.5 cm stand for
-  6 × 11.312 = 67.9 fish in the catch.
-- **The sub-sample is not the catch.** The 142 in `SubsampledNumber` is what
-  went through the calipers, not what came aboard.
-- **The total is written once but repeated everywhere.** `TotalNumber` 1606.3
-  is one figure for the whole species in this haul, standing on all fourteen
-  rows — add the column up and you have fourteen times the catch. This is the
-  untidiness named [above](#what-is-wrong-with-hl), in one record: a
-  category-level value with nowhere of its own to live.
+- **The units have to be resolved.** `LengthCode` `.` says the `LengthClass`
+  values are millimetres, so 115 means 11.5 cm and each class is 1 mm wide.
+- **The numbers have to be raised.** Only part of the catch was measured. The
+  11 sprat measured at 11.5 cm stand for 11 × 4.177 = 45.9 fish in the catch.
+- **The sub-sample is not the catch.** The 112 in `SubsampledNumber` is how
+  many fish went through the calipers, not how many came aboard.
+- **The total is written once but repeated everywhere.** `TotalNumber` 467.82
+  is a single figure for the whole species in this haul, and it stands on all
+  five rows. Add that column up and you get the catch five times over. This is
+  the problem named [above](#what-is-wrong-with-hl), in one record: a figure
+  that belongs to the species has nowhere of its own to live, so it is copied
+  onto every length row.
 
 `HL_length` carries the raised numbers at length, in resolved units:
 
 ```{r}
 dr_con("HL_length") |>
-  filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
+  filter(.id == "NS-IBTS:2017:3:DK:26D4:GOV:68:33", Valid_Aphia == 126425) |>
   select(length_cm, accuracy, n_haul, n_hour, n_measured) |>
   arrange(length_cm) |>
   collect()
 ```
 
 and `HL_summary` carries one row for the species in the haul, with the
-reported total beside the reconstructed one:
+reported total beside the one rebuilt from the lengths:
 
 ```{r}
 dr_con("HL_summary") |>
-  filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
+  filter(.id == "NS-IBTS:2017:3:DK:26D4:GOV:68:33", Valid_Aphia == 126425) |>
   select(species, n_totalnumber, n_haul, n_measured, w_haul) |>
   collect()
 ```
 
-1606.3 against 1606.304: the reported total and the raised length frequencies
-agree here to four thousandths of a fish, which is simply what a non-integer
-raising factor applied to whole fish does. [Two routes to a catch
-total](#two-routes-to-a-catch-total) is about the hauls where they do not
-agree.
+467.82 against 467.824. The reported total and the raised length frequencies
+agree here to four thousandths of a fish, which is simply what happens when a
+raising factor that is not a whole number is applied to whole fish. [Two
+routes to a catch total](#two-routes-to-a-catch-total) is about the hauls
+where they do not agree.
+
 
 ## Which table for which job
 
-The columns are specified in [The two tables,
-formally](#the-two-tables-formally); what that table cannot show is which one
-to reach for, and the one distinction that is not visible in a column list:
+The columns are listed in [The two tables,
+formally](#the-two-tables-formally). What a column list cannot show is which
+table to reach for, and the one difference between them that catches people
+out:
 
 | | `HL_length` | `HL_summary` |
 |---|---|---|
 | Which species | only those actually measured | every species recorded, measured or not |
 | Rows | `r N(M$len_rows)` | `r N(M$sum_rows)` |
-| Reach for it for | length spectra, size-based indices, ALK inputs, length–weight work | abundance and biomass per haul, CPUE, species composition, stratified indices |
 
-**Which species is the distinction that catches people out.** A haul's record
+| What you want to know | Where to get it |
+|---|---|
+| length spectra, size-based indices, inputs to age–length keys, length–weight work | `HL_length` |
+| numbers or weighed biomass per haul, CPUE, species composition, stratified indices | `HL_summary` |
+| where a species occurs — distribution, occupancy, range | `HL_summary`, because it lists every species recorded and not only the measured ones |
+| species richness or diversity per haul | `HL_summary`. Counting species in `HL_length` instead loses at least one in a third of hauls |
+| biomass of a length-measured species, **estimated** rather than weighed | `HL_length`, via `dr_add_length_mid()` then `dr_add_predicted_weight()` |
+| how much of a catch was sub-sampled, anything per `SpeciesCategory`, per-category weights, or rebuilding an exchange file | `dr_con("HL")` — the submitted records, unchanged apart from `.id` |
+| age, individual weight, maturity, age–length keys | `dr_con("CA")` — `{obus}` derives no CA table |
+
+**Biomass comes two ways, and they are different quantities.** `HL_summary`'s
+`w_haul` is what the catch actually weighed, as reported. For any species that
+was length-measured you can also *estimate* biomass from the lengths, applying
+a length–weight relationship class by class — which also gives you biomass *at
+length*, which no weighed figure does:
+
+```{r}
+dr_con("HL_length") |>
+  filter(.id == "NS-IBTS:2017:3:DK:26D4:GOV:68:33", Valid_Aphia == 126425) |>
+  collect() |>
+  dr_add_length_mid() |>
+  dr_add_predicted_weight() |>
+  summarise(fish = sum(n_haul), estimated_grams = sum(w_haul_pred))
+```
+
+It is an estimate, and it rests on coefficients from outside the submission, so
+it will not match the weighed figure exactly — here it comes to about four
+fifths of it. `dr_compare_length_weight()` sets the two against each other
+across a whole survey.
+
+**Which species is the difference that catches people out.** A haul's record
 routinely includes species that were only counted in bulk, only weighed, or
-only noted as present; those have no `HL_length` row at all, not a zero. A
-species list taken from `HL_length` is therefore a list of what was
-*measured*, not of what was *caught*.
+only noted as present. Those have no `HL_length` row at all — not a zero, no
+row. A species list taken from `HL_length` is therefore a list of what was
+*measured*, not of what was *caught*. [Why two tables and not
+one](#why-two-tables-and-not-one) measures how much that matters.
 
-Both are published as parquet files and read lazily: ask for one survey, year
-or species and only those rows are fetched, so a single haul can be inspected
-without downloading the archive.
+Both tables are published as parquet files and read on demand: ask for one
+survey, year or species and only those rows are fetched, so you can look at a
+single haul without downloading the archive.
+
 
 ## Why two tables and not one
 
 The structural answer is [above](#what-is-wrong-with-hl): HL holds two
-observational units, so tidying it yields two tables and not one. But that
+different things at once, so separating them gives two tables and not one. But that
 argument would be academic if the split did not also fall along a seam the
 data actually has. It does, in two places, and both come from the data rather
 than from convenience.
@@ -537,8 +706,8 @@ dr_con("HL_summary") |>
 
 Those species cannot appear in a length table, and giving them a placeholder
 length row would invent a measurement that was never made. `HL_length` is
-therefore the length-measured subset by construction, and `HL_summary` is the
-full roster.
+therefore, by definition, only the species that were measured, while
+`HL_summary` is the full list of what was caught.
 
 **Numbers and weights survive being split by sex differently.** `HL_length`
 carries `SpeciesSex` as reported, because `NumberAtLength` is a genuine
@@ -551,7 +720,7 @@ makes a row unique](#what-makes-a-row-unique) below.
 ## Why these columns, and which of them could go
 
 These two tables are a **proposal**, not a settled product, and the column set
-is deliberately generous. Several columns are derivable from others, and that
+is deliberately generous. Several columns can be worked out from others, and that
 is a choice rather than an oversight — while the shape of the tables is still
 open, adding a column later is disruptive and removing one is not.
 
@@ -567,7 +736,7 @@ Three of the redundancies are worth naming, because a reader will spot them:
   an hourly value whose per-haul counterpart is missing — measured as zero for
   `n_hour`, `n_totalnumber_hour` and `w_hour` alike — and the reconstruction
   `n_haul / HaulDuration × 60` is exact to machine precision. They are carried
-  because per hour is what CPUEL publishes and what most downstream work asks
+  because per hour is what CPUEL publishes and what most later work asks
   for. The alternative is to publish `HaulDuration` instead and let the user
   standardise to an hour, a half hour or a swept area — which is arguably the
   better table, and the one that stops presuming what the next analysis
@@ -576,13 +745,14 @@ Three of the redundancies are worth naming, because a reader will spot them:
   `dr_con("species")`. They are carried so that someone can filter on a common
   name without first knowing an AphiaID.
 
-`n_measured` is the one that is *not* derivable — 42,089 rows aggregate raw
-rows raised by different factors, so no single divisor recovers it — but it is
-also the one the analysis stack never reads: `{DATRAS}` consumes `NumberAtLength`
-once, at read, to produce `Count`, and never refers to it again. It is kept
-because it is the only number present on the 24,298 rows where the raising
-factor is missing, and because how much of a length distribution was measured
-rather than raised is a question worth being able to ask.
+`n_measured` is the one you could *not* work back to, because some rows add up
+raw rows that were raised by different factors, so no single divisor recovers
+it. It is also the one the analysis tools never read: `{DATRAS}` uses
+`NumberAtLength` once, when it reads the file, to produce `Count`, and never
+looks at it again. It is kept for two reasons. It is the only number left on
+the rows where the raising factor is missing, and how much of a length
+distribution was actually measured rather than raised is a question worth
+being able to ask.
 
 `.id` is the largest single column in the table, and it is not redundant:
 five of the eight haul fields it concatenates — `Country`, `Platform`,
@@ -591,7 +761,7 @@ five of the eight haul fields it concatenates — `Country`, `Platform`,
 **Which of these survive is not a package author's decision** — and not any
 one group's either. The survey working groups know what their data can
 support; the Data Centre knows what it can build, serve and keep correct; and
-the assessment and ecosystem groups downstream are who the columns are
+the assessment and ecosystem groups are who the columns are
 actually for. If ICES adopts tables of this shape, what they carry is a
 decision for those three together, and the sensible direction of travel is to
 trim. The cost that matters is not storage — the whole of `HL_length` is under
@@ -648,10 +818,10 @@ Over the 13,992,024 combinations at the coarser `.id` × `Valid_Aphia` ×
 one is silent. `DevelopmentStage` is the easiest to overlook, being `NA` for
 99.8% of rows, and dropping it would add a berried record to an unstaged one.
 
-**If you need a coarser grain, ask for it — do not roll it by hand.**
-Everyone else's table is one of these with dimensions summed away, so the
-reduction is a normal thing to want. `dr_HL_collapse()` performs it, on the
-lazy table or a collected one:
+**If you want the numbers added up more coarsely, ask for that — do not do it by hand.**
+Everyone else's table is one of these with something added away, so wanting
+that is entirely normal. `dr_HL_collapse()` does it, whether the table is
+still on disk or already pulled into memory:
 
 ```{r, eval = FALSE}
 dr_con("HL_length") |>
@@ -676,19 +846,19 @@ series](#duplicated-length-series) below.
 
 ## Why `HL_summary` is not split by sex
 
-`HL_length` carries `SpeciesSex`; `HL_summary` does not. The asymmetry is
-deliberate, and it is a property of the submissions rather than a limitation of
-the package.
+`HL_length` carries `SpeciesSex`; `HL_summary` does not. That difference is
+deliberate, and it comes from what the submissions contain rather than from any
+limitation of the package.
 
 `NumberAtLength` is a genuine per-sex, per-length count, and — checked over the
 whole archive — never repeats one placeholder value across a species' sex rows.
-`TotalNumber` does: across the 212,497 haul × species records reporting more
-than one sex (9.3% of `r N(M$sum_groups)`), it varies genuinely by sex for 66%
-of them
-and is a species-level figure written identically onto every sex row for the
-other 34%. Per-sex arithmetic can tell those two apart, and `{obus}` does exactly
-that (see [how `{obus}` resolves a repeated
-`TotalNumber`](#how-obus-deduplicates-totalno)).
+`TotalNumber` does. Where a haul's record splits a species by sex, roughly two
+thirds of the time the total genuinely varies from sex to sex, and the
+remaining third of the time one species-level figure has simply been written
+onto every sex row. Per-sex arithmetic can tell those two apart, and `{obus}`
+does exactly that — the measurement, and what the package does about it, are in
+[one `TotalNumber` written across several sex
+rows](#totalnumber-across-sex-rows).
 
 `SpeciesCategoryWeight` has no comparable check, and its
 repeats-versus-varies pattern tracks `TotalNumber`'s only about half the time.
@@ -714,42 +884,38 @@ dr_con("HL_length") |>
 
 ## Do the derived tables still say what the submissions said?
 
-Yes, and this is checked rather than assumed. Compared cell by cell against the
-DATRAS R package's own `Count` [@kristensen2023datraspkg] across every species
-and survey:
+Yes, and this is checked rather than argued. `HL_length`
+has been compared cell by cell against the `{DATRAS}` package's own `Count`
+[@kristensen2023datraspkg], over every species and survey in the archive — more
+than thirteen million haul × species × length cells. **No cell differed by as
+much as half a fish**, the largest difference anywhere being floating-point
+dust, and no row appeared in `HL_length` that was not in the submitted record.
+The comparison is reproduced by `data-raw/CHECK_datras_interop.R`; it needs the
+`{DATRAS}` package, so it is not re-run when this page is built.
 
-| | |
-|---|---|
-| haul × species × length cells compared | 13,214,965 |
-| exact matches | 13,191,109 |
-| cells differing by ≥ 0.5 fish | **0** |
-| largest difference | 2.9 × 10⁻¹¹ (floating point) |
-| in `HL_length` but not in raw HL | **0** |
-| in raw HL but not in `HL_length` | 23,856 — every one where `n_haul` is `NA` |
+The differences run one way only. A few rows are in the submitted record and
+not in `HL_length`, and they are all the same case: the raising factor is
+missing, so there is no honest number to publish and `{obus}` returns `NA`
+rather than assuming the catch was fully measured.
 
-Those 23,856 rows (0.18%) are the one deliberate difference: where the raising
-factor is missing, DATRAS assumes 1 and `{obus}` returns `NA`, because ICES makes
-the field mandatory. That is a choice, argued in [sub-sampling and the raising
-factor](#sub-sampling-the-raising-factor-and-datatype), not an error.
+```{r}
+dr_con("HL_length") |>
+  summarise(rows = n(), no_raised_number = sum(as.integer(is.na(n_haul)))) |>
+  collect()
+```
 
-The tables are faithful but they are **not lossless**. 13,957,390 of
-`HL_length`'s `r N(M$len_rows)` rows (99.68%) come from exactly one submitted
-HL row;
-44,215 combine several, and there the raising factor (42,089 rows) and the
-sub-sampling category (43,989 rows) are summed away. Also absent at this level:
-`SubsampledNumber`, `SubsampleWeight`, per-category `SpeciesCategoryWeight`
-(`w_haul` is summed to the species) and sex-specific weight.
+`{DATRAS}` assumes 1 in exactly these rows and so reports a number; `{obus}`
+does not, because ICES makes the field mandatory. That is a choice, argued in
+[a mandatory `SubsamplingFactor` that is
+absent](#subsamplingfactor-absent), not an error.
 
-## What to use instead, and when
-
-| Question | Table |
-|---|---|
-| length spectra, numbers or biomass per haul, CPUE, stratified indices, species composition | `HL_length` + `HL_summary` |
-| sub-sampling checks, anything per `SpeciesCategory`, per-category weights, provenance, rebuilding an exchange file | `dr_con("HL")` — the record layer, exactly as submitted plus `.id` |
-| age, individual weight, maturity, age–length keys | `dr_con("CA")` — `{obus}` derives no CA table |
-
-The first row is demonstrated rather than asserted — see [existing analyses run
-on them unchanged](#existing-analyses-run-on-them-unchanged) above.
+The tables are faithful, but they are **not lossless**. Nearly every row in
+`HL_length` comes from exactly one submitted HL row. About one row in three
+hundred combines several, and where that happens the raising factor and the
+sub-sampling category are added away and cannot be recovered from the
+published table. Also gone at this level: `SubsampledNumber`,
+`SubsampleWeight`, per-category `SpeciesCategoryWeight` (`w_haul` is added up
+to the species) and any weight split by sex.
 
 ## The haul identifier, `.id`
 
@@ -768,1019 +934,667 @@ would collide every such row onto one identifier.
 renamed first (`opus::op_rename()`); `Ship`, `StNo` and `HaulNo` are not
 handled.
 
-# Part III. What stands in the way
+# Part III. Where the data is ambiguous
 
-## What ICES provides, and what counts as evidence
+Part II is arithmetic the format specifies. This part is about the places it
+does not — a small set of constructs the archive contains that a single record
+cannot settle on its own, where two submissions write the same shape and mean
+different things, or write a value the format does not allow. For most of
+DATRAS there is nothing to say here, and that is not said often enough: the
+great majority of fields mean what the field descriptions say they mean, and
+are used that way.
 
-DATRAS is a well-specified format, and most of what follows is only possible
-because of that. ICES publishes:
-
-- a **field-by-field description** of every record type, with data types,
-  widths and mandatory flags;
-- **a worked Example file inside the same workbook**, which settles arithmetic
-  that prose leaves ambiguous;
-- the **index-calculation procedures** its own products are built from;
-- a **units specification** for those products;
-- **the products themselves** — CPUEL among them — so an outside
-  reimplementation can be checked against ICES's own numbers;
-- a **machine-readable web service** reporting each table's real field names
-  and types;
-- a **working-group process** — IBTSWG, WGDG — that reviews the format and
-  minutes the result.
-
-Few survey-data formats of this age hand an outside implementation that many
-independent ways to check itself.
-
-That redundancy is what makes the [discrepancy
-register](#register-of-cross-document-discrepancies) below possible at all.
-Nearly every entry in it was found by checking ICES against ICES: a formula
-against the Example file in the same workbook, a recipe against the product
-ICES ships from it, a field list against the service that serves it. A format
-documented in one place only would yield a shorter register and worse data.
-
-**Only ICES's own published documents count as evidence here.** For this
-package that means the primary sources kept in
-`~/R/Pakkar/imbus/DATRAS/external/`, principally:
-
-| Source | Short name used below |
-|---|---|
-| [`DATRAS_Field_descriptions_and_example_file_December2025.xlsx`](https://www.ices.dk/data/Documents/DATRAS/DATRAS_Field_descriptions_and_example_file_December2025.xlsx) [@ices2026fielddesc] | the field descriptions, or "the spreadsheet" |
-| [`DATRAS_FAQs`](https://www.ices.dk/data/Documents/DATRAS/DATRAS_FAQs.pdf) v3.0, August 2014 [@ices2014datrasfaqs] | the FAQ |
-| [`Indices_Calculation_Steps_IBTS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_IBTS.pdf) [@ices2022ibtsindices], [`Indices_Calculation_Steps_BITS`](https://www.ices.dk/data/Documents/DATRAS/Indices_Calculation_Steps_BITS.pdf) [@ices2013bitsindices], and for SWC-IBTS and Rockall before 2011 [Holmes 2008](https://www.ices.dk/data/Documents/DATRAS/SWC-IBTS_and_ROCKALL_IndicesCalculation_pre2011.pdf) [@holmes2008swcibts] | the index procedures |
-| [SISP 10](https://doi.org/10.17895/ices.pub.7562) (North Sea IBTS, Revision 11) [@ices2020sisp10] and [SISP 15](https://doi.org/10.17895/ices.pub.3519) (IBTS North Eastern Atlantic) [@ices2017sisp15] | the survey manuals |
-| [`DATRAS_dataproducts_units` v3.1](https://www.ices.dk/data/Documents/DATRAS/3.1.DATRAS_dataproducts_units.pdf) [@ices2021units] — [v3.0](https://www.ices.dk/data/Documents/DATRAS/DATRAS_dataproducts_units.pdf) [@ices2017units] only where the two differ | the units specification |
-| [`DATRAS_NewHeaders_Lookup_Dec2024.xlsx`](https://www.ices.dk/data/Documents/DATRAS/DATRAS_NewHeaders_Lookup_Dec2024.xlsx) [@ices2024newheaders] | the New Headers lookup |
-| [`WKDATR13`](https://doi.org/10.17895/ices.pub.21655439) (ICES CM 2013/SSGESST:05) [@ices2013wkdatr] | the 2013 data-review workshop |
-| [`WKABSENS` 2021](https://doi.org/10.17895/ices.pub.8299) [@ices2021wkabsens] | the absence-record workshop |
-| IBTSWG reports, [2022](https://doi.org/10.17895/ices.pub.20502828), [2024](https://doi.org/10.17895/ices.pub.28562888) and 2025 meetings [@ices2022ibtswg; @ices2025ibtswg; @ices2026ibtswg] | IBTSWG 2022, IBTSWG 2024, IBTSWG 2025 |
-| `Reporting_Pseudo_Category_To_DATRAS` (Vaishav, 19/01/2021, marked *Draft*, unpublished) [@vaishav2021pseudocat] | the pseudo-category memo |
-
-One further primary source is live rather than filed: the DATRAS web service
-itself, whose
-[`getDatrasFieldList`](https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList)
-operation publishes the field-name mapping used in [Field names: two layers,
-both ICES's](#two-naming-layers), and whose
-[per-table operations](https://datras.ices.dk/WebServices/DATRASWebService.asmx)
-report the field names each table really carries.
-
-**The format standard does not stand alone.** Its field descriptions defer to
-"the survey manuals" fifteen times — twelve fields in HH and three in HL — and
-two of the three HL deferrals fall on fields this article turns on:
-`SpeciesCategory` (*"Further details on survey specific subsampling categories
-are available in the survey manuals"*) and `LengthCode` (*"Survey and species
-specific, see survey manuals for further details"*). Those manuals are ICES
-publications in their own right, and the two IBTS ones are cited above.
-
-**This article describes the format as it currently stands.** The field
-descriptions are a living workbook, revised periodically, and the December
-2025 vintage is the one quoted throughout unless a passage says otherwise.
-Superseded vintages are cited in two situations only: where the archive still
-holds data submitted under an earlier reading, and in the register, where the
-way a change was made is itself the observation. Where ICES has since
-corrected something, the entry says so rather than leaving the defect
-standing.
-
-Authored commentary elsewhere in the `imbus` tree is a pointer to where to
-look, not evidence. Dates in this article identify a document vintage or an
-archive snapshot and nothing else; archive figures were measured against the
-full archive on 2026-08-31.
-
-Two of these sources are marked as drafts on their own covers — the pseudo-
-category memo, and the 2006 variance-estimation workshop report cited in the
-[discrepancy register](#register-of-cross-document-discrepancies). Claims that
-rest on them are flagged as such each time.
-
-## The obstacles, in order
-
-**For most of the format there is nothing to say, and that is not said often
-enough.** The overwhelming majority of DATRAS fields mean what the field
-descriptions say they mean, and are used that way. What follows concentrates
-on the small number of places where two ICES statements pull in different
-directions, or where the format says nothing and `{obus}` had to choose — so
-their prominence here is not their prominence in the data.
-
-The rest of this article is one section per obstacle, ordered by how far it can
-move a number you would report, and by how much of it is still unsettled. The
-first three account for essentially all of it — and they are the three faces
-of the one structural problem named in [what is wrong with the HL
-table](#what-is-wrong-with-hl): three tallies sharing one row shape. Obstacle
-1 is the bridges between them, obstacle 2 is two of them disagreeing, and
-obstacle 3 is the tally that weight never reaches. The last four are conventions you need to
-know but which no longer cost anything once they are handled.
-
-| | Obstacle | What it does to the catch you compute | Where `{obus}` lands |
-|---|---|---|---|
-| **1** | [Sub-sampling and the raising factor](#sub-sampling-the-raising-factor-and-datatype) | Sets every number in both tables. Ignore it and a sub-sampled catch is understated by the factor — up to 168× in the worst records in the archive | ICES's index procedure, row by row; `NA`, never an assumed 1, when the factor is missing |
-| **2** | [Two routes to a catch total](#two-routes-to-a-catch-total) | Two legitimate totals per haul and species, disagreeing by a whole fish or more in 3.85% of records | Both carried, in separate columns, never averaged; the disagreement measured and flagged per record |
-| **3** | [Catch weight](#catch-weight-catcatchwgt) | The one quantity with no arithmetic cross-check in the format. A weight repeated across category codes is added twice | Repeats under `DataType` P collapsed on the main category; the unexplained remainder left summed and flagged |
-| **4** | [Length classes and their units](#length-classes-and-their-units) | `LengthClass` holds millimetres and centimetres in one column — a tenfold error on a length if read flat | Resolved once, on reading, into `length_mm`, `length_cm` and `accuracy` |
-| **5** | [Record types](#record-types-what-speciesvalidity-means) | Adding up a species across record types counts the same fish twice | `SpeciesValidity` is part of what makes an `HL_summary` row unique |
-| **6** | [Haul duration](#haul-duration-and-hourly-rates) | Hourly rates only; 270 hauls have no usable duration | Duration not positive ⇒ `NA`, never `0` and never `Inf` |
-| **7** | [Which hauls count](#which-hauls-count) | Whether invalid hauls are in your data at all | `haulval`, with no default — the survey's call, not the package's |
-| **8** | [Missing values and `-9`](#missing-values-and-what--9-means) | What an absent value means | Resolved once, upstream, per field; `{obus}` never puts a sentinel back |
-
-Each section says the same three things in the same order: **what ICES's
-documents state**, **what the archive actually contains**, and **what `{obus}`
-does**. Where the documents conflict, the conflict is registered in the
-[discrepancy register](#register-of-cross-document-discrepancies) with an
-identifier (D1, D2, …) so it can be cited from elsewhere.
-
-Where a record is affected by any of this, `{obus}` says so per record rather than
-in prose alone. `dr_con("hl_flag")` carries one row per affected haul, species
-and issue, and `dr_con("hl_flag_code")` explains each code and — importantly —
-whether it marks a genuine defect or a documented property of the format:
+**First, how much of the archive this is about.** Every record `{obus}` touches
+that is affected by anything in this part is marked in `dr_con("hl_flag")`, and
+each marking says whether it is a genuine defect or simply the format behaving
+as documented. Counting only the genuine ones:
 
 ```{r}
 dr_con("hl_flag") |>
-  filter(.id == "BITS:2017:4:DK:26HF:TVS:552:42") |>
-  left_join(dr_con("hl_flag_code") |> select(code, kind, label), by = "code") |>
-  select(Valid_Aphia, code, kind, label) |>
+  left_join(dr_con("hl_flag_code") |> select(code, kind), by = "code") |>
+  filter(kind %in% c("suspect", "unexplained")) |>
+  summarise(records_affected = n_distinct(paste0(.id, "|", Valid_Aphia)),
+            hauls_affected   = n_distinct(.id)) |>
   collect()
 ```
 
-Most flagged records are `intrinsic` or `property` — arithmetic, or the format
-behaving as documented — so filter on `kind` before treating a flag as a
-problem. One row per haul, species and issue: a
-species with two record types is flagged once, not twice.
+Against `HL_summary`'s `r N(M$sum_rows)` records, that is under three in every
+hundred, sitting in about one haul in eleven. **For the other ninety-seven
+records in a hundred the two tables are right and the arithmetic in Part II is
+all there is to it.**
 
-## 1. Sub-sampling and the raising factor {#sub-sampling-the-raising-factor-and-datatype}
+**So why spend a whole part on the remainder?** Because of the shape of the
+error. The two tables are *vaguely right* everywhere — right to the fish for
+almost all of the archive, and right in substance even where a submission is
+odd. A small number of records are *precisely wrong*: a particular country, in
+a particular year, writing a particular number in a way that cannot mean what
+it appears to mean. Being vaguely right is a good position to argue from. Being
+able to point at exactly which records are precisely wrong is more useful
+still, because it can be acted on.
 
-This is the core of the format, and the part `{obus}` depends on most directly.
-It is also the part ICES specified most defensively: the four quantities are
-tied together by stated identities — `SubsampledNumber = Sum(NumberAtLength)`
-and `TotalNumber = SubsampledNumber × SubsamplingFactor` — so a submission
-carries its own arithmetic
-check, and a consumer can tell a well-formed record from a malformed one
-without leaving the file. Almost everything this article is able to say about
-where submissions go wrong is said using that redundancy.
+And it can only be acted on in one place. Where a submission writes one number
+in a way that could mean two things, no derivation — ours, `{DATRAS}`'s, or
+ICES's own — can recover which was meant. The fix is in the data, at source.
 
-Those identities are worth reading as what they are: **the bridges between the
-observational units** crammed into HL. `NumberAtLength` belongs to the length
-tally, `SubsampledNumber` and `SubsamplingFactor` to the sub-sample, and
-`TotalNumber` to the catch. ICES could not give each its own table, so it
-specified the arithmetic that relates them instead — which is why a submission
-can be checked against itself at all, and why every check in this article runs
-across that boundary rather than within one side of it.
+**And that source is the national institute that uploaded the record.** Only
+the programme that made a submission still holds the sampling sheets behind it,
+so only that programme can say what a number was meant to mean and correct it.
+The Data Centre is a middleman here: DATRAS stores what it is sent.
 
-### What each field means
+**Which is not to say the submitters got it wrong.** The format gives them one
+kind of row for three different tallies, so a total belonging to the species
+has nowhere of its own to go and must be written onto every length row — [the
+problem Part I describes](#what-is-wrong-with-hl), along with the fact that no
+institute ever exercises more than a corner of the format it has to submit to.
+Writing one total across several sex rows is not carelessness; it is close to
+what the record shape asks for. And the same structure that makes the ambiguity
+easy to create makes it impossible to resolve later, because the field that
+would settle it was never given a column.
 
-**How to read the "Authority" column.** ICES's field descriptions
-[@ices2026fielddesc] are a spreadsheet with one sheet per record type and one
-row per field, so "HL row 20" means *row 20 of the HL sheet*, which is the
-row defining `SubsamplingFactor`. The field each row defines is named in
-brackets throughout, because the row number alone identifies nothing to a
-reader who does not have the file open.
+Nor is there anyone outside to refer this to. The format is set through ICES
+working groups staffed by scientists employed by these same institutes, and the
+Data Centre works for their consortium. The people who wrote the format, the
+people who submit to it and the people who can repair it are one community. So
+the fix has two halves, and both are theirs: correcting the particular records
+below, and giving the three tallies tables of their own so that the next decade
+of submissions cannot express the ambiguity at all. The second is the argument
+of this whole article.
 
-| Field (legacy name) | Meaning | Authority |
-|---|---|---|
-| `NumberAtLength` (`HLNoAtLngt`) | **Raw measured count** in the sub-sample, per length class per category. Per-hour for `DataType` C only. | HL row 25 (`NumberAtLength`): *"Number of measured fish for the length class per category…"*; FAQ Annex I: *"HLNoAtLenght: number of fish measured in the (sub) sample"* |
-| `SubsampledNumber` (`NoMeas`) | `Sum(NumberAtLength)` over length classes within the category. | HL row 19 (`SubsampledNumber`): *"NoMeas=Sum(HLNoAtLngt)."* |
-| `SubsamplingFactor` (`SubFactor`) | The raising factor. ≥ 1, four decimals, per category. For `DataType` S it must be the **compound** of split and species factors. | HL row 20 (`SubsamplingFactor`); FAQ Annex I Ex. 1: *"Subfactor = 8\*2 = 16"* |
-| `TotalNumber` (`TotalNo`) | **Raised** count = `SubsampledNumber × SubsamplingFactor`. Non-mandatory. | FAQ p. 18 (R): *"Make sure that TotalNo = Sum (HLNoAtLngt) x SubFactor"*; FAQ Annex I: *"Total number (TotalNo): subfact\*nomeas"* |
+Each construct is shown the same way: **a real record**, so its shape is
+visible; the archive-wide count, so its scale is; what `{obus}` does with it;
+and the question it leaves. They are ordered by reach: how many surveys write
+the construct, then how many stations, then how many records. The first four
+are written by fourteen surveys or more and touch thousands of stations; the
+last five are narrow enough to name the surveys and countries involved.
 
-`NumberAtLength`, `SubsampledNumber` and `SubsamplingFactor` are
-`Mandatory = Yes` in the current sheet. `TotalNumber` is not.
+## 1. One `TotalNumber` written across several sex rows {#totalnumber-across-sex-rows}
 
-### The `SubsamplingFactor` rule by `DataType`
-
-The `DataType` vocabulary — and note that its `-9` is **a classification, not
-a blank**. `icesVocab`'s `TS_DataType` gives it a meaning of its own, and
-`{opus}`, which curates the archive's field dictionary, records it as one of
-the three sentinels it keeps rather than nulls, on the grounds that nulling it
-would erase the only marker distinguishing a haul known to be invalid from one
-whose `DataType` was never recorded (see [missing
-values](#missing-values-and-what--9-means)):
-
-| Code | Label |
-|---|---|
-| `-9` | Invalid hauls |
-| `C` | Data calculated as CPUE (number per hour) |
-| `P` | Pseudocategory sampling |
-| `R` | Data by haul |
-| `S` | Sub sampled data |
-
-and the `SubsamplingFactor` rule:
-
-> If DataType is C, it should be reported as 1. If DataType is S, it is always
-> >1. If DataType is R, the SubFactor is = 1 or >1 for different species
-> depending on whether they were subsampled.
-
-So `1` is a specific claim — *this species was not sub-sampled* — and it is
-not the same statement as "no factor was supplied".
-
-**That absence is a second, unrelated `-9`.** The `General Notes` tell
-submitters to send `-9` for any field with no information, so a missing
-`SubsamplingFactor` arrives that way — but it carries none of the meaning
-`DataType`'s `-9` does. It is a blank: `{opus}`'s entry for the field records
-no sentinel at all, only ICES's rule and the fact that the field is required.
-So `{opus}` nulls it, and you never meet it in the archive as served —
-144,663 HL rows carry no factor, and not one carries a `-9`.
-
-**What that looks like in the file.** Two cod records, one of each convention.
-Under `R` the measured fish are a sub-sample and the factor raises them:
+A haul, a species and a sampling category can carry several rows because the
+catch was sexed. `TotalNumber` is written on each. Here is a plaice record
+where each sex reports its own:
 
 ```{r}
-dr_con_raw("HL") |> dr_add_id() |>
-  filter(.id == "BITS:2016:4:DE:06SL:TVS:22071:14", Valid_Aphia == 126436) |>
-  select(LengthClass, NumberAtLength, SubsamplingFactor,
-         SubsampledNumber, TotalNumber) |>
-  arrange(LengthClass) |> collect()
-```
-
-The nine `NumberAtLength` values sum to 21, which is exactly
-`SubsampledNumber`; multiply by 1.4466 and you get `TotalNumber`, 30. Note
-also that the 30 is written on **all nine rows** — adding that column up gives
-nine times the catch.
-
-Under `C` the factor is 1 and the numbers are already per hour:
-
-```{r}
-dr_con_raw("HL") |> dr_add_id() |>
-  filter(.id == "NS-IBTS:2007:1:FR:35HT:GOV:L0155:55", Valid_Aphia == 126436) |>
-  select(LengthClass, NumberAtLength, SubsamplingFactor,
-         SubsampledNumber, TotalNumber) |>
-  arrange(LengthClass) |> collect()
-```
-
-Five fish were measured — that is `SubsampledNumber` — in a 30-minute haul, so
-each appears as 2 in `NumberAtLength` and the column sums to 10, which is
-`TotalNumber`. **The same arithmetic that is false under `R` is true under
-`C`**, which is worth holding onto: it is the whole of [the documentation
-error](#the-documentation-error-totalnosumhlnoatlngt) below.
-
-**`{obus}`:** a missing `SubsamplingFactor` propagates to `NA` for every
-`DataType`, including `"R"`. This is a deliberate departure from the DATRAS R
-package, which treats `"R"` plus a missing factor as 1. That convention
-asserts a fact the submission does not contain: it silently converts "the
-raising factor is unknown" into "the catch was fully measured", understating
-the raised count whenever the true factor was greater than 1. Following the
-format instead costs 24,298 length rows (0.17%), worth 0.003% of the archive's
-total `n_haul`, and 98% of them Can-Mar.
-
-### Pseudo category sampling (`P`) and the two-part category identifier
-
-`R` is one sub-sampling rate per species. `P` is size-stratified: several
-`SpeciesCategory` grades, each sub-sampled separately, under one main category.
-
-Under `P` the `SpeciesCategory` is **two digits**: the first is the main
-category, the second the sub-category, so main category 1 has sub-categories
-`11`, `12`, `13`, and main category 2 has `21`, `22`, `23`. The only document
-that describes the convention is the pseudo-category memo [@vaishav2021pseudocat], which is **marked
-Draft** and unpublished:
-
-> If datatype is "P" and there is subcategory PRESENT then Catidentifier value
-> will be 11, 12,13… 21,21,23…31,32,33..
-
-and, in the same memo:
-
-> Subfactors value are not the same within subcategory
->
-> CatCatchweight value is same in each subcategory
->
-> Length class are unique in each subcategory
-
-All three of those are visible in a single record — one Norway pout record,
-four rows:
-
-```{r}
-dr_con_raw("HL") |> dr_add_id() |>
-  filter(.id == "NS-IBTS:2023:3:GB-SCT:748S:GOV:193:193", Valid_Aphia == 126444) |>
-  select(SpeciesCategory, LengthClass, NumberAtLength,
-         SubsamplingFactor, SpeciesCategoryWeight) |>
-  arrange(SpeciesCategory, LengthClass) |> collect()
-```
-
-`11` and `12` share a first digit, so they are two grades of **one** main
-category, not two categories. The small-fish grade was sub-sampled at 16.032
-and the single large fish was not sub-sampled at all — that is the memo's
-"subfactors are not the same". And `SpeciesCategoryWeight` reads 2020 on every
-row: **one weighing of one main category, written four times.** Summing that
-column gives four times the weight, which is the trap [catch
-weight](#catch-weight-catcatchwgt) is about.
-
-Two-digit `SpeciesCategory` codes occur **only** under `DataType` `P` in the
-archive: `S` and `C` show zero affected blocks.
-
-**Published ICES documentation for `P` does not exist.** HH row 29 (`DataType`) enumerates
-the code — *"P (pseudocategory sampling, only used by Scotland)"* — and that is
-all. HL row 20 (`SubsamplingFactor`) enumerates C, S and R
-and is silent on P. HL row 22 (`SpeciesCategoryWeight`) says *"For datatype R or S …
-For datatype C …"* and is silent on P. The FAQ, which carries every raising
-formula in the corpus, contains no occurrence of the word "pseudo" and its
-`DataType` paragraph reads *"Data Type can be reported as R …, S …, C …"*. The
-FAQ does not know `P` exists.
-
-**`{obus}`:** treats `P` exactly as `R` and `S` — raised count is
-`NumberAtLength × SubsamplingFactor`, summed over the rows — because it uses
-the row-level formula for every `DataType` and never assumes one category per
-species. This is a defensible choice in a documented silence, not an
-application of a documented rule.
-
-Note also that the shape `P` describes is submitted under `R` in practice:
-34,531 `R` groups carry more than one `SpeciesCategory` each with its own
-rate — 2.14% of the 1,616,146 haul × species groups submitted under `R` — across many surveys and back to at least 2009. `{obus}` is unaffected by
-that, for the same reason.
-
-### What `{obus}` computes
-
-```
-DataType == "C"                 n_haul = NumberAtLength * SubsamplingFactor * HaulDuration / 60
-                                n_hour = NumberAtLength * SubsamplingFactor
-DataType in ("R", "P", "S")     n_haul = NumberAtLength * SubsamplingFactor
-                                n_hour = n_haul / HaulDuration * 60
-anything else, including "-9"   n_haul = NA, n_hour = NA
-```
-
-`{obus}` invents no arithmetic here. This is the ICES index procedure, step for
-step — `Indices_Calculation_Steps_IBTS`, section II:
-
-> d. Raise data from sub sampling to total number per haul by multiplying the
-> number at length with the sub sampling factor
->
-> e. Sum number at haul by length class over category and sex
->
-> f. If data type is not CPUE (C) then NoAthaul=number\*(60/HaulDuration)
-
-`Indices_Calculation_Steps_BITS` states the same three steps independently,
-adding *"select valid data … for each category and sex"*. The pseudo-category
-memo describes the same two steps again. `dr_HL_length()` is those steps, and
-you can do them by hand on any haul and get the published figure back:
-
-```{r}
-dr_con_raw("HL") |>
-  dr_add_id() |>
-  filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
-  summarise(by_hand = sum(NumberAtLength * SubsamplingFactor)) |> collect()
-
-dr_con("HL_length") |>
-  filter(.id == "NS-IBTS:2020:1:DK:26D4:GOV:11:4", Valid_Aphia == 126425) |>
-  summarise(published = sum(n_haul)) |> collect()
-```
-
-The `DataType` `C` back-multiplication by `HaulDuration/60` — recovering an
-absolute per-haul count from a reported rate — is **also** documented by ICES,
-in `WKABSENS` 2021 [@ices2021wkabsens], section 3.3 step 17:
-
-> Estimate numbers (Count) / a. If HLNoAgeLngt == NA, use TotalNo and set
-> SubFactor = 1 / b. Multiplier = HaulDur/60 if DataType in ("C") / c.
-> Multiplier = SubFactor if DataType in ("S","R") / d. Count = HLNoAtLngt \*
-> Multiplier
-
-IBTSWG 2022 [@ices2022ibtswg] performs the inverse transform on the
-weight field for the same reason: *"CatchWgtraw = (CatchWgtCPUE \* HaulDur) /
-60 min"*.
-
-There is one divergence worth naming, and it is not benign. WKABSENS applies
-`HaulDuration/60` **only** for `C`, with no `SubsamplingFactor` term; `{obus}` multiplies by
-`SubsamplingFactor` as well. The two agree wherever the format is followed —
-and the format is not always followed. **1,832 length rows over 36 BITS hauls
-(LT 2008–2016, DK 2018) report `DataType` `C` with `SubsamplingFactor > 1`**, reaching
-167.94.
-
-Those submissions are shaped like `R` and labelled `C`. Over their 113
-haul × species × sex × category groups, `TotalNumber` equals
-Σ`NumberAtLength` in **0** of them, equals Σ`NumberAtLength` × `SubsamplingFactor` in 102, and
-Σ`NumberAtLength` equals `SubsampledNumber` in 108 — so `NumberAtLength` there is the measured
-sub-sample, not an hourly rate, and dropping `SubsamplingFactor` understates the catch
-by up to 167.94 times.
-
-Three sources decide it against WKABSENS:
-
-- **ICES's own CPUEL product applies both multipliers.** Over 1,721 matched
-  cells on those hauls, the median ratio of `CPUE_number_per_hour` to the
-  two-multiplier figure is exactly 1.000.
-- **The DATRAS R package** [@kristensen2023datraspkg] applied WKABSENS's
-  single-multiplier rule until 2023-04-11, then moved to two, over the note
-  *"some BITS hauls (all LT and some DK) have dataType C but SubFactor>1 - two
-  multipliers needed!"*.
-- **The submissions themselves**, as above.
-
-WKABSENS 2021 predates that discovery and
-documents behaviour ICES's own production has since superseded — registered as
-[D23](#d23), with the CPUEL gear-conversion findings it sits beside at
-[D20](#d20)–[D22](#d22).
-
-`{obus}` therefore follows the production behaviour, not the published recipe, and
-flags every affected record as `CNT_C_SUBFACTOR_CONFLICT` in
-`dr_con("hl_flag")` — because a rule that contradicts an ICES publication
-should be visible per record, not buried in a formula. Reproduced by
-`data-raw/CHECK_cpuel_multiplier.R`.
-
-## 2. Two routes to a catch total {#two-routes-to-a-catch-total}
-
-There are two independent routes to the same number, and `{obus}` keeps both, in
-different tables, named apart on purpose.
-
-**They are two of HL's three tallies, asked the same question.** One is the
-catch tally reporting its own total; the other is the length tally, raised and
-summed up to that level. In a tidy record they would be two
-tables that happen to agree, and a disagreement between them would be an
-obvious thing to look at. In HL they are two columns of one row, which is why
-the disagreement is so easy to miss — and why `{obus}` publishes them apart and
-under different names rather than reconciling them into one figure.
-
-| Route | `{obus}` | Source |
-|---|---|---|
-| Reported | `HL_summary$n_totalnumber` | the recorded `TotalNumber` |
-| Reconstructed | `sum(HL_length$n_haul)` | raised length frequencies |
-
-`HL_summary` needs the reported route because 16% of its rows are species with
-no length data at all, where no length-derived figure exists. `HL_length`
-needs the reconstructed route because it is the only one that resolves to a
-length class.
-
-Summing `HL_length` reproduces `Σ(NumberAtLength × SubsamplingFactor)` exactly
-(1,925,444 groups, zero differing), so nothing is lost by not duplicating it
-into `HL_summary`:
-
-```{r, eval = FALSE}
-dr_con("HL_summary") |>
-  dplyr::left_join(
-    dr_con("HL_length") |>
-      dplyr::group_by(.id, Valid_Aphia, SpeciesValidity) |>
-      dplyr::summarise(n_length = sum(n_haul), .groups = "drop"),
-    by = c(".id", "Valid_Aphia", "SpeciesValidity")
-  )
-```
-
-### The documentation error: `TotalNo=SUM(HLNoAtLngt)`
-
-The current field descriptions contain a sentence that is **false**, and it is
-provably false using nothing but ICES's own files.
-
-HL row 17, the field now called `TotalNumber`, still reads
-`TotalNo=SUM(HLNoAtLngt).` HL row 19 (`SubsampledNumber`), in the same sheet,
-reads `NoMeas=Sum(HLNoAtLngt).` They cannot both be true when
-`SubFactor > 1`, because the same sheet also requires
-`TotalNo = NoMeas × SubFactor`.
-
-**The Example file inside the same workbook settles it arithmetically.** HL
-rows 4–22, `SpecCode` 126417, HH `DataType` `R`:
-
-| Quantity | Value |
-|---|---|
-| The 19 `HLNoAtLngt` values | 2, 2, 5, 6, 16, 28, 22, 32, 21, 28, 31, 14, 12, 6, 4, 3, 3, 1, 1 |
-| Their sum | **237** |
-| Reported `NoMeas` | **237** — so `NoMeas = Sum(HLNoAtLngt)` is TRUE |
-| Reported `TotalNo` | **9766.059** — so `TotalNo = SUM(HLNoAtLngt)` is FALSE, by a factor of 41 |
-| Reported `SubFactor` | **41.207**, and 237 × 41.207 = **9766.059** exactly |
-
-The archive behaves the same way. Take the `R` cod record from
-[the `SubsamplingFactor` rule](#the-subsamplingfactor-rule-by-datatype) above
-and compute both candidate formulas side by side:
-
-```{r}
-dr_con_raw("HL") |> dr_add_id() |>
-  filter(.id == "BITS:2016:4:DE:06SL:TVS:22071:14", Valid_Aphia == 126436) |>
-  summarise(sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+dr_con("HL") |>
+  filter(.id == "BITS:1999:1:DK:26HI:TVS:017492:22", Valid_Aphia == 127143) |>
+  group_by(SpeciesSex) |>
+  summarise(TotalNumber        = max(TotalNumber, na.rm = TRUE),
+            sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
             SubsamplingFactor  = max(SubsamplingFactor, na.rm = TRUE),
-            TotalNumber        = max(TotalNumber, na.rm = TRUE)) |>
-  mutate(documented_formula = sum_NumberAtLength,
-         live_rule          = sum_NumberAtLength * SubsamplingFactor) |>
-  collect()
-```
-
-The documented formula returns 21 against a reported `TotalNumber` of 30; the
-live rule returns 30.38, which is 30 once you allow that a non-integer factor
-applied to whole fish does not land on an integer.
-
-So `TotalNo = Sum(HLNoAtLngt) × SubFactor` is the live rule, and the workbook
-settles the question against its own sentence. Three further ICES statements
-agree with the example: FAQ p. 18's
-`DataType` R block, FAQ Annex I's bullet list, and both FAQ worked examples
-(Ex. 1, a `DataType` S case: *"Nomeas = ∑(Hlnoat length) = 50 / Subfactor =
-8\*2 = 16 / TotalNo = nomeas \* Subfactor = 50\*16 = 800"*).
-
-**It is a leftover from an edit that otherwise worked.** These four
-descriptions — `TotalNo`, `NoMeas`, `HLNoAtLngt` and `CatCatchWgt` — were
-rewritten together in a review ICES ran on exactly this problem. IBTSWG 2024
-[@ices2025ibtswg] §3.3 minutes the intersessional group that met to *"review
-the field specifications of the DATRAS format, of which the ambiguity had
-likely led to some of the documented issues"*, with *"particular attention … to
-the clarification and harmonisation of specifications for the ambiguous fields
-… CatCatchWgt, TotalNo, NoMeas and HlNoAtLngt, in particular the description of
-their aggregation levels"*; the recommendations went through WGDG and into the
-workbook, whose `General Notes` list all four fields under *"Improved
-descriptions"*. That review is why the four descriptions now agree on the
-record key at all ([what makes a row unique](#what-makes-a-row-unique)). The formula
-fragment `TotalNo=SUM(HLNoAtLngt).` simply survived the pass that fixed the
-sentence around it.
-
-The fragment is additionally **true for `DataType` C only**, where `SubFactor`
-is 1 and both sides are per-hour — FAQ p. 19 states it for C explicitly —
-which is very likely why it outlived that review for R, S and P.
-
-### Is there a reading under which `{obus}` is wrong?
-
-Two, and both are dead.
-
-**Reading 1 — "don't raise at all."** Take `TotalNo=SUM(HLNoAtLngt)`
-literally: the length sum needs no `SubsamplingFactor`, and `{obus}` over-raises. Refuted
-by the Example file, by the FAQ's R rule, by Annex I, and by both worked
-examples — four independent ICES sources against one sentence.
-
-**Reading 2 — "the length rows are already raised, so `{obus}` double-raises."**
-Not a live reading, but worth answering, because it is what the descriptions
-said before that review (`HLNoAtLngt=NoMeas*Subfactor`) and it survives in code
-built against them. Refuted by the Example file, which sat unchanged in those
-very same workbooks and shows `Sum(HLNoAtLngt) = NoMeas = 237`, not 9766. The
-formula was also incoherent on its face — a per-row identity that can only hold
-when there is exactly one length class — and the current descriptions no longer
-carry it.
-
-### Two submitter conventions for `TotalNumber`'s scope
-
-Registered as [D4](#d4).
-
-The documents agree with each other now. They did not always, and the archive
-is older than the agreement:
-
-| Convention | Where it is stated |
-|---|---|
-| per species × sex × devstage × category | the current field descriptions, and FAQ p. 18 — *"the total number of fish of one species, sex, and category in the given haul"* |
-| haul × species, repeated identically on every sex and category row | the field descriptions as they stood before the harmonisation [@ices2023fielddesc] — *"Total number of specimens in the haul for the species."* |
-
-Both conventions are present in the archive, and **nothing in the record marks
-which one a given row follows.** So this is neither `{obus}` deviating from a
-documented rule nor a documentary dispute a closer reading can settle: it is a
-rule clarified after much of the data was submitted, with no flag in the data
-saying which side of the clarification a row falls on. It has to be resolved
-per group, arithmetically — which is what `dr_HL_summary()` does below.
-
-### How `{obus}` resolves a repeated `TotalNumber` {#how-obus-deduplicates-totalno}
-
-`dr_HL_summary()` resolves the ambiguity per group rather than by picking one
-convention globally:
-
-1. **Reconcile.** For each sub-record — haul, species, category, record type,
-   sex and development stage — compare its **own** reported `TotalNumber` against
-   what its **own** length rows raise to. A sub-record that reconciles (within
-   half a fish) is *trusted* and counted on its own.
-2. **Fall back.** Sub-records that do not reconcile — or that have no length
-   rows to check against, such as a bulk-weighed category — are reduced to
-   their distinct `TotalNumber` values, ignoring sex and category, and leaving out
-   any value a reconciling sub-record has already claimed, so nothing is
-   counted twice.
-
-Both branches are needed. A plain `distinct()` on the value alone gets the
-common cases right but collapses two genuinely different sexes that happen to
-report the same small number: a real BITS haul with F (own total 2), M (own
-total 1) and unsexed (own total 1, coincidentally equal to M's) has a true
-total of 4, and `distinct()`-on-value-alone gives 3.
-
-`SpeciesCategory` is excluded from the *fallback* key because some surveys
-report two categories sharing one identical, non-reconciling `TotalNumber` — in
-practice entirely NS-IBTS, SCOROC and SCOWCGFS, always the category pair
-`"11"`+`"12"`, 1,430 haul × species groups archive-wide (0.062%). That value is the
-species-level total for both strata together, so keeping `SpeciesCategory` in
-the two categories separate adds it once per category and inflates the total by close to
-2×. The *trusted* branch still credits any category whose own data genuinely
-reconciles.
-
-`DevelopmentStage` is in the key because the ICES record key puts it there.
-Archive-wide it moves almost nothing: 289 groups span more than one
-`DevelopmentStage`, 21 of them with colliding `TotalNumber`, worth +29 fish out of
-1,443,326,029. Correct by the book and invisible in practice.
-
-**How well the hybrid does, measured.** On the closest reproducible
-population — 1,150 groups sharing one `TotalNumber` across two-digit categories,
-all `DataType` P — `{obus}` returns 3,252,517 against an independent length sum of
-3,252,507. A naive sum that treats each `SpeciesCategory` as its own total gives
-6,584,935, i.e. **2.02× too high**; that half of the comparison is
-established. A blanket collapse that always drops `SpeciesSex` and `SpeciesCategory`
-gives 3,252,503 on the same population — within 0.0004% of `{obus}`. So the
-hybrid's advantage over the naive route is demonstrated; its advantage over a
-blanket collapse is **not established** on the archive as it stands, and
-should not be claimed.
-
-### Where the two routes disagree
-
-Comparison must be made **in submission units**. For `DataType == "C"` both
-sides are scaled by `HaulDuration/60`, which turns whole fish into fractions:
-a genuine one-fish disagreement in a 30-minute haul appears as 0.5 and slips
-under any sub-unit tolerance. Divide the scaling out first; then a gap is in
-fish.
-
-Of 1,912,556 comparable groups:
-
-| Gap, in submission units | Groups | Share | |
-|---|---|---|---|
-| Exactly zero | 1,702,315 | 89.01% | reconciles |
-| Less than one fish | 136,645 | 7.14% | **arithmetic — not a data issue** |
-| One or more whole fish | 73,596 | **3.85%** | real |
-
-The sub-fish population is arithmetic and nothing else: a non-integer raising
-factor applied to integer counts cannot give an integer, and the reported
-`TotalNumber` is an integer. It carries no information about the data and is
-excluded from everything below. Reporting it as part of a "disagreement rate"
-only inflates the number. Independent reproductions of the whole comparison
-land at 1,912,200–1,912,600 comparable groups, 88.3–89.0% exact, and
-73,400–74,250 whole-fish. Bucket counts below move further than that — the
-1-fish band has ranged over ~900 groups across reproductions — so read the
-shares, which are stable to a few tenths of a percent, rather than the counts.
-
-**Direction, by gap size** (non-Can-Mar; Can-Mar is separated because it is a
-single suspected event):
-
-| Gap | Groups | `TotalNumber` higher |
-|---|---|---|
-| 1 fish | 21,664 | 48.3% |
-| 2 fish | 9,965 | 53.6% |
-| 3–5 | 7,229 | 61.8% |
-| 6–10 | 2,454 | **86.3%** |
-| 11–50 | 1,416 | **81.6%** |
-| >50 | 441 | 37.2% |
-
-Small gaps are near-symmetric; middling gaps point one way more than four
-times in five; and above 50 fish the direction **flips**, so the length sum is
-the higher side in 62.8% of that tail. The obvious summary statistic is
-actively misleading here: the overall direction split is 55/45, which looks
-like noise and is not — it is a symmetric population, a strongly directional
-one, and a reversed tail added together.
-
-**What explains the gap — and how much is still unexplained.** Two populations
-dominate the whole-fish residual, and neither is a tidy arithmetic story. The
-largest is **Can-Mar, 31,047 groups, 42% of it**, where two candidate
-mechanisms remain untested. Next is the 1–2 fish band, some 29,000 groups that
-test as genuine symmetric noise — 50.27% one way, with a confidence interval
-straddling even. Between them that is four fifths of the residual, none of it
-closed. The mechanisms that *are* established — a raising factor rounded to an
-integer, `DataType` C rates re-rounded per length row, duplicated length series
-— account for specific and comparatively small populations. The full
-decomposition, with the status of each, is in [What explains the
-disagreement](#what-explains-the-disagreement) and the sections after it in the
-appendices.
-
-What matters here is the shape, not the accounting. **The gap is a property of
-the submissions, not of the two tables**, and it is the reason both numbers are
-published rather than reconciled into one: a consumer who is handed a single
-"catch total" cannot tell the two routes apart, and a consumer who is handed
-both can see immediately where a submission does not add up.
-
-## 3. Catch weight {#catch-weight-catcatchwgt}
-
-`SpeciesCategoryWeight` (legacy `CatCatchWgt`) is the catch weight of one
-species category, in whole grams. It is the weaker of the two paths through
-this article, for one structural reason: the format gives it **no arithmetic
-cross-check**. Numbers have `TotalNumber = SubsampledNumber × SubsamplingFactor`, so a submission can
-be tested against itself. A weight can only be compared with other weights.
-
-The reason is the three tallies again. **Numbers appear in all three** —
-`NumberAtLength` in the length tally, `SubsampledNumber` in the sub-sample,
-`TotalNumber` in the catch — so ICES could state two bridges between them, and
-every check in obstacles 1 and 2 runs across one or the other.
-
-**Weight appears in only two.** Nobody weighs a 20-centimetre cod separately
-from a 21-centimetre one, so the length tally holds no weight at all;
-`SubsampleWeight` and `SpeciesCategoryWeight` are the sub-sample and the
-catch, and there is nothing finer beneath them. That leaves one possible
-bridge instead of two — and ICES states it nowhere. [A cross-check that exists
-but is not stated in words](#a-cross-check-that-exists-but-is-not-stated-in-words)
-below proposes it, `SubsamplingFactor = SpeciesCategoryWeight /
-SubsampleWeight`, as the exact analogue of the number identity, and it remains
-a hypothesis. Until it is tested this section can establish less than the two
-before it, which is what "the weaker of the two paths" above means
-concretely.
-
-### Which weights are the same weight
-
-The problem to solve is that one weight is written onto many rows. A species
-category weighed once appears again on every sex row, every development-stage
-row and every length row of that category, and adding the column up multiplies
-the catch by however many rows the submitter happened to write.
-
-`{obus}` therefore reduces to the distinct weights per species category before
-summing — dropping `SpeciesSex` and `DevelopmentStage` from what counts as a
-separate weight, and keeping the category:
-
-```
-distinct(.id, Valid_Aphia, <category>, SpeciesValidity, SpeciesCategoryWeight)
-```
-
-The effect is visible on the Norway pout record from
-[pseudo category sampling](#pseudo-category-sampling-p-and-the-two-part-category-identifier),
-whose `SpeciesCategoryWeight` of 2020 was written on four rows:
-
-```{r}
-dr_con("HL_summary") |>
-  filter(.id == "NS-IBTS:2023:3:GB-SCT:748S:GOV:193:193", Valid_Aphia == 126444) |>
-  select(species, n_totalnumber, n_haul, n_measured, w_haul) |>
-  collect()
-```
-
-`w_haul` is 2020, not 8080. One weighing, counted once.
-
-The reason for dropping sex is measured, not assumed: DATRAS repeats one weight
-across a species' sex rows whatever the specification says — confirmed as a
-threefold inflation on a real NS-IBTS haul with three sex groups in one
-category — while genuinely separate per-sex weights, which some programmes do
-record, differ from each other and are kept and summed.
-
-**The documents cut both ways on this.** The current field descriptions put
-both sex and devstage in `SpeciesCategoryWeight`'s key — ICES's own wording,
-not field names. Against that, FAQ p. 19 scopes the field for `DataType` C as *"the total catch
-weight per species per haul, raised to one hour of hauling"* — no sex, no
-category. Whether dropping sex costs anything where two genuinely separate per-sex
-weights happen to be numerically **equal** is **untested**: such a pair is
-indistinguishable from one weight written twice. The diagnostic
-that would settle it is mean weight per fish, `w_haul / n_haul`, compared
-against single-sex groups of the same species and year; a clean ~0.5 offset
-would confirm a loss, no offset would confirm the equal weights were genuine
-repeats.
-
-**The same weight is sometimes written on two category codes**, and a naive sum
-then counts it twice. Under pseudo-category sampling (`DataType` P) that
-repetition is the documented convention rather than an error — the memo states
-*"CatCatchweight value is same in each subcategory"* — so `{obus}` collapses P
-weights on the **main** category rather than on the reported code. The worked
-case, the `R` and `S` residue, and the measured effect on the published figure
-are in [The same weight written on two category
-codes](#the-same-weight-written-on-two-category-codes) in the appendices.
-
-`w_haul` is `NA`, not `0`, for a species with no recorded weight at all —
-672,076 `HL_summary` rows archive-wide, which is 671,937 haul × species
-combinations once the record types are counted once, and that is the number
-flagged `WGT_NONE`. Not weighed is not weighed nothing.
-
-### A cross-check that exists but is not stated in words
-
-**A hypothesis worth testing.** The Example file establishes,
-arithmetically and exactly, that `SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight`:
-343666 / 8340 = 41.206954…, reported as **41.207**, and 237 × 41.207 =
-9766.059 exactly — the example reproduces only from the *rounded* factor.
-
-The arithmetic is a fact of the file. **The generalisation is a hypothesis: no
-ICES document states this identity in words anywhere.** If it holds generally,
-the weight path has the exact analogue of
-`TotalNumber = SubsampledNumber × SubsamplingFactor`, and
-becomes checkable. *What would settle it:* over all HL rows with `SubsampleWeight`,
-`SpeciesCategoryWeight` and `SubsamplingFactor` populated, compute the ratio
-`SpeciesCategoryWeight / SubsampleWeight` and compare it to the reported factor, stratified by survey × year ×
-`DataType`. High agreement means the factor is weight-derived and the weight
-fields are mutually consistent; agreement in some provider blocks only would
-itself identify which providers derive the factor by weight and which by
-number; systematic failure would mean one of the three fields is being written
-with a different meaning.
-
-The same observation may close the sub-one-fish count population
-documentarily: a submitter deriving `TotalNumber` from the **unrounded** factor
-while writing the rounded four-decimal factor into the rows produces a forced
-sub-fish gap (237 × 41.206954 = 9766.048 against the reported 9766.059). That
-too is a hypothesis, testable the same way.
-
-## 4. Length classes and their units {#length-classes-and-their-units}
-
-`LengthCode` (legacy `LngtCode`) declares the resolution, and `LengthClass`
-(legacy `LngtClass`) **carries mixed units within one column**. Both the units
-specification and the format sheet say so:
-
-> LngtClass — Length class in mm for mm and 1/2-cm classes, in cm for cm
-> classes
-
-**`{obus}`** resolves this once, at read time, into three columns:
-
-| `LengthCode` | Unit of `LengthClass` | `length_mm` | `length_cm` | `accuracy` (cm) |
-|---|---|---|---|---|
-| `.` | mm | `LengthClass` | `LengthClass / 10` | 0.1 |
-| `0` | mm (½-cm classes) | `LengthClass` | `LengthClass / 10` | 0.5 |
-| `1` | cm | `LengthClass * 10` | `LengthClass` | 1 |
-| `2` | cm (2-cm classes) | `LengthClass * 10` | `LengthClass` | 2 |
-| `5` | cm (5-cm classes) | `LengthClass * 10` | `LengthClass` | 5 |
-| anything else, or `-9` | — | `NA` | `NA` | `NA` |
-
-`accuracy` is part of what makes a row unique, not an annotation: a 1-cm and a
-5-cm series for the same species in the same haul are different observations.
-
-The mixing is plain in the data. `LengthClass` runs to 11,930 under the
-millimetre code and stops at 900 under the centimetre one — the same column,
-two units:
-
-```{r}
-dr_con_raw("HL") |>
-  group_by(LengthCode) |>
-  summarise(rows = n(),
-            smallest = min(LengthClass, na.rm = TRUE),
-            largest  = max(LengthClass, na.rm = TRUE),
             .groups = "drop") |>
-  arrange(desc(rows)) |>
   collect()
 ```
 
-ICES does publish the vocabularies themselves, at `vocab.ices.dk`, and the
-`Survey` description links to its own list directly. What is missing is the
-pointer: the workbook's `Vocab` column — which should name the vocabulary that
-enumerates each coded field — is populated in exactly **one cell** across all
-three unaggregated sheets (CA `PreservationMethod`). It is empty for
-`DataType`, `SpeciesValidity`, `SpeciesSex`, `LengthCode`, `DevelopmentStage`
-and `LengthType`: 0 of 71 HH rows and 0 of 27 HL rows. So the code values in
-the tables above are read from prose and from the data, not from a
-machine-readable list the format points at ([D17](#d17)).
+Three rows; each `TotalNumber` matches that sex's own measured lengths at a
+factor of 1. The haul total is 4. But two of the three values are the same
+number, so a consumer that removes duplicates gets 3 — the unsexed row and the
+male row agree by coincidence, not because one is a copy of the other.
 
-## 5. Record types: what `SpeciesValidity` means {#record-types-what-speciesvalidity-means}
+Other submissions do the opposite, and write one whole-category total on every
+sex row. The archive is split roughly a third to two thirds:
 
-The field descriptions call `SpeciesValidity` (legacy `SpecVal`) the
+```{r}
+dr_con("HL") |>
+  distinct(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, DevelopmentStage,
+           SpeciesSex, TotalNumber) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, DevelopmentStage) |>
+  summarise(n_sex = n_distinct(SpeciesSex),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  summarise(groups             = n(),
+            one_value_repeated = sum(as.integer(n_val == 1)),
+            one_value_per_sex  = sum(as.integer(n_val == n_sex)),
+            neither            = sum(as.integer(n_val > 1 & n_val < n_sex))) |>
+  collect()
+```
 
-> Validity of species records, e.g. to specify if species has only been
-> counted, measured, weighed, etc.
+Nothing in the record says which a group is. Add them up and the repeated kind
+is inflated; collapse them and the per-sex kind is understated.
 
-The codes describe *what data is present*, not how good it is:
+**Is it ad hoc, or a house style?** If repeating is a submitter's habit it
+should be near-total for that submitter; if it is a slip it should be a small
+minority everywhere. So ask it of each country that sends data, showing both
+how often it happens and how much data each country contributes:
 
-| Code | What is present |
-|---|---|
-| `1` | Lengths, numbers and weights |
-| `4` | Total number only |
-| `5` | Presence / absence |
-| `6` | Weight only |
-| `7` | Numbers and weights, no lengths |
+```{r}
+#| fig-width: 7.5
+#| fig-height: 4.2
+#| fig-alt: "Canada repeats one total on every sex row in 100% of its records and
+#|   is also one of the largest contributors. The other fourteen countries all lie
+#|   between 8 and 23 per cent."
+dr_con("HL") |>
+  distinct(Country, .id, Valid_Aphia, SpeciesCategory, SpeciesValidity,
+           DevelopmentStage, SpeciesSex, TotalNumber) |>
+  group_by(Country, .id, Valid_Aphia, SpeciesCategory, SpeciesValidity,
+           DevelopmentStage) |>
+  summarise(n_sex = n_distinct(SpeciesSex),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  group_by(Country) |>
+  summarise(records = n(), repeated = sum(as.integer(n_val == 1)), .groups = "drop") |>
+  filter(records >= 500) |>
+  mutate(pct = 100 * repeated / records) |>
+  collect() |>
+  mutate(Country = reorder(Country, pct)) |>
+  ggplot(aes(pct, Country)) +
+  geom_segment(aes(x = 0, xend = pct, yend = Country), colour = "grey80") +
+  geom_point(aes(size = records, colour = pct > 90)) +
+  scale_size_area(max_size = 9, breaks = c(1000, 10000, 50000),
+                  labels = c("1,000", "10,000", "50,000"),
+                  name = "multi-sex\nrecords") +
+  scale_colour_manual(values = c(`FALSE` = "grey30", `TRUE` = "firebrick"),
+                      guide = "none") +
+  scale_x_continuous(limits = c(0, 104), expand = expansion(mult = c(0, 0.02))) +
+  labs(x = "records where one total is written on every sex row (%)", y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.major.y = element_blank())
+```
 
-There is no ordering, so there is no "most valid" code to collapse to, and the
-format deliberately allows more than one record type per species per haul.
+Both, as it turns out, and one country is on its own. Canada repeats the total
+in **every single** one of its multi-sex records, without exception, and it is
+one of the largest contributors of them, which is why it accounts for about
+seventy per cent of all the repeats in the archive. For Can-Mar this is plainly
+a house style and can be handled by rule.
 
-**`{obus}`:** `SpeciesValidity` is part of what makes an `HL_summary` row unique.
-1,219 haul × species records (0.05% of `r N(M$sum_groups)`) carry more than one
-record
-type; the commonest pairs are `{1,5}` and `{4,7}`:
+Every other country lies between eight and twenty-three per cent. That is not a
+convention but case-by-case variation, and it is where the ambiguity actually
+bites, because there it cannot be settled by knowing who sent the file. Note
+also that a high rate and a large contribution are different things: Spain sits
+near the bottom of the scale but sends a great many records, so it contributes
+more repeats than the Netherlands at the top of it.
+
+**What `{obus}` does.** `dr_HL_summary()` tests each sex's own `TotalNumber`
+against its own length rows raised by its own factor — the check the record
+above passes three times. A sex that reconciles is trusted and summed on its
+own. Sexes that do not reconcile, or that have no length data to check
+against, fall back to collapsing duplicate values, but only among values no
+reconciling sex has already claimed.
+
+**For ICES.** Is a `TotalNumber` repeated across sex rows meant as the category
+total, or as each sex's own? If the former, should the sexed rows carry it at
+all?
+
+## 2. The same shape, for `SpeciesCategoryWeight`
+
+A *Lepidorhombus boscii* record, three sexes, counts plainly per-sex:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "SP-NORTH:1990:4:ES:29CS:BAK:022:22", Valid_Aphia == 127145) |>
+  group_by(SpeciesSex) |>
+  summarise(TotalNumber           = max(TotalNumber, na.rm = TRUE),
+            SpeciesCategoryWeight = max(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
+
+Counts of 44, 73 and 1 — genuinely different, genuinely per-sex. The weight is
+4250 on all three rows, which cannot be per-sex: three catches that differ
+seventy-fold in number do not weigh the same. It is one category weight written
+three times. Sum it and the species gains 12,750 g where it caught 4,250.
+
+Archive-wide the weight splits much as the count does:
+
+```{r}
+dr_con("HL") |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, SpeciesCategory,
+           SpeciesSex, SpeciesCategoryWeight) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, SpeciesCategory) |>
+  summarise(n_sex = n_distinct(SpeciesSex),
+            n_w   = n_distinct(SpeciesCategoryWeight), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  summarise(groups              = n(),
+            one_weight_repeated = sum(as.integer(n_w == 1)),
+            one_weight_per_sex  = sum(as.integer(n_w == n_sex))) |>
+  collect()
+```
+
+Weight is worse off than number, because it has no arithmetic cross-check. The
+count above could be tested against the length rows that produced it. A weight
+can be tested against nothing in the record — the reasoning that unmasked the
+4250 was biological, not arithmetic.
+
+**What `{obus}` does.** Collapses duplicate weights without sex in the key —
+the opposite of the count treatment in 1. The asymmetry is forced by the data,
+not chosen: the reconciliation that arbitrates counts has no weight equivalent.
+
+**For ICES.** The same question as 1, for weight. Because there is no
+cross-check: is there any field a consumer can use to tell a repeated weight
+from a genuine per-sex one? And is `DevelopmentStage` part of the
+`SpeciesCategoryWeight` key, as the field description's wording implies, given
+that sex demonstrably is not?
+
+## 3. Two routes to a catch total, and where they part {#two-routes-to-a-catch-total}
+
+`HL_summary` carries two count columns because DATRAS states the catch total
+twice: once directly, as the submitted `TotalNumber`, and once implicitly, as
+the length rows raised by their own factor. Where a submission is well formed
+the two agree, and most do:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), !is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex) |>
+  summarise(reported = max(TotalNumber, na.rm = TRUE),
+            raised   = sum(NumberAtLength * SubsamplingFactor, na.rm = TRUE),
+            .groups  = "drop") |>
+  filter(!is.na(reported), !is.na(raised)) |>
+  summarise(groups          = n(),
+            agree_within_1  = sum(as.integer(abs(reported - raised) < 1)),
+            differ_1_plus   = sum(as.integer(abs(reported - raised) >= 1)),
+            reported_higher = sum(as.integer(reported - raised >= 1)),
+            raised_higher   = sum(as.integer(raised - reported >= 1))) |>
+  collect()
+```
+
+91.6% agree to within one fish, which is what a non-integer factor applied to
+whole fish does. 133,874 groups differ by a fish or more, and it is
+`TotalNumber` that is higher in all but 3,437 of them.
+
+What a gap looks like, at its simplest — an anchovy record from NIGFS, one
+category, no sub-sampling to complicate it:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "NIGFS:2019:4:GB-NIR:74RY:ROT:90:10", Valid_Aphia == 126426) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor,
+         SubsampledNumber, TotalNumber) |>
+  collect()
+```
+
+Three length rows, one fish each. The factor is 1, so nothing is raised. Yet
+the record states that 6 were measured and 6 were caught. Three anchovies are
+in the totals and absent from the length distribution, and no arithmetic in
+the format says which count is right.
+
+At the other extreme the gaps are enormous — `TotalNumber` in the hundred
+thousands against raised lengths in the hundreds — but those turn out not to
+be disagreements at all. They are one total shared across sampling categories,
+which is the construct in [4](#totalnumber-across-categories).
+
+**What `{obus}` does.** Carries both routes in separate columns —
+`n_totalnumber` from the submission, `n_haul` from the raised lengths — never
+averaged and never silently preferred. They are named differently on purpose:
+calling both `n_haul` invited exactly the confusion this section is about.
+
+**For ICES.** When the two routes disagree by more than rounding, which is
+authoritative? And should a consumer be able to tell, from the record alone,
+that a `TotalNumber` spans categories rather than describing its own row?
+
+## 4. One `TotalNumber` written across several sampling categories {#totalnumber-across-categories}
+
+The same shape one dimension over — and here the record answers the question
+itself. A whiting split into two sampling categories:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "NS-IBTS:2022:3:GB-SCT:748S:GOV:141:141", Valid_Aphia == 126438) |>
+  group_by(SpeciesCategory) |>
+  summarise(length_rows           = n(),
+            sum_NumberAtLength    = sum(NumberAtLength, na.rm = TRUE),
+            SubsamplingFactor     = max(SubsamplingFactor, na.rm = TRUE),
+            TotalNumber           = max(TotalNumber, na.rm = TRUE),
+            SpeciesCategoryWeight = max(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
+
+Category 11 raises to 187 × 1.893 = 353.99; category 12 contributes 7 more.
+Together that is 360.99, and both rows report `TotalNumber` 361 — the residue
+is the rounding of a four-decimal factor. So the shared 361 is the two
+categories *together*, not each one's own, and the shared 58100 is one weight
+written twice. Read per-category, this species doubles.
+
+```{r}
+dr_con("HL") |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, SpeciesCategory, TotalNumber) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity) |>
+  summarise(n_cat = n_distinct(SpeciesCategory),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_cat > 1) |>
+  summarise(groups            = n(),
+            one_value_shared  = sum(as.integer(n_val == 1)),
+            one_value_per_cat = sum(as.integer(n_val == n_cat))) |>
+  collect()
+```
+
+3,362 of 57,285 multi-category groups share one value. They concentrate on the
+category pairs `1`+`2` and `11`+`12`, and on NS-IBTS, BTS and SCOWCGFS.
+
+**Why would a total be shared at all?** Pseudo-category sampling is the obvious
+candidate: under `DataType` `P` a catch is split into sub-categories of one
+weighing, so one total covering them is what the design implies. If that is the
+mechanism, `P` should be far more prone to it than `R`:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  distinct(.id, DataType, Valid_Aphia, SpeciesValidity, SpeciesCategory, TotalNumber) |>
+  group_by(.id, DataType, Valid_Aphia, SpeciesValidity) |>
+  summarise(n_cat = n_distinct(SpeciesCategory),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_cat > 1) |>
+  group_by(DataType) |>
+  summarise(multi_category = n(),
+            shared_total = sum(as.integer(n_val == 1)), .groups = "drop") |>
+  mutate(pct = round(100 * shared_total / multi_category, 1)) |>
+  collect()
+```
+
+It is: half of all multi-category `P` groups share a total, against 4% under
+`R`, and none at all under `C` or `S`. So pseudo-category sampling is one real
+mechanism — but it accounts for 1,150 of the 3,362. The other 2,212 sit under
+`R`, where ICES documents no sub-category convention, and those remain
+unexplained. The weight splits the same way, for the same two `DataType`s.
+
+**What `{obus}` does.** The fallback collapse leaves `SpeciesCategory` out of
+its key, so a shared value is counted once rather than once per category. A
+category whose own data reconciles is still credited separately.
+
+**For ICES.** When two categories carry one identical `TotalNumber`, is that
+the species total for both strata — as the record above demonstrates — or a
+submission error? The weight beside it behaves the same way, and there the
+answer is partly known: under pseudo-category sampling it is documented
+convention, which is why `{obus}` collapses it. See [the same weight written on
+two category codes](#the-same-weight-written-on-two-category-codes).
+
+## 5. A mandatory `SubsamplingFactor` that is absent {#subsamplingfactor-absent}
+
+`SubsamplingFactor` is mandatory, and `1` is a specific claim — *not
+sub-sampled*. Some rows carry neither the claim nor a factor:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), is.na(SubsamplingFactor),
+         NumberAtLength != 0, !is.na(LengthClass)) |>
+  summarise(rows = n(), hauls = n_distinct(.id)) |>
+  collect()
+```
+
+24,298 length rows over 5,013 hauls, 97.9% of them Can-Mar.
+
+The records are not silent, though. Nearly all of them still report both
+`TotalNumber` and `SubsampledNumber`, and the ratio of those two is what the
+factor would have been:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), is.na(SubsamplingFactor),
+         NumberAtLength != 0, !is.na(LengthClass)) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesSex) |>
+  summarise(sum_nal = sum(NumberAtLength, na.rm = TRUE),
+            tot     = max(TotalNumber, na.rm = TRUE),
+            sub     = max(SubsampledNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.na(tot), !is.na(sub), sub > 0) |>
+  summarise(groups          = n(),
+            sub_eq_lengths  = sum(as.integer(abs(sub - sum_nal) < 0.5)),
+            implied_1       = sum(as.integer(abs(tot - sub) < 0.5)),
+            implied_over_1  = sum(as.integer(tot - sub >= 0.5)),
+            implied_under_1 = sum(as.integer(sub - tot >= 0.5))) |>
+  collect()
+```
+
+14,419 of 14,433 groups carry both, and in **every one of them**
+`SubsampledNumber` equals the sum of the length rows exactly — so the ratio is
+well founded rather than a guess. In 10,416 it comes to 1, so reading the
+absence as *not sub-sampled* would have been right. In 3,968 it is above 1, so
+that reading understates the catch; 3,955 of those are Can-Mar and 13 DYFS, so
+this is one submitter's practice rather than a format-wide pattern.
+
+The remaining 35 are the reason not to simply act on the ratio: they imply a
+factor **below** 1, a total smaller than the sub-sample it was raised from,
+which is not a sub-sampling factor at all. In those records `TotalNumber` and
+`SubsampledNumber` cannot both be right, and nothing says which to keep.
+
+**What `{obus}` does.** Propagates `NA`, and reconstructs nothing. An absent
+mandatory field means *no information was supplied*, which is not the same
+statement as `1`; substituting one for the other asserts something the
+submission does not contain. This is a deliberate difference from the
+`{DATRAS}` package, which reads `R` plus a missing factor as 1.
+
+**For ICES.** Should a missing `SubsamplingFactor` be read as 1, as unknown, or
+reconstructed as `TotalNumber` / `SubsampledNumber`? The 3,968 groups show the
+first is not safe. Whether the third is safe depends on something only ICES can
+say — whether `TotalNumber` is authoritative when the factor is absent — and
+the 35 incoherent groups show it is not universally so. `{obus}` will not
+reconstruct the factor until that is settled.
+
+## 6. A `SubsamplingFactor` below 1
+
+The raising factor is what you multiply a measured sub-sample by to reach the
+whole catch, so it cannot be less than 1 without saying that the catch was
+smaller than the sample drawn from it. Some submissions say exactly that. Two
+John dory, measured and reported by EVHOE:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "EVHOE:2011:4:FR:35HT:GOV:P1111:67", Valid_Aphia == 127427) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor,
+         SubsampledNumber, TotalNumber, SpeciesCategoryWeight) |>
+  collect()
+```
+
+The record's own arithmetic is impeccable: two fish measured, a factor of
+0.615, and a reported total of 2 \eqn{\times} 0.615 = 1.23. Every identity in
+the format holds. It is the factor that cannot be true — two dory were in the
+hand and 320 g of them were weighed, so the catch was at least two fish, not
+1.23.
+
+```{r}
+dr_con("HL") |>
+  filter(!is.na(SubsamplingFactor), SubsamplingFactor < 1) |>
+  summarise(length_rows   = n(),
+            hauls         = n_distinct(.id),
+            surveys       = n_distinct(Survey),
+            lowest_factor = min(SubsamplingFactor, na.rm = TRUE)) |>
+  collect()
+```
+
+372 length rows over 56 hauls and four surveys, spread across 2000 to 2022 and
+reaching as low as 0.24 — SP-NORTH and SP-ARSA (ES), BITS (DK and DE) and
+EVHOE (FR). It is rare, and it is not confined to one programme or one year.
+
+**What `{obus}` does.** Applies the factor as submitted. A reported value is not
+second-guessed, and inventing a replacement would be asserting something the
+record does not contain. The consequence is visible rather than hidden, and it
+has a signature anyone can test for: the published catch comes out smaller than
+the number of fish measured.
 
 ```{r}
 dr_con("HL_summary") |>
-  count(.id, Valid_Aphia) |>
-  filter(n > 1) |>
-  count() |>
+  filter(!is.na(n_haul), !is.na(n_measured), n_measured > 0) |>
+  summarise(records = n(),
+            catch_below_measured = sum(as.integer(n_haul < n_measured - 0.001))) |>
   collect()
 ```
- Aggregating over `.id` × `Valid_Aphia` without accounting for
-`SpeciesValidity` mixes record types and double-counts. There are two ways to
-account for it, and they are not equivalent.
 
-Filtering to a single code does make `.id` × `Valid_Aphia` exactly unique
-(verified at codes `"1"`, `"4"`, `"5"` and `"7"`), and it is what most
-pipelines do. But the codes say *what was recorded*, not *how good it is* --
-so a filter answers a question about record completeness by throwing records
-away. Filtering `HL_summary` to `"1"` discards **464,858 of its
-`r N(M$sum_rows)` rows (20.3%)**; on `HL_length` it discards **691,163 of
-`r N(M$len_rows)` rows**,
-covering **37,302,307 fish** (measured 2026-09-17).
+**For ICES.** A factor below 1 is not a value the format allows. Which half of
+the record is wrong — the factor, or the counts it was applied to? Until that
+is settled these records cannot be raised, only reported as they stand.
 
-Summing across the codes keeps them, and is the right operation whenever what
-you want is a total:
+## 7. `DataType` `C` with a `SubsamplingFactor` above 1
 
-```{r, eval = FALSE}
-dr_con("HL_summary") |>
-  dplyr::group_by(.id, Valid_Aphia) |>
-  dplyr::summarise(n_totalnumber = sum(n_totalnumber, na.rm = TRUE),
-                   w_haul        = sum(w_haul, na.rm = TRUE),
-                   .groups = "drop")
+`DataType` `C` means the catch is reported as a rate per hour, and the format
+requires `SubsamplingFactor` to be 1. These submissions report both:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType, HaulDuration), by = ".id") |>
+  filter(DataType == "C", SubsamplingFactor > 1) |>
+  distinct(.id, Valid_Aphia, DataType, HaulDuration, SubsamplingFactor) |>
+  arrange(desc(SubsamplingFactor)) |>
+  head(3) |>
+  collect()
 ```
 
-Sum only what a sum means: `p_females` is a proportion, so it has to be
-re-derived from counts rather than added up. On `HL_length`, `dr_HL_collapse()`
-does this for you and carries the guards with it -- and it is close to free
-there, merging 15 rows out of `r N(M$len_rows)`:
+A sprat record labelled as an hourly rate, on a 30-minute haul, sub-sampled at
+one part in 168. The two statements cannot both hold.
 
-```{r, eval = FALSE}
-dr_con("HL_length") |>
-  dr_HL_collapse("SpeciesValidity")
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "C", SubsamplingFactor > 1) |>
+  summarise(rows = n(), hauls = n_distinct(.id),
+            max_factor = max(SubsamplingFactor, na.rm = TRUE)) |>
+  collect()
 ```
 
-**The documents disagree on which codes are valid, and this is
-survey-specific.** `Indices_Calculation_Steps_BITS` [@ices2013bitsindices] states a rule —
+1,832 length rows over 36 hauls — BITS, Lithuania 2008–2016 and Denmark 2018.
 
-> CPUE values are only estimated for hauls with validity codes "V" and "N" and
-> for species with species validity code "SpecValCode" 1 or NULL
+**Which of the two statements is wrong?** The label and the factor imply
+different arithmetic, so ask the record. Under `C` the total should be the
+length rows scaled by duration; under `R` it should be the length rows raised
+by the factor. Only one of those can reproduce the reported `TotalNumber`:
 
-— and its Annex 2 repeats `SpecValCode = 1 OR NULL`, so BITS treats *missing*
-as valid. `Indices_Calculation_Steps_IBTS` [@ices2022ibtsindices] contains no occurrence of `SpecVal` ([D16](#d16))
-at all. A rule stated for one survey and absent for another is not a rule of
-the format.
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType, HaulDuration), by = ".id") |>
+  filter(DataType == "C", SubsamplingFactor > 1) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesSex) |>
+  summarise(s   = sum(NumberAtLength, na.rm = TRUE),
+            f   = max(SubsamplingFactor, na.rm = TRUE),
+            d   = max(HaulDuration, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  summarise(groups         = n(),
+            matches_R_rule = sum(as.integer(abs(tot - s * f) < 0.5)),
+            matches_C_rule = sum(as.integer(abs(tot - s * d / 60) < 0.5)),
+            sub_eq_lengths = sum(as.integer(abs(sub - s) < 0.5))) |>
+  collect()
+```
 
-**Can-Mar is the exception that breaks the usual filter.** It puts real
-`LengthClass`/`NumberAtLength` data on `"5"` rows, where every other survey uses
-`"5"` for a length-free presence marker -- and it is the *only* survey that
-does: of the 8,863 validity-`"5"` rows in `HL_length`, every one is Can-Mar
-(measured 2026-09-17). So filtering to `"1"` does not thin Can-Mar's length
-data, it removes all of it, while leaving every other survey untouched --
-which is the most misleading shape a filter can have. Treat Can-Mar
-separately, or sum across the codes instead.
+102 of 113 groups reproduce under the `R` rule and **none at all** under the
+`C` rule, and `SubsampledNumber` matches the length rows in 108. So the
+`NumberAtLength` here is a measured sub-sample, not an hourly rate: **the
+`DataType` label is the wrong one, not the factor.**
 
-## 6. Haul duration and hourly rates {#haul-duration-and-hourly-rates}
+**What `{obus}` does.** Applies both multipliers, `SubsamplingFactor` and
+`HaulDuration/60`, and flags the records `CNT_C_SUBFACTOR_CONFLICT`. Applying
+the duration alone understates them by up to 168 times.
 
-An hourly rate needs a duration. 217 hauls report `HaulDuration == 0` — 200 of
-them `DataType` C, 11 R and 6 P — and 2 report a negative value (both Can-Mar
-2017, `-514` and `-238`, already flagged `HaulValidity` `"I"`). A further **51
-hauls carry no duration at all**, which is a third case: it is not caught by a
-`HaulDuration <= 0` test at all, and reaches the same `NA` only because a
-missing value propagates. All three together, 270 hauls:
+**For ICES.** Is the `DataType` wrong on these hauls, or the factor? They pass
+upload validation, and 35 of the 36 carry `HaulValidity` `V`.
+
+## 8. A length row that reports no fish
+
+One Atlantic cod record, and almost every count identity in the format fails on
+it at once:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "BITS:1992:1:SE:77AR:GOV:50:1", Valid_Aphia == 126436) |>
+  summarise(length_rows       = n(),
+            rows_reporting_0  = sum(as.integer(NumberAtLength == 0)),
+            sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+            SubsampledNumber  = max(SubsampledNumber, na.rm = TRUE),
+            TotalNumber       = max(TotalNumber, na.rm = TRUE),
+            SubsamplingFactor = max(SubsamplingFactor, na.rm = TRUE)) |>
+  collect()
+```
+
+22 length rows, 15 of which report no fish at that length. The remaining rows
+sum to 8, while `SubsampledNumber` claims 30 were measured and `TotalNumber`
+claims a catch of 28 — at a factor of 1, so no raising can reconcile them.
+
+Zero-count length rows are rare:
+
+```{r}
+dr_con("HL") |>
+  filter(NumberAtLength == 0) |>
+  summarise(rows = n(), hauls = n_distinct(.id),
+            species = n_distinct(Valid_Aphia)) |>
+  collect()
+```
+
+37 rows over 8 hauls and 14 species, and 32 of them sit on `SpeciesValidity`
+`1`, which states that length data is present.
+
+**They do not share one explanation.** The natural guess is a fixed length grid
+written out in full, which would put every zero between the smallest and
+largest occupied class. Inspecting all 14 haul × species groups that contain
+one, that is not what they are: six groups report **nothing but** zeros, so no
+fish were measured at any length; in the rest a single zero sits among real
+counts, sometimes inside the occupied range and sometimes outside it. Whatever
+produces them is not one mechanism, and 37 rows is too few to find it from the
+data alone.
+
+**What `{obus}` does.** Drops them, so a length class that contains no fish
+cannot enter a length distribution.
+
+**For ICES.** Is a zero `NumberAtLength` a presence marker, a placeholder, or
+an error? And on the record above, which of the three counts is right?
+
+## 9. `HaulDuration` of zero or less
+
+Every hourly rate divides by duration, and every `C` per-haul count multiplies
+by it:
 
 ```{r}
 dr_con("HH") |>
-  filter(is.na(HaulDuration) | HaulDuration <= 0) |>
-  count(DataType, HaulDuration) |>
+  filter(HaulDuration <= 0) |>
+  count(HaulDuration, DataType) |>
   collect()
 ```
 
-No ICES document states anything about a zero, negative or absent haul
-duration. `{obus}`'s treatment is a defensible choice in a documented silence, and the rule
-is `{obus}`'s own, not ICES's: **where the duration is not positive, any figure
-that needs it is `NA`.**
+217 hauls at zero, 200 of them `C`, and two negative. The exposure to the two
+catch tables is far smaller than that, because only 7 of those 219 hauls carry
+any HL record at all — a duration cannot spoil a catch that was never reported:
 
-The direction depends on `DataType`, because `C` reports a rate and derives
-the haul total, while everything else reports the haul total and derives the
-rate:
+```{r}
+dr_con("HH") |>
+  filter(HaulDuration <= 0) |>
+  inner_join(dr_con("HL") |> distinct(.id), by = ".id") |>
+  count(DataType, HaulValidity) |>
+  collect()
+```
 
-| | non-`C` | `C` |
+Seven hauls, and every one of them already carries `HaulValidity` `I` — so a
+survey excluding invalid hauls never meets them, and the other 212 have no
+length record to spoil. This is a question about the format rather than a live
+source of error in these two tables.
+
+**What `{obus}` does.** `NA`, never `0` and never `Inf`. Left alone the
+arithmetic returns a confident `0` for a `C` haul and `Inf` for every other
+kind, and both read as observations rather than as gaps.
+
+**For ICES.** Is a zero `HaulDuration` a missing value that should have been
+`-9`? A negative one cannot be anything else — and both pass upload validation.
+
+## Conventions the code resolves once
+
+These are not ambiguous. They are settled in the format, and are listed only
+because a consumer reading HL flat will get them wrong.
+
+| Convention | What a flat read does | What `{obus}` does |
 |---|---|---|
-| hourly rate (`n_hour`, `n_totalnumber_hour`, `w_hour`) | derived — `NA` | reported — kept |
-| per-haul total (`n_haul`, `n_totalnumber`, `w_haul`) | reported — kept | derived — `NA` |
+| `LengthClass` holds millimetres and centimetres in one column, per `LengthCode` | a tenfold error on a length | resolved on reading into `length_mm`, `length_cm` and `accuracy` |
+| `LengthClass` is a bin **lower bound**, not a midpoint | biases any weight predicted from it, since \eqn{W = aL^b} is convex | carried as the bound it is; `dr_add_length_mid()` where a midpoint is wanted |
+| `-9` marks an absent value | a sentinel enters the arithmetic | nulled once, upstream, per field; never written back |
+| One species can appear under several `SpeciesValidity` record types | the same fish counted twice | `SpeciesValidity` is part of what makes an `HL_summary` row unique |
+| `DataType` `C` reports `NumberAtLength` as an hourly rate | a rate summed as a count | `n_measured` is `NA` under `C`, never `0` |
+| Invalid hauls are present unless excluded | silent inclusion | `haulval` has no default — the survey's call, not the package's |
 
-Without this the arithmetic produces `Inf` on one side and a plausible-looking
-`0` on the other. The `0` is the worse of the two: it looks like a real
-observation.
+## The nine questions, together
 
-**A documented note of caution.** The 2006 ICES workshop report on variance
-estimation — circulated in draft, and marked `DRAFT` on its own cover — carries
-an unresolved editorial query in its body text, beside a CPUE formula with no
-duration term at all:
+A list to take to the Data Centre, not a conclusion. Every figure below is
+produced by the code above it, and the rows are ordered by reach — how many
+surveys write the construct, then how many stations, then how many records.
+None of them is a reason to compute the two tables differently; all of them are
+reasons to ask what the submission meant.
 
-> [Are they assuming each haul is one hour? If not should number of hours
-> fished be included in the division?]
-
-([D13](#d13).)
-
-Its 2007 successor **deleted the question and kept the formula**. So the query
-was closed by removal rather than by an answer: what survives in print is a
-CPUE formula with no duration term, and no longer the note that challenged it.
-
-## 7. Which hauls count {#which-hauls-count}
-
-`haulval` is an argument of both `dr_HL_length()` and `dr_HL_summary()`; it
-takes the `HaulValidity` codes to keep, and `NULL` keeps every haul. What is
-there to choose from:
-
-```{r}
-dr_con("HH") |> count(HaulValidity) |> collect()
-```
-
- The filter is applied to HH before the join, in
-`.dr_hh_cols_for_hl()`, so both tables stay in lockstep on which hauls are in
-scope.
-
-The only ICES statement of which codes count is survey-specific:
-`Indices_Calculation_Steps_BITS` restricts to *"hauls with validity codes 'V'
-and 'N'"*. The IBTS procedure states none. `{obus}` does not pick a default.
-
-## 8. Missing values, and what `-9` means {#missing-values-and-what--9-means}
-
-The `General Notes` sheet instructs submitters:
-
-> For the fields with no information but header, please submit -9
-
-So the format has no concept of "blank" — an absent value is submitted as
-`-9`. That is more useful than a bare null, because where a field has a
-vocabulary ICES gives `-9` a meaning specific to that field, and the meanings
-are not all the same kind of thing:
-
-| Field | Meaning of `-9` |
-|---|---|
-| `Sex` (current: `SpeciesSex`) | "not sampled" — distinct from `U`, "Unidentified" |
-| `DevelopmentStage` | "No information" |
-| `DataType` | "Invalid hauls" — a real classification, not an absence |
-
-**The archive:** zero `-9` values anywhere in HL. `opus` resolves them when
-building the archive, nulling any whose vocabulary label means absence and
-keeping the three that assert something (`Tickler`, `AgePlusGroup`,
-`DataType`). That line — keep a sentinel that states a fact, null one that
-states nothing — is why an `NA` `SpeciesSex` in `{obus}` reads as "not sampled".
-
-That resolution is why an `NA` in `SpeciesSex` carries a meaning, and why it
-is not the same as `"U"`:
-
-```{r}
-dr_con("HL_length") |> count(SpeciesSex) |> arrange(desc(n)) |> collect()
-```
-
-`NA` is *not sampled* — nobody looked — and `"U"` is *unidentified*: somebody
-looked and could not tell. Collapsing the two, which is what a
-`replace_na(SpeciesSex, "U")` would do, throws away the distinction between an
-absent observation and a failed one.
-
-**`{obus}`:** never re-introduces a sentinel. It cannot tell which `NA`s were
-`-9`, and a sentinel placed back into a numeric column would corrupt any sum
-taken over it.
-
-**Dummy records.** The FAQ prescribes a placeholder HL record for hauls with
-no catch. Its example is
-
-```
-HL,1,SCO,SCO3,GOV,60,-9,P,S01,1,2010,W,126417,0,-9,-9,-9,-9,-9,-9,-9,-9,-9,-9
-```
-
-24 fields, matching the HL layout, with `SpeciesValidity` = `0` at position 14 — while
-the FAQ's own adjacent instruction is to *"report -9 for all other fields"*
-([D18](#d18)).
-These records are legitimate artefacts and must be excluded before any
-reconciliation of counts. (An earlier reading of this record placed the `0` in
-the `SpeciesCategory` position; it does not fall there, and the FAQ's
-`SpeciesCategory` rule is untouched by it.)
+| | Construct | What the archive does | Surveys | Stations | Records |
+|---|---|---|---|---|---|
+| 1 | `TotalNumber` over several sex rows | one value repeated in 73,013 groups, one per sex in 131,792 | 28 | 29,118 | 73,013 groups |
+| 2 | `SpeciesCategoryWeight` over several sex rows | repeated in 85,210, one per sex in 121,330 | 24 | 26,802 | 85,210 groups |
+| 3 | the two routes to a catch total | differ by \eqn{\ge} 1 fish in 133,874 of 1,592,596 groups | 15 | 16,036 | 133,874 groups |
+| 4 | `TotalNumber` over several sampling categories | one value shared in 3,362 of 57,285 groups | 14 | 2,378 | 3,362 groups |
+| 5 | mandatory `SubsamplingFactor` absent | recoverable in 14,419 groups; implied factor above 1 in 3,968 | 3 | 5,013 | 24,298 rows |
+| 6 | `SubsamplingFactor` below 1 | a catch smaller than the sample it came from | 4 | 56 | 372 rows |
+| 7 | `DataType` `C` with a factor above 1 | both stated, the factor reaching 167.9 | 1 | 36 | 1,832 rows |
+| 8 | `NumberAtLength` of 0 | a length class with no fish in it | 5 | 8 | 37 rows |
+| 9 | `HaulDuration` of 0 or less | 217 zero, 2 negative; the 7 carrying records are all invalid hauls | 2 | 7 | 65 rows |
 
 ## What remains open
 
@@ -1793,8 +1607,8 @@ Stated plainly, because a reader is entitled to know the edges of this.
 | The 6–50 bucket where neither identity reconciles | ~301 of 3,885 |
 | Whether `SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight` generalises, which would give the weight path its first arithmetic cross-check | untested |
 | `DataType` C weight standardisation — potentially a third of the archive, against 0.08% for the weight repeats that remain | untested |
-| Whether excluding `SpeciesSex` from the weight key loses anything ([D11](#d11)) | untested |
-| The intersection of the 428 duplicated length series with the 247 records whose weight is still summed twice — predicted empty | not computed |
+| Whether excluding `SpeciesSex` from the weight key loses anything | untested |
+| The intersection of the duplicated length series with the records whose weight is still summed twice — predicted empty | not computed |
 
 
 # Appendices
@@ -1843,7 +1657,7 @@ cpuel_like |>
 
 Over the 317 hauls both sides cover, the rebuild matches **96.6% of CPUEL's
 non-zero cells** and agrees with **96.45%** of those to a thousandth of a fish
-per hour; the median ratio is exactly 1.000. A worked haul, three cod:
+per hour. A worked haul, three cod:
 
 ```{r}
 cpuel_like |>
@@ -1857,8 +1671,8 @@ The causes of the residual are named, though not quantified: nothing in it has
 been traced to the arithmetic. The two files are independent downloads with
 their own calculation vintages, so a haul revised on one side and not the
 other differs, and this comparison cannot tell that apart from a genuine
-disagreement. On BITS two further, documented things apply: CPUEL gear-standardises cod and nothing else ([D21](#d21)) and does not
-always preserve the submitted length grid ([D22](#d22)) — both of which a
+disagreement. On BITS two further, documented things apply: CPUEL gear-standardises cod and nothing else and does not
+always preserve the submitted length grid — both of which a
 generalised product would have to decide about explicitly rather than inherit.
 
 **The zero rows are the part that is not one aggregation away**, and
@@ -2014,196 +1828,6 @@ which is easy to mistake for a length *unit* field when it is a measurement
 per table rather than global.
 
 
-## Register of cross-document discrepancies
-
-Every entry below was checked by opening the cited file. Where an earlier
-reading overstated a discrepancy's severity or genre, the entry says so.
-
-The register is long because ICES publishes a great deal: each entry is a
-place where two ICES statements, or one statement and ICES's own data, could
-be laid side by side at all. Entries recording something ICES has since
-corrected are marked **resolved** and kept rather than deleted, because
-documentation and code built against the older wording remain in circulation.
-A few entries compare document vintages; they earn their place either because
-the archive still holds data submitted under the earlier reading, or because
-the way the change was made is itself the observation.
-
-### Discrepancies that change the number you compute
-
-#### D1 — `TotalNo` and `NoMeas` given the same defining formula {#d1}
-
-**Severity:** Contradiction
-
-`TotalNo=SUM(HLNoAtLngt)` (HL row 17, `TotalNumber`) and `NoMeas=Sum(HLNoAtLngt)` (HL row 19, `SubsampledNumber`) in the same current sheet. Cannot both hold when `SubFactor > 1`. Falsified by the workbook's own Example file (237 against 9766.059).
-
-#### D2 — `HLNoAtLngt` redefined from raised to measured {#d2}
-
-**Severity:** Contradiction, resolved
-
-`HLNoAtLngt` was **already-raised** by definition (`HLNoAtLngt=NoMeas*Subfactor`) until the IBTSWG/WGDG harmonisation redefined it as the raw measured count. The redefinition reverses the field's meaning, and it is the correct reading — the workbook's own Example file contradicted the old definition throughout the time it stood. Kept here because code and documentation built against the old wording remain in circulation. The change is minuted in IBTSWG 2024 §3.3 [@ices2025ibtswg]; the `General Notes` list it only under "Improved descriptions".
-
-#### D3 — Two `TotalNo` formulas two paragraphs apart {#d3}
-
-**Severity:** Contradiction
-
-FAQ p. 18 gives **two different `TotalNo` formulas two paragraphs apart**. Line 745, R: *"TotalNo = Sum (HLNoAtLngt) x SubFactor"*. Line 764, S: *"TotalNo = Sum (HLNoAtLngt)"*, with the `SubFactor` term dropped — even though line 756, in the same S block, says *"Value is always > 1. Make sure that TotalNo = NoMeas x SubFactor"*, and the FAQ's own Example 1 is a `DataType` S case giving 50 → 800. The S block's own worked example falsifies the S block's own formula.
-
-#### D4 — `TotalNo`'s scope was clarified after the data was submitted {#d4}
-
-**Severity:** Contradiction, realised in the data
-
-The current field descriptions and the FAQ agree — `TotalNo` is a total per species × sex × devstage × category — but the descriptions previously read haul × species [@ices2023fielddesc], and submissions follow both conventions. Nothing in the record marks which a row follows, so this one cannot be closed by reading the documents; it is resolved per group, arithmetically ([how `{obus}` resolves a repeated `TotalNo`](#how-obus-deduplicates-totalno)).
-
-#### D5 — The index procedures never reference `TotalNo` {#d5}
-
-**Severity:** Silence, material
-
-The IBTS and BITS **index-calculation procedures never reference `TotalNo` at any step** (zero grep hits in either), while the format publishes it as a non-mandatory field. *Narrowed:* it is **not** true that ICES never consumes `TotalNo`. WKDATR13 (2013) §3.2.1.3 agrees exactly this comparison as submission check 1 of 4 — *"HL Records - Sum(Number at Length) vs. Reported Total Number for each Haul/Species/Sex/Category"*, with a worked 2,473-fish example; the DATSU check register consumes it (*"If validity code is 4 then TotalNo > 0"*); and WKABSENS step 17a uses it as a fallback. What is missing is any statement of what a *user* should do when the two disagree.
-
-#### D6 — `DataType` P has no published raising rule {#d6}
-
-**Severity:** Material silence
-
-`DataType` P has **no raising, `TotalNo`, `SubFactor` or `CatCatchWgt` rule in any published ICES document.** HH row 29 (`DataType`) enumerates the code and stops. The FAQ does not contain the word "pseudo". The only guidance is the unpublished 2021 memo.
-
-#### D7 — `DataType` C omits `HLNoAtLngt` from its per-hour rule {#d7}
-
-**Severity:** Material
-
-HH row 29 (`DataType`) says only *"C: CPUE (per hour) data; TotalNo and CatCatchWgt are adjusted per hour trawling"* — omitting `HLNoAtLngt`, which HL row 25 and FAQ p. 19 both make per-hour for C. A reader could act on the omission.
-
-#### D8 — `SubFactor`'s stated scope contradicts its own formula {#d8}
-
-**Severity:** Ambiguity
-
-`SubFactor` is described as varying *"by haul, species, sex, length"* (FAQ p. 18) while `TotalNo = NoMeas × SubFactor` presumes one scalar per category. *Downgraded from a contradiction to an ambiguity:* Annex I applies the identical parenthetical to **every** HL field, including `"Total number (TotalNo): subfact*nomeas (by haul, species, sex, category, length)"`, so the list is describing the HL **row key** the field is carried on, not asserting that the value varies. The current `SubFactor` description gives no key list at all. `{obus}`'s per-row product remains the safer implementation, but this is not a documented contradiction.
-
-#### D9 — Units call `HLNoAtLngt` “number of fish” with no C carve-out {#d9}
-
-**Severity:** Material
-
-The units specification asserts `HLNoAtLngt` is *"Number of fish"* **unconditionally**, in both v3.0 and v3.1, with no `DataType` C carve-out anywhere — contradicting the per-hour rule in the format sheet and the FAQ. `TotalNo` and `NoMeas` are likewise flat "Number of fish".
-
-#### D21 — CPUEL gear-standardises cod and nothing else {#d21}
-
-**Severity:** Material
-
-**CPUEL's `CPUE_number_per_hour` is not a homogeneous quantity across species**: cod is gear-standardised, nothing else is, and both sit in the same column with no marker. The BITS conversion table (`ConversionFactor_TVL.csv`, Oeberst 2013 [@ices2014bitsconversion]) contains exactly one species — `Gadus morhua`, all 1,812 rows, across 12 gears — and ICES states an exclusion outright for another (*"For flounder… no conversion factor is applied"*). Measured 2026-09-07 over ~1.1M BITS CPUEL-vs-`{obus}` cells (`data-raw/CHECK_cpuel_multiplier.R`): **61.8%** of 274,821 `Gadus morhua` cells carry a non-unit factor, against **0.2%** for plaice (95,230 cells), 1.6% flounder, 0.8% herring, 0.6% sprat, 0.0% long rough dab — noise everywhere but cod. The exposure is not historical: BITS fishes TVS and TVL **side by side in every year** (plaice 71/29 post-2001, cod 62/38), and TVS→TVL is exactly the conversion cod receives — 1.10 below 25 cm, 1.20 at 25–29 cm, **1.55 at 30 cm and above**, i.e. across the whole commercially relevant range. So two plaice CPUEs from different gears in one file are not comparable, while the same pair for cod has been reconciled. The units specification defines the column as *"Catch in numbers per hour of hauling"* and says nothing further. *Scoped:* the absent plaice factor is not itself the defect — a factor needs paired-gear trials and Oeberst 2013 was a cod study; the defect is publishing corrected and uncorrected values in one undifferentiated column. See D20 for the documentation side.
-
-#### D23 — WKABSENS's raising recipe contradicts ICES's own CPUEL {#d23}
-
-**Severity:** Contradiction, adjudicated
-
-An ICES publication and an ICES product disagree about how to raise `DataType`
-`C`, and only the product is right. WKABSENS 2021 [@ices2021wkabsens] (3.3, step 17) gives
-*"Multiplier = HaulDur/60 if DataType in ('C'); Multiplier = SubFactor if
-DataType in ('S','R')"* — one multiplier or the other. ICES's **CPUEL** product
-applies **both**: over 1,721 matched haul × species × length cells on the 36
-BITS hauls where the two rules diverge, the median ratio of
-`CPUE_number_per_hour` to the two-multiplier figure is exactly 1.000, against
-3.000 for the one-multiplier figure. The submissions agree with the product —
-across their 113 sub-sampling groups `TotalNo` never equals Σ`HLNoAtLngt`,
-equals Σ`HLNoAtLngt` × `SubFactor` in 102, and Σ`HLNoAtLngt` equals `NoMeas` in
-108, so `HLNoAtLngt` there is a measured sub-sample and not an hourly rate.
-Following WKABSENS understates those records by up to 167.94 times. The
-DATRAS R package [@kristensen2023datraspkg] implemented WKABSENS's rule until 2023-04-11, then replaced it
-over the note *"some BITS hauls (all LT and some DK) have dataType C but
-SubFactor>1 - two multipliers needed!"*, so WKABSENS documents behaviour ICES's
-own production has superseded. *Scoped:* the recipe is not wrong in general —
-it is correct wherever the format's own `SubFactor = 1` rule for `C` is
-honoured, which is everywhere except these 1,832 rows. `{obus}` follows the
-product, and flags every affected record `CNT_C_SUBFACTOR_CONFLICT`.
-Reproduced by `data-raw/CHECK_cpuel_multiplier.R`; see also [D20](#d20) and
-[D21](#d21).
-
-### Discrepancies that change which rows, or which units
-
-#### D10 — `NoMeas` cannot hold its own defining formula {#d10}
-
-**Severity:** Material
-
-`NoMeas` has `MaxWidth 3` (≤ 999) yet is defined as `Sum(HLNoAtLngt)`, where each length row is `MaxWidth 10`. The field cannot hold its own defining formula for any sub-sample of 1,000 or more. A reason not to trust `NoMeas` as an arbiter.
-
-#### D11 — `CatCatchWgt`'s scope includes sex; `{obus}`'s weights do not {#d11}
-
-**Severity:** Material
-
-`SpeciesCategoryWeight`'s key **includes both sex and devstage** in the current descriptions — *"cruise haul, species, sex, devstage and subsampling category identifier"* — while `{obus}` treats a weight repeated across them as one weight. FAQ p. 19 cuts the other way for `DataType` C — *"the total catch weight per species per haul"*, no sex, no category — which is a documentary point in `{obus}`'s favour.
-
-#### D12 — BTS indices standardised to half an hour, caveat dropped {#d12}
-
-**Severity:** Contradiction, realised
-
-BTS indices *"standardised by half an hour haul and not by one hour"* (2006), a caveat dropped from the 2007 successor, while the units specification labels everything "per hour of hauling". *Not latent — realised:* IBTSWG 2025 Table 3.8.1 records CEFAS NS-IBTS Q1 from 1978 submitted per half hour, `TotalNo` "122→244", plus a 100 g unit convention, `CatCatchWgt` "2750→55".
-
-#### D13 — An unresolved editorial query left in the 2006 report {#d13}
-
-**Severity:** Contradiction
-
-The 2006 variance-estimation report [@ices2006wkvarest] carries an **unresolved editorial query in its body text** — *"[Are they assuming each haul is one hour? …]"* — beside a formula with no duration term; the 2007 successor deleted the question and kept the formula. *Framing corrected:* the 2006 document is marked `DRAFT` on its own cover, so it is an ICES workshop report circulated in draft, not a published standard.
-
-#### D14 — A raising sentence deleted between 2006 and 2007 {#d14}
-
-**Severity:** Maintenance
-
-*"the length distribution is raised up with the total catch in number"* (2006, BITS herring and sprat), **deleted** from the 2007 successor with no note. *Downgraded:* this sits in a survey-description section reporting BITS national practice, not in a specification, and it does not in fact conflict with the exchange mechanism — a provider who raises a length distribution to a known total would report the derived ratio as `SubFactor`. Keep the silent deletion as a maintenance-quality observation; drop the claim of a contradictory raising rule.
-
-#### D15 — “We disregard the issue of sub-sampling the catch by length” {#d15}
-
-**Severity:** Material silence, narrowed
-
-*"We disregard the issue of sub-sampling the catch by length"* (2006, §5). *Corrected:* the companion 2007 quotation *"This parameter is ignored in this analysis"* is **not** about sub-sampling — it concerns the number of fish measured as a driver of index accuracy in a sampling-intensity simulation, scoped explicitly to "this analysis". Neither document is a format standard. The inference that this is *why* no rounding or reconciliation rule was ever written is a **hypothesis**, and D5's own counter-evidence (WKDATR13, 2013) shows ICES did take the reconciliation question up.
-
-#### D16 — `SpecVal` rules stated per survey, or not at all {#d16}
-
-**Severity:** Material
-
-IBTS states no `SpecVal` rule at all; BITS specifies `SpecValCode = 1 OR NULL` and treats missing as valid. Survey-specific in the documentation.
-
-#### D17 — `LngtClass` mixes units within one column {#d17}
-
-**Severity:** Material
-
-`LngtClass` carries **mixed units within one column**, and the format standard's `Vocab` column is populated in exactly one cell across all three unaggregated sheets. The self-described format standard never enumerates its own code values.
-
-#### D18 — The dummy HL record contradicts its own instruction {#d18}
-
-**Severity:** Material, narrowed
-
-The FAQ-mandated dummy HL record carries `SpecVal = 0` while the FAQ's own adjacent instruction is to *"report -9 for all other fields"*. These records are legitimate artefacts and must be excluded before any reconciliation. *Corrected:* the `0` falls in the `SpecVal` position, not `CatIdentifier`; the FAQ's *"cannot be reported as 0"* `CatIdentifier` rule is untouched by it, and `-9` in the remaining fields is what the `General Notes` require.
-
-#### D19 — Units v3.1 renames three fields with an empty version note {#d19}
-
-**Severity:** Material
-
-Units v3.1 (18-06-2021) renames **three** fields (`GearExp`→`GearEx`, `Stratum`→`DepthStratum`, `BycSpecRecCode`→`BySpecRecCode`), **deletes the `Survey` row** from the Exchange table, gives `Country` two different vocabulary refs in one document (`ref=4` and `ref=337`), and drops two whole products — all with an **empty version note**. `CANoAtLngt` carries two incompatible units ("Number of fish" / "Catch in numbers per hour"); `Age_n` has three across products. *Corrected:* an earlier count of four renames included `Bootnumber`, which disappears with the dropped Bootstrap product, and `MaturityScale`, which is newly added.
-
-#### D20 — BITS gear-conversion scope stated three ways {#d20}
-
-**Severity:** Contradiction, adjudicated
-
-BITS gear-conversion scope stated three ways in one document: cod only (*"In case of cod (Gadus morhua), conversion factors are used…"*); unconditional (*"CPUE are converted to standard trawl by multiplying with a conversion factor"*); and *"apply fishing power"*, a term that occurs twice and is never defined. *Adjudicated 2026-09-07 against ICES's own CPUEL product* (`data-raw/CHECK_cpuel_multiplier.R`): **the cod-only reading is the operative one**, and cleanly so. Over 1,721 CPUEL-vs-`{obus}` cells on 36 BITS hauls, all 839 `Gadus morhua` cells carry a non-unit factor and every other species — herring, sprat, flounder, on the same hauls and the same gear — is exactly 1.00; of 840 non-unit cells 839 are cod. The factor is a step function of length, as Annex 3's gear × species × length-class table is shaped: 1.10 at 5–24 cm (130 cells), 1.20 at 25–29 cm (132), 1.55 at 30–90 cm (577). The document remains self-contradictory; what is settled is which reading ICES implements. Note the corollary — **CPUEL is not a pure raising of HL**, so any cell-level comparison against it must expect this factor. The consequence for every *other* BITS species, which receives no conversion at all while sharing the column and the units, is D21.
-
-#### D22 — CPUEL does not preserve the submitted length grid {#d22}
-
-**Severity:** Material, scoped
-
-**CPUEL does not preserve the submitted length grid, and is inconsistent about it.** The units specification defines its `LngtClass` as *"In millimetres"* and says nothing further, but millimetre-resolution submissions are silently floored and merged into whole centimetres for part of the archive. Worked example (`BITS:2010:1:LT:LTDA:TVS:26052:7`, *Osmerus eperlanus*, `LengthCode` `0`): the submission is three classes at 95, 180 and 185 mm, one fish each; `{obus}` publishes 95→2, 180→2, 185→2 per hour and CPUEL publishes 90→2, 180→**4**, having floored 95→90 and merged 185 into 180. Measured over BITS 2026-09-07, **15,235** `{obus}` cells have no CPUEL partner at their exact length under the millimetre codes — `0`: 13,074, 64.2% of them sub-centimetre; `.`: 2,161, 100% sub-centimetre. **Totals are preserved** (both sides give 6 smelt per hour in the example), so this changes the *distribution*, not the catch — which makes it invisible to any check that sums over length, and material to every length spectrum, mean length or ALK input taken from CPUEL. *Scoped, twice:* no rule is characterised, because CPUEL retains sub-centimetre resolution 48.8% of the time under `LengthCode` `0` rather than flooring uniformly; and this is **not** the driver of CPUEL-vs-`{obus}` cell disagreement, whose worst group is `LengthCode` `1` (centimetres, 75.6% agreement over 510,933 cells) where binning cannot apply — that residual is D21's gear conversion plus CPUEL's batch vintage. Both the worked example and every figure above are checks in `data-raw/CHECK_cpuel_multiplier.R` §6, including the two scoping clauses.
-
-### Minor discrepancies, and what they say about maintenance
-
-- The December 2024 New Headers Lookup gives `RecordHeader` as its own old name in all four sheets; `getDatrasFieldList` gives `RecordType` → `RecordHeader` for HH, HL, CA and LT, and `RecordType` is what the exchange file carries.
-- Annex I indexes `TotalNo` *"(by haul, species, sex, category, length)"* — by length, which is impossible for a category total.
-- The Example file's `TotalNo = 9766.059` carries three decimals against its own declared `decimal2` type.
-- The current `General Notes` claim *"Decimal data types reduced to only one type"*, while the same workbook's sheets still carry `decimal1`, `decimal2` and `decimal4`.
-- `Survey` went from `Mandatory` blank to `Mandatory = Yes` in all three unaggregated sheets with no version note.
-- The `-9` rule was narrowed to *"fields with no information but header"* without announcement.
-- The two upload guides disagree: *"A valid file should contain 3 record types"* against *"A valid file should contain at least 2 record types"*.
-- `Indices_Calculation_Steps_IBTS` section II step (a) is textually garbled in the published PDF.
-- `Indices_Calculation_Steps_BITS` Annex 6 duplicates its five Quarter-1 lookup rows verbatim after the Quarter-4 block.
-- The 2006 variance-estimation report contains `Error! Bookmark not defined.` as body text.
-
-
 ## An engineering note: R and SQL disagree about `NA`
 
 Not a DATRAS matter, but the single largest source of silent defects in this
@@ -2252,141 +1876,199 @@ both an eager test suite and a lazy build is what catches them; neither does
 alone.
 
 
-## What explains the disagreement
+## Why the two routes disagree
 
-The whole-fish residual breaks down as follows. Established causes and
-labelled hypotheses are marked.
+[Part III](#two-routes-to-a-catch-total) shows that the submitted `TotalNumber`
+and the raised length rows differ by a fish or more in 133,874 groups. Most of
+that has one mechanism, and it is arithmetic done before the file was
+submitted.
 
-| Population | Groups | Cause | Status |
-|---|---|---|---|
-| Can-Mar | 31,047 | — | **hypothesis only** (see below) |
-| 1–2 fish, five directional pockets | 9,452 of ~38,700 | Can-Mar, non-unit `SubsamplingFactor`, PT-IBTS / FR-CGFS, BTS, EVHOE | established |
-| 1–2 fish, remainder | 29,145 | genuine symmetric noise — 50.27% one way, 95% CI [49.69–50.85], p = 0.36 | established |
-| 6–50 fish | 2,738 of 3,885 | `DataType` C with a non-integer raising factor, rounded by the submitter **per length row** | established |
-| 6–50 fish | 618 | `DataType` C, `SubsampledNumber` missing — same family by `DataType` and direction | probable |
-| 6–50 fish | 112 | exact 2× / 3× integer-ratio scaling error | established |
-| 6–50 fish | 116 | non-C, `SubsampledNumber` arbitrates one side as the outlier | established |
-| 6–50 fish | 301 | non-C where neither identity reconciles; C with integer factor | **unexplained** |
-| >50 fish | 214 of 443 | [duplicated length series](#duplicated-length-series) | established |
-| >50 fish | 21+ of 64 | `SubsamplingFactor` reported as a rounded integer, over-raising `TotalNumber` | established |
-| >50 fish | 165 `TotalNumber`-higher + 43 length-higher | — | **unexplained** |
+Define `F = TotalNumber / SubsampledNumber` — the whole multiplier the
+submitter actually used, read straight off the record with nothing
+reconstructed. Split `DataType` `C` groups by whether that multiplier is a
+whole number:
 
-(The 6–50 and >50 sub-counts were computed on an independent reproduction of
-the same buckets, with denominators 3,885 and 443, which is why they do not
-sum to the 3,891 and 462 in the direction table above.)
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "C", Survey != "Can-Mar", !is.na(LengthClass),
+         NumberAtLength != 0, !is.na(TotalNumber),
+         !is.na(SubsampledNumber), SubsampledNumber > 0) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex) |>
+  summarise(s   = sum(NumberAtLength, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE), .groups = "drop") |>
+  mutate(whole_number_factor = abs(tot / sub - round(tot / sub)) < 1e-9) |>
+  group_by(whole_number_factor) |>
+  summarise(groups = n(),
+            whole_fish_gap = sum(as.integer(abs(tot - s) >= 1)), .groups = "drop") |>
+  mutate(rate_pct = round(100 * whole_fish_gap / groups, 2)) |>
+  collect()
+```
 
-**The strongest single result.** Define `F = TotalNumber / SubsampledNumber` in submission
-units — the whole multiplier the submitter actually used. Over 404,833
-non-Can-Mar `DataType` C groups:
+0.19% against 29.49% — a relative risk of about 150, using no reconstruction
+whatsoever. A non-integer multiplier is the single strongest predictor of a
+whole-fish disagreement in the archive.
 
-| `F` | Groups | Whole-fish disagreement rate |
-|---|---|---|
-| Integer | 298,653 | **0.16%** |
-| Non-integer | 106,180 | **29.35%** |
+The mechanism follows. If the submitter raised each length row separately,
+`round(NumberAtLength / F)` should recover the raw integer counts, and those
+should sum to the `SubsampledNumber` the record reports independently:
 
-A relative risk of **187×**, using no reconstruction whatsoever. Haul-duration
-divisibility alone does not produce it: even where `60 %% HaulDuration == 0`,
-the rate is 32.83% with a non-integer factor against 0.14% with an integer
-one.
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "C", Survey != "Can-Mar", !is.na(LengthClass),
+         NumberAtLength != 0, !is.na(TotalNumber),
+         !is.na(SubsampledNumber), SubsampledNumber > 0) |>
+  mutate(F = TotalNumber / SubsampledNumber) |>
+  filter(F > 0) |>
+  mutate(m = round(NumberAtLength / F)) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex) |>
+  summarise(F = max(F, na.rm = TRUE), sum_m = sum(m, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE), .groups = "drop") |>
+  group_by(whole_number_factor = abs(F - round(F)) < 1e-9) |>
+  summarise(groups = n(),
+            reconstruction_matches = sum(as.integer(abs(sum_m - sub) < 0.5)),
+            .groups = "drop") |>
+  collect()
+```
 
-The mechanism is reconstructible. `m_i = round(NumberAtLength_i / F)` recovers
-the submitter's raw integer counts, and those `m_i` sum **exactly** to the
-independently reported `SubsampledNumber` in 87–96% of groups. So the submitter computed
-`NumberAtLength = round(m_i × F)` row by row while computing
-`TotalNumber = F × Σm_i` once. The per-row residuals do not cancel; their sum is
-the gap. **The fish are missing from the submitted file before `{obus}` ever reads
-it.**
+It does, in 86% of the non-integer groups. So the submitter computed
+`NumberAtLength = round(m * F)` row by row while computing `TotalNumber` once
+over the whole sample. The per-row rounding residuals do not cancel, and their
+sum is the gap. **The fish are missing from the submitted file before `{obus}`
+reads it**, which is why no choice in the derivation can recover them.
 
-**The 1–2 fish and 6–50 fish populations are one mechanism, not two.** Inside
-the 6–50 bucket, classified by the provider's rounding regime (n = 2,393
-classifiable): symmetric rounders (n = 326) are 26.1% `TotalNumber`-higher; mixed
-(n = 363) 89.5%; **truncators — providers flooring more than 90% of rows
-(n = 1,704) — 99.9%**. Truncating providers, as a share of their own groups:
-PT-IBTS 46.1%, FR-WCGFS 30.4%, FR-CGFS 15.1%, BITS 10.8%, NS-IBTS 9.6%,
-SE-SOUND 4.9%. Magnitude scales with the number of occupied length classes;
-direction is set by floor-versus-round-half. Catch size is not a driver
-(median |gap| = 0.02 in every `TotalNumber` size class from under 50 to over
-5,000).
+## Can-Mar
 
-## Can-Mar, unexplained
+Can-Mar behaves differently enough to be worth separating. The article used to
+record two candidate mechanisms and no way to choose between them: a raising
+factor lost in a provider-side conversion, or fish counted into `TotalNumber`
+that never entered a length row. They make different predictions, so they can
+be told apart.
 
-Can-Mar alone contributes 31,047 whole-fish groups — **41.8% of the residual**.
-The shape is distinctive: median gap **13 fish**, **98%** with `TotalNumber` the
-higher side, and **88.2%** carrying `SubsamplingFactor == 1`. Two mechanisms
-fit — a raising factor lost in a provider-side conversion, or fish counted into
-`TotalNumber` that never entered a length row — and nothing yet separates them, so
-neither is claimed here. One thing is ruled out: a per-length-class half-fish
-truncation, since `gap / n_length_classes` has median 1.000 (Q1 0.333,
-Q3 3.333) rather than 0.5, far too dispersed for any per-class mechanism.
+**A lost conversion would apply to a whole haul.** If a factor went missing in
+processing, every species in that haul should show the same ratio of reported
+total to measured lengths. Take Can-Mar hauls where three or more species show
+a gap at `SubsamplingFactor` 1, and ask how many carry one shared ratio:
 
-Treat Can-Mar separately, and prefer the reported total there. Both candidate
-mechanisms, with the test that would separate them, are in the package's
-`PLAN-qc-checks.md`, section 8.
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(Survey == "Can-Mar", DataType %in% c("R", "P", "S"),
+         !is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia) |>
+  summarise(s = sum(NumberAtLength, na.rm = TRUE),
+            f = max(SubsamplingFactor, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.na(tot), !is.na(f), f == 1, s > 0, tot - s >= 1) |>
+  group_by(.id) |>
+  summarise(species = n(), distinct_ratios = n_distinct(round(tot / s, 3)),
+            .groups = "drop") |>
+  filter(species >= 3) |>
+  summarise(hauls                 = n(),
+            all_species_one_ratio = sum(as.integer(distinct_ratios == 1)),
+            any_two_agree         = sum(as.integer(distinct_ratios < species)),
+            every_ratio_different = sum(as.integer(distinct_ratios == species))) |>
+  collect()
+```
+
+Not one haul in 4,523 has a single ratio across its species. In 4,225 of them
+every species has a different one, and in only 298 do even two species agree.
+**The lost-factor reading is refuted**, at least as anything applied at haul
+level.
+
+**The other mechanism predicts whole fish.** Fish counted but never measured
+leave an integer gap, and they leave the record's own sub-sample field siding
+with the length rows rather than with the total:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(Survey == "Can-Mar", DataType %in% c("R", "P", "S"),
+         !is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia) |>
+  summarise(s = sum(NumberAtLength, na.rm = TRUE),
+            f = max(SubsamplingFactor, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.na(tot), !is.na(f), f == 1, s > 0, tot - s >= 1) |>
+  summarise(groups         = n(),
+            gap_whole_fish = sum(as.integer(abs((tot - s) - round(tot - s)) < 1e-9)),
+            sub_eq_lengths = sum(as.integer(abs(sub - s) < 0.5)),
+            sub_eq_total   = sum(as.integer(abs(sub - tot) < 0.5)),
+            gap_of_1       = sum(as.integer(tot - s == 1)),
+            gap_over_10    = sum(as.integer(tot - s > 10))) |>
+  collect()
+```
+
+Every one of the 25,953 gaps is a whole number of fish — unlike the rounding
+mechanism above, which leaves fractional residues. Where `SubsampledNumber` is
+present it matches the length rows in 10,183 groups and the total in **none**.
+So the record's own account of what was measured corroborates the lengths, and
+`TotalNumber` alone carries the extra fish: exactly one fish in 4,239 groups,
+more than ten in 12,647.
+
+**What is left open.** This refutes a haul-level conversion and fits fish
+counted but not measured. It does not exclude a factor lost per species, though
+the ratios tell against that too: they concentrate on 4/3, 3/2, 5/4, 6/5 and
+7/6, which are what a handful of unmeasured fish produce and implausible as
+sub-sampling factors — nobody sub-samples a catch at eight sevenths. Treat
+Can-Mar separately and prefer the reported total.
+
+**For ICES.** Does Can-Mar record fish in `TotalNumber` that are deliberately
+not length-measured, and if so, is that intended under the format?
 
 ## Duplicated length series {#duplicated-length-series}
 
 This is the one place where `{obus}`'s choice of what makes a row unique
-measurably moves the number.
+measurably moves the number. One BITS record, one species, and the whole length
+series written twice under two `LengthType` codes:
 
-Worked case, `BITS:2017:4:DK:26HF:TVS:552:42`, aphia 127082: 38 raw HL rows —
-19 under `LengthType` `1` and 19 under `LengthType` `6`, with the **same 19
-`LengthClass` values, the same 19 `NumberAtLength` values, the same `SubsamplingFactor` 1,
-the same `SubsampledNumber` 57, the same `TotalNumber` 57, and the same `SpeciesCategoryWeight`
-4500**. One length series written twice under two measurement-type codes.
+```{r}
+dr_con("HL") |>
+  filter(.id == "BITS:2017:4:DK:26HF:TVS:552:42", Valid_Aphia == 127082) |>
+  group_by(LengthType) |>
+  summarise(length_rows       = n(),
+            sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+            SubsampledNumber  = max(SubsampledNumber, na.rm = TRUE),
+            TotalNumber       = max(TotalNumber, na.rm = TRUE),
+            SpeciesCategoryWeight = max(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
 
-`dr_HL_length()` treats `LengthType` and `DevelopmentStage` as part of what
-makes a row unique, and therefore adds both copies together (114); the
-`TotalNumber` route reports them once (57). Ratio exactly 2.000.
+Two identical series. Every one of the 19 length classes appears under both
+codes carrying the same count, and both copies report the same
+`SubsampledNumber` 57, the same `TotalNumber` 57 and the same 4500 g.
+`dr_HL_length()` treats `LengthType` as part of what makes a row unique, so it
+adds both copies and returns 114 where `TotalNumber` reports 57 — a ratio of
+exactly 2.
 
-Archive-wide, **428 of 1,925,444 records (0.022%)** shrink if identical length
-rows — same sex, category, length code, length class, number and factor — are
-counted once. **426 of those 428 land in the whole-fish
-gap class**, and 221 of them in the >50 band. In the units `HL_length`
-actually carries — `n_haul`, haul-scaled for `DataType` C — the duplicated
-copies are worth **195,059 of the 394,993 raised fish in those groups**. (In
-submission units, i.e. before the `DataType` C scaling, the same excess is
-228,904; the two figures must not be interchanged.)
+How far this reaches:
 
-By survey:
+```{r}
+dr_con("HL_length") |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, SpeciesSex, DevelopmentStage,
+           length_mm, accuracy) |>
+  summarise(length_types = n_distinct(LengthType),
+            distinct_counts = n_distinct(n_measured), .groups = "drop") |>
+  filter(length_types > 1, distinct_counts == 1) |>
+  summarise(duplicated_rows = n(),
+            haul_species_groups = n_distinct(paste0(.id, "|", Valid_Aphia))) |>
+  collect()
+```
 
-| Survey | Groups |
-|---|---|
-| BITS | 124 |
-| NSSS | 97 |
-| PT-IBTS | 93 |
-| BTS | 80 |
-| NS-IBTS | 22 |
-| SCOWCGFS | 7 |
-| DYFS | 4 |
-| FR-CGFS | 1 |
+**These look like coding artefacts rather than two real measurement
+conventions.** `LengthType` codes are supposed to be different length
+definitions, so the same fish measured both ways would give *different*
+`LengthClass` values. Series identical in length class, count, sub-sample,
+total and weight cannot be two genuine measurements of one catch. *What would
+settle it:* confirming with ICES that the codes are non-convertible
+measurement definitions.
 
-This is why NSSS is 100% length-sum-higher in the >50 tail (69 of 69 groups
-resolved) and PT-IBTS 95%.
-
-**Hypothesis: these are coding artefacts, not two real measurement
-conventions.** `LengthType` codes such as `1` and `6` should be genuinely
-different length definitions, so the *same fish* measured both ways would give
-*different* `LengthClass` values. The observed series are identical in
-`LengthClass` **and** `NumberAtLength` **and** `SubsampledNumber` **and** `TotalNumber` **and**
-`SpeciesCategoryWeight`, which is physically impossible under a genuine dual-measurement
-reading. *What would settle it:* resolving ICES vocabulary `ref=1392` and
-confirming the codes are non-convertible measurement definitions, plus
-confirming 100% series identity across all 428 groups.
-
-Keeping `LengthType` distinct is justified by the 885 records that genuinely
-split on it; these 428 are the subset where the two series are copies. `{obus}`
-does not merge them.
-
-## What is *not* responsible
-
-Negative results worth recording, because each was a plausible suspect:
-
-| Suspect | Verdict |
-|---|---|
-| Rows `{obus}` drops (`LengthClass` `NA`, `NumberAtLength == 0`) | Present in only 97 of 3,885 target groups, and in **zero** of them does the gap equal the raised value on the dropped rows. Dead. |
-| `LengthCode` / `LengthClass` mis-binning | Enriched (2.57% against a 0.11% baseline) but mechanically inert — re-binning cannot change a sum taken over all lengths. Refuted. |
-| `{obus}`'s own way of resolving repeats | Multi-sex groups are *less* common in the target bucket (4.94%) than among exactly-agreeing groups (8.69%). Multi-devstage 2.50% against 0.02%; `SpeciesValidity ≠ 1` 1.57% against 5.53%. Not the driver. |
-
+`{obus}` does not merge them, because `LengthType` genuinely splits other
+records, and merging on a hypothesis would lose those.
 
 ## The same weight written on two category codes
 
@@ -2395,8 +2077,25 @@ parts of the catch. It is wrong when the same weight has simply been written on
 two codes — and under **pseudo-category sampling (`DataType` P) that is the
 documented convention**, not an error. The pseudo-category memo states
 *"CatCatchweight value is same in each subcategory"*, and the archive agrees:
-of 1,464 P main categories with more than one sub-category, **1,456 (99.5%)
-carry a single identical weight**. The structural reason is in the sampling
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "P", !is.na(SpeciesCategory)) |>
+  mutate(main_category = substr(SpeciesCategory, 1, 1)) |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, main_category,
+           SpeciesCategory, SpeciesCategoryWeight) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, main_category) |>
+  summarise(sub_categories = n_distinct(SpeciesCategory),
+            distinct_weights = n_distinct(SpeciesCategoryWeight), .groups = "drop") |>
+  filter(sub_categories > 1) |>
+  summarise(main_categories = n(),
+            one_shared_weight = sum(as.integer(distinct_weights == 1))) |>
+  collect()
+```
+
+1,456 of 1,464 — 99.5% carry a single identical weight across their
+sub-categories, which is the convention the memo describes. The structural reason is in the sampling
 itself — under P the raising factor *is* category weight divided by sample
 weight, so the category weight must appear on every sub-category row of that
 category.
@@ -2432,7 +2131,7 @@ submission carries the repetition, not that the published weight is wrong.
 
 **What is deliberately not collapsed.** The same shape occurs under `DataType`
 R, where ICES documents no sub-category convention at all, and there the cause
-is not established: of 209 such records, 135 are a single vessel and year
+is not established: of 209 such records, 135 are a single platform and year
 (NS-IBTS 2025 Q3, GB, platform 74E9), and among those where `TotalNumber` also
 differs some ties look implausible (two categories both at exactly 9,992 g) and
 some entirely plausible (two tiny catches both at 12 g). Collapsing them would
@@ -2473,7 +2172,7 @@ published |>
 records the underlying length frequencies **differ**, so the mechanism that
 repeats a weight never touches `n_haul`. Conversely the weight path ignores
 `DevelopmentStage` and `LengthType`, so the [duplicated length
-series](#duplicated-length-series) that inflate `n_haul` in 428 records cannot
+series](#duplicated-length-series) that inflate `n_haul` cannot
 inflate `w_haul` there. The two affected sets are expected to be disjoint; that
 has **not been computed**, and a non-empty result would be a new finding.
 
@@ -2483,8 +2182,7 @@ has **not been computed**, and a non-empty result would be a new finding.
 **What counts as evidence.** Every claim is either a quotation from an ICES
 document or a measurement of the archive, and the measurements are given as
 code that reads the published tables directly, so they need nothing but the
-package. The documents themselves are listed in [what ICES provides](#what-ices-provides-and-what-counts-as-evidence)
-at the head of Part III.
+package.
 
 **A note on the numbers, because DATRAS grows.** The structural counts — how
 many rows each table has, how many haul x species groups, how many of those
