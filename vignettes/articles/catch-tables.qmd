@@ -79,11 +79,12 @@ M$sum_nolen_pct <- 100 * M$sum_nolen / M$sum_rows
 N <- function(x) formatC(as.numeric(x), format = "d", big.mark = ",")
 ```
 
-The article is in two parts, with appendices. **Part I** is what `HL_length`
-and `HL_summary` are, what they answer, and why they are worth using instead
-of the raw record. **Part II** is the conventions and contradictions in the
-exchange format that decide what numbers come out of them, ordered by how far
-each one can move a result. The **appendices** hold the reference and evidence
+The article is in three parts, with appendices. **Part I** is what is wrong
+with the HL record as it stands. **Part II** is the two tables that follow
+from it — what they are, what they answer, and why they are worth using
+instead of the raw record. **Part III** is the conventions and contradictions
+in the exchange format that decide what numbers come out of them, ordered by
+how far each one can move a result. The **appendices** hold the reference and evidence
 material — the CPUEL reconstruction, the `{DATRAS}` interoperability run, the
 name crosswalk, the register of cross-document discrepancies — cited from the
 text where it matters but not in the reading path.
@@ -93,7 +94,7 @@ text where it matters but not in the reading path.
 it does anything else, and the right home for them is ICES's own product
 suite, next to CPUEL — computed once, centrally, and served to everyone. Not
 re-implemented once per institute, once per language, once per working group,
-each version quietly differing from the others in exactly the places Part II
+each version quietly differing from the others in exactly the places Part III
 catalogues.
 
 [`{obus}`](https://github.com/einarhjorleifsson/obus) is a reference
@@ -130,9 +131,9 @@ ICES statements pull in different directions, or where the format says nothing
 and `{obus}` had to choose. Their prominence in this article is not their
 prominence in the data.
 
-# Part I. What the two tables are for
+# Part I. What is wrong with the HL table
 
-## Why these two tables exist
+## From a submission to a catch
 
 An HL record is a **submission**, not a catch. What a country sends ICES for
 one haul is a set of length rows: a length class, a number, a raising factor
@@ -163,7 +164,7 @@ survey in the archive:
 Nearly every DATRAS analysis begins there, and they are the same steps every
 time.
 
-### What is wrong with the HL table {#what-is-wrong-with-hl}
+## Three tallies in one table {#what-is-wrong-with-hl}
 
 The steps above are bookkeeping. The reason they are *easy to get wrong* is
 structural, and it is worth naming before the tables that fix it.
@@ -188,7 +189,7 @@ That is not a DATRAS eccentricity. It is the textbook case of what Wickham
 the same table* — and the consequence is exactly the one the format's users
 keep meeting: **a column you must not add up.** Sum `TotalNumber` over a
 species' length rows and you get fourteen times the catch. Every repeated-value
-hazard in Part II is a symptom of this one thing.
+hazard in Part III is a symptom of this one thing.
 
 **The three are not merely stacked — they can come apart.** Under
 pseudo-category sampling the sub-sample tally is genuinely finer than the
@@ -273,13 +274,9 @@ cross-check the weight path has. **Whether the sub-sample deserves a table of
 its own is open**, and a serious proposal to ICES would have to answer it
 rather than inherit this article's two.
 
-Both tables are also deliberately *denormalised* in one respect — they carry a
-few columns derivable from others, for the convenience of two user communities
-that count in different units — and [which of those could
-go](#why-these-columns-and-which-of-them-could-go) is argued below rather than
-hidden.
+# Part II. The two tables
 
-### The two tables, formally {#the-two-tables-formally}
+## The two tables, formally {#the-two-tables-formally}
 
 So much for why they have the shape they do. This is what they actually
 contain. Both are one flat parquet file, read lazily.
@@ -355,7 +352,7 @@ recorded, measured or not.
 knitr::kable(spec_table("HL_summary"))
 ```
 
-Three things are worth saying about those keys before Part II takes them
+Three things are worth saying about those keys before Part III takes them
 apart. `HL_length` is identified by eight fields because ICES's own record
 identity puts them there, and dropping one silently merges counts that were
 separate observations — [what makes a row
@@ -378,7 +375,7 @@ That is not cosmetic. `Valid_Aphia == 126425` is unreadable, unverifiable on
 sight, and a typo in it returns an empty table rather than an error — which is
 the same failure mode as a wrong survey code, and just as quiet.
 
-### The same calculation as CPUEL, and where the numbers differ
+## The same calculation as CPUEL, and where the numbers differ
 
 ICES already publishes this table. It is called **CPUEL** — catch per unit
 effort at length: numbers per hour by haul, species and length class,
@@ -442,7 +439,7 @@ for more of. The argument is narrower than it may sound: the length-frequency
 half of that suite does not need the zero-fill question answered first, so it
 can be built for every survey.
 
-### What that saves you downstream
+## What that saves you downstream
 
 `HL_length` and `HL_summary` exist so that those four steps — raise the
 measured numbers, resolve the length units, decide what to do when the factor
@@ -459,7 +456,7 @@ abundance and biomass per haul, CPUE, stratified indices, species composition,
 age–length keys. Getting the first step wrong once is getting it wrong
 everywhere.
 
-### One haul, from submission to catch at length
+## One haul, from submission to catch at length
 
 A single sprat record shows the whole shape of it. Fourteen length rows as
 submitted:
@@ -514,7 +511,7 @@ raising factor applied to whole fish does. [Two routes to a catch
 total](#two-routes-to-a-catch-total) is about the hauls where they do not
 agree.
 
-### Which table for which job
+## Which table for which job
 
 The columns are specified in [The two tables,
 formally](#the-two-tables-formally); what that table cannot show is which one
@@ -536,7 +533,7 @@ Both are published as parquet files and read lazily: ask for one survey, year
 or species and only those rows are fetched, so a single haul can be inspected
 without downloading the archive.
 
-### Why two tables and not one
+## Why two tables and not one
 
 The structural answer is [above](#what-is-wrong-with-hl): HL holds two
 observational units, so tidying it yields two tables and not one. But that
@@ -571,7 +568,7 @@ state a weight that was never weighed. Keeping the two quantities in tables of
 different shape is what lets each be right. This is worked through in [what
 makes a row unique](#what-makes-a-row-unique) below.
 
-### Why these columns, and which of them could go
+## Why these columns, and which of them could go
 
 These two tables are a **proposal**, not a settled product, and the column set
 is deliberately generous. Several columns are derivable from others, and that
@@ -623,7 +620,7 @@ one more thing a user has to understand and a maintainer has to keep true. This 
 duplicates and why it is there, so that conversation starts from the design
 rather than from taste.
 
-### What makes a row unique {#what-makes-a-row-unique}
+## What makes a row unique {#what-makes-a-row-unique}
 
 ICES states the record's identity in the field descriptions, four times over —
 once each under `TotalNumber`, `SubsampledNumber`, `NumberAtLength` and
@@ -697,7 +694,7 @@ total](#two-routes-to-a-catch-total) sets out.
 That choice has one measurable cost, in [duplicated length
 series](#duplicated-length-series) below.
 
-### Why `HL_summary` is not split by sex
+## Why `HL_summary` is not split by sex
 
 `HL_length` carries `SpeciesSex`; `HL_summary` does not. The asymmetry is
 deliberate, and it is a property of the submissions rather than a limitation of
@@ -735,7 +732,7 @@ dr_con("HL_length") |>
   )
 ```
 
-### Do the derived tables still say what the submissions said?
+## Do the derived tables still say what the submissions said?
 
 Yes, and this is checked rather than assumed. Compared cell by cell against the
 DATRAS R package's own `Count` [@kristensen2023datraspkg] across every species
@@ -763,7 +760,7 @@ sub-sampling category (43,989 rows) are summed away. Also absent at this level:
 `SubsampledNumber`, `SubsampleWeight`, per-category `SpeciesCategoryWeight`
 (`w_haul` is summed to the species) and sex-specific weight.
 
-### What to use instead, and when
+## What to use instead, and when
 
 | Question | Table |
 |---|---|
@@ -791,7 +788,7 @@ would collide every such row onto one identifier.
 renamed first (`opus::op_rename()`); `Ship`, `StNo` and `HaulNo` are not
 handled.
 
-# Part II. What stands in the way
+# Part III. What stands in the way
 
 ## What ICES provides, and what counts as evidence
 
