@@ -1984,3 +1984,33 @@ vintage difference from a real disagreement.
 Also dropped the article's only `datrasdoodle2` reference, which pointed at a
 chapter of another book for "the full comparison" — an article that argues a
 case should not send the reader elsewhere for its own central evidence.
+
+### A read-through after the edits: four things the edits themselves broke
+
+Nothing structural — the article reads in order now — but a week of targeted
+edits leaves seams, and three of these were created by earlier fixes rather
+than found in the original.
+
+- **A heading that asserted what its own body withdraws.** "`HL_length` is
+  CPUEL, generalised" survived the rewrite that ended the same section on "the
+  same calculation, demonstrably; the same numbers, not yet". Fixing the
+  paragraph and leaving the heading is the same overclaim one level up. Now
+  "The same calculation as CPUEL, and where the numbers differ", which
+  previews both halves. Safe to rename: the anchor is referenced only by the
+  auto-generated table of contents, not from prose.
+- **A cross-reference to the wrong section.** The formal specification tells a
+  reader that `dr_HL_collapse()` "is described under record types" — true when
+  it was written, and false since the fuller treatment went into "what makes a
+  row unique". A pointer written before the thing it points at settles.
+- **"Two differences run the other way"** lost its referent when the paragraph
+  above it was rewritten. It had meant "as against the disagreement just
+  described"; now it reads as if something has been reversed. Replaced with
+  what it actually means: two differences that are by design, not residual.
+- A ragged line left by cutting the storage figures mid-paragraph.
+
+The habit worth keeping from this: after changing a paragraph, read the
+heading above it and the sentence after it. Both of the substantive breaks
+above are that exact shape — an edit that was correct in itself and left its
+neighbours asserting something else.
+
+475 links, 0 broken.

@@ -235,8 +235,8 @@ identity puts them there, and dropping one silently merges counts that were
 separate observations — [what makes a row
 unique](#what-makes-a-row-unique) measures how often. If you need a coarser
 grain, `dr_HL_collapse()` is the sanctioned route and carries the guards a
-hand-rolled `group_by()` loses; it is described under [record
-types](#record-types-what-speciesvalidity-means). And `SpeciesValidity` is in
+hand-rolled `group_by()` loses; it is described under [what makes a row
+unique](#what-makes-a-row-unique). And `SpeciesValidity` is in
 both keys because it is a record type rather than a quality flag — filtering
 it away discards real records.
 
@@ -252,7 +252,7 @@ That is not cosmetic. `Valid_Aphia == 126425` is unreadable, unverifiable on
 sight, and a typo in it returns an empty table rather than an error — which is
 the same failure mode as a wrong survey code, and just as quiet.
 
-### `HL_length` is CPUEL, generalised
+### The same calculation as CPUEL, and where the numbers differ
 
 ICES already publishes this table. It is called **CPUEL** — catch per unit
 effort at length: numbers per hour by haul, species and length class,
@@ -296,7 +296,7 @@ which of the two claims they are relying on. [Building CPUEL from
 `HL_length`](#building-cpuel-from-hl_length) in the appendices shows what the
 comparison looks like on a single survey-quarter.
 
-Two differences run the other way:
+**Two further differences are by design, not residual.**
 
 - **Sex.** CPUEL carries `sex` as `NA` on every survey. `HL_length` keeps
   `SpeciesSex` wherever it was recorded, and some surveys record it heavily —
@@ -482,10 +482,9 @@ support; the Data Centre knows what it can build, serve and keep correct; and
 the assessment and ecosystem groups downstream are who the columns are
 actually for. If ICES adopts tables of this shape, what they carry is a
 decision for those three together, and the sensible direction of travel is to
-trim. The cost that matters
-is not storage — the whole of `HL_length` is under 200 MB and no column in it
-is expensive — but **interface**: every column is one more thing a user has to
-understand and a maintainer has to keep true. This section says what each one
+trim. The cost that matters is not storage — the whole of `HL_length` is under
+200 MB and no column in it is expensive — but **interface**: every column is
+one more thing a user has to understand and a maintainer has to keep true. This section says what each one
 duplicates and why it is there, so that conversation starts from the design
 rather than from taste.
 
