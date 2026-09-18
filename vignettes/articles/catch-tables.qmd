@@ -860,6 +860,14 @@ check, and a consumer can tell a well-formed record from a malformed one
 without leaving the file. Almost everything this article is able to say about
 where submissions go wrong is said using that redundancy.
 
+Those identities are worth reading as what they are: **the bridge between the
+two observational units** crammed into HL. `NumberAtLength` belongs to the
+length class; `SubsampledNumber`, `SubsamplingFactor` and `TotalNumber` belong
+to the species category. ICES could not give each its own table, so it
+specified the arithmetic that relates them instead — which is why a submission
+can be checked against itself at all, and why every check in this article runs
+across that boundary rather than within one side of it.
+
 ### What each field means
 
 **How to read the "Authority" column.** ICES's field descriptions
@@ -1094,7 +1102,15 @@ should be visible per record, not buried in a formula. Reproduced by
 ## 2. Two routes to a catch total {#two-routes-to-a-catch-total}
 
 There are two independent routes to the same number, and `{obus}` keeps both, in
-different tables, named apart on purpose:
+different tables, named apart on purpose.
+
+**They are the two observational units, asked the same question.** One is the
+species category in the haul, reporting its own total; the other is the set of
+length classes, summed up to that level. In a tidy record they would be two
+tables that happen to agree, and a disagreement between them would be an
+obvious thing to look at. In HL they are two columns of one row, which is why
+the disagreement is so easy to miss — and why `{obus}` publishes them apart and
+under different names rather than reconciling them into one figure.
 
 | Route | `{obus}` | Source |
 |---|---|---|
@@ -1336,6 +1352,23 @@ species category, in whole grams. It is the weaker of the two paths through
 this article, for one structural reason: the format gives it **no arithmetic
 cross-check**. Numbers have `TotalNumber = SubsampledNumber × SubsamplingFactor`, so a submission can
 be tested against itself. A weight can only be compared with other weights.
+
+The reason is the observational units again. Numbers are recorded at **both**
+levels — `NumberAtLength` per length class, `TotalNumber` per category — so
+the two can be set against each other, and that is the bridge every check in
+obstacles 1 and 2 runs across. **Weight is never recorded per length class.**
+Nobody weighs a 20-centimetre cod separately from a 21-centimetre one, so the
+length unit holds no weight to sum up and the category weight has nothing
+beneath it to be tested against.
+
+Weight is not left with only one figure — `SubsampleWeight` records the
+weighed sub-sample — but that is a second value at the *same* level, not a
+finer one, and the identity relating the two is nowhere stated by ICES. That
+is [a cross-check that exists but is not stated in
+words](#a-cross-check-that-exists-but-is-not-stated-in-words) below: a
+candidate bridge, unverified. Until it is tested, this section can establish
+less than the two before it, which is what "the weaker of the two paths"
+above means concretely.
 
 ### Which weights are the same weight
 

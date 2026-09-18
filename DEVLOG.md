@@ -2156,3 +2156,44 @@ meaning is set in another table is obstacle 1. One sentence, and the two parts
 now share a spine instead of each having their own.
 
 Checked the mapping before asserting it rather than after.
+
+### The observational-unit vocabulary carried into Part II
+
+Three additions, each chosen because the vocabulary *explains* something the
+section previously asserted, rather than to spread a phrase around.
+
+**Obstacle 1 — the identities are the bridge between the two units.**
+`NumberAtLength` belongs to the length class; `SubsampledNumber`,
+`SubsamplingFactor` and `TotalNumber` belong to the species category. ICES
+could not give each its own table, so it specified the arithmetic relating
+them instead. That reframes the format's redundancy as a *deliberate
+compensation for the untidiness* rather than a happy accident, and explains
+why every check in the article runs across that boundary rather than within
+one side of it.
+
+**Obstacle 2 — the two routes are the two units, asked the same question.**
+One is the category reporting its own total; the other is the length classes
+summed up to that level. In a tidy record they would be two tables that happen
+to agree, and a disagreement would be conspicuous. In HL they are two columns
+of one row, which is why the disagreement is easy to miss — and why `{obus}`
+publishes them apart, under different names, rather than reconciling them.
+
+**Obstacle 3 — why there is no arithmetic cross-check.** The section has
+always asserted this; the units explain it. Numbers are recorded at both
+levels, so the two can be set against each other. Weight is never recorded per
+length class, because nobody weighs a 20-cm cod separately from a 21-cm one,
+so the category weight has nothing beneath it to be tested against.
+
+**That third one had to be corrected before it was committed.** The first
+draft said "weight is recorded at one level only", which is false and, worse,
+contradicted a subsection twenty lines further down: `SubsampleWeight` exists,
+and *"a cross-check that exists but is not stated in words"* proposes
+`SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight` as its analogue.
+The precise claim is that weight is never recorded at the **length-class**
+level — `SubsampleWeight` is a second value at the *same* level, not a finer
+one — so the candidate bridge is within a unit rather than between two, and is
+unstated by ICES besides. It now says that and links to the subsection instead
+of walking into it.
+
+Caught by reading the section the addition was about, which is the same check
+that the last three of these entries have turned on.
