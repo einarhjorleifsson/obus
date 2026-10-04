@@ -5,7 +5,8 @@
 **Status:** Rebuilt from an empty `R/`, 2026-08-31; length-weight added
 2026-09-02; `n_measured` on `HL_length`, eight-field `.id` and the published
 `HL`/`CA` added 2026-09-03; `dr_get()` and `dr_get_datras()` added
-2026-09-09. **Version:** 2026.08 — 15 exported functions, all ten published
+2026-09-09. **Version:** 2026.10 — get -> add -> summarise -> `autoplot()` redesign
+(2026-10-04; see "Design rules" below) — 17 current exported functions, all ten published
 tables live, `R CMD check` 0/0/0.
 
 ------------------------------------------------------------------------
@@ -192,6 +193,38 @@ snapshot, make the findings measurable, recompute as a **diff** rather than a
 flag table). It was written for the 13 YAML findings; it generalises to prose
 numbers for free, and building it is what turns "the counts are stale" from a
 chore into an output.
+
+------------------------------------------------------------------------
+
+## Design rules (2026-10-04)
+
+The surface is **get -> add -> summarise -> `autoplot()`**: every step returns
+a plain tibble, the last draws it. Each rule below is a test in
+`tests/testthat/test-design.R`.
+
+- Tidyverse design to the letter: `dr_` + snake_case verbs, families share a
+  prefix (`dr_add_*`, `dr_summarise_*`), first argument `data` (access
+  functions take `table`), descriptors then `...` (bare grouping columns, as
+  `dplyr::count()`; first = x, second = y/colour, species = panels), optional
+  arguments after the dots, no `missing()`, no cosmetic plot arguments.
+- One vocabulary: `table`, `species` (latin names or numeric `Valid_Aphia`),
+  `survey`, `years`, `quarters`, `haulval`, `conf`. Old spellings survive only
+  as `lifecycle::deprecated()` arguments; `dr_HL_*`, `dr_add_length_mm`,
+  `dr_add_n_and_cpue`, `dr_join_species` are deprecated wrappers.
+- Plain dplyr only, lazy or eager, identical results (Principle 6). The verbs
+  aggregate in DuckDB, collect the small summary, and compute intervals
+  (Wilson for occurrence; normal approximation floored at 0 for CPUE) in R.
+- No custom stat or geom: `ggplot(lazy_tbl)` silently collects every row, so
+  `fortify.tbl_lazy` aborts with a pointer to the verbs.
+- Maps are tables of cells: `dr_add_cell(size = c(1, 0.5))` is the ICES
+  rectangle grid (edge-safe, as `ramb::rb_midpoint`); any verb groups by
+  `cell_lon`/`cell_lat`; `autoplot()` draws the coastline.
+- Zeros: `dr_add_catch(zeros = "hauls")` is literal (every haul passed in);
+  `"reported"` is ICES's product rule (species seen in that survey, year,
+  quarter). Any record counts regardless of `SpeciesValidity`, per the
+  record-type argument below, which differs from ICES's FAQ.
+- `dr_add_length_tl` stays exported (deviation from the plan to demote it).
+- `dr_con()` caches its handles; first call ~9 s, repeats ~1.5-2 s.
 
 ------------------------------------------------------------------------
 

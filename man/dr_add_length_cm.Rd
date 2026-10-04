@@ -4,14 +4,16 @@
 \alias{dr_add_length_cm}
 \title{Add \code{length_cm} and \code{accuracy}}
 \usage{
-dr_add_length_cm(d)
+dr_add_length_cm(data, d = lifecycle::deprecated())
 }
 \arguments{
-\item{d}{A data frame or lazy table with \code{LengthCode} and
+\item{data}{A data frame or lazy table with \code{LengthCode} and
 \code{LengthClass}.}
+
+\item{d}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{data}.}
 }
 \value{
-\code{d} with two added columns:
+\code{data} with two added columns:
 \describe{
 \item{\code{length_cm}}{Length class in cm.}
 \item{\code{accuracy}}{Resolution in cm: \code{"."} 0.1, \code{"0"} 0.5,
@@ -23,5 +25,5 @@ Converts \code{LengthClass} to centimetres using \code{LengthCode}, and
 records the measurement resolution that code implies.
 }
 \seealso{
-\code{\link{dr_add_length_mm}}
+\code{\link{dr_add_length_mid}}
 }

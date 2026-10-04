@@ -1,4 +1,4 @@
-# Tests for dr_HL_length(): synthetic, offline, eager data frames only.
+# Tests for dr_hl_length(): synthetic, offline, eager data frames only.
 # Covers the LengthType plumbing (migrated from test-dr_HL_standardised.R,
 # which tested this via dr_HL_standardised() + filter(type == "length")
 # before the 2026-07 split) and the defining new behaviour: bulk-only
@@ -19,7 +19,7 @@
 
 test_that("LengthType is carried through", {
   f <- .hl_length_fixture(length_type = "4")
-  out <- dr_HL_length(f$hh, f$hl, species = f$species)
+  out <- dr_hl_length(f$hh, f$hl, species = f$species)
 
   expect_true("LengthType" %in% names(out))
   expect_equal(out$LengthType, "4")
@@ -27,14 +27,14 @@ test_that("LengthType is carried through", {
 
 test_that("a missing LengthType (NA in the raw HL) survives as NA, not an error", {
   f <- .hl_length_fixture(length_type = NA_character_)
-  out <- dr_HL_length(f$hh, f$hl, species = f$species)
+  out <- dr_hl_length(f$hh, f$hl, species = f$species)
 
   expect_true(is.na(out$LengthType))
 })
 
-test_that("no type/w_haul/w_hour columns -- those belong to dr_HL_summary() now", {
+test_that("no type/w_haul/w_hour columns -- those belong to dr_hl_summary() now", {
   f <- .hl_length_fixture()
-  out <- dr_HL_length(f$hh, f$hl, species = f$species)
+  out <- dr_hl_length(f$hh, f$hl, species = f$species)
 
   expect_false(any(c("type", "w_haul", "w_hour") %in% names(out)))
 })
@@ -62,7 +62,7 @@ test_that("a species with no LengthClass at all (bulk-only) contributes no row h
                    latin = c("Test species", "Bulk species"),
                    species = c("Test species", "Bulk species"),
                    rank = c("Species", "Species"))
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(nrow(out), 1L)
   expect_equal(out$Valid_Aphia, 126417L)
@@ -83,7 +83,7 @@ test_that("SpeciesSex is carried as its own column/row, not collapsed to p_femal
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_false("p_females" %in% names(out))
   expect_equal(nrow(out), 3L)                 # one row per SpeciesSex, same .id x Valid_Aphia x length_mm
@@ -105,7 +105,7 @@ test_that("the old p_females ratio is exactly recoverable by aggregating over Sp
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   n_f <- sum(out$n_haul[out$SpeciesSex %in% c("F", "B")])
   n_m <- sum(out$n_haul[out$SpeciesSex == "M"])
@@ -126,7 +126,7 @@ test_that("SpeciesSex == 'U' (assessed, undetermined) stays distinct from Specie
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(nrow(out), 2L)
   expect_equal(out$n_haul[!is.na(out$SpeciesSex) & out$SpeciesSex == "U"], 4)
@@ -154,7 +154,7 @@ test_that("DevelopmentStage splits the grain rather than being summed away", {
   )
   sp <- data.frame(Valid_Aphia = 141444L, latin = "Sepia officinalis",
                    species = "common cuttlefish", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(nrow(out), 2L)                       # NOT collapsed to one row of 10
   expect_true("DevelopmentStage" %in% names(out))
@@ -179,7 +179,7 @@ test_that("DataType 'R' with a missing SubsamplingFactor gives NA, not a coalesc
     TotalNumber = 7, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(nrow(out), 1L)
   expect_true(is.na(out$n_haul))     # NOT 7
@@ -196,7 +196,7 @@ test_that("a present SubsamplingFactor of 1 still means 'not subsampled' and rai
     TotalNumber = 7, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(out$n_haul, 7)
   expect_equal(out$n_hour, 14)
@@ -206,7 +206,7 @@ test_that("a present SubsamplingFactor of 1 still means 'not subsampled' and rai
 # Added 2026-09-03. The raised n_haul was the only count here, which made the
 # submitted length frequency unrecoverable from the published table -- the one
 # HL field a QC consumer (DATRAS/DATRASextra's `Count` vs HLNoAtLngt) could
-# want and not find. n_measured is dr_HL_summary()'s column of the same name at
+# want and not find. n_measured is dr_hl_summary()'s column of the same name at
 # this finer grain, so the two tables stay one vocabulary.
 
 test_that("n_measured is the un-raised NumberAtLength, and n_haul the raised one", {
@@ -219,7 +219,7 @@ test_that("n_measured is the un-raised NumberAtLength, and n_haul the raised one
     TotalNumber = 28, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(out$n_measured, 7)     # what went through the calipers
   expect_equal(out$n_haul, 28)        # raised to the whole haul
@@ -242,7 +242,7 @@ test_that("n_measured is NOT recoverable from n_haul when one row aggregates two
     SpeciesCategory = c("1", "2")
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_equal(nrow(out), 1L)
   expect_equal(out$n_measured, 10)               # 4 + 6, as submitted
@@ -261,7 +261,7 @@ test_that("n_measured is NA under DataType 'C', which reports a rate rather than
     TotalNumber = 8, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_true(is.na(out$n_measured))   # NOT 8, and NOT 0
   expect_equal(out$n_hour, 8)          # the reported rate still survives
@@ -295,7 +295,7 @@ test_that("DataType 'C' with SubFactor > 1 applies both multipliers", {
     TotalNumber = 20152.68, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126425L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   # 120 * 167.939 * 30/60 -- NOT 60 (duration only) and NOT 20152.68 (factor only)
   expect_equal(out$n_haul, 120 * 167.939 * 0.5)
@@ -318,7 +318,7 @@ test_that("DataType 'C' with a missing SubFactor gives NA, unlike the DATRAS pac
     TotalNumber = 8, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_true(is.na(out$n_haul))
   expect_true(is.na(out$n_measured))
@@ -336,13 +336,13 @@ test_that("a missing SubsamplingFactor voids n_haul but leaves n_measured intact
     TotalNumber = 7, SpeciesCategoryWeight = 700, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_length(hh, hl, species = sp)
+  out <- dr_hl_length(hh, hl, species = sp)
 
   expect_true(is.na(out$n_haul))
   expect_equal(out$n_measured, 7)
 })
 
-test_that("summing n_measured to dr_HL_summary()'s grain reproduces its n_measured", {
+test_that("summing n_measured to dr_hl_summary()'s grain reproduces its n_measured", {
   # The invariant that lets the two tables carry one name for one quantity.
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 60, HaulValidity = "V")
@@ -358,8 +358,8 @@ test_that("summing n_measured to dr_HL_summary()'s grain reproduces its n_measur
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
 
-  len  <- dr_HL_length(hh, hl, species = sp)
-  smry <- dr_HL_summary(hh, hl, species = sp)
+  len  <- dr_hl_length(hh, hl, species = sp)
+  smry <- dr_hl_summary(hh, hl, species = sp)
 
   rolled <- stats::aggregate(n_measured ~ .id + Valid_Aphia + SpeciesValidity,
                              data = len, FUN = sum, na.rm = TRUE)

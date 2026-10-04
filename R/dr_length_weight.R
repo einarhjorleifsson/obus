@@ -1,7 +1,7 @@
 # Length-weight: predicting weight from length.
 #
 # The weight of one fish follows W = a * L^b. obus already produces the other
-# two ingredients a haul's biomass needs -- dr_HL_length() gives the numbers
+# two ingredients a haul's biomass needs -- dr_hl_length() gives the numbers
 # caught (n_haul, n_hour) at each length_cm -- so the whole problem of getting
 # weight out of a length-frequency table reduces to resolving (a, b) per
 # species. No single source has them for every species, which is why the
@@ -221,18 +221,19 @@
 #' length and land in the wrong place. Run \code{\link{dr_add_length_mid}} first
 #' and pass \code{length_col = "length_cm_mid"}, which is the default.
 #'
-#' @param catch A catch table (data frame or lazy table) with at least
+#' @param data A catch table (data frame or lazy table) with at least
 #'   \code{Valid_Aphia}, \code{LengthType} and the column named by
-#'   \code{length_col} -- as produced by \code{\link{dr_HL_length}} followed by
+#'   \code{length_col} -- as produced by \code{\link{dr_hl_length}} followed by
 #'   \code{\link{dr_add_length_mid}}.
 #' @param conv Conversion lookup with columns \code{Valid_Aphia},
 #'   \code{from_type}, \code{intercept}, \code{slope}. Defaults to
-#'   \code{dr_con("length_type_conversion")}, collected first when \code{catch}
+#'   \code{dr_con("length_type_conversion")}, collected first when \code{data}
 #'   is an eager data frame.
 #' @param length_col Name of the length column to convert, in centimetres.
 #'   Default \code{"length_cm_mid"} (see above).
+#' @param catch `r lifecycle::badge("deprecated")` Use \code{data}.
 #'
-#' @return \code{catch} with the joined lookup columns plus:
+#' @return \code{data} with the joined lookup columns plus:
 #'   \describe{
 #'     \item{\code{length_cm_tl}}{\code{length_col} converted to Total Length
 #'       where a factor applies, else \code{length_col} unchanged.}
@@ -242,21 +243,26 @@
 #'       \code{"unconverted"} (a non-TL landmark with no traced factor).}
 #'   }
 #'
-#' @seealso \code{\link{dr_add_predicted_weight}}, \code{\link{dr_HL_length}}
+#' @seealso \code{\link{dr_add_predicted_weight}}, \code{\link{dr_hl_length}}
 #' @export
-dr_add_length_tl <- function(catch, conv = NULL, length_col = "length_cm_mid") {
-  .dr_require_cols(catch, c("Valid_Aphia", "LengthType", length_col),
+dr_add_length_tl <- function(data, conv = NULL, length_col = "length_cm_mid",
+                             catch = lifecycle::deprecated()) {
+  if (lifecycle::is_present(catch)) {
+    lifecycle::deprecate_warn("2026.10", "dr_add_length_tl(catch)", "dr_add_length_tl(data)")
+    data <- catch
+  }
+  .dr_require_cols(data, c("Valid_Aphia", "LengthType", length_col),
                    "dr_add_length_tl")
 
   if (is.null(conv)) {
     conv <- dr_con("length_type_conversion")
-    if (!inherits(catch, "tbl_lazy")) conv <- dplyr::collect(conv)
+    if (!inherits(data, "tbl_lazy")) conv <- dplyr::collect(conv)
   }
 
-  need_copy <- inherits(catch, "tbl_lazy") && !inherits(conv, "tbl_lazy")
+  need_copy <- inherits(data, "tbl_lazy") && !inherits(conv, "tbl_lazy")
   len <- rlang::sym(length_col)
 
-  catch |>
+  data |>
     dplyr::left_join(
       conv,
       by = dplyr::join_by(Valid_Aphia == Valid_Aphia, LengthType == from_type),
@@ -287,7 +293,7 @@ dr_add_length_tl <- function(catch, conv = NULL, length_col = "length_cm_mid") {
 #' Predicted weight is in GRAMS, following the FishBase convention
 #' \eqn{W(\mathrm{g}) = a \cdot L(\mathrm{cm})^b}, so the length column must be
 #' in centimetres. Where a per-length count is present (\code{n_haul} and/or
-#' \code{n_hour}, as on \code{\link{dr_HL_length}}) the corresponding predicted
+#' \code{n_hour}, as on \code{\link{dr_hl_length}}) the corresponding predicted
 #' catch weights are added by multiplication.
 #'
 #' Species with no resolved coefficient keep \code{NA} and therefore predict
@@ -315,13 +321,13 @@ dr_add_length_tl <- function(catch, conv = NULL, length_col = "length_cm_mid") {
 #' factor exists. The full pipeline is
 #' \code{dr_add_length_mid() |> dr_add_length_tl() |> dr_add_predicted_weight(length_col = "length_cm_tl")}.
 #'
-#' @param catch A length-resolved catch table (data frame or lazy table) with at
+#' @param data A length-resolved catch table (data frame or lazy table) with at
 #'   least \code{Valid_Aphia} and the column named by \code{length_col}.
 #'   \code{n_haul} and \code{n_hour} are used when present.
 #' @param lw Coefficient lookup with columns \code{Valid_Aphia}, \code{a},
 #'   \code{b} (and, carried through, \code{lw_source} and the fit metadata).
 #'   Defaults to \code{dr_con("length_weight")}, collected first when
-#'   \code{catch} is an eager data frame.
+#'   \code{data} is an eager data frame.
 #' @param length_col Name of the length column, in centimetres, holding a bin
 #'   MIDPOINT. Default \code{"length_cm_mid"} (from
 #'   \code{\link{dr_add_length_mid}}); use \code{"length_cm_tl"} after
@@ -340,36 +346,43 @@ dr_add_length_tl <- function(catch, conv = NULL, length_col = "length_cm_mid") {
 #'   using a tier the caller has reason to distrust -- the coarse
 #'   \code{sealifebase_genus}/\code{_family} tiers systematically over-predict,
 #'   as \code{\link{dr_compare_length_weight}} shows.
+#' @param catch `r lifecycle::badge("deprecated")` Use \code{data}.
 #'
-#' @return \code{catch} with the joined coefficient columns plus \code{w_ind}
+#' @return \code{data} with the joined coefficient columns plus \code{w_ind}
 #'   (predicted individual weight, grams) and -- where the input carries the
 #'   counts -- \code{w_haul_pred} (\code{n_haul * w_ind}) and \code{w_hour_pred}
 #'   (\code{n_hour * w_ind}).
 #'
-#' @seealso \code{\link{dr_compare_length_weight}}, \code{\link{dr_HL_length}},
+#' @seealso \code{\link{dr_compare_length_weight}}, \code{\link{dr_hl_length}},
 #'   \code{\link{dr_add_length_tl}}
 #' @export
-dr_add_predicted_weight <- function(catch, lw = NULL,
+dr_add_predicted_weight <- function(data, lw = NULL,
                                     length_col = "length_cm_mid",
-                                    bias_correct = FALSE, exclude_tiers = NULL) {
+                                    bias_correct = FALSE, exclude_tiers = NULL,
+                                    catch = lifecycle::deprecated()) {
+  if (lifecycle::is_present(catch)) {
+    lifecycle::deprecate_warn("2026.10", "dr_add_predicted_weight(catch)", "dr_add_predicted_weight(data)")
+    data <- catch
+  }
+
   # The likeliest mistake is piping HL_length straight in, which has length_cm
   # but not length_cm_mid. .dr_require_cols() would say "missing required
   # columns: length_cm_mid" and leave the reader to work out why that column is
   # wanted, so name the fix instead.
-  if (!length_col %in% colnames(catch) &&
+  if (!length_col %in% colnames(data) &&
       identical(length_col, "length_cm_mid") &&
-      "length_cm" %in% colnames(catch)) {
-    stop("dr_add_predicted_weight: `catch` has `length_cm` but not ",
+      "length_cm" %in% colnames(data)) {
+    stop("dr_add_predicted_weight: `data` has `length_cm` but not ",
          "`length_cm_mid`. `length_cm` is the LOWER BOUND of a length bin, and ",
          "predicting weight from it under-estimates by several percent. Run ",
          "dr_add_length_mid() first, or pass length_col = \"length_cm\" ",
          "deliberately to accept that bias.", call. = FALSE)
   }
-  .dr_require_cols(catch, c("Valid_Aphia", length_col), "dr_add_predicted_weight")
+  .dr_require_cols(data, c("Valid_Aphia", length_col), "dr_add_predicted_weight")
 
   if (is.null(lw)) {
     lw <- dr_con("length_weight")
-    if (!inherits(catch, "tbl_lazy")) lw <- dplyr::collect(lw)
+    if (!inherits(data, "tbl_lazy")) lw <- dplyr::collect(lw)
   }
 
   if (!is.null(exclude_tiers)) {
@@ -380,10 +393,10 @@ dr_add_predicted_weight <- function(catch, lw = NULL,
     )
   }
 
-  need_copy <- inherits(catch, "tbl_lazy") && !inherits(lw, "tbl_lazy")
+  need_copy <- inherits(data, "tbl_lazy") && !inherits(lw, "tbl_lazy")
   len <- rlang::sym(length_col)
 
-  out <- dplyr::left_join(catch, lw, by = "Valid_Aphia", copy = need_copy)
+  out <- dplyr::left_join(data, lw, by = "Valid_Aphia", copy = need_copy)
 
   if (isTRUE(bias_correct)) {
     out <- dplyr::mutate(
@@ -395,10 +408,10 @@ dr_add_predicted_weight <- function(catch, lw = NULL,
 
   out <- dplyr::mutate(out, w_ind = a * (!!len) ^ b)
 
-  if ("n_haul" %in% colnames(catch)) {
+  if ("n_haul" %in% colnames(data)) {
     out <- dplyr::mutate(out, w_haul_pred = n_haul * w_ind)
   }
-  if ("n_hour" %in% colnames(catch)) {
+  if ("n_hour" %in% colnames(data)) {
     out <- dplyr::mutate(out, w_hour_pred = n_hour * w_ind)
   }
 
@@ -411,8 +424,8 @@ dr_add_predicted_weight <- function(catch, lw = NULL,
 #' Cross-checks the length-weight prediction against the independent
 #' \emph{measured} weight obus already carries. For each haul \eqn{\times}
 #' species the modelled total -- \eqn{\sum_{\mathrm{lengths}} n\_haul \cdot a
-#' \cdot L^{b}}, summed over \code{\link{dr_HL_length}}'s rows -- is compared
-#' with \code{w_haul} from \code{\link{dr_HL_summary}}, which derives from the
+#' \cdot L^{b}}, summed over \code{\link{dr_hl_length}}'s rows -- is compared
+#' with \code{w_haul} from \code{\link{dr_hl_summary}}, which derives from the
 #' reported \code{SpeciesCategoryWeight}. The two are computed from different
 #' fields by different routes, so their agreement is a genuine test rather than
 #' a restatement.
@@ -424,7 +437,7 @@ dr_add_predicted_weight <- function(catch, lw = NULL,
 #' independent measurements. This function reports; it never edits either
 #' quantity.
 #'
-#' \strong{Ambiguous groups are excluded, not summed.} \code{\link{dr_HL_summary}}
+#' \strong{Ambiguous groups are excluded, not summed.} \code{\link{dr_hl_summary}}
 #' is grained by \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
 #' \code{SpeciesValidity}, and where a group splits across record types the
 #' reported weight is often the same species-level total repeated rather than a
@@ -433,10 +446,10 @@ dr_add_predicted_weight <- function(catch, lw = NULL,
 #' the two apart, so those groups are dropped from the comparison and counted in
 #' the result instead. Archive-wide this is about 0.05% of groups.
 #'
-#' @param len A length table from \code{\link{dr_HL_length}} or
+#' @param len A length table from \code{\link{dr_hl_length}} or
 #'   \code{dr_con("HL_length")}. Pre-filter (to one survey, year or species)
 #'   before calling for a scoped comparison.
-#' @param smry The matching haul summary from \code{\link{dr_HL_summary}} or
+#' @param smry The matching haul summary from \code{\link{dr_hl_summary}} or
 #'   \code{dr_con("HL_summary")}, filtered the same way.
 #' @param lw Coefficient lookup, as for \code{\link{dr_add_predicted_weight}}.
 #' @param tol Tolerance band on the modelled/measured ratio. Default
@@ -452,8 +465,8 @@ dr_add_predicted_weight <- function(catch, lw = NULL,
 #'   \code{n_ambiguous_excluded} -- or, with \code{flag = TRUE}, the per-group
 #'   comparison.
 #'
-#' @seealso \code{\link{dr_add_predicted_weight}}, \code{\link{dr_HL_length}},
-#'   \code{\link{dr_HL_summary}}
+#' @seealso \code{\link{dr_add_predicted_weight}}, \code{\link{dr_hl_length}},
+#'   \code{\link{dr_hl_summary}}
 #' @export
 dr_compare_length_weight <- function(len, smry, lw = NULL, tol = 0.25,
                                      flag = FALSE) {

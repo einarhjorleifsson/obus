@@ -68,7 +68,7 @@ applicable <- scope$Valid_Aphia[scope$lw_scope != "none"]
 # for haul-only species are harmless but never used, so coverage is reported
 # over this set and the expensive SeaLifeBase resolution targets only it.
 #
-# Taken from raw HL under dr_HL_length()'s own two filters rather than from
+# Taken from raw HL under dr_hl_length()'s own two filters rather than from
 # HL_length.parquet. Same answer (verified: 1,176 either way), and it keeps this
 # script independent of the products build.
 length_bearing <- dr_con_raw("HL", path = DR_RAW) |>

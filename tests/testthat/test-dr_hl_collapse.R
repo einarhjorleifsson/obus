@@ -1,4 +1,4 @@
-# Tests for dr_HL_collapse(): synthetic and offline. The two guards it exists
+# Tests for dr_hl_collapse(): synthetic and offline. The two guards it exists
 # for -- the all-NA 0-in-R / NULL-in-SQL divergence and the DataType == "C"
 # rule for n_measured -- only diverge ACROSS backends, so the aggregation
 # tests run twice: once on an eager data frame and once on the same rows in an
@@ -55,7 +55,7 @@ test_that("collapsing sex sums the measures and drops only that column", {
   f <- .collapse_fixture()
   for (nm in c("eager", "lazy")) {
     x <- if (nm == "eager") f else .as_lazy(f)
-    out <- .sorted(dr_HL_collapse(x, "SpeciesSex"))
+    out <- .sorted(dr_hl_collapse(x, "SpeciesSex"))
 
     expect_false("SpeciesSex" %in% names(out), info = nm)
     expect_equal(names(out), setdiff(names(f), "SpeciesSex"), info = nm)
@@ -67,14 +67,14 @@ test_that("collapsing sex sums the measures and drops only that column", {
 
 test_that("the two backends agree row for row", {
   f <- .collapse_fixture()
-  eager <- .sorted(dr_HL_collapse(f, c("SpeciesSex", "DevelopmentStage")))
-  lazy  <- .sorted(dr_HL_collapse(.as_lazy(f), c("SpeciesSex", "DevelopmentStage")))
+  eager <- .sorted(dr_hl_collapse(f, c("SpeciesSex", "DevelopmentStage")))
+  lazy  <- .sorted(dr_hl_collapse(.as_lazy(f), c("SpeciesSex", "DevelopmentStage")))
   expect_equal(eager, lazy)
 })
 
 test_that("column order is preserved", {
   f <- .collapse_fixture()
-  out <- dr_HL_collapse(f, "DevelopmentStage")
+  out <- dr_hl_collapse(f, "DevelopmentStage")
   expect_equal(names(out), setdiff(names(f), "DevelopmentStage"))
 })
 
@@ -84,7 +84,7 @@ test_that("a group with nothing to sum stays NA rather than becoming 0", {
   f <- .collapse_fixture()
   for (nm in c("eager", "lazy")) {
     x <- if (nm == "eager") f else .as_lazy(f)
-    out <- .sorted(dr_HL_collapse(x, "SpeciesSex"))
+    out <- .sorted(dr_hl_collapse(x, "SpeciesSex"))
     # length_mm 100 / stage 1 has n_hour NA on both rows
     g <- out[out$length_mm == 100 & !is.na(out$DevelopmentStage) &
                out$DevelopmentStage == "1", ]
@@ -103,7 +103,7 @@ test_that("n_measured NA survives the collapse -- the DataType == 'C' rule", {
   f <- .collapse_fixture()
   for (nm in c("eager", "lazy")) {
     x <- if (nm == "eager") f else .as_lazy(f)
-    out <- .sorted(dr_HL_collapse(x, c("SpeciesSex", "DevelopmentStage")))
+    out <- .sorted(dr_hl_collapse(x, c("SpeciesSex", "DevelopmentStage")))
     expect_true(is.na(out$n_measured[out$length_mm == 200]), info = nm)
     expect_equal(out$n_measured[out$length_mm == 100], 15, info = nm)
     expect_false(any(out$n_measured == 0, na.rm = TRUE), info = nm)
@@ -118,16 +118,16 @@ test_that("collapsing accuracy or LengthType errors where the data mixes them", 
   f$accuracy[4]   <- 0.5      # same length_mm, two bin widths
   for (nm in c("eager", "lazy")) {
     x <- if (nm == "eager") f else .as_lazy(f)
-    expect_error(dr_HL_collapse(x, c("SpeciesSex", "LengthType")),
+    expect_error(dr_hl_collapse(x, c("SpeciesSex", "LengthType")),
                  "mixes total against standard length", info = nm)
-    expect_error(dr_HL_collapse(x, c("SpeciesSex", "accuracy")),
+    expect_error(dr_hl_collapse(x, c("SpeciesSex", "accuracy")),
                  "different bins", info = nm)
   }
 })
 
 test_that("the mixing check passes where the data does not mix", {
   f <- .collapse_fixture()
-  out <- dr_HL_collapse(f, c("SpeciesSex", "DevelopmentStage",
+  out <- dr_hl_collapse(f, c("SpeciesSex", "DevelopmentStage",
                              "accuracy", "LengthType"))
   expect_false(any(c("accuracy", "LengthType") %in% names(out)))
   expect_equal(nrow(out), 2L)
@@ -136,8 +136,8 @@ test_that("the mixing check passes where the data does not mix", {
 test_that("check = FALSE skips the check", {
   f <- .collapse_fixture()
   f$LengthType[2] <- "2"
-  expect_error(dr_HL_collapse(f, c("SpeciesSex", "LengthType")), "mixes total")
-  expect_silent(dr_HL_collapse(f, c("SpeciesSex", "LengthType"), check = FALSE))
+  expect_error(dr_hl_collapse(f, c("SpeciesSex", "LengthType")), "mixes total")
+  expect_silent(dr_hl_collapse(f, c("SpeciesSex", "LengthType"), check = FALSE))
 })
 
 test_that("the check is against the RESULTING grain, not the input", {
@@ -146,8 +146,8 @@ test_that("the check is against the RESULTING grain, not the input", {
   # mixed convention. Erroring here would refuse a safe reduction.
   f <- .collapse_fixture()
   f$LengthType[2] <- "2"
-  expect_silent(dr_HL_collapse(f, "LengthType"))
-  expect_error(dr_HL_collapse(f, c("SpeciesSex", "LengthType")), "mixes total")
+  expect_silent(dr_hl_collapse(f, "LengthType"))
+  expect_error(dr_hl_collapse(f, c("SpeciesSex", "LengthType")), "mixes total")
 })
 
 test_that("an NA LengthType is a level of its own, not skipped", {
@@ -158,7 +158,7 @@ test_that("an NA LengthType is a level of its own, not skipped", {
   f$LengthType[2] <- NA_character_
   for (nm in c("eager", "lazy")) {
     x <- if (nm == "eager") f else .as_lazy(f)
-    expect_error(dr_HL_collapse(x, c("SpeciesSex", "LengthType")),
+    expect_error(dr_hl_collapse(x, c("SpeciesSex", "LengthType")),
                  "mixes total against standard length", info = nm)
   }
 })
@@ -173,7 +173,7 @@ test_that("SpeciesValidity collapses -- it is a record type, not a quality flag"
   f$SpeciesValidity <- c("1", "1", "1", "5", "1", "1")
   for (nm in c("eager", "lazy")) {
     x <- if (nm == "eager") f else .as_lazy(f)
-    out <- .sorted(dr_HL_collapse(x, c("SpeciesSex", "DevelopmentStage",
+    out <- .sorted(dr_hl_collapse(x, c("SpeciesSex", "DevelopmentStage",
                                        "SpeciesValidity")))
     expect_false("SpeciesValidity" %in% names(out), info = nm)
     expect_equal(nrow(out), 2L, info = nm)
@@ -181,29 +181,29 @@ test_that("SpeciesValidity collapses -- it is a record type, not a quality flag"
   }
 })
 
-test_that("length is refused, and points at dr_HL_summary()", {
+test_that("length is refused, and points at dr_hl_summary()", {
   f <- .collapse_fixture()
-  expect_error(dr_HL_collapse(f, "length_mm"), "dr_HL_summary")
-  expect_error(dr_HL_collapse(f, "length_cm"), "dr_HL_summary")
+  expect_error(dr_hl_collapse(f, "length_mm"), "dr_hl_summary")
+  expect_error(dr_hl_collapse(f, "length_cm"), "dr_hl_summary")
 })
 
 test_that("the identifying fields are refused", {
   f <- .collapse_fixture()
-  expect_error(dr_HL_collapse(f, ".id"), "identify the observation")
-  expect_error(dr_HL_collapse(f, "Valid_Aphia"), "identify the observation")
+  expect_error(dr_hl_collapse(f, ".id"), "identify the observation")
+  expect_error(dr_hl_collapse(f, "Valid_Aphia"), "identify the observation")
 })
 
 test_that("an unknown or absent column is refused by name", {
   f <- .collapse_fixture()
-  expect_error(dr_HL_collapse(f, "Quarter"), "Cannot collapse 'Quarter'")
-  expect_error(dr_HL_collapse(f, character(0)), "non-empty character vector")
-  expect_error(dr_HL_collapse(f[setdiff(names(f), "SpeciesSex")], "SpeciesSex"),
+  expect_error(dr_hl_collapse(f, "Quarter"), "Cannot collapse 'Quarter'")
+  expect_error(dr_hl_collapse(f, character(0)), "non-empty character vector")
+  expect_error(dr_hl_collapse(f[setdiff(names(f), "SpeciesSex")], "SpeciesSex"),
                "Not a column")
 })
 
 test_that("a table with no measure columns is refused", {
   f <- .collapse_fixture()[, c(".id", "Valid_Aphia", "length_mm", "SpeciesSex")]
-  expect_error(dr_HL_collapse(f, "SpeciesSex"), "does not look like")
+  expect_error(dr_hl_collapse(f, "SpeciesSex"), "does not look like")
 })
 
 test_that("an HL_summary table is refused by name, not quietly mishandled", {
@@ -212,5 +212,5 @@ test_that("an HL_summary table is refused by name, not quietly mishandled", {
   f <- .collapse_fixture()
   f$n_totalnumber <- 99
   f$p_females <- 0.5
-  expect_error(dr_HL_collapse(f, "SpeciesSex"), "looks like dr_HL_summary")
+  expect_error(dr_hl_collapse(f, "SpeciesSex"), "looks like dr_hl_summary")
 })

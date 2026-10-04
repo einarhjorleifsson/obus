@@ -4,16 +4,18 @@
 \alias{dr_add_id}
 \title{Generate a unique haul id}
 \usage{
-dr_add_id(d)
+dr_add_id(data, d = lifecycle::deprecated())
 }
 \arguments{
-\item{d}{A DATRAS table (HH, HL or CA) carrying all eight of \code{Survey},
+\item{data}{A DATRAS table (HH, HL or CA) carrying all eight of \code{Survey},
 \code{Year}, \code{Quarter}, \code{Country}, \code{Platform},
 \code{Gear}, \code{StationName}, \code{HaulNumber}. Data frame or
 \code{tbl_lazy}.}
+
+\item{d}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{data}.}
 }
 \value{
-\code{d} with an additional \code{.id} column.
+\code{data} with an additional \code{.id} column.
 }
 \description{
 Concatenates the eight join-key fields into a new \code{.id} column, e.g.

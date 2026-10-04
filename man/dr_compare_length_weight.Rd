@@ -7,11 +7,11 @@
 dr_compare_length_weight(len, smry, lw = NULL, tol = 0.25, flag = FALSE)
 }
 \arguments{
-\item{len}{A length table from \code{\link{dr_HL_length}} or
+\item{len}{A length table from \code{\link{dr_hl_length}} or
 \code{dr_con("HL_length")}. Pre-filter (to one survey, year or species)
 before calling for a scoped comparison.}
 
-\item{smry}{The matching haul summary from \code{\link{dr_HL_summary}} or
+\item{smry}{The matching haul summary from \code{\link{dr_hl_summary}} or
 \code{dr_con("HL_summary")}, filtered the same way.}
 
 \item{lw}{Coefficient lookup, as for \code{\link{dr_add_predicted_weight}}.}
@@ -35,8 +35,8 @@ comparison.
 Cross-checks the length-weight prediction against the independent
 \emph{measured} weight obus already carries. For each haul \eqn{\times}
 species the modelled total -- \eqn{\sum_{\mathrm{lengths}} n\_haul \cdot a
-\cdot L^{b}}, summed over \code{\link{dr_HL_length}}'s rows -- is compared
-with \code{w_haul} from \code{\link{dr_HL_summary}}, which derives from the
+\cdot L^{b}}, summed over \code{\link{dr_hl_length}}'s rows -- is compared
+with \code{w_haul} from \code{\link{dr_hl_summary}}, which derives from the
 reported \code{SpeciesCategoryWeight}. The two are computed from different
 fields by different routes, so their agreement is a genuine test rather than
 a restatement.
@@ -49,7 +49,7 @@ weight -- and there is no principled way to pick a winner between two
 independent measurements. This function reports; it never edits either
 quantity.
 
-\strong{Ambiguous groups are excluded, not summed.} \code{\link{dr_HL_summary}}
+\strong{Ambiguous groups are excluded, not summed.} \code{\link{dr_hl_summary}}
 is grained by \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
 \code{SpeciesValidity}, and where a group splits across record types the
 reported weight is often the same species-level total repeated rather than a
@@ -59,6 +59,6 @@ the two apart, so those groups are dropped from the comparison and counted in
 the result instead. Archive-wide this is about 0.05\% of groups.
 }
 \seealso{
-\code{\link{dr_add_predicted_weight}}, \code{\link{dr_HL_length}},
-\code{\link{dr_HL_summary}}
+\code{\link{dr_add_predicted_weight}}, \code{\link{dr_hl_length}},
+\code{\link{dr_hl_summary}}
 }

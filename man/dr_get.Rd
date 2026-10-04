@@ -4,10 +4,17 @@
 \alias{dr_get}
 \title{Collect a published table into memory}
 \usage{
-dr_get(type, survey = NULL, years = NULL, quarters = NULL, ...)
+dr_get(
+  table,
+  survey = NULL,
+  years = NULL,
+  quarters = NULL,
+  ...,
+  type = lifecycle::deprecated()
+)
 }
 \arguments{
-\item{type}{A published table name, as taken by \code{\link{dr_con}}.}
+\item{table}{A published table name, as taken by \code{\link{dr_con}}.}
 
 \item{survey, years, quarters}{Optional filters, applied lazily before
 collecting. \code{NULL} (the default) means no filter. Supplying one for a
@@ -16,6 +23,8 @@ table that has no such column is an error rather than a silent no-op --
 and \code{length_type_conversion} carry none of the three.}
 
 \item{...}{Passed to \code{\link{dr_con}} (\code{path}, \code{quiet}).}
+
+\item{type}{Deprecated; use \code{table}.}
 }
 \value{
 A data frame (tibble) with the whole filtered table in memory.

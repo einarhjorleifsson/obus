@@ -3,8 +3,8 @@
 #   raw HH + .id                                   ->  to_https/HH.parquet
 #   raw HL + .id                                   ->  to_https/HL.parquet
 #   raw CA + .id                                   ->  to_https/CA.parquet
-#   raw HH + raw HL  -> dr_HL_length()             ->  to_https/HL_length.parquet
-#   raw HH + raw HL  -> dr_HL_summary()            ->  to_https/HL_summary.parquet
+#   raw HH + raw HL  -> dr_hl_length()             ->  to_https/HL_length.parquet
+#   raw HH + raw HL  -> dr_hl_summary()            ->  to_https/HL_summary.parquet
 #
 # The first three are the raw exchange tables with `.id` added and nothing
 # else: same rows, same columns, opus's names, sentinels untouched. They exist
@@ -81,11 +81,11 @@ for (nm in c("HH", "HL", "CA")) {
 }
 
 message("HL_length ...")
-len <- dr_HL_length(hh, hl, species = species, haulval = NULL)
+len <- dr_hl_length(hh, hl, species = species, haulval = NULL)
 dr_write(len, "HL_length")
 
 message("HL_summary ...")
-smry <- dr_HL_summary(hh, hl, species = species, haulval = NULL)
+smry <- dr_hl_summary(hh, hl, species = species, haulval = NULL)
 dr_write(smry, "HL_summary")
 
 # ---- cross-check ------------------------------------------------------------

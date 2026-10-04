@@ -283,7 +283,7 @@ meas <- inner_join(
     summarise(datras = sum(HLNoAtLngt, na.rm = TRUE), .groups = "drop"),
   # NOTE: all_na must NOT be computed in the same summarise() that rebinds
   # n_measured -- dplyr evaluates in order, so it would see the new scalar.
-  # This is the exact trap dr_HL_length()'s source comments warn about; the
+  # This is the exact trap dr_hl_length()'s source comments warn about; the
   # first draft of this script fell into it and reported 0 NAs.
   len_o |> group_by(.id, l = length_cm) |>
     summarise(all_na = all(is.na(n_measured)),

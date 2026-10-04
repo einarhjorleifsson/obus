@@ -4,15 +4,17 @@
 \alias{dr_add_length_mid}
 \title{Add \code{length_cm_mid}, the midpoint of the length bin}
 \usage{
-dr_add_length_mid(d)
+dr_add_length_mid(data, d = lifecycle::deprecated())
 }
 \arguments{
-\item{d}{A data frame or lazy table with \code{length_cm} and
+\item{data}{A data frame or lazy table with \code{length_cm} and
 \code{accuracy}, as produced by \code{\link{dr_add_length_cm}} and as
-carried by \code{\link{dr_HL_length}}.}
+carried by \code{\link{dr_hl_length}}.}
+
+\item{d}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{data}.}
 }
 \value{
-\code{d} with an added \code{length_cm_mid} column.
+\code{data} with an added \code{length_cm_mid} column.
 }
 \description{
 \code{LengthClass} -- and therefore \code{\link{dr_add_length_cm}}'s

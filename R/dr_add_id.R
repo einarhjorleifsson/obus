@@ -108,12 +108,13 @@ DR_ID_FIELDS <- c("Survey", "Year", "Quarter", "Country", "Platform",
 #' (\code{Ship}, \code{StNo}, \code{HaulNo}) are not handled -- rename first
 #' with \code{opus::op_rename()} if you have a legacy-named table.
 #'
-#' @param d A DATRAS table (HH, HL or CA) carrying all eight of \code{Survey},
+#' @param data A DATRAS table (HH, HL or CA) carrying all eight of \code{Survey},
 #'   \code{Year}, \code{Quarter}, \code{Country}, \code{Platform},
 #'   \code{Gear}, \code{StationName}, \code{HaulNumber}. Data frame or
 #'   \code{tbl_lazy}.
+#' @param d `r lifecycle::badge("deprecated")` Use \code{data}.
 #'
-#' @return \code{d} with an additional \code{.id} column.
+#' @return \code{data} with an additional \code{.id} column.
 #' @export
 #'
 #' @examples
@@ -121,11 +122,15 @@ DR_ID_FIELDS <- c("Survey", "Year", "Quarter", "Country", "Platform",
 #'   Survey = "BITS", Year = 1991L, Quarter = 1L, Country = "DE",
 #'   Platform = "06S1", Gear = "H20", StationName = "33", HaulNumber = 28L
 #' ) |> dr_add_id()
-dr_add_id <- function(d) {
-  missing_vars <- setdiff(DR_ID_FIELDS, colnames(d))
+dr_add_id <- function(data, d = lifecycle::deprecated()) {
+  if (lifecycle::is_present(d)) {
+    lifecycle::deprecate_warn("2026.10", "dr_add_id(d)", "dr_add_id(data)")
+    data <- d
+  }
+  missing_vars <- setdiff(DR_ID_FIELDS, colnames(data))
   if (length(missing_vars) > 0) {
     stop("dr_add_id: missing columns for the haul key: ",
          paste(missing_vars, collapse = ", "), call. = FALSE)
   }
-  .dr_concat_ws(d, DR_ID_FIELDS)
+  .dr_concat_ws(data, DR_ID_FIELDS)
 }

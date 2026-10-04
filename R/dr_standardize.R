@@ -1,6 +1,6 @@
 # Shared prep: haulval filter + the HH columns every HL standardisation branch
 # needs (DataType/HaulDuration for raising, Survey/Year/Quarter for grain).
-# Used by both dr_HL_length() and dr_HL_summary() so the two stay in lockstep
+# Used by both dr_hl_length() and dr_hl_summary() so the two stay in lockstep
 # on which hauls are in scope.
 .dr_hh_cols_for_hl <- function(hh, haulval) {
   if (!is.null(haulval)) hh <- dplyr::filter(hh, HaulValidity %in% haulval)
@@ -19,19 +19,19 @@
 #' haul's bulk-counted or bulk-weighed species have no row here at all, not a
 #' zero-length placeholder, since "count at length" is not a meaningful
 #' description of a record that was never length-measured. See
-#' \code{\link{dr_HL_summary}} for the full per-haul species roster, including
+#' \code{\link{dr_hl_summary}} for the full per-haul species roster, including
 #' those species.
 #'
 #' \code{SpeciesSex} is carried as its own column rather than collapsed to a
 #' \code{p_females} ratio. That is safe here and not in
-#' \code{\link{dr_HL_summary}}: \code{NumberAtLength} is a genuine
+#' \code{\link{dr_hl_summary}}: \code{NumberAtLength} is a genuine
 #' per-sex-per-length count, and -- verified full-archive -- unlike
 #' \code{TotalNumber} it never repeats a placeholder value across sex sub-rows.
 #' The raw code is kept as reported (\code{"F"}, \code{"M"}, \code{"U"},
 #' \code{"B"}, or \code{NA}): \code{"B"} (berried, egg-bearing) is not
 #' pre-merged into \code{"F"}, and \code{"U"} (assessed, undetermined) stays
 #' distinct from \code{NA} (never assessed). The female proportion that
-#' \code{\link{dr_HL_summary}} publishes as \code{p_females} is one
+#' \code{\link{dr_hl_summary}} publishes as \code{p_females} is one
 #' aggregation away, by grouping \code{SpeciesSex} out, e.g.
 #' `summarise(p_females = sum(n_haul[SpeciesSex %in% c("F","B")]) /`
 #' `sum(n_haul[SpeciesSex %in% c("F","M","B")]))`.
@@ -69,7 +69,7 @@
 #' \code{SubsamplingFactor}); \code{n_measured} is
 #' \eqn{\Sigma}\code{NumberAtLength} exactly as submitted, before any raising --
 #' how many fish actually went through the calipers at this length. It is the
-#' same quantity \code{\link{dr_HL_summary}} carries under the same name, one
+#' same quantity \code{\link{dr_hl_summary}} carries under the same name, one
 #' grain finer, and summing it to that table's grain reproduces that column.
 #'
 #' \strong{It is not recoverable from \code{n_haul}}, which is why it is a
@@ -83,13 +83,13 @@
 #' subsampled.
 #'
 #' \code{n_measured} is \code{NA} -- not \code{0} -- where
-#' \code{DataType == "C"}, following \code{\link{dr_HL_summary}}: ICES
+#' \code{DataType == "C"}, following \code{\link{dr_hl_summary}}: ICES
 #' instructs a \code{"C"} submission to report \code{HLNoAtLngt} "adjusted to
 #' one hour of catching", with \code{TotalNo = Sum(HLNoAtLngt)} (DATRAS FAQ,
 #' \emph{DataType C} block), so the summed column is a rate and no measured
 #' count exists \emph{at this grain}. That is 4,651,701 of
 #' 14,001,605 rows (33.2%), verified to be exactly the \code{"C"} rows and no
-#' others. Unlike in \code{\link{dr_HL_summary}} there is no \code{0} case
+#' others. Unlike in \code{\link{dr_hl_summary}} there is no \code{0} case
 #' here: a species with no length data has no row in this table at all.
 #'
 #' \strong{That is a statement about this grain, not about the archive.} A
@@ -133,9 +133,9 @@
 #' reports a rate directly, so there \code{n_hour} survives and \code{n_haul}
 #' is \code{NA} instead.
 #'
-#' @seealso \code{\link{dr_HL_summary}}, \code{\link{dr_add_id}}
+#' @seealso \code{\link{dr_hl_summary}}, \code{\link{dr_add_id}}
 #' @export
-dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
+dr_hl_length <- function(hh, hl, species = NULL, haulval = NULL) {
   hh_cols <- .dr_hh_cols_for_hl(hh, haulval)
 
   hl |>
@@ -143,10 +143,10 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::select(-dplyr::any_of(c("Survey", "Year", "Quarter"))) |>
     dplyr::inner_join(hh_cols, by = ".id") |>
     dplyr::filter(!is.na(LengthClass)) |>
-    dr_add_length_mm() |>
+    .dr_add_length_mm() |>
     dr_add_length_cm() |>
-    dr_add_n_and_cpue() |>
-    dr_join_species(species) |>
+    .dr_add_n_and_cpue() |>
+    .dr_join_species(species) |>
     # Rename before summarising. Two reasons, both load-bearing: the guard
     # below must read n_haul's PRE-aggregation value, and `n_haul = sum(n_haul)`
     # in the same summarise() is resolved differently by the two backends --
@@ -160,7 +160,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::summarise(
       n_haul = sum(.n_raw, na.rm = TRUE),
       n_hour = sum(.h_raw, na.rm = TRUE),
-      # Same all-NA guard as dr_HL_summary(): sum(x, na.rm = TRUE) over a
+      # Same all-NA guard as dr_hl_summary(): sum(x, na.rm = TRUE) over a
       # group with nothing in it is 0 in R and NULL in SQL. Without this, a
       # group whose raising is genuinely unknown -- a missing
       # SubsamplingFactor, or a non-positive HaulDuration -- comes back as a
@@ -168,7 +168,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
       .n_ok = sum(as.integer(!is.na(.n_raw)), na.rm = TRUE),
       .h_ok = sum(as.integer(!is.na(.h_raw)), na.rm = TRUE),
       # n_measured: the un-raised NumberAtLength as submitted. Deliberately
-      # the SAME expression dr_HL_summary() uses for its own n_measured, one
+      # the SAME expression dr_hl_summary() uses for its own n_measured, one
       # grain finer, so summing this column up to that table's grain
       # reproduces its column. Verified full-archive 2026-09-03 over the
       # 1,925,444 comparable groups: the NA sets are identical (586,884 either
@@ -178,7 +178,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
       # summing subgroups then re-summing is not bit-associative. Re-running
       # moves the count by a few dozen either way, which is itself the proof.
       #
-      # DataType == "C" is NA for the reason given in dr_HL_summary() -- that
+      # DataType == "C" is NA for the reason given in dr_hl_summary() -- that
       # convention reports NumberAtLength as an already-hourly RATE, so no
       # physical "number of fish measured" exists to report. 4,651,701 of
       # 14,001,605 rows (33.2%), and measured to be exactly the "C" rows:
@@ -210,12 +210,12 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' One row per \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
 #' \code{SpeciesValidity} -- every species recorded in \code{hl} for that
 #' haul, whether or not it was individually measured (unlike
-#' \code{\link{dr_HL_length}}, which covers only the length-measured
+#' \code{\link{dr_hl_length}}, which covers only the length-measured
 #' subset). \code{n_totalnumber}/\code{n_totalnumber_hour} come from the
 #' recorded \code{TotalNumber}, present regardless of length data and so the
 #' one universal per-species haul total, rather than being reconstructed by
-#' summing \code{\link{dr_HL_length}}'s length classes. The name says so on
-#' purpose: \code{\link{dr_HL_length}}'s \code{n_haul} is the same conceptual
+#' summing \code{\link{dr_hl_length}}'s length classes. The name says so on
+#' purpose: \code{\link{dr_hl_length}}'s \code{n_haul} is the same conceptual
 #' quantity arrived at the other way -- raising the measured length frequencies
 #' -- and the two do not always agree (see below). Calling both \code{n_haul}
 #' invited exactly that confusion. \code{w_haul}/\code{w_hour} keep their
@@ -233,20 +233,20 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' \code{HLNoAtLngt} already adjusted to one hour (DATRAS FAQ, \emph{DataType
 #' C} block), so summing it yields a rate and not a count, and \code{0} is
 #' reserved for species genuinely never measured. The information is not
-#' necessarily gone -- see \code{\link{dr_HL_length}} for the subsampling
+#' necessarily gone -- see \code{\link{dr_hl_length}} for the subsampling
 #' trace that often survives in HL's \code{SubsampledNumber}.
 #'
 #' \strong{Both routes are carried here.} \code{n_totalnumber} is the reported
 #' total; \code{n_haul} is the same quantity reconstructed by raising the
-#' length frequencies -- identical to summing \code{\link{dr_HL_length}}'s own
+#' length frequencies -- identical to summing \code{\link{dr_hl_length}}'s own
 #' \code{n_haul} to this grain, and \code{NA} where the species has no length
 #' data or its raising factor is unknown. Their difference is the disagreement
 #' described below, available as a subtraction rather than a grouped join
-#' (a naive \code{left_join()} to \code{\link{dr_HL_length}} fans out and
+#' (a naive \code{left_join()} to \code{\link{dr_hl_length}} fans out and
 #' silently multiplies).
 #'
 #' \code{n_totalnumber} here and the length-class sum from
-#' \code{\link{dr_HL_length}} describe the same underlying count \emph{when the source submission is
+#' \code{\link{dr_hl_length}} describe the same underlying count \emph{when the source submission is
 #' internally consistent} -- a cross-check worth running, not a guarantee.
 #' Measured archive-wide on the retired implementation of this table
 #' (1,920,932 groups), 3.5% still disagreed meaningfully, concentrated in
@@ -255,7 +255,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' need not match a raised length-frequency sum exactly) or rounding noise from
 #' a non-integer \code{SubsamplingFactor}.
 #'
-#' Unlike \code{\link{dr_HL_length}}, this table does \emph{not} carry
+#' Unlike \code{\link{dr_hl_length}}, this table does \emph{not} carry
 #' \code{SpeciesSex} as a grain dimension. That asymmetry is deliberate and
 #' empirically grounded. Verified full-archive across 212,497 haul x species
 #' groups reporting more than one sex, \code{TotalNumber} genuinely varies by
@@ -267,7 +267,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' time. Splitting this table by \code{SpeciesSex} would therefore silently
 #' misrepresent \code{w_haul}/\code{w_hour} for an unknown share of species
 #' with no per-row way to flag which. Sex-specific \emph{counts} stay
-#' recoverable by aggregating \code{\link{dr_HL_length}}; sex-specific
+#' recoverable by aggregating \code{\link{dr_hl_length}}; sex-specific
 #' \emph{weight} is not recoverable in general -- a property of the source
 #' data, not a gap in obus.
 #'
@@ -297,7 +297,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' record types and double-counts. \strong{The remedy is to sum across it,
 #' not to filter to \code{"1"}} -- it is a record type rather than a quality
 #' flag, so filtering discards real records: 464,858 of 2,291,457
-#' \code{HL_summary} records (20.3\%), and in \code{\link{dr_HL_length}}
+#' \code{HL_summary} records (20.3\%), and in \code{\link{dr_hl_length}}
 #' 691,163 of 14,001,605 rows covering 37,302,307 fish (measured 2026-09-17).
 #' Can-Mar is the only survey putting real length data on validity-\code{5}
 #' rows, so a blanket filter deletes one survey's measurements outright.
@@ -314,7 +314,7 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' filtering to \code{"1"} there discards genuine length data for a
 #' substantial share of its groups. Treat Can-Mar separately.
 #'
-#' @inheritParams dr_HL_length
+#' @inheritParams dr_hl_length
 #' @param hl DATRAS HL table with \code{.id} present. Required: \code{.id},
 #'   \code{Valid_Aphia}, \code{SpeciesSex}, \code{SpeciesCategory}, \code{SpeciesValidity},
 #'   \code{TotalNumber}, \code{SpeciesCategoryWeight}, \code{NumberAtLength},
@@ -327,9 +327,9 @@ dr_HL_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #'   \code{n_totalnumber_hour}, \code{n_haul}, \code{w_haul}, \code{w_hour},
 #'   \code{n_measured}, \code{p_females}, \code{SpeciesValidity}.
 #'
-#' @seealso \code{\link{dr_HL_length}}, \code{\link{dr_add_id}}
+#' @seealso \code{\link{dr_hl_length}}, \code{\link{dr_add_id}}
 #' @export
-dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
+dr_hl_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   hh_cols <- .dr_hh_cols_for_hl(hh, haulval)
 
   # ---- counts: TotalNumber, disambiguated per SpeciesSex, not just distinct()-collapsed --
@@ -573,7 +573,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # TotalNumber's reliability as a per-sex value is exactly the ambiguity
   # handled above -- computing p_females from it would need the same
   # disambiguation every call. NumberAtLength has no such ambiguity (the same
-  # property that makes it safe as a dr_HL_length() grain dimension), so
+  # property that makes it safe as a dr_hl_length() grain dimension), so
   # p_females is the proportion of individually-measured, sexed fish that are
   # female. "B" (berried) is a known-female state, counted as female. NA when
   # no fish in the group were sexed.
@@ -585,7 +585,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # SpeciesValidity, rows from different record types will be silently mixed
   # together"). Affects the 1,219 multi-validity groups.
   hl_pfem <- hl_len_base |>
-    dr_add_n_and_cpue() |>
+    .dr_add_n_and_cpue() |>
     dplyr::group_by(.id, Valid_Aphia, SpeciesValidity) |>
     dplyr::summarise(
       n_f = sum(dplyr::if_else(SpeciesSex %in% c("F", "B"), n_haul, 0), na.rm = TRUE),
@@ -598,7 +598,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
     dplyr::select(.id, Valid_Aphia, SpeciesValidity, p_females)
 
   # ---- n_haul: the raised length-frequency total -------------------------
-  # The same quantity dr_HL_length() carries under the same name, summed to
+  # The same quantity dr_hl_length() carries under the same name, summed to
   # this table's grain: sum(NumberAtLength x SubsamplingFactor), with the
   # DataType handling dr_add_n_and_cpue() applies.
   #
@@ -622,10 +622,10 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
   # published n_haul = 2 against n_measured = 4 -- a catch smaller than the
   # sub-sample it came from, which cannot happen. A partial raise is not a
   # catch, so it is NA. Archive-wide this is the only group affected: no group
-  # at dr_HL_length()'s own level mixes raisable and unraisable rows, so the
+  # at dr_hl_length()'s own level mixes raisable and unraisable rows, so the
   # matching guard there needs no change.
   hl_raised <- hl_len_base |>
-    dr_add_n_and_cpue() |>
+    .dr_add_n_and_cpue() |>
     dplyr::mutate(.r_raw = n_haul) |>
     dplyr::group_by(.id, Valid_Aphia, SpeciesValidity) |>
     dplyr::summarise(
@@ -683,7 +683,7 @@ dr_HL_summary <- function(hh, hl, species = NULL, haulval = NULL) {
                      na_matches = "na") |>
     dplyr::mutate(n_measured = dplyr::if_else(is.na(.has_length), 0, n_measured)) |>
     dplyr::select(-.has_length) |>
-    dr_join_species(species) |>
+    .dr_join_species(species) |>
     dplyr::select(
       .id, Survey, Year, Quarter, Valid_Aphia, latin, species, rank,
       n_totalnumber, n_totalnumber_hour, n_haul, w_haul, w_hour,

@@ -4,3 +4,19 @@
 # which rmarkdown's html_document cannot provide.
 template:
   bootstrap: 5
+
+reference:
+  - title: Get the data
+    contents: [dr_con, dr_con_raw, dr_get]
+  - title: Add columns
+    contents: [dr_add_id, dr_add_length_cm, dr_add_length_mid, dr_add_catch, dr_add_cell]
+  - title: Build the catch tables
+    contents: [dr_hl_length, dr_hl_summary, dr_hl_collapse]
+  - title: Summarise and draw
+    contents: [starts_with("dr_summarise_"), autoplot.dr_summary]
+  - title: Weight from length
+    contents: [dr_add_length_tl, dr_add_predicted_weight, dr_compare_length_weight]
+  - title: Interoperate with DATRAS
+    contents: dr_get_datras
+  - title: Deprecated
+    contents: obus-deprecated

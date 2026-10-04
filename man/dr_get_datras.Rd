@@ -8,10 +8,11 @@ dr_get_datras(
   survey,
   years = NULL,
   quarters = NULL,
-  aphia = NULL,
+  species = NULL,
   ca = TRUE,
   haulval = NULL,
-  stdspec = NULL
+  stdspec = NULL,
+  aphia = lifecycle::deprecated()
 )
 }
 \arguments{
@@ -22,19 +23,22 @@ dr_get_datras(
 
 \item{quarters}{Integer vector of quarters. \code{NULL} takes all.}
 
-\item{aphia}{Integer vector of \code{Valid_Aphia} codes. \code{NULL} takes
-every species, which is right for species composition and richness and
-wrong for anything downstream of \code{add_numbers_at_length()}.}
+\item{species}{Latin names (\code{"Gadus morhua"}) or numeric
+\code{Valid_Aphia} codes, as in \code{dr_con("species")}. \code{NULL}
+takes every species, which is right for species composition and richness
+and wrong for anything downstream of \code{add_numbers_at_length()}.}
 
 \item{ca}{Include the CA (age and individual biology) table? Needed for
 age-length keys; \code{FALSE} skips the read.}
 
 \item{haulval}{Character vector of \code{HaulValidity} codes to retain,
 e.g. \code{"V"}. \code{NULL} (default) retains every haul, matching
-\code{\link{dr_HL_length}}; obus does not filter unless asked.}
+\code{\link{dr_hl_length}}; obus does not filter unless asked.}
 
 \item{stdspec}{Character vector of \code{StandardSpeciesCode} values to
 retain. \code{NULL} (default) retains every haul.}
+
+\item{aphia}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{species}.}
 }
 \value{
 A list of three data frames -- \code{CA} (or \code{NULL}),
@@ -86,7 +90,7 @@ afterwards looks like it worked and does not, because
 \code{N} and \code{HaulN}, which live on HH, keep their pooled values. On
 \pkg{DATRASextra}'s own \code{mini} that leaves \code{HaulN} 19x too high
 for the single species HL now claims to hold, with no warning and nothing
-inconsistent for a check to catch. Pass a single \code{aphia} here, or
+inconsistent for a check to catch. Pass a single \code{species} here, or
 \code{subset()} before the first \code{add_*()} call.
 
 \strong{\code{$} on the result depends on whether \pkg{DATRAS}'s namespace
@@ -141,7 +145,7 @@ it. The parquet is not lost, so read it again rather than rebuilding it.
 \examples{
 \dontrun{
 d <- dr_get_datras("NS-IBTS", years = 2020:2023, quarters = c(1L, 3L),
-                  aphia = 127139L, haulval = "V")
+                  species = 127139L, haulval = "V")
 
 library(DATRASextra)
 d <- add_numbers_at_length(d)

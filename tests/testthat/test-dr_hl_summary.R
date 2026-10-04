@@ -1,4 +1,4 @@
-# Tests for dr_HL_summary(): synthetic, offline, eager data frames only.
+# Tests for dr_hl_summary(): synthetic, offline, eager data frames only.
 # Covers the SpeciesSex-split SpeciesCategoryWeight deduplication fix (migrated
 # from test-dr_HL_standardised.R, which tested this via
 # dr_HL_standardised() + filter(type == "haul") before the 2026-07 split)
@@ -33,7 +33,7 @@ test_that("a weight repeated identically across SpeciesSex-split rows is counted
     list(SpeciesSex = "F",  TotalNumber = 14, SpeciesCategoryWeight = 33160, SpeciesCategory = 1),
     list(SpeciesSex = NA,   TotalNumber = 3,  SpeciesCategoryWeight = 33160, SpeciesCategory = 1)
   ))
-  out <- dr_HL_summary(f$hh, f$hl, species = f$species)
+  out <- dr_hl_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 33160)          # NOT 33160 * 3 = 99480
   expect_equal(out$n_totalnumber, 8 + 14 + 3)     # counts still sum correctly across SpeciesSex
@@ -44,7 +44,7 @@ test_that("genuinely distinct per-SpeciesSex weights are still summed, not dedup
     list(SpeciesSex = "M", TotalNumber = 23, SpeciesCategoryWeight = 4000, SpeciesCategory = 1),
     list(SpeciesSex = "F", TotalNumber = 4,  SpeciesCategoryWeight = 900,  SpeciesCategory = 1)
   ))
-  out <- dr_HL_summary(f$hh, f$hl, species = f$species)
+  out <- dr_hl_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 4000 + 900)
   expect_equal(out$n_totalnumber, 23 + 4)
@@ -59,7 +59,7 @@ test_that("two SpeciesCategory codes, each internally SpeciesSex-duplicated, sum
     list(SpeciesSex = "F", TotalNumber = 2,  SpeciesCategoryWeight = 850,   SpeciesCategory = 2),
     list(SpeciesSex = NA,  TotalNumber = 14, SpeciesCategoryWeight = 850,   SpeciesCategory = 2)
   ))
-  out <- dr_HL_summary(f$hh, f$hl, species = f$species)
+  out <- dr_hl_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 33160 + 850)    # NOT (33160 + 850) * 3 = 102030
   expect_equal(out$n_totalnumber, (8 + 14 + 3) + (3 + 2 + 14))
@@ -69,7 +69,7 @@ test_that("a single SpeciesSex row (the common, no-risk case) is unaffected", {
   f <- .hl_summary_fixture(list(
     list(SpeciesSex = "F", TotalNumber = 10, SpeciesCategoryWeight = 5000, SpeciesCategory = 1)
   ))
-  out <- dr_HL_summary(f$hh, f$hl, species = f$species)
+  out <- dr_hl_summary(f$hh, f$hl, species = f$species)
 
   expect_equal(out$w_haul, 5000)
   expect_equal(out$n_totalnumber, 10)
@@ -107,7 +107,7 @@ test_that("TotalNumber duplicated identically across SpeciesSex is counted once,
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 2)     # NOT 1+1 summed against a duplicated total = 4
   expect_equal(out$n_totalnumber_hour, 4)     # HaulDuration = 30 -> n_hour = n_haul/30*60
@@ -135,7 +135,7 @@ test_that("two different sexes coincidentally reporting the SAME real value are 
   )
   sp <- data.frame(Valid_Aphia = 127143L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 4)     # NOT distinct(2,1) = 3 -- M and unsexed are genuinely separate
 })
@@ -166,7 +166,7 @@ test_that("TotalNumber duplicated across SpeciesCategory is counted once, not pe
   )
   sp <- data.frame(Valid_Aphia = 126438L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 660)   # NOT 660 + 660 = 1320 (once per category)
 })
@@ -189,7 +189,7 @@ test_that("genuinely distinct SpeciesCategory totals are still summed, not colla
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 4 + 2)   # NOT collapsed to distinct-value 4 (they differ anyway)
 })
@@ -211,7 +211,7 @@ test_that("p_females is sourced from NumberAtLength, not the (possibly duplicate
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 10)                 # counts correctly deduplicated (not 10+10=20)
   expect_equal(out$p_females, 2 / (2 + 6))      # NOT 10/(10+10) = 0.5
@@ -234,7 +234,7 @@ test_that("n_measured is 0 for a bulk-only species (no LengthClass at all)", {
   )
   sp <- data.frame(Valid_Aphia = 999999L, latin = "Bulk species",
                    species = "Bulk species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 12)              # a real, non-zero catch
   expect_equal(out$n_measured, 0)           # but zero individuals measured
@@ -251,7 +251,7 @@ test_that("n_measured is NA (not a misleading rate) when DataType == 'C'", {
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_measured))
   expect_false(is.na(out$n_totalnumber))           # n_haul itself is still resolved
@@ -268,13 +268,13 @@ test_that("n_measured is the raw un-raised count for DataType == 'R'/'S'/'P'", {
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "Test species",
                    species = "Test species", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_measured, 3 + 5)        # raw, un-raised by SubsamplingFactor
   expect_equal(out$n_totalnumber, 16)               # the recorded (raised) total, unaffected
 })
 
-test_that("dr_HL_summary() covers every species, unlike dr_HL_length()", {
+test_that("dr_hl_summary() covers every species, unlike dr_hl_length()", {
   hh <- data.frame(.id = 1L, Survey = "NS-IBTS", Year = 2020L, Quarter = 1L,
                    DataType = "R", HaulDuration = 30, HaulValidity = "V")
   hl <- data.frame(
@@ -292,7 +292,7 @@ test_that("dr_HL_summary() covers every species, unlike dr_HL_length()", {
                    latin = c("Test species", "Bulk species"),
                    species = c("Test species", "Bulk species"),
                    rank = c("Species", "Species"))
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(nrow(out), 2L)
   expect_true(all(c(126417L, 999999L) %in% out$Valid_Aphia))
@@ -315,7 +315,7 @@ test_that("HaulDuration == 0 gives NA hourly figures, not Inf", {
     TotalNumber = 5, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_totalnumber_hour))
   expect_true(is.na(out$w_hour))
@@ -333,7 +333,7 @@ test_that("HaulDuration < 0 gives NA hourly figures too", {
     TotalNumber = 5, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_totalnumber_hour))
   expect_true(is.na(out$w_hour))
@@ -352,7 +352,7 @@ test_that("DataType 'C' with HaulDuration == 0 keeps the reported rate, NAs the 
     TotalNumber = 8, SpeciesCategoryWeight = 800, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber_hour, 8)   # reported rate, kept
   expect_equal(out$w_hour, 800)
@@ -383,7 +383,7 @@ test_that("a weight repeated across pseudocategories is counted once per main ca
   )
   sp <- data.frame(Valid_Aphia = 126437L, latin = "Melanogrammus aeglefinus",
                    species = "haddock", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$w_haul, 991 + 290100)   # NOT 991 + 290100 + 290100
 })
@@ -404,7 +404,7 @@ test_that("under DataType R, genuinely distinct per-category weights are still s
     SpeciesCategory = c("1", "2")
   )
   sp <- data.frame(Valid_Aphia = 127139L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$w_haul, 1950 + 572030)
 })
@@ -426,7 +426,7 @@ test_that("n_haul equals the raised length frequency, and n_totalnumber the repo
     TotalNumber = 30, SpeciesCategoryWeight = 500, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 126417L, latin = "T", species = "T", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_haul, (3 + 5) * 4)   # 32, from the length rows
   expect_equal(out$n_totalnumber, 30)     # what the submission declares
@@ -444,7 +444,7 @@ test_that("n_haul is NA, not 0, for a species with no length data", {
     SpeciesCategoryWeight = 3000, SpeciesCategory = "1"
   )
   sp <- data.frame(Valid_Aphia = 999999L, latin = "Bulk", species = "Bulk", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_totalnumber, 12)
   expect_true(is.na(out$n_haul))      # nothing to reconstruct from
@@ -478,7 +478,7 @@ test_that("a group with any unraisable length row returns NA n_haul, not a parti
   )
   sp <- data.frame(Valid_Aphia = 127137L, latin = "Hippoglossoides platessoides",
                    species = "long rough dab", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_true(is.na(out$n_haul))        # NOT 2
   expect_equal(out$n_measured, 4)       # all four fish were measured
@@ -497,7 +497,7 @@ test_that("a group whose length rows all raise still returns the sum", {
   )
   sp <- data.frame(Valid_Aphia = 127137L, latin = "Hippoglossoides platessoides",
                    species = "long rough dab", rank = "Species")
-  out <- dr_HL_summary(hh, hl, species = sp)
+  out <- dr_hl_summary(hh, hl, species = sp)
 
   expect_equal(out$n_haul, 4)
   expect_equal(out$n_measured, 2)

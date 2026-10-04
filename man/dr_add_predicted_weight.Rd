@@ -5,22 +5,23 @@
 \title{Predict individual and catch weight from length}
 \usage{
 dr_add_predicted_weight(
-  catch,
+  data,
   lw = NULL,
   length_col = "length_cm_mid",
   bias_correct = FALSE,
-  exclude_tiers = NULL
+  exclude_tiers = NULL,
+  catch = lifecycle::deprecated()
 )
 }
 \arguments{
-\item{catch}{A length-resolved catch table (data frame or lazy table) with at
+\item{data}{A length-resolved catch table (data frame or lazy table) with at
 least \code{Valid_Aphia} and the column named by \code{length_col}.
 \code{n_haul} and \code{n_hour} are used when present.}
 
 \item{lw}{Coefficient lookup with columns \code{Valid_Aphia}, \code{a},
 \code{b} (and, carried through, \code{lw_source} and the fit metadata).
 Defaults to \code{dr_con("length_weight")}, collected first when
-\code{catch} is an eager data frame.}
+\code{data} is an eager data frame.}
 
 \item{length_col}{Name of the length column, in centimetres, holding a bin
 MIDPOINT. Default \code{"length_cm_mid"} (from
@@ -42,9 +43,11 @@ coefficients, and therefore \code{NA} predictions, instead of silently
 using a tier the caller has reason to distrust -- the coarse
 \code{sealifebase_genus}/\code{_family} tiers systematically over-predict,
 as \code{\link{dr_compare_length_weight}} shows.}
+
+\item{catch}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{data}.}
 }
 \value{
-\code{catch} with the joined coefficient columns plus \code{w_ind}
+\code{data} with the joined coefficient columns plus \code{w_ind}
 (predicted individual weight, grams) and -- where the input carries the
 counts -- \code{w_haul_pred} (\code{n_haul * w_ind}) and \code{w_hour_pred}
 (\code{n_hour * w_ind}).
@@ -62,7 +65,7 @@ so a prediction always states how it was arrived at.
 Predicted weight is in GRAMS, following the FishBase convention
 \eqn{W(\mathrm{g}) = a \cdot L(\mathrm{cm})^b}, so the length column must be
 in centimetres. Where a per-length count is present (\code{n_haul} and/or
-\code{n_hour}, as on \code{\link{dr_HL_length}}) the corresponding predicted
+\code{n_hour}, as on \code{\link{dr_hl_length}}) the corresponding predicted
 catch weights are added by multiplication.
 
 Species with no resolved coefficient keep \code{NA} and therefore predict
@@ -91,6 +94,6 @@ factor exists. The full pipeline is
 \code{dr_add_length_mid() |> dr_add_length_tl() |> dr_add_predicted_weight(length_col = "length_cm_tl")}.
 }
 \seealso{
-\code{\link{dr_compare_length_weight}}, \code{\link{dr_HL_length}},
+\code{\link{dr_compare_length_weight}}, \code{\link{dr_hl_length}},
 \code{\link{dr_add_length_tl}}
 }

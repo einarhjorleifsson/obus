@@ -1,6 +1,6 @@
 Package: obus
 Title: Implementing More and Better Use of ICES Survey Data
-Version: 2026.08
+Version: 2026.10
 Authors@R: person("Einar", "Hjorleifsson", role = c("aut", "cre"), email = "einar.hjorleifsson@gmail.com")
 Maintainer: Einar Hjörleifsson <einar.hjorleifsson@gmail.com>
 Description: Lazy access to the DATRAS trawl-survey archive, and the derived
@@ -12,14 +12,19 @@ Encoding: UTF-8
 Depends:
     R (>= 4.2.0)
 Imports:
+    cli,
+    dbplyr,
     dplyr,
     duckdbfs,
+    ggplot2,
     httr2,
+    lifecycle,
     opus,
-    rlang
+    rlang,
+    scales
 Suggests:
     broom,
-    ggplot2,
+    maps,
     DATRAS,
     DATRASextra,
     DBI,

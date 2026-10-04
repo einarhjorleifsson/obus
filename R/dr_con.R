@@ -19,7 +19,7 @@
 # what opus staged, untouched; otherwise prefer dr_con().
 #
 # Both open onto the SAME DuckDB connection (duckdbfs's cached one). That is
-# not incidental -- dr_HL_length()/dr_HL_summary() join a raw HL against
+# not incidental -- dr_hl_length()/dr_hl_summary() join a raw HL against
 # dr_con("species"), and dbplyr refuses to join two lazy tables held on
 # different connections ("`x` and `y` must share the same source"). Verified
 # 2026-08-31: opus::op_con() keeps its own private DBI connection, so calling
@@ -27,6 +27,33 @@
 # the part of op_con() that is genuinely opus's knowledge -- where the archive
 # root is, and the invariant that it must be a directory named `raw` -- to
 # opus::op_archive(), and opens the file itself on obus's one connection.
+
+# Opening a remote parquet costs a network check and a schema read, about two
+# seconds each time. The handle is only a lazy view on obus's one DuckDB
+# connection, so it is opened once per table and path and handed back after
+# that. Nothing is copied or materialised; R's own `duckdbfs::close_connection()`
+# invalidates the connection, which is detected and reopened.
+.dr_handles <- new.env(parent = emptyenv())
+
+.dr_open <- function(key, open) {
+  h <- .dr_handles[[key]]
+  if (!is.null(h) && .dr_handle_alive(h)) return(h)
+  h <- open()
+  .dr_handles[[key]] <- h
+  h
+}
+
+.dr_open_value <- function(key, make) {
+  v <- .dr_handles[[key]]
+  if (!is.null(v)) return(v)
+  v <- make()
+  .dr_handles[[key]] <- v
+  v
+}
+
+.dr_handle_alive <- function(h) {
+  tryCatch(DBI::dbIsValid(dbplyr::remote_con(h)), error = function(e) FALSE)
+}
 
 DR_RAW_TABLES <- c("HH", "HL", "CA", "LT")
 DR_TABLES     <- c("HH", "HL", "CA", "species", "HL_length", "HL_summary",
@@ -59,8 +86,10 @@ DR_TABLES     <- c("HH", "HL", "CA", "species", "HL_length", "HL_summary",
 #'     dplyr::collect()
 #' }
 dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
-  full_path <- .dr_resolve_parquet_path(table, path, DR_RAW_TABLES, quiet)
-  duckdbfs::open_dataset(full_path)
+  .dr_open(paste("raw", table, path), function() {
+    full_path <- .dr_resolve_parquet_path(table, path, DR_RAW_TABLES, quiet)
+    duckdbfs::open_dataset(full_path)
+  })
 }
 
 #' Connect to a derived DATRAS parquet table
@@ -93,7 +122,7 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #' \code{SpeciesCodeType}, per-category \code{SpeciesCategoryWeight}
 #' (\code{w_haul} is summed to the species), and sex-specific weight, which is
 #' not recoverable in general -- a property of the source data, not of the
-#' split. See \code{\link{dr_HL_summary}}.
+#' split. See \code{\link{dr_hl_summary}}.
 #'
 #' So: length spectra, numbers and biomass per haul, CPUE, stratified indices,
 #' species composition -- the analysis layer is a complete substitute for raw
@@ -102,7 +131,7 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #' anything keyed on \code{SpeciesCategory}, per-category weights, provenance,
 #' or rebuilding an exchange file -- use the record layer.
 #'
-#' @param type One of:
+#' @param table One of:
 #'   \describe{
 #'     \item{\code{"HH"}, \code{"HL"}, \code{"CA"}}{The raw exchange table
 #'       with \code{.id} added and \strong{nothing else changed} -- same rows,
@@ -130,7 +159,7 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #'       9,581 of 14,001,605 rows. The near misses are the real trap, since
 #'       they survive a spot check and still double-count: dropping
 #'       \code{SpeciesValidity} alone leaves 15 duplicated rows, and dropping
-#'       \code{accuracy} alone leaves 15. See \code{\link{dr_HL_length}}.}
+#'       \code{accuracy} alone leaves 15. See \code{\link{dr_hl_length}}.}
 #'     \item{\code{"HL_summary"}}{One row per \code{.id} x \code{Valid_Aphia} x
 #'       \code{SpeciesValidity}. The third field is part of the key, not a
 #'       carried attribute: HL deliberately allows more than one record type
@@ -138,8 +167,8 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #'       \code{Valid_Aphia} groups carry two or more (measured 2026-09-09).
 #'       Aggregating without it mixes record types and double-counts -- sum
 #'       across it rather than filtering to \code{"1"}, which would discard
-#'       20.3\% of the records. See \code{\link{dr_HL_summary}} and
-#'       \code{\link{dr_HL_collapse}}.}
+#'       20.3\% of the records. See \code{\link{dr_hl_summary}} and
+#'       \code{\link{dr_hl_collapse}}.}
 #'     \item{\code{"hl_flag"}}{One row per \code{.id} x \code{Valid_Aphia} x
 #'       \code{code}, for records carrying a flag. Long, so a record with
 #'       several flags has several rows. Joins onto \code{"HL_summary"}
@@ -165,6 +194,7 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #' @param path Location of the parquet directory, local or remote. Trailing
 #'   slashes are stripped; \code{~} is expanded for local paths.
 #' @param quiet Logical. If \code{FALSE}, report what was connected to.
+#' @param type Deprecated; use \code{table}.
 #'
 #' @return A lazy \code{tbl}. Pipe \code{{dplyr}} verbs and call
 #'   \code{\link[dplyr]{collect}}.
@@ -182,10 +212,16 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #'   # local build output
 #'   dr_con("species", path = "data-raw/to_https")
 #' }
-dr_con <- function(type, path = "https://heima.hafro.is/~einarhj/datras",
-                   quiet = TRUE) {
-  full_path <- .dr_resolve_parquet_path(type, path, DR_TABLES, quiet)
-  duckdbfs::open_dataset(full_path)
+dr_con <- function(table, path = "https://heima.hafro.is/~einarhj/datras",
+                   quiet = TRUE, type = lifecycle::deprecated()) {
+  if (lifecycle::is_present(type)) {
+    lifecycle::deprecate_warn("2026.10", "dr_con(type)", "dr_con(table)")
+    table <- type
+  }
+  .dr_open(paste("obus", table, path), function() {
+    full_path <- .dr_resolve_parquet_path(table, path, DR_TABLES, quiet)
+    duckdbfs::open_dataset(full_path)
+  })
 }
 
 # Shared by dr_con_raw() and dr_con(): validate the table name against that
@@ -194,28 +230,28 @@ dr_con <- function(type, path = "https://heima.hafro.is/~einarhj/datras",
 # DuckDB. Without the HEAD check a typo or an unpublished table surfaces later
 # as an opaque DuckDB HTTP error at collect() time, well away from the call
 # that caused it.
-.dr_resolve_parquet_path <- function(type, path, valid_types, quiet = TRUE) {
+.dr_resolve_parquet_path <- function(table, path, valid_types, quiet = TRUE) {
 
-  if (!is.character(type) || length(type) != 1L || is.na(type)) {
-    stop("`type` must be a single table name, one of: ",
+  if (!is.character(table) || length(table) != 1L || is.na(table)) {
+    stop("`table` must be a single table name, one of: ",
          paste(valid_types, collapse = ", "), call. = FALSE)
   }
-  if (!type %in% valid_types) {
+  if (!table %in% valid_types) {
     stop(sprintf("Invalid table '%s'. Valid names are: %s",
-                 type, paste(valid_types, collapse = ", ")), call. = FALSE)
+                 table, paste(valid_types, collapse = ", ")), call. = FALSE)
   }
 
   is_local <- !grepl("^https?://", path)
 
   if (is_local) {
     path <- sub("/+$", "", path.expand(path))
-    full_path <- file.path(path, paste0(type, ".parquet"))
+    full_path <- file.path(path, paste0(table, ".parquet"))
     if (!file.exists(full_path)) {
       stop(sprintf("File not found: %s", full_path), call. = FALSE)
     }
   } else {
     path <- sub("/+$", "", path)
-    full_path <- paste0(path, "/", type, ".parquet")
+    full_path <- paste0(path, "/", table, ".parquet")
     ok <- tryCatch({
       resp <- httr2::request(full_path) |>
         httr2::req_method("HEAD") |>
@@ -259,13 +295,14 @@ dr_con <- function(type, path = "https://heima.hafro.is/~einarhj/datras",
 #' because a bare \code{LIMIT} has no predicate to push down and the raw row
 #' groups are large.
 #'
-#' @param type A published table name, as taken by \code{\link{dr_con}}.
+#' @param table A published table name, as taken by \code{\link{dr_con}}.
 #' @param survey,years,quarters Optional filters, applied lazily before
 #'   collecting. \code{NULL} (the default) means no filter. Supplying one for a
 #'   table that has no such column is an error rather than a silent no-op --
 #'   \code{species}, \code{hl_flag}, \code{hl_flag_code}, \code{length_weight}
 #'   and \code{length_type_conversion} carry none of the three.
 #' @param ... Passed to \code{\link{dr_con}} (\code{path}, \code{quiet}).
+#' @param type Deprecated; use \code{table}.
 #'
 #' @return A data frame (tibble) with the whole filtered table in memory.
 #'
@@ -280,18 +317,23 @@ dr_con <- function(type, path = "https://heima.hafro.is/~einarhj/datras",
 #' all <- dr_get("HL_summary")         # 2.3M rows, ~7 s -- this is fine
 #' }
 #' @export
-dr_get <- function(type, survey = NULL, years = NULL, quarters = NULL, ...) {
+dr_get <- function(table, survey = NULL, years = NULL, quarters = NULL, ...,
+                   type = lifecycle::deprecated()) {
+  if (lifecycle::is_present(type)) {
+    lifecycle::deprecate_warn("2026.10", "dr_get(type)", "dr_get(table)")
+    table <- type
+  }
 
   # `...` rather than restating dr_con()'s path/quiet defaults: the archive
   # root is declared in exactly one place and this must not become a second.
-  x   <- dr_con(type, ...)
+  x   <- dr_con(table, ...)
   ask <- list(Survey = survey, Year = years, Quarter = quarters)
   ask <- ask[!vapply(ask, is.null, logical(1))]
 
   unsupported <- setdiff(names(ask), colnames(x))
   if (length(unsupported) > 0)
     stop(sprintf("dr_get(): table '%s' has no %s column%s, so that filter ",
-                 type, paste(unsupported, collapse = "/"),
+                 table, paste(unsupported, collapse = "/"),
                  if (length(unsupported) > 1) "s" else ""),
          "cannot be applied. Drop it, or filter the collected result.",
          call. = FALSE)

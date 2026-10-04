@@ -4,10 +4,15 @@
 \alias{dr_con}
 \title{Connect to a derived DATRAS parquet table}
 \usage{
-dr_con(type, path = "https://heima.hafro.is/~einarhj/datras", quiet = TRUE)
+dr_con(
+  table,
+  path = "https://heima.hafro.is/~einarhj/datras",
+  quiet = TRUE,
+  type = lifecycle::deprecated()
+)
 }
 \arguments{
-\item{type}{One of:
+\item{table}{One of:
 \describe{
 \item{\code{"HH"}, \code{"HL"}, \code{"CA"}}{The raw exchange table
 with \code{.id} added and \strong{nothing else changed} -- same rows,
@@ -35,7 +40,7 @@ measured (2026-09-09), and the four-field \code{.id} x
 9,581 of 14,001,605 rows. The near misses are the real trap, since
 they survive a spot check and still double-count: dropping
 \code{SpeciesValidity} alone leaves 15 duplicated rows, and dropping
-\code{accuracy} alone leaves 15. See \code{\link{dr_HL_length}}.}
+\code{accuracy} alone leaves 15. See \code{\link{dr_hl_length}}.}
 \item{\code{"HL_summary"}}{One row per \code{.id} x \code{Valid_Aphia} x
 \code{SpeciesValidity}. The third field is part of the key, not a
 carried attribute: HL deliberately allows more than one record type
@@ -43,8 +48,8 @@ per species per haul, so 1,219 of the 2,290,235 \code{.id} x
 \code{Valid_Aphia} groups carry two or more (measured 2026-09-09).
 Aggregating without it mixes record types and double-counts -- sum
 across it rather than filtering to \code{"1"}, which would discard
-20.3\\% of the records. See \code{\link{dr_HL_summary}} and
-\code{\link{dr_HL_collapse}}.}
+20.3\\% of the records. See \code{\link{dr_hl_summary}} and
+\code{\link{dr_hl_collapse}}.}
 \item{\code{"hl_flag"}}{One row per \code{.id} x \code{Valid_Aphia} x
 \code{code}, for records carrying a flag. Long, so a record with
 several flags has several rows. Joins onto \code{"HL_summary"}
@@ -72,6 +77,8 @@ Total Length, for the few species DATRAS measures otherwise:
 slashes are stripped; \code{~} is expanded for local paths.}
 
 \item{quiet}{Logical. If \code{FALSE}, report what was connected to.}
+
+\item{type}{Deprecated; use \code{table}.}
 }
 \value{
 A lazy \code{tbl}. Pipe \code{{dplyr}} verbs and call
@@ -106,7 +113,7 @@ grain too: \code{SubsampledNumber}, \code{SubsampleWeight},
 \code{SpeciesCodeType}, per-category \code{SpeciesCategoryWeight}
 (\code{w_haul} is summed to the species), and sex-specific weight, which is
 not recoverable in general -- a property of the source data, not of the
-split. See \code{\link{dr_HL_summary}}.
+split. See \code{\link{dr_hl_summary}}.
 
 So: length spectra, numbers and biomass per haul, CPUE, stratified indices,
 species composition -- the analysis layer is a complete substitute for raw

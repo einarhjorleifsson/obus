@@ -1,4 +1,4 @@
-# The eight fields that identify a dr_HL_length() row, and what may be done to
+# The eight fields that identify a dr_hl_length() row, and what may be done to
 # each. Kept as constants because the error messages below quote them and the
 # tests assert against them; a grain change must break in one place.
 .DR_HL_GRAIN <- c(".id", "Valid_Aphia", "length_mm", "accuracy", "LengthType",
@@ -9,16 +9,16 @@
 .DR_HL_FREE <- c("SpeciesSex", "DevelopmentStage", "SpeciesValidity")
 
 # Summable only where the group does not actually mix them -- see the mixing
-# check in dr_HL_collapse().
+# check in dr_hl_collapse().
 .DR_HL_GUARDED <- c("accuracy", "LengthType")
 
-# The measure columns, in the order dr_HL_length() emits them.
+# The measure columns, in the order dr_hl_length() emits them.
 .DR_HL_MEASURES <- c("n_haul", "n_hour", "n_measured")
 
 
 #' Collapse dimensions out of the length-frequency catch table
 #'
-#' \code{\link{dr_HL_length}} publishes at the finest grain DATRAS supports:
+#' \code{\link{dr_hl_length}} publishes at the finest grain DATRAS supports:
 #' one row per \code{.id} \eqn{\times} \code{Valid_Aphia} \eqn{\times}
 #' \code{length_mm} \eqn{\times} \code{accuracy} \eqn{\times}
 #' \code{LengthType} \eqn{\times} \code{SpeciesSex} \eqn{\times}
@@ -32,7 +32,7 @@
 #'
 #' This is a verb on the table rather than an argument on the builder because
 #' the builder is the minority path: \code{dr_con("HL_length")} returns the
-#' same 18 columns as \code{\link{dr_HL_length}} and is how the table is
+#' same 18 columns as \code{\link{dr_hl_length}} and is how the table is
 #' actually read. It takes either a lazy table or a collected data frame, and
 #' on the lazy path the aggregation pushes to the server.
 #'
@@ -47,7 +47,7 @@
 #'     counter and is restored to \code{NA} where that counter is zero.
 #'   \item \strong{The \code{DataType == "C"} rule for \code{n_measured}.}
 #'     That convention reports an hourly rate rather than a count, so
-#'     \code{\link{dr_HL_length}} sets \code{n_measured} to \code{NA} on those
+#'     \code{\link{dr_hl_length}} sets \code{n_measured} to \code{NA} on those
 #'     rows. \code{HL_length} does not carry \code{DataType}, but it does not
 #'     need to: \code{DataType} is haul-level and \code{.id} is never
 #'     collapsed, so every row of a group shares it and the all-\code{NA} guard
@@ -78,13 +78,13 @@
 #' merges only 15 groups archive-wide. One caveat to carry: Can-Mar puts real
 #' length data on validity-\code{5} rows where every other survey does not.
 #'
-#' \strong{It does not reproduce \code{\link{dr_HL_summary}}.} That table's
+#' \strong{It does not reproduce \code{\link{dr_hl_summary}}.} That table's
 #' totals come from the submitted \code{TotalNumber}; summing length rows is a
 #' different quantity arrived at the other way, and the gap between the two is
 #' a finding rather than an error. \code{length_mm} is therefore not
 #' collapsible here.
 #'
-#' @param x A \code{\link{dr_HL_length}} table -- lazy (e.g.
+#' @param data A \code{\link{dr_hl_length}} table -- lazy (e.g.
 #'   \code{dr_con("HL_length")}) or collected. Any column that is neither
 #'   named in \code{collapse} nor a measure becomes part of the output grain,
 #'   so columns added upstream are retained rather than silently summed over.
@@ -94,10 +94,11 @@
 #'   \code{"accuracy"}, \code{"LengthType"}.
 #' @param check Run the mixing check for \code{accuracy}/\code{LengthType}.
 #'   Ignored when neither is being collapsed.
+#' @param x Deprecated; use \code{data}.
 #'
-#' @return \code{x} with the named dimensions removed and
+#' @return \code{data} with the named dimensions removed and
 #'   \code{n_haul}/\code{n_hour}/\code{n_measured} summed over them, lazy if
-#'   \code{x} was lazy. Column order is preserved.
+#'   \code{data} was lazy. Column order is preserved.
 #'
 #' @examples
 #' \dontrun{
@@ -107,13 +108,17 @@
 #' # correctly -- refuses it.
 #' dr_con("HL_length") |>
 #'   dplyr::filter(Survey == "NS-IBTS", Year == 2022, Quarter == 1L) |>
-#'   dr_HL_collapse(c("SpeciesSex", "DevelopmentStage", "SpeciesValidity",
+#'   dr_hl_collapse(c("SpeciesSex", "DevelopmentStage", "SpeciesValidity",
 #'                    "accuracy", "LengthType"))
 #' }
 #'
-#' @seealso \code{\link{dr_HL_length}}, \code{\link{dr_HL_summary}}
+#' @seealso \code{\link{dr_hl_length}}, \code{\link{dr_hl_summary}}
 #' @export
-dr_HL_collapse <- function(x, collapse, check = TRUE) {
+dr_hl_collapse <- function(data, collapse, check = TRUE, x = lifecycle::deprecated()) {
+  if (lifecycle::is_present(x)) {
+    lifecycle::deprecate_warn("2026.10", "dr_hl_collapse(x)", "dr_hl_collapse(data)")
+    data <- x
+  }
   if (!is.character(collapse) || !length(collapse)) {
     stop("`collapse` must be a non-empty character vector naming dimensions ",
          "to sum away. Allowed: ",
@@ -121,15 +126,15 @@ dr_HL_collapse <- function(x, collapse, check = TRUE) {
          call. = FALSE)
   }
   collapse <- unique(collapse)
-  nm <- colnames(x)
+  nm <- colnames(data)
 
   # -- refusals, most specific message first ---------------------------------
   if ("length_mm" %in% collapse || "length_cm" %in% collapse) {
     stop("length is not collapsible here. Summing length rows to a per-haul ",
-         "species total is a different quantity from dr_HL_summary()'s ",
+         "species total is a different quantity from dr_hl_summary()'s ",
          "n_totalnumber, which comes from the submitted TotalNumber; the gap ",
          "between them is a finding, not a rounding error. Use ",
-         "dr_HL_summary() if you want the reported total.", call. = FALSE)
+         "dr_hl_summary() if you want the reported total.", call. = FALSE)
   }
   if (any(c(".id", "Valid_Aphia") %in% collapse)) {
     stop("`.id` and `Valid_Aphia` identify the observation and cannot be ",
@@ -145,7 +150,7 @@ dr_HL_collapse <- function(x, collapse, check = TRUE) {
   }
   missing <- setdiff(collapse, nm)
   if (length(missing)) {
-    stop("Not a column of `x`: ", paste(sQuote(missing), collapse = ", "), ".",
+    stop("Not a column of `data`: ", paste(sQuote(missing), collapse = ", "), ".",
          call. = FALSE)
   }
 
@@ -157,7 +162,7 @@ dr_HL_collapse <- function(x, collapse, check = TRUE) {
   summary_only <- intersect(c("n_totalnumber", "n_totalnumber_hour", "w_haul",
                               "w_hour", "p_females"), nm)
   if (length(summary_only)) {
-    stop("`x` looks like dr_HL_summary(), not dr_HL_length() -- it carries ",
+    stop("`data` looks like dr_hl_summary(), not dr_hl_length() -- it carries ",
          paste(sQuote(summary_only), collapse = ", "),
          ". This verb is for the length table; it would leave those columns ",
          "in the grain rather than summing them. To collapse HL_summary over ",
@@ -168,24 +173,24 @@ dr_HL_collapse <- function(x, collapse, check = TRUE) {
 
   measures <- intersect(.DR_HL_MEASURES, nm)
   if (!length(measures)) {
-    stop("`x` carries none of ", paste(sQuote(.DR_HL_MEASURES), collapse = ", "),
-         " -- it does not look like a dr_HL_length() table.", call. = FALSE)
+    stop("`data` carries none of ", paste(sQuote(.DR_HL_MEASURES), collapse = ", "),
+         " -- it does not look like a dr_hl_length() table.", call. = FALSE)
   }
   keep <- setdiff(nm, c(collapse, measures))
 
   # -- the mixing check, only when it can fire -------------------------------
   guarded <- intersect(collapse, .DR_HL_GUARDED)
   if (length(guarded) && isTRUE(check)) {
-    .dr_check_mixing(x, keep, guarded)
+    .dr_check_mixing(data, keep, guarded)
   }
 
   # -- aggregate -------------------------------------------------------------
-  # Rename before summarising, for the reason dr_HL_length() gives: the all-NA
+  # Rename before summarising, for the reason dr_hl_length() gives: the all-NA
   # counter must read the PRE-aggregation column, and `n = sum(n)` in one
   # summarise() is resolved differently by the two backends. Distinct names
   # make them agree by construction rather than by luck.
   raw <- paste0(".raw_", measures)
-  out <- dplyr::mutate(x, !!!rlang::set_names(
+  out <- dplyr::mutate(data, !!!rlang::set_names(
     lapply(measures, function(m) rlang::sym(m)), raw))
 
   sums <- rlang::set_names(

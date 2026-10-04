@@ -222,7 +222,7 @@
 #' \code{N} and \code{HaulN}, which live on HH, keep their pooled values. On
 #' \pkg{DATRASextra}'s own \code{mini} that leaves \code{HaulN} 19x too high
 #' for the single species HL now claims to hold, with no warning and nothing
-#' inconsistent for a check to catch. Pass a single \code{aphia} here, or
+#' inconsistent for a check to catch. Pass a single \code{species} here, or
 #' \code{subset()} before the first \code{add_*()} call.
 #'
 #' \strong{\code{$} on the result depends on whether \pkg{DATRAS}'s namespace
@@ -278,16 +278,18 @@
 #'   \code{NULL} takes every survey, which is rarely what you want.
 #' @param years Integer vector of years. \code{NULL} takes all.
 #' @param quarters Integer vector of quarters. \code{NULL} takes all.
-#' @param aphia Integer vector of \code{Valid_Aphia} codes. \code{NULL} takes
-#'   every species, which is right for species composition and richness and
-#'   wrong for anything downstream of \code{add_numbers_at_length()}.
+#' @param species Latin names (\code{"Gadus morhua"}) or numeric
+#'   \code{Valid_Aphia} codes, as in \code{dr_con("species")}. \code{NULL}
+#'   takes every species, which is right for species composition and richness
+#'   and wrong for anything downstream of \code{add_numbers_at_length()}.
 #' @param ca Include the CA (age and individual biology) table? Needed for
 #'   age-length keys; \code{FALSE} skips the read.
 #' @param haulval Character vector of \code{HaulValidity} codes to retain,
 #'   e.g. \code{"V"}. \code{NULL} (default) retains every haul, matching
-#'   \code{\link{dr_HL_length}}; obus does not filter unless asked.
+#'   \code{\link{dr_hl_length}}; obus does not filter unless asked.
 #' @param stdspec Character vector of \code{StandardSpeciesCode} values to
 #'   retain. \code{NULL} (default) retains every haul.
+#' @param aphia `r lifecycle::badge("deprecated")` Use \code{species}.
 #'
 #' @return A list of three data frames -- \code{CA} (or \code{NULL}),
 #'   \code{HH}, \code{HL}, in that order, because \pkg{DATRAS} indexes them
@@ -298,7 +300,7 @@
 #' @examples
 #' \dontrun{
 #' d <- dr_get_datras("NS-IBTS", years = 2020:2023, quarters = c(1L, 3L),
-#'                   aphia = 127139L, haulval = "V")
+#'                   species = 127139L, haulval = "V")
 #'
 #' library(DATRASextra)
 #' d <- add_numbers_at_length(d)
@@ -307,14 +309,22 @@
 #' calc_stratified_index(d, cpue_method = "per_swept_area", by = "Year")
 #' }
 #' @export
-dr_get_datras <- function(survey, years = NULL, quarters = NULL, aphia = NULL,
-                         ca = TRUE, haulval = NULL, stdspec = NULL) {
+dr_get_datras <- function(survey, years = NULL, quarters = NULL, species = NULL,
+                         ca = TRUE, haulval = NULL, stdspec = NULL,
+                         aphia = lifecycle::deprecated()) {
+
+  if (lifecycle::is_present(aphia)) {
+    lifecycle::deprecate_warn("2026.10", "dr_get_datras(aphia)",
+                              "dr_get_datras(species)")
+    species <- aphia
+  }
 
   if (!requireNamespace("DATRAS", quietly = TRUE))
     message("dr_get_datras(): {DATRAS} is not installed. The object is still ",
             "built, but `Roundfish` is omitted and, with no $.DATRASraw method ",
             "registered, `$` will not redirect into HH -- use x[[\"HH\"]].")
 
+  aphia <- if (is.null(species)) NULL else dplyr::pull(.dr_species(species), Valid_Aphia)
   tbl <- .dr_datras_fetch(survey, years, quarters, aphia, ca, haulval, stdspec)
 
   .dr_as_datras_build(hh         = tbl$hh,
@@ -327,7 +337,7 @@ dr_get_datras <- function(survey, years = NULL, quarters = NULL, aphia = NULL,
 
 # The I/O half: everything that touches dr_con(). Kept apart from
 # .dr_as_datras_build() so the reshape can be tested offline against synthetic
-# frames, the way dr_HL_length() and dr_HL_summary() are -- they take their
+# frames, the way dr_hl_length() and dr_hl_summary() are -- they take their
 # tables as arguments for exactly this reason. Filtering happens here, in
 # opus's CURRENT names, before anything is collected.
 .dr_datras_fetch <- function(survey, years, quarters, aphia, ca,
@@ -382,7 +392,7 @@ dr_get_datras <- function(survey, years = NULL, quarters = NULL, aphia = NULL,
     warning("dr_get_datras(): ", nrow(hh), " hauls matched but no HL rows did. ",
             "The object is valid and passes DATRASextra's class check, but ",
             "add_numbers_at_length() and everything downstream of it will ",
-            "fail on it. Check `aphia`.", call. = FALSE)
+            "fail on it. Check `species`.", call. = FALSE)
   ca <- .dr_datras_ca(hh, ca, species)
 
   lev <- levels(factor(hh[["haul.id"]]))

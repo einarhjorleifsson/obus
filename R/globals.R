@@ -24,7 +24,7 @@ utils::globalVariables(c(
   "n_haul_raw", "n_hour_raw", "w_haul", "w_hour", "w_haul_raw", "w_hour_raw", ".wgt_cat",
   "n_totalnumber", "n_totalnumber_hour", ".n_ok", ".h_ok", ".w_ok", ".wh_ok", ".n_raw", ".h_raw",
   "raised", "sex_expected", "reconciles", "n_f", "n_m", "p_females", ".r_raw", ".r_ok",
-  "n_measured", ".has_length",
+  "n_measured", ".has_length", ".data", ".r_n",
   # length-weight: the coefficient lookup, the conversion lookup and what the
   # apply step derives from them
   "a", "b", "lw_source", "lw_scope", "n_ca", "r2", "sigma", "length_bearing",
@@ -35,5 +35,13 @@ utils::globalVariables(c(
   # dr_get_datras(): the legacy ICES names {DATRAS} expects, after
   # opus::op_rename(to = "legacy"), plus the haul key it derives itself
   "haul.id", "ShootLong", "ShootLat", "Month", "Day", "TimeShot", "HaulDur",
-  "StandardSpeciesCode", "LngtCode", "LngtClas", "AreaCode"
+  "StandardSpeciesCode", "LngtCode", "LngtClas", "AreaCode",
+  # dr_add_catch(), dr_add_cell(), the summaries
+  ".seen", ".reported", "present", "ShootLongitude", "ShootLatitude",
+  "cell_lon", "cell_lat",
+  # summaries
+  "n_hauls", "n_present", "n_known", "total", "total2", "p", "lower", "upper",
+  "cpue", ".wilson", ".var", ".z", ".half",
+  # autoplot
+  "length_cm", "n_hour"
 ))

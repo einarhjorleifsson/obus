@@ -134,23 +134,23 @@ DR_RAW_PLUS_ID <- c("HH", "HL", "CA")
   list(hh = hh, hl = hl, species = sp)
 }
 
-test_that("dr_HL_summary() returns exactly the published columns, in order", {
+test_that("dr_hl_summary() returns exactly the published columns, in order", {
   f <- .schema_fixture()
-  out <- dr_HL_summary(f$hh, f$hl, species = f$species)
+  out <- dr_hl_summary(f$hh, f$hl, species = f$species)
   expect_identical(names(out), PUBLISHED_SCHEMA$HL_summary)
 })
 
-test_that("dr_HL_length() returns exactly the published columns, in order", {
+test_that("dr_hl_length() returns exactly the published columns, in order", {
   f <- .schema_fixture()
-  out <- dr_HL_length(f$hh, f$hl, species = f$species)
+  out <- dr_hl_length(f$hh, f$hl, species = f$species)
   expect_identical(names(out), PUBLISHED_SCHEMA$HL_length)
 })
 
 test_that("the two catch tables are unique at their declared grain", {
   f <- .schema_fixture()
   for (tbl in c("HL_length", "HL_summary")) {
-    out <- if (tbl == "HL_length") dr_HL_length(f$hh, f$hl, species = f$species)
-           else                    dr_HL_summary(f$hh, f$hl, species = f$species)
+    out <- if (tbl == "HL_length") dr_hl_length(f$hh, f$hl, species = f$species)
+           else                    dr_hl_summary(f$hh, f$hl, species = f$species)
     key <- PUBLISHED_GRAIN[[tbl]]
     expect_true(all(key %in% names(out)),
                 info = paste(tbl, "is missing a grain column"))

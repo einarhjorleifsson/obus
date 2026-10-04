@@ -1,6 +1,6 @@
 # Derived-quantity helpers -----------------------------------------------------
 #
-# The minimum set dr_HL_length() and dr_HL_summary() need, and nothing more.
+# The minimum set dr_hl_length() and dr_hl_summary() need, and nothing more.
 # All four take opus's current field names and only those -- no `LengthCode =`
 # style column arguments, because with one naming scheme there is nothing left
 # to point them at.
@@ -10,21 +10,26 @@
 #' Converts \code{LengthClass} to centimetres using \code{LengthCode}, and
 #' records the measurement resolution that code implies.
 #'
-#' @param d A data frame or lazy table with \code{LengthCode} and
+#' @param data A data frame or lazy table with \code{LengthCode} and
 #'   \code{LengthClass}.
+#' @param d `r lifecycle::badge("deprecated")` Use \code{data}.
 #'
-#' @return \code{d} with two added columns:
+#' @return \code{data} with two added columns:
 #'   \describe{
 #'     \item{\code{length_cm}}{Length class in cm.}
 #'     \item{\code{accuracy}}{Resolution in cm: \code{"."} 0.1, \code{"0"} 0.5,
 #'       \code{"1"} 1, \code{"2"} 2, \code{"5"} 5.}
 #'   }
-#' @seealso \code{\link{dr_add_length_mm}}
+#' @seealso \code{\link{dr_add_length_mid}}
 #' @export
-dr_add_length_cm <- function(d) {
-  .dr_require_cols(d, c("LengthCode", "LengthClass"), "dr_add_length_cm")
+dr_add_length_cm <- function(data, d = lifecycle::deprecated()) {
+  if (lifecycle::is_present(d)) {
+    lifecycle::deprecate_warn("2026.10", "dr_add_length_cm(d)", "dr_add_length_cm(data)")
+    data <- d
+  }
+  .dr_require_cols(data, c("LengthCode", "LengthClass"), "dr_add_length_cm")
 
-  d |>
+  data |>
     dplyr::mutate(
       length_cm = dplyr::case_when(
         LengthCode == "-9"              ~ NA_real_,
@@ -43,15 +48,10 @@ dr_add_length_cm <- function(d) {
     )
 }
 
-#' Add `length_mm`
-#'
-#' Converts \code{LengthClass} to millimetres using \code{LengthCode}.
-#'
-#' @inheritParams dr_add_length_cm
-#' @return \code{d} with an added integer \code{length_mm} column.
-#' @seealso \code{\link{dr_add_length_cm}}
-#' @export
-dr_add_length_mm <- function(d) {
+# Add `length_mm` (internal since 2026.10; the exported dr_add_length_mm() is
+# deprecated). Converts LengthClass to millimetres using LengthCode.
+#' @noRd
+.dr_add_length_mm <- function(d) {
   .dr_require_cols(d, c("LengthCode", "LengthClass"), "dr_add_length_mm")
 
   d |>
@@ -88,16 +88,21 @@ dr_add_length_mm <- function(d) {
 #' there is no midpoint, and falling back to the lower bound would reintroduce
 #' the bias silently. No row in the published \code{HL_length} is affected.
 #'
-#' @param d A data frame or lazy table with \code{length_cm} and
+#' @param data A data frame or lazy table with \code{length_cm} and
 #'   \code{accuracy}, as produced by \code{\link{dr_add_length_cm}} and as
-#'   carried by \code{\link{dr_HL_length}}.
+#'   carried by \code{\link{dr_hl_length}}.
+#' @param d `r lifecycle::badge("deprecated")` Use \code{data}.
 #'
-#' @return \code{d} with an added \code{length_cm_mid} column.
+#' @return \code{data} with an added \code{length_cm_mid} column.
 #' @seealso \code{\link{dr_add_length_cm}}, \code{\link{dr_add_predicted_weight}}
 #' @export
-dr_add_length_mid <- function(d) {
-  .dr_require_cols(d, c("length_cm", "accuracy"), "dr_add_length_mid")
-  dplyr::mutate(d, length_cm_mid = length_cm + accuracy / 2)
+dr_add_length_mid <- function(data, d = lifecycle::deprecated()) {
+  if (lifecycle::is_present(d)) {
+    lifecycle::deprecate_warn("2026.10", "dr_add_length_mid(d)", "dr_add_length_mid(data)")
+    data <- d
+  }
+  .dr_require_cols(data, c("length_cm", "accuracy"), "dr_add_length_mid")
+  dplyr::mutate(data, length_cm_mid = length_cm + accuracy / 2)
 }
 
 # icesVocab - DataType
@@ -109,8 +114,10 @@ dr_add_length_mid <- function(d) {
 #   |R   |Data by haul                              |
 #   |S   |Sub sampled data                          |
 
-#' Numbers caught per haul and per hour, at length
-#'
+# Numbers caught per haul and per hour, at length (internal since 2026.10; the
+# exported dr_add_n_and_cpue() is deprecated and dr_hl_length() is the
+# supported way to get n_haul and n_hour).
+#
 #' Raises \code{NumberAtLength} to a whole-haul count (\code{n_haul}) and an
 #' hourly rate (\code{n_hour}), according to how the submission reports its
 #' catch (\code{DataType}).
@@ -165,8 +172,8 @@ dr_add_length_mid <- function(d) {
 #'   \code{HaulDuration} live in HH, so this runs after the join to HH.
 #'
 #' @return \code{d} with added \code{n_haul} and \code{n_hour} columns.
-#' @export
-dr_add_n_and_cpue <- function(d) {
+#' @noRd
+.dr_add_n_and_cpue <- function(d) {
   .dr_require_cols(d, c("DataType", "NumberAtLength", "HaulDuration",
                         "SubsamplingFactor"), "dr_add_n_and_cpue")
 
@@ -227,8 +234,11 @@ dr_add_n_and_cpue <- function(d) {
     )
 }
 
-#' Add species names to a table carrying `Valid_Aphia`
-#'
+# Add species names to a table carrying `Valid_Aphia` (internal since 2026.10;
+# the exported dr_join_species() is deprecated -- dr_hl_length() and
+# dr_hl_summary() already attach the names, and dplyr::left_join() on
+# dr_con("species") does it for any other table).
+#
 #' Left-joins the WoRMS lookup onto any table with a \code{Valid_Aphia} column, so
 #' rows whose code is absent from the lookup are kept with \code{NA} names
 #' rather than dropped.
@@ -239,8 +249,8 @@ dr_add_n_and_cpue <- function(d) {
 #'   join a data frame against a lazy table.
 #'
 #' @return \code{x} with the lookup's columns joined on.
-#' @export
-dr_join_species <- function(x, species = NULL) {
+#' @noRd
+.dr_join_species <- function(x, species = NULL) {
   .dr_require_cols(x, "Valid_Aphia", "dr_join_species")
 
   if (is.null(species)) {

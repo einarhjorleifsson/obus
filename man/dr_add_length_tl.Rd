@@ -4,24 +4,31 @@
 \alias{dr_add_length_tl}
 \title{Convert a non-Total-Length landmark to Total Length}
 \usage{
-dr_add_length_tl(catch, conv = NULL, length_col = "length_cm_mid")
+dr_add_length_tl(
+  data,
+  conv = NULL,
+  length_col = "length_cm_mid",
+  catch = lifecycle::deprecated()
+)
 }
 \arguments{
-\item{catch}{A catch table (data frame or lazy table) with at least
+\item{data}{A catch table (data frame or lazy table) with at least
 \code{Valid_Aphia}, \code{LengthType} and the column named by
-\code{length_col} -- as produced by \code{\link{dr_HL_length}} followed by
+\code{length_col} -- as produced by \code{\link{dr_hl_length}} followed by
 \code{\link{dr_add_length_mid}}.}
 
 \item{conv}{Conversion lookup with columns \code{Valid_Aphia},
 \code{from_type}, \code{intercept}, \code{slope}. Defaults to
-\code{dr_con("length_type_conversion")}, collected first when \code{catch}
+\code{dr_con("length_type_conversion")}, collected first when \code{data}
 is an eager data frame.}
 
 \item{length_col}{Name of the length column to convert, in centimetres.
 Default \code{"length_cm_mid"} (see above).}
+
+\item{catch}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Use \code{data}.}
 }
 \value{
-\code{catch} with the joined lookup columns plus:
+\code{data} with the joined lookup columns plus:
 \describe{
 \item{\code{length_cm_tl}}{\code{length_col} converted to Total Length
 where a factor applies, else \code{length_col} unchanged.}
@@ -62,5 +69,5 @@ length and land in the wrong place. Run \code{\link{dr_add_length_mid}} first
 and pass \code{length_col = "length_cm_mid"}, which is the default.
 }
 \seealso{
-\code{\link{dr_add_predicted_weight}}, \code{\link{dr_HL_length}}
+\code{\link{dr_add_predicted_weight}}, \code{\link{dr_hl_length}}
 }

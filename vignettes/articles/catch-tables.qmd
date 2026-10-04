@@ -467,7 +467,7 @@ apart. `HL_length` is identified by eight fields because ICES's own record
 identity puts them there, and dropping one silently merges counts that were
 separate observations — [what makes a row
 unique](#what-makes-a-row-unique) measures how often. If you want the numbers
-added up more coarsely, `dr_HL_collapse()` is the route to use; it carries
+added up more coarsely, `dr_hl_collapse()` is the route to use; it carries
 guards that a
 hand-rolled `group_by()` loses; it is described under [what makes a row
 unique](#what-makes-a-row-unique). And `SpeciesValidity` is in
@@ -820,12 +820,12 @@ one is silent. `DevelopmentStage` is the easiest to overlook, being `NA` for
 
 **If you want the numbers added up more coarsely, ask for that — do not do it by hand.**
 Everyone else's table is one of these with something added away, so wanting
-that is entirely normal. `dr_HL_collapse()` does it, whether the table is
+that is entirely normal. `dr_hl_collapse()` does it, whether the table is
 still on disk or already pulled into memory:
 
 ```{r, eval = FALSE}
 dr_con("HL_length") |>
-  dr_HL_collapse(c("SpeciesSex", "DevelopmentStage", "SpeciesValidity"))
+  dr_hl_collapse(c("SpeciesSex", "DevelopmentStage", "SpeciesValidity"))
 ```
 
 It exists for what a `group_by()` silently loses rather than for the grouping
@@ -1102,7 +1102,7 @@ also that a high rate and a large contribution are different things: Spain sits
 near the bottom of the scale but sends a great many records, so it contributes
 more repeats than the Netherlands at the top of it.
 
-**What `{obus}` does.** `dr_HL_summary()` tests each sex's own `TotalNumber`
+**What `{obus}` does.** `dr_hl_summary()` tests each sex's own `TotalNumber`
 against its own length rows raised by its own factor — the check the record
 above passes three times. A sex that reconciles is trusted and summed on its
 own. Sexes that do not reconcile, or that have no length data to check
@@ -1838,7 +1838,7 @@ Anyone extending these functions needs all four.
 **1. Joining.** SQL treats `NULL = NULL` as unknown, so a lazy join drops
 every row with an `NA` key — and `SpeciesSex` is `NA` in 54% of HL, with
 `SpeciesCategory`, `SpeciesValidity` and `TotalNumber` able to be `NA` too.
-Every join in `dr_HL_summary()` whose key can hold `NA` carries
+Every join in `dr_hl_summary()` whose key can hold `NA` carries
 `na_matches = "na"`, which dbplyr renders as `IS NOT DISTINCT FROM` and DuckDB
 supports natively. Without it, every `NA`-sex row fails to find its own
 length-derived expectation, never reconciles, falls to the fallback, and
@@ -1857,7 +1857,7 @@ confident `0` it was meant to prevent.
 **3. Self-reference inside `summarise()`.** dplyr evaluates expressions in
 order, so `n_ok = sum(!is.na(n_haul))` written *after* `n_haul = sum(n_haul)`
 sees the new scalar; SQL resolves every aggregate against the source column.
-`dr_HL_length()` renames to `.n_raw`/`.h_raw` before aggregating, so the two
+`dr_hl_length()` renames to `.n_raw`/`.h_raw` before aggregating, so the two
 agree by construction rather than by luck.
 
 **4. String concatenation with `NA`.** On a plain data frame R's `paste(sep =)`
@@ -2041,7 +2041,7 @@ dr_con("HL") |>
 Two identical series. Every one of the 19 length classes appears under both
 codes carrying the same count, and both copies report the same
 `SubsampledNumber` 57, the same `TotalNumber` 57 and the same 4500 g.
-`dr_HL_length()` treats `LengthType` as part of what makes a row unique, so it
+`dr_hl_length()` treats `LengthType` as part of what makes a row unique, so it
 adds both copies and returns 114 where `TotalNumber` reports 57 — a ratio of
 exactly 2.
 
