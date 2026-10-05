@@ -36,7 +36,8 @@ ggplot2::autoplot
 #'   several.
 #'
 #' For probability of capture the colour scale is fixed from 0 to 1, so figures
-#' compare, and a tile fades with the number of hauls behind it. For
+#' compare. A tile rests on however many hauls it holds, which the summary
+#' reports in `n_hauls` if you want to filter on it. For
 #' [dr_summarise_length()] the x-axis is the length class and the first
 #' grouping column is the colour.
 #'
@@ -118,13 +119,6 @@ autoplot.dr_summary <- function(object, ...,
   }
 }
 
-# a tile built on few hauls fades, so a share that rests on three hauls does
-# not look as sure as one on thirty
-.dr_fade_scale <- function() {
-  ggplot2::scale_alpha_continuous(name = "hauls\nin tile", range = c(0.35, 1),
-                                  limits = c(3, 15), oob = scales::squish)
-}
-
 .dr_plot_single <- function(object, stat) {
   v <- .dr_value(stat)
   ggplot2::ggplot(object, ggplot2::aes(x = "all", y = .data[[v$col]])) +
@@ -164,12 +158,7 @@ autoplot.dr_summary <- function(object, ...,
   }
   p <- ggplot2::ggplot(object, ggplot2::aes(x = .data[[x]], y = .data[[y]],
                                             fill = .data[[v$col]]))
-  p <- if (stat == "hauls") {
-    p + ggplot2::geom_tile(colour = "white", linewidth = 0.2)
-  } else {
-    p + ggplot2::geom_tile(ggplot2::aes(alpha = .data$n_hauls),
-                           colour = "white", linewidth = 0.2) + .dr_fade_scale()
-  }
+  p <- p + ggplot2::geom_tile(colour = "white", linewidth = 0.2)
   p + .dr_fill_scale(stat) + ggplot2::labs(x = x, y = y)
 }
 
@@ -189,15 +178,8 @@ autoplot.dr_summary <- function(object, ...,
 
   p <- ggplot2::ggplot() +
     ggplot2::annotation_map(ggplot2::map_data("world"), fill = "grey80", colour = "grey50")
-  p <- if (stat == "hauls") {
-    p + ggplot2::geom_tile(data = object, width = dx, height = dy,
-                           ggplot2::aes(.data$cell_lon, .data$cell_lat, fill = .data[[v$col]]))
-  } else {
-    p + ggplot2::geom_tile(data = object, width = dx, height = dy,
-                           ggplot2::aes(.data$cell_lon, .data$cell_lat,
-                                        fill = .data[[v$col]], alpha = .data$n_hauls)) +
-      .dr_fade_scale()
-  }
+  p <- p + ggplot2::geom_tile(data = object, width = dx, height = dy,
+                              ggplot2::aes(.data$cell_lon, .data$cell_lat, fill = .data[[v$col]]))
   p + .dr_fill_scale(stat) +
     ggplot2::coord_quickmap(xlim = range(object$cell_lon) + c(-dx, dx) / 2,
                             ylim = range(object$cell_lat) + c(-dy, dy) / 2) +

@@ -45,7 +45,8 @@ several.
 }
 
 For probability of capture the colour scale is fixed from 0 to 1, so figures
-compare, and a tile fades with the number of hauls behind it. For
+compare. A tile rests on however many hauls it holds, which the summary
+reports in \code{n_hauls} if you want to filter on it. For
 \code{\link[=dr_summarise_length]{dr_summarise_length()}} the x-axis is the length class and the first
 grouping column is the colour.
 }
