@@ -2677,3 +2677,39 @@ unchanged), and exactly one changed pair touches a species and survey the book
 uses: NS-IBTS 2023 Q1 haddock in `catch-and-length`, whose CPUE goes from 2115
 to 2114 fish per hour. That chapter was re-rendered with its cache cleared and
 every quoted number stands (datrasdoodle2 `DEVLOG.md`, 2026-10-06).
+
+## 2026-10-06 — the articles: catch-tables corrected, the issues given their own
+
+A review of the catch-tables article, knitted against the archive, found it
+quoting about fifteen figures that no longer matched the chunk printed beside
+them (the archive was rebuilt on 2026-10-04), describing `.id` as it was before
+2026-09-03, counting `-9` and `NA` as codes ("five DataType conventions, five
+LengthCode values, fourteen categories": four, four, thirteen), and saying
+ROCKALL sexes everything (98.5% of its sex codes are `U`). The policy that
+"analytical figures are stated once, as dated evidence" had produced undated
+numbers; the article knits in a few minutes, so every number is now computed on
+render, including the eight-survey CPUEL comparison that had been frozen as too
+slow (it runs in seconds and reproduced the 2026-09-02 table exactly). The
+`{DATRAS}` harnesses were re-run: adapter 13/13, interop 25/25. `c85a92c`.
+
+The user then asked for the data's issues to leave datrasdoodle2 (which is for
+the downstream analyst) for a separate obus article usable in dialogue with
+data providers and ICES. Part III of catch-tables already was that, so it
+moved: `data-issues.qmd` (`4b11ba8`, `b6d7e4a`) groups the entries by who can
+act — A, specification questions for ICES; B, records an institute could
+correct; C, ICES's derived products; D, what is not an error — with a "find
+your own records" recipe and per-country rates shown beside the share of the
+commonest issue, so that one consistent practice (Canada's `CNT_SF_RESET`,
+Lithuania's `CNT_C_SUBFACTOR_CONFLICT`) does not read as scattered error.
+Issues about what ICES publishes about the data stay in opus's `issues.qmd`.
+
+Measured while writing it:
+- Where one factor of 2 or more separates the two readings of `TotalNumber`,
+  the archive follows the raised one in 93% of groups and the field
+  description's `SUM(HLNoAtLngt)` in none.
+- A total shared across a species' categories is *commoner* in survey years
+  from 2024 (18% of multi-category groups, against 3.7% before 2015), though
+  the March 2024 definition made the total per category. Survey year is not
+  submission date, but 2024 data cannot predate the change.
+- Unexplained weight repeats under `DataType` R grew from 209 records to 330
+  since the article's figures were set; cause not checked.

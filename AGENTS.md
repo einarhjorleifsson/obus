@@ -89,10 +89,11 @@ what is already recorded before measuring anything.**
   under "The catch tables").
 - Authored `.qmd` files and `obus_retired` are pointers to where to look, not
   evidence.
-- Before measuring, check this file, `DEVLOG.md`,
-  `vignettes/articles/catch-tables.qmd`, the book and the sibling repos. Most
-  questions about this data have been asked before. Findings are written up in
-  the catch-tables article.
+- Before measuring, check this file, `DEVLOG.md`, the two articles
+  (`vignettes/articles/catch-tables.qmd`, `data-issues.qmd`), the book and the
+  sibling repos. Most questions about this data have been asked before. A
+  finding about the data is written up as an entry in `data-issues.qmd`; one
+  about the tables, in `catch-tables.qmd`.
 
 **8. A number in prose is a liability unless it carries an argument.** Measure
 everything; write down only what argues. Numbers do three jobs:
@@ -105,7 +106,7 @@ everything; write down only what argues. Numbers do three jobs:
 
 The test: if the number were 10% different, would the sentence change? Where
 magnitude matters, prefer a ratio. `DEVLOG.md` keeps frozen, dated numbers; the
-catch-tables article puts load-bearing numbers inline so they re-measure on
+two articles compute every number they quote inline, so it re-measures on
 render; this file and `TODO.md` carry invariants and qualitative claims. The
 general mechanism — pin a snapshot, make findings measurable, recompute as a
 diff — is scoped in `PLAN-qc-checks.md` §7.
@@ -140,8 +141,9 @@ much an answer as showing that it does.
   `DataType` and gear; an OSPAR decline that depends on whether a species was
   recorded at all (`StandardSpeciesCode`, `BycatchSpeciesCode`).
 - **If it does neither**, it is documented in full for the specialist —
-  `hl_flag`, the catch-tables article, this file, `DEVLOG.md`, the book's
-  appendices — and shapes neither the API nor the book's main text.
+  `hl_flag` and the `data-issues` article, which is written for the providers,
+  survey groups and Data Centre who can act on it — and shapes neither the API
+  nor the book, which serves the analyst.
 
 Both audiences are served, from different places, and the second home is not a
 lesser one: it is where a specialist checks that a claim made from their data
