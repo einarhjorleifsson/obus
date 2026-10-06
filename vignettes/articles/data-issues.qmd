@@ -1,0 +1,1699 @@
+---
+title: "DATRAS data issues"
+subtitle: "What the archive's records cannot settle on their own — a register for data providers, survey groups and the ICES Data Centre."
+bibliography: references.bib
+link-citations: true
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-expand: true
+    citations-hover: true
+    reference-location: document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = TRUE,
+                      message = FALSE, warning = FALSE)
+options(width = 120, pillar.sigfig = 7)
+# Every number the prose quotes is computed on render and referenced inline,
+# so the text cannot drift from the archive (Working Principle 8). When a
+# provider resubmits a record, the next render shows it; that is the point.
+N <- function(x) formatC(as.numeric(x), format = "d", big.mark = ",")
+P <- function(x, digits = 0) sprintf(paste0("%.", digits, "f%%"), x)
+```
+
+```{r}
+library(obus)
+library(dplyr)
+library(ggplot2)
+```
+
+This article lists the places where a DATRAS record says something it cannot
+mean, or could mean two things, and what `{obus}` does with each. It is
+written for the people who can act on them: the national institutes that
+submit, the survey groups that set the conventions, and the ICES Data Centre
+that hosts the archive. An analyst who wants catch tables rather than their
+history should start from [Two catch tables for DATRAS](catch-tables.html):
+the tables there already handle everything below that can be handled.
+
+**Most of DATRAS needs no entry here.** The great majority of fields mean what
+the field descriptions say they mean, and are used that way. What follows is
+the minority — and much of it is less a list of mistakes than the cost of one
+record shape. HL gives a submitter one kind of row for three different tallies,
+so a total that belongs to a species has nowhere of its own to go and is
+written onto every length row; and no institute ever exercises more than a
+corner of the format it submits to ([Part I of the catch-tables
+article](catch-tables.html#what-is-wrong-with-hl) measures both). Writing one
+total across several sex rows is close to what the record shape asks for.
+
+**`{obus}` flags; it does not correct.** Where a submission writes one number
+in a way that could mean two things, no derivation — ours, the `{DATRAS}`
+package's, or ICES's own — can recover which was meant. Only the programme
+that made the submission still holds the sampling sheets behind it, so the fix
+is at source, and every entry below ends with the question that would settle
+it and who can answer it.
+
+**Every number here is measured when the page is rendered.** When a record is
+corrected and resubmitted, the next render shows the difference, so the page
+doubles as a status report on the archive it describes.
+
+## How much of the archive this concerns
+
+`{obus}` marks every catch record touched by anything below in
+`dr_con("hl_flag")`, one row per record and issue, and says what kind of
+thing each flag records. The kind is not a severity: `property` is the format
+behaving as documented, `intrinsic` is arithmetic that cannot come out exact,
+`suspect` is a recognisable defect, and `unexplained` is a disagreement with no
+established cause. Counting only the last two:
+
+```{r}
+reach <- dr_con("hl_flag") |>
+  left_join(dr_con("hl_flag_code") |> select(code, kind), by = "code") |>
+  filter(kind %in% c("suspect", "unexplained")) |>
+  summarise(records_affected = n_distinct(paste0(.id, "|", Valid_Aphia)),
+            hauls_affected   = n_distinct(.id)) |>
+  collect()
+reach
+
+totals <- dr_con("HL_summary") |>
+  summarise(records = n_distinct(paste0(.id, "|", Valid_Aphia)),
+            hauls   = n_distinct(.id)) |>
+  collect()
+```
+
+`r N(reach$records_affected)` of `r N(totals$records)` haul-species records
+(`r P(100 * reach$records_affected / totals$records, 1)`), in
+`r P(100 * reach$hauls_affected / totals$hauls)` of hauls. For the rest, the
+records are what they appear to be.
+
+## Finding your own records
+
+The flag table joins to the haul table on `.id`, so any submitter can list
+their own flagged records — by survey, country and year — and see which issue
+each carries:
+
+```{r, eval = FALSE}
+dr_con("hl_flag") |>
+  left_join(dr_con("hl_flag_code") |> select(code, kind, label), by = "code") |>
+  inner_join(dr_con("HH") |> select(.id, Survey, Year, Country), by = ".id") |>
+  filter(Country == "DK", Survey == "BITS") |>       # your country and survey
+  count(Year, code, label) |>
+  collect()
+```
+
+Across countries, the share of each country's records that carries a suspect
+or unexplained flag, and how much of that share is one single issue:
+
+```{r}
+hh_country <- dr_con("HH") |> select(.id, Country)
+flagged <- dr_con("hl_flag") |>
+  left_join(dr_con("hl_flag_code") |> select(code, kind), by = "code") |>
+  filter(kind %in% c("suspect", "unexplained")) |>
+  inner_join(hh_country, by = ".id")
+
+by_country <- dr_con("HL_summary") |>
+  distinct(.id, Valid_Aphia) |>
+  inner_join(hh_country, by = ".id") |>
+  count(Country, name = "records") |>
+  left_join(flagged |> distinct(Country, .id, Valid_Aphia) |> count(Country, name = "flagged"),
+            by = "Country") |>
+  left_join(flagged |> count(Country, code) |>
+              group_by(Country) |>
+              mutate(share = n / sum(n)) |>
+              filter(n == max(n)) |>
+              ungroup() |>
+              select(Country, commonest_issue = code, share),
+            by = "Country") |>
+  collect() |>
+  mutate(flagged = coalesce(flagged, 0),
+         per_1000_records = round(1000 * flagged / records, 1),
+         commonest_issue_share = P(100 * share)) |>
+  select(Country, records, per_1000_records, commonest_issue, commonest_issue_share) |>
+  arrange(desc(per_1000_records))
+by_country
+```
+
+```{r, include = FALSE}
+rate <- function(cc) by_country$per_1000_records[by_country$Country == cc]
+```
+
+**Read the rate together with the last column.** A high rate made of one issue
+is one consistent practice — a convention applied the same way to every
+record, which is handled by one rule and settled by one answer. A low rate
+spread over many issues is case-by-case variation. The table is a map of where
+the questions below land, not a ranking. Canada's rate
+(`r rate("CA")` per thousand records) is one raising-factor practice
+([B5](#can-mar)), and Lithuania's (`r rate("LT")`) one `DataType` label
+([B2](#c-with-a-factor-above-1)).
+
+## How each entry is laid out
+
+Each entry shows **a real record**, so its shape is visible; **how far it
+reaches**, measured; **whether it moves a product** — numbers or biomass per
+haul, a length distribution, an index — and could produce a trend or contrast
+that is not there; **what `{obus}` does**, and the `hl_flag` code that marks
+it; and **the question**, addressed to whoever can answer it. The entries are
+grouped by who that is. [The register at a glance](#at-a-glance) collects
+them, with their status.
+
+# A. Questions about the specification, for ICES
+
+These are places where the format, or ICES's own documents about it, leave a
+reading open. No single submitter can settle them.
+
+## A1. What `TotalNumber` means {#totalnumber-definition}
+
+**ICES's documents disagree.** The field description defines the total as the
+sum of the measured numbers, `TotalNo=SUM(HLNoAtLngt)` [@ices2026fielddesc].
+The DATRAS FAQ instructs that the total equal the measured numbers raised by
+the sub-sampling factor [@ices2014datrasfaqs], and the IBTSWG traced recent
+submission errors to specifications it called ambiguous, asking for them to be
+made unambiguous [@ices2023ibtswg]. The field description's own example file
+takes the raised reading. The archive does too:
+
+```{r}
+tn_def <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), !is.na(LengthClass),
+         NumberAtLength != 0, !is.na(TotalNumber)) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex,
+           DevelopmentStage) |>
+  summarise(measured    = sum(NumberAtLength, na.rm = TRUE),
+            factor_lo   = min(SubsamplingFactor, na.rm = TRUE),
+            factor_hi   = max(SubsamplingFactor, na.rm = TRUE),
+            TotalNumber = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(factor_lo == factor_hi, factor_hi >= 2) |>     # one factor, and the two readings far apart
+  summarise(groups              = n(),
+            measured_x_factor   = sum(as.integer(abs(TotalNumber - measured * factor_hi) < 0.5)),
+            measured_only       = sum(as.integer(abs(TotalNumber - measured) < 0.5))) |>
+  collect()
+tn_def
+```
+
+Where a single factor of 2 or more separates the two readings, the total is the
+raised number in `r P(100 * tn_def$measured_x_factor / tn_def$groups)` of
+groups and the plain measured count in `r N(tn_def$measured_only)` of
+`r N(tn_def$groups)`. So the field description's formula is the one that does
+not describe the data.
+
+**The definition also changed, and the data carry no marker of when.** The
+March 2024 field descriptions [@ices2024marfielddesc] turned the total from one
+figure per haul and species — repeated across its categories and sexes, and so
+not to be added up — into one figure per category, which is. Survey years from
+2024 can only have been submitted under the new definition, so if submitters
+had followed it, a total shared across a species' categories would become rarer
+there. It does not:
+
+```{r}
+shared_by_period <- dr_con("HL") |>
+  distinct(.id, Year, Valid_Aphia, SpeciesValidity, SpeciesCategory, TotalNumber) |>
+  group_by(.id, Year, Valid_Aphia, SpeciesValidity) |>
+  summarise(categories = n_distinct(SpeciesCategory),
+            totals     = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(categories > 1) |>
+  mutate(period = if_else(Year >= 2024, "2024 onwards", "before 2024")) |>
+  group_by(period) |>
+  summarise(multi_category = n(),
+            one_total_shared = sum(as.integer(totals == 1)), .groups = "drop") |>
+  collect() |>
+  mutate(pct_shared = round(100 * one_total_shared / multi_category, 1))
+shared_by_period
+```
+
+**Does it move a product?** It decides whether the two routes to a haul total
+should agree ([A6](#two-routes-to-a-catch-total)), and whether a total may be
+added across categories ([A4](#totalnumber-across-categories)) — for any
+species caught in more than one category, the difference between counting it
+once and counting it twice.
+
+**What `{obus}` does.** Publishes the submitted total as `n_totalnumber` and
+the raised length frequencies as `n_haul`, side by side, and decides between
+category readings record by record by checking each category's own arithmetic
+([A4](#totalnumber-across-categories)).
+
+**For ICES.** Which definition is authoritative, and from what date? And can
+the archive say, per record, which definition it was submitted under?
+
+## A2. One `TotalNumber` written across several sex rows {#totalnumber-across-sex-rows}
+
+A haul, a species and a sampling category can carry several rows because the
+catch was sexed. `TotalNumber` is written on each. Here is a plaice record
+where each sex reports its own:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "BITS:1999:1:DK:26HI:TVS:017492:22", Valid_Aphia == 127143) |>
+  group_by(SpeciesSex) |>
+  summarise(TotalNumber        = max(TotalNumber, na.rm = TRUE),
+            sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+            SubsamplingFactor  = max(SubsamplingFactor, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
+
+Three rows; each `TotalNumber` matches that sex's own measured lengths at a
+factor of 1. The haul total is 4. But two of the three values are the same
+number, so a consumer that removes duplicates gets 3 — the unsexed row and the
+male row agree by coincidence, not because one is a copy of the other.
+
+Other submissions do the opposite, and write one whole-category total on every
+sex row:
+
+```{r}
+sex_rows <- dr_con("HL") |>
+  distinct(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, DevelopmentStage,
+           SpeciesSex, TotalNumber) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, DevelopmentStage) |>
+  summarise(n_sex = n_distinct(SpeciesSex),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  summarise(groups             = n(),
+            one_value_repeated = sum(as.integer(n_val == 1)),
+            one_value_per_sex  = sum(as.integer(n_val == n_sex)),
+            neither            = sum(as.integer(n_val > 1 & n_val < n_sex))) |>
+  collect()
+sex_rows
+```
+
+`r P(100 * sex_rows$one_value_repeated / sex_rows$groups)` of multi-sex groups
+repeat one value and `r P(100 * sex_rows$one_value_per_sex / sex_rows$groups)`
+carry one per sex. Nothing in the record says which a group is. Add them up and
+the repeated kind is inflated; collapse them and the per-sex kind is
+understated.
+
+**Is it ad hoc, or a house style?** If repeating is a submitter's habit it
+should be near-total for that submitter; if it is a slip it should be a small
+minority everywhere. So ask it of each country, showing both how often it
+happens and how much data each country contributes:
+
+```{r}
+#| fig-width: 7.5
+#| fig-height: 4.2
+#| fig-alt: "Share of multi-sex records where one total is written on every sex row, by country, with point size showing how many multi-sex records the country contributes. One country repeats the total in all of its records; the others are spread across a much lower range."
+sex_by_country <- dr_con("HL") |>
+  distinct(Country, .id, Valid_Aphia, SpeciesCategory, SpeciesValidity,
+           DevelopmentStage, SpeciesSex, TotalNumber) |>
+  group_by(Country, .id, Valid_Aphia, SpeciesCategory, SpeciesValidity,
+           DevelopmentStage) |>
+  summarise(n_sex = n_distinct(SpeciesSex),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  group_by(Country) |>
+  summarise(records = n(), repeated = sum(as.integer(n_val == 1)), .groups = "drop") |>
+  filter(records >= 500) |>
+  mutate(pct = 100 * repeated / records) |>
+  collect()
+
+sex_by_country |>
+  mutate(Country = reorder(Country, pct)) |>
+  ggplot(aes(pct, Country)) +
+  geom_segment(aes(x = 0, xend = pct, yend = Country), colour = "grey80") +
+  geom_point(aes(size = records, colour = pct > 90)) +
+  scale_size_area(max_size = 9, breaks = c(1000, 10000, 50000),
+                  labels = c("1,000", "10,000", "50,000"),
+                  name = "multi-sex\nrecords") +
+  scale_colour_manual(values = c(`FALSE` = "grey30", `TRUE` = "firebrick"),
+                      guide = "none") +
+  scale_x_continuous(limits = c(0, 104), expand = expansion(mult = c(0, 0.02))) +
+  labs(x = "records where one total is written on every sex row (%)", y = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+```{r, include = FALSE}
+ca_sex <- sex_by_country |> filter(Country == "CA")
+others <- sex_by_country |> filter(Country != "CA")
+```
+
+Both, as it turns out, and one country is on its own. Canada repeats the total
+in `r P(ca_sex$pct)` of its `r N(ca_sex$records)` multi-sex records, which
+makes it plainly a house style that can be handled by rule. Every other
+country lies between `r P(min(others$pct))` and `r P(max(others$pct))`. That
+is not a convention but case-by-case variation, and it is where the ambiguity
+actually bites, because there it cannot be settled by knowing who sent the
+file.
+
+**Does it move a product?** A total summed across sex rows inflates the haul
+total of every repeated-kind group; one collapsed across them understates every
+per-sex group. Either way the error lands per haul, so a mean over hauls
+inherits it in proportion to how often the species is sexed.
+
+**What `{obus}` does.** `dr_hl_summary()` tests each sex's own `TotalNumber`
+against its own length rows raised by its own factor — the check the record
+above passes three times. A sex that reconciles is trusted and summed on its
+own. Sexes that do not reconcile, or that have no length data to check
+against, fall back to collapsing duplicate values, but only among values no
+reconciling sex has already claimed.
+
+**For ICES.** Is a `TotalNumber` repeated across sex rows meant as the category
+total, or as each sex's own? If the former, should the sexed rows carry it at
+all?
+
+## A3. The same shape, for `SpeciesCategoryWeight` {#weight-across-sex-rows}
+
+A *Lepidorhombus boscii* record, three sexes, counts plainly per-sex:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "SP-NORTH:1990:4:ES:29CS:BAK:022:22", Valid_Aphia == 127145) |>
+  group_by(SpeciesSex) |>
+  summarise(TotalNumber           = max(TotalNumber, na.rm = TRUE),
+            SpeciesCategoryWeight = max(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
+
+Counts of 44, 73 and 1 — genuinely different, genuinely per-sex. The weight is
+4250 on all three rows, which cannot be per-sex: three catches that differ
+seventy-fold in number do not weigh the same. It is one category weight written
+three times. Sum it and the species gains 12,750 g where it caught 4,250.
+
+Archive-wide the weight splits much as the count does:
+
+```{r}
+weight_sex <- dr_con("HL") |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, SpeciesCategory,
+           SpeciesSex, SpeciesCategoryWeight) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, SpeciesCategory) |>
+  summarise(n_sex = n_distinct(SpeciesSex),
+            n_w   = n_distinct(SpeciesCategoryWeight), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  summarise(groups              = n(),
+            one_weight_repeated = sum(as.integer(n_w == 1)),
+            one_weight_per_sex  = sum(as.integer(n_w == n_sex))) |>
+  collect()
+weight_sex
+```
+
+Weight is worse off than number, because it has no arithmetic cross-check. The
+count above could be tested against the length rows that produced it. A weight
+can be tested against nothing in the record — the reasoning that unmasked the
+4250 was biological, not arithmetic.
+
+**Does it move a product?** Biomass per haul, for every repeated-kind group, by
+the number of sex rows it was written on.
+
+**What `{obus}` does.** Collapses duplicate weights without sex in the key —
+the opposite of the count treatment in [A2](#totalnumber-across-sex-rows). The
+asymmetry is forced by the data, not chosen: the reconciliation that
+arbitrates counts has no weight equivalent.
+
+**For ICES.** The same question as A2, for weight. Because there is no
+cross-check: is there any field a consumer can use to tell a repeated weight
+from a genuine per-sex one? And is `DevelopmentStage` part of the
+`SpeciesCategoryWeight` key, as the field description's wording implies, given
+that sex demonstrably is not?
+
+## A4. One `TotalNumber` written across several sampling categories {#totalnumber-across-categories}
+
+The same shape one dimension over — and here the record answers the question
+itself. A whiting split into two sampling categories:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "NS-IBTS:2022:3:GB-SCT:748S:GOV:141:141", Valid_Aphia == 126438) |>
+  group_by(SpeciesCategory) |>
+  summarise(length_rows           = n(),
+            sum_NumberAtLength    = sum(NumberAtLength, na.rm = TRUE),
+            SubsamplingFactor     = max(SubsamplingFactor, na.rm = TRUE),
+            TotalNumber           = max(TotalNumber, na.rm = TRUE),
+            SpeciesCategoryWeight = max(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
+
+Category 11 raises to 187 × 1.893 = 353.99; category 12 contributes 7 more.
+Together that is 360.99, and both rows report `TotalNumber` 361 — the residue
+is the rounding of a four-decimal factor. So the shared 361 is the two
+categories *together*, not each one's own, and the shared 58100 is one weight
+written twice. Read per-category, this species doubles.
+
+```{r}
+cat_shared <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  distinct(.id, DataType, Valid_Aphia, SpeciesValidity, SpeciesCategory, TotalNumber) |>
+  group_by(.id, DataType, Valid_Aphia, SpeciesValidity) |>
+  summarise(n_cat = n_distinct(SpeciesCategory),
+            n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_cat > 1) |>
+  group_by(DataType) |>
+  summarise(multi_category = n(),
+            shared_total = sum(as.integer(n_val == 1)), .groups = "drop") |>
+  mutate(pct = round(100 * shared_total / multi_category, 1)) |>
+  collect()
+cat_shared
+```
+
+```{r, include = FALSE}
+cs <- function(dt, col) cat_shared[[col]][cat_shared$DataType == dt]
+cat_total <- sum(cat_shared$shared_total)
+```
+
+`r N(cat_total)` of `r N(sum(cat_shared$multi_category))` multi-category
+groups share one value. **Why would a total be shared at all?** Pseudo-category
+sampling is the obvious candidate: under `DataType` `P` a catch is split into
+sub-categories of one weighing, so one total covering them is what the design
+implies [@vaishav2021pseudocat]. If that is the mechanism, `P` should be far
+more prone to it than `R` — and it is: `r P(cs("P", "pct"))` of multi-category
+`P` groups share a total, against `r P(cs("R", "pct"))` under `R`. But `P`
+accounts for only `r N(cs("P", "shared_total"))` of the `r N(cat_total)`. The
+other `r N(cs("R", "shared_total"))` sit under `R`, where ICES documents no
+sub-category convention, and those remain unexplained.
+
+**Does it move a product?** Read per category, every one of these species
+doubles in the haul (or more, with more categories) — in numbers and in weight.
+
+**What `{obus}` does.** The fallback collapse leaves `SpeciesCategory` out of
+its key, so a shared value is counted once rather than once per category. A
+category whose own data reconciles is still credited separately.
+
+**For ICES.** When two categories carry one identical `TotalNumber`, is that
+the species total for both strata — as the record above demonstrates — or a
+submission error? And under `R`, where no sub-category convention is
+documented, what are these? The weight beside them behaves the same way; see
+[A8](#the-same-weight-written-on-two-category-codes).
+
+## A5. One total repeated across record types {#totalnumber-across-validity}
+
+`SpeciesValidity` is a record type — what kind of data a record holds (lengths,
+a total number only, presence only, and so on) — and HL allows a species more
+than one in a haul. Where it has two, the submitted total and weight are almost
+always written on both. A Can-Mar witch flounder, lengths split between a
+validity-`1` and a validity-`5` record:
+
+```{r}
+dr_con("HL_summary") |>
+  filter(.id == "Can-Mar:1979:4:CA:18LH:W2A:5:73", Valid_Aphia == 127136) |>
+  select(SpeciesValidity, n_totalnumber, n_haul, n_measured, w_haul) |>
+  collect()
+```
+
+Five fish measured on each record, so ten in all; one total of 9 and one
+weight of 1,975 g, written twice. Add the records up and the haul catches 18
+fish weighing twice what it did.
+
+```{r}
+validity <- dr_con("HL_summary") |>
+  group_by(Survey, .id, Valid_Aphia) |>
+  filter(n() > 1) |>
+  summarise(spread = sd(n_totalnumber, na.rm = TRUE),
+            level  = mean(n_totalnumber, na.rm = TRUE), .groups = "drop") |>
+  mutate(same_total = coalesce(spread, 0) <= 1e-9 * abs(level)) |>
+  group_by(Survey) |>
+  summarise(pairs = n(),
+            same_total = sum(as.integer(same_total), na.rm = TRUE), .groups = "drop") |>
+  collect() |>
+  mutate(different_totals = pairs - same_total) |>
+  arrange(desc(pairs))
+validity
+```
+
+`r N(sum(validity$same_total))` of `r N(sum(validity$pairs))` haul-species
+pairs with more than one record type carry the same total on each; "the same"
+allows for float noise, because the build adds category totals in no fixed
+order. The `r N(sum(validity$different_totals))` that differ are unexplained.
+Four of them, all NL-BSAS 2023, share a pattern the rest do not — the second
+record's total is the first's halved and rounded up:
+
+```{r}
+dr_con("HL_summary") |>
+  filter(Survey == "NL-BSAS", Year == 2023) |>
+  group_by(.id, Valid_Aphia) |>
+  filter(n() > 1, n_distinct(n_totalnumber) > 1) |>
+  ungroup() |>
+  select(.id, latin, SpeciesValidity, n_totalnumber, n_haul) |>
+  arrange(.id, SpeciesValidity) |>
+  collect()
+```
+
+**Does it move a product?** Archive-wide very little; per haul, a doubling.
+Until 2026-10-06 `dr_add_catch()` summed across record types, which doubled
+every one of these hauls and moved NL-BSAS numbers per hour by about 3% and
+DYFS weight per hour by about 2%.
+
+**What `{obus}` does.** `dr_add_catch()` takes a submitted total or weight that
+is the same on every record once, sums totals that genuinely differ, and always
+sums `n_haul`, because the length rows behind it are never repeated across
+record types.
+
+**For ICES.** Is the total on a second record type meant to restate the
+species total, or to add to it? And for the NL-BSAS pairs: is the second total
+the count of a separately handled part of the catch?
+
+## A6. Two routes to a catch total, and where they part {#two-routes-to-a-catch-total}
+
+DATRAS states a catch total twice: once directly, as the submitted
+`TotalNumber`, and once implicitly, as the length rows raised by their own
+factor. Where a submission is well formed the two agree, and most do:
+
+```{r}
+routes <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), !is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex) |>
+  summarise(reported = max(TotalNumber, na.rm = TRUE),
+            raised   = sum(NumberAtLength * SubsamplingFactor, na.rm = TRUE),
+            .groups  = "drop") |>
+  filter(!is.na(reported), !is.na(raised)) |>
+  summarise(groups          = n(),
+            agree_within_1  = sum(as.integer(abs(reported - raised) < 1)),
+            differ_1_plus   = sum(as.integer(abs(reported - raised) >= 1)),
+            reported_higher = sum(as.integer(reported - raised >= 1)),
+            raised_higher   = sum(as.integer(raised - reported >= 1))) |>
+  collect()
+routes
+```
+
+`r P(100 * routes$agree_within_1 / routes$groups, 1)` agree to within one
+fish, which is what a non-integer factor applied to whole fish does.
+`r N(routes$differ_1_plus)` groups differ by a fish or more, and it is
+`TotalNumber` that is higher in all but `r N(routes$raised_higher)` of them.
+
+What a gap looks like, at its simplest — an anchovy record from NIGFS, one
+category, no sub-sampling to complicate it:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "NIGFS:2019:4:GB-NIR:74RY:ROT:90:10", Valid_Aphia == 126426) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor,
+         SubsampledNumber, TotalNumber) |>
+  collect()
+```
+
+Three length rows, one fish each. The factor is 1, so nothing is raised. Yet
+the record states that 6 were measured and 6 were caught. Three anchovies are
+in the totals and absent from the length distribution, and no arithmetic in
+the format says which count is right.
+
+**Most of the gap has one mechanism, and it happens before submission.**
+Define `F = TotalNumber / SubsampledNumber` — the whole multiplier the
+submitter actually used, read straight off the record. Split `DataType` `C`
+groups by whether that multiplier is a whole number:
+
+```{r}
+rounding <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "C", Survey != "Can-Mar", !is.na(LengthClass),
+         NumberAtLength != 0, !is.na(TotalNumber),
+         !is.na(SubsampledNumber), SubsampledNumber > 0) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex) |>
+  summarise(s   = sum(NumberAtLength, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE), .groups = "drop") |>
+  mutate(whole_number_factor = abs(tot / sub - round(tot / sub)) < 1e-9) |>
+  group_by(whole_number_factor) |>
+  summarise(groups = n(),
+            whole_fish_gap = sum(as.integer(abs(tot - s) >= 1)), .groups = "drop") |>
+  mutate(rate_pct = round(100 * whole_fish_gap / groups, 2)) |>
+  collect()
+rounding
+```
+
+```{r, include = FALSE}
+r_int  <- rounding$rate_pct[rounding$whole_number_factor]
+r_frac <- rounding$rate_pct[!rounding$whole_number_factor]
+```
+
+`r P(r_int, 2)` against `r P(r_frac, 2)` — a relative risk of about
+`r round(r_frac / r_int, -1)`, with no reconstruction at all. If the submitter
+raised each length row separately, `round(NumberAtLength / F)` should recover
+the raw integer counts, and those should sum to the `SubsampledNumber` the
+record reports independently:
+
+```{r}
+reconstruct <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "C", Survey != "Can-Mar", !is.na(LengthClass),
+         NumberAtLength != 0, !is.na(TotalNumber),
+         !is.na(SubsampledNumber), SubsampledNumber > 0) |>
+  mutate(F = TotalNumber / SubsampledNumber) |>
+  filter(F > 0) |>
+  mutate(m = round(NumberAtLength / F)) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, SpeciesSex) |>
+  summarise(F = max(F, na.rm = TRUE), sum_m = sum(m, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE), .groups = "drop") |>
+  group_by(whole_number_factor = abs(F - round(F)) < 1e-9) |>
+  summarise(groups = n(),
+            reconstruction_matches = sum(as.integer(abs(sum_m - sub) < 0.5)),
+            .groups = "drop") |>
+  collect()
+reconstruct
+```
+
+```{r, include = FALSE}
+rec_frac <- reconstruct |> filter(!whole_number_factor)
+```
+
+It does, in `r P(100 * rec_frac$reconstruction_matches / rec_frac$groups)` of
+the non-integer groups. So the submitter computed `NumberAtLength = round(m ×
+F)` row by row while computing `TotalNumber` once over the whole sample. The
+per-row rounding residuals do not cancel, and their sum is the gap. **The fish
+are missing from the submitted file before anyone reads it.**
+
+At the other extreme the gaps are enormous — `TotalNumber` in the hundred
+thousands against raised lengths in the hundreds — but those turn out not to be
+disagreements at all: they are one total shared across sampling categories
+([A4](#totalnumber-across-categories)). Can-Mar behaves differently enough to
+have its own entry ([B5](#can-mar)), and a length distribution submitted twice
+breaks the agreement the other way ([B4](#distribution-submitted-twice)).
+
+**Does it move a product? For fish, barely; for invertebrates, a great deal.**
+Many invertebrates are counted and never measured, so the length route cannot
+see them at all:
+
+```{r}
+FISH <- c("Teleostei", "Elasmobranchii", "Holocephali", "Actinopteri",
+          "Petromyzonti", "Myxini", "Cladistia")
+length_route <- dr_con("HL_length") |>
+  group_by(.id, Valid_Aphia, SpeciesValidity) |>
+  summarise(length_hour = sum(n_hour, na.rm = TRUE), .groups = "drop")
+
+by_group <- dr_con("HL_summary") |>
+  filter(!is.na(n_totalnumber_hour)) |>
+  left_join(length_route, by = c(".id", "Valid_Aphia", "SpeciesValidity"),
+            na_matches = "na") |>
+  left_join(dr_con("species") |> select(Valid_Aphia, class), by = "Valid_Aphia") |>
+  mutate(group = if_else(class %in% FISH, "fish", "everything else")) |>
+  group_by(group) |>
+  summarise(records       = n(),
+            total_only    = sum(as.integer(is.na(length_hour))),
+            totals_route  = sum(n_totalnumber_hour, na.rm = TRUE),
+            length_route  = sum(length_hour, na.rm = TRUE), .groups = "drop") |>
+  collect() |>
+  mutate(total_only_pct     = round(100 * total_only / records, 1),
+         length_over_totals = round(length_route / totals_route, 3))
+by_group
+```
+
+```{r, include = FALSE}
+fish  <- by_group |> filter(group == "fish")
+inv   <- by_group |> filter(group == "everything else")
+```
+
+For fish the length route carries `r round(100 * fish$length_over_totals)`
+fish in every hundred the totals route does; for everything else,
+`r round(100 * inv$length_over_totals)`, because
+`r P(inv$total_only_pct)` of those records have no lengths at all. Which route
+a series is built on decides an invertebrate trend, and choosing between them
+is a design decision rather than a footnote.
+
+**What `{obus}` does.** Carries both routes in separate columns —
+`n_totalnumber` from the submission, `n_haul` from the raised lengths — never
+averaged and never silently preferred.
+
+**For ICES.** When the two routes disagree by more than rounding, which is
+authoritative? And should the format ask submitters to raise the sample once
+rather than row by row, so that the two can agree?
+
+## A7. A mandatory `SubsamplingFactor` that is absent {#subsamplingfactor-absent}
+
+`SubsamplingFactor` is mandatory, and `1` is a specific claim — *not
+sub-sampled*. Some rows carry neither the claim nor a factor:
+
+```{r}
+sf_missing <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), is.na(SubsamplingFactor),
+         NumberAtLength != 0, !is.na(LengthClass)) |>
+  summarise(rows = n(), hauls = n_distinct(.id),
+            can_mar = sum(as.integer(Survey == "Can-Mar"))) |>
+  collect()
+sf_missing
+```
+
+`r N(sf_missing$rows)` length rows over `r N(sf_missing$hauls)` hauls,
+`r P(100 * sf_missing$can_mar / sf_missing$rows, 1)` of them Can-Mar. The
+records are not silent, though. Nearly all of them still report both
+`TotalNumber` and `SubsampledNumber`, and the ratio of those two is what the
+factor would have been:
+
+```{r}
+implied <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType %in% c("R", "P", "S"), is.na(SubsamplingFactor),
+         NumberAtLength != 0, !is.na(LengthClass)) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesSex) |>
+  summarise(sum_nal = sum(NumberAtLength, na.rm = TRUE),
+            tot     = max(TotalNumber, na.rm = TRUE),
+            sub     = max(SubsampledNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.na(tot), !is.na(sub), sub > 0) |>
+  summarise(groups          = n(),
+            sub_eq_lengths  = sum(as.integer(abs(sub - sum_nal) < 0.5)),
+            implied_1       = sum(as.integer(abs(tot - sub) < 0.5)),
+            implied_over_1  = sum(as.integer(tot - sub >= 0.5)),
+            implied_under_1 = sum(as.integer(sub - tot >= 0.5))) |>
+  collect()
+implied
+```
+
+In `r N(implied$sub_eq_lengths)` of `r N(implied$groups)` groups
+`SubsampledNumber` equals the sum of the length rows exactly, so the ratio is
+well founded rather than a guess. In `r N(implied$implied_1)` it comes to 1,
+so reading the absence as *not sub-sampled* would have been right. In
+`r N(implied$implied_over_1)` it is above 1, so that reading understates the
+catch. The remaining `r N(implied$implied_under_1)` are the reason not to
+simply act on the ratio: they imply a factor **below** 1, a total smaller than
+the sub-sample it was raised from. In those records `TotalNumber` and
+`SubsampledNumber` cannot both be right, and nothing says which to keep.
+
+**Does it move a product?** Reading a missing factor as 1 — what the
+`{DATRAS}` package does with `DataType` `R` — understates the catch in every
+group where the implied factor is above 1, which is concentrated in Can-Mar.
+
+**What `{obus}` does.** Propagates `NA`, and reconstructs nothing; the records
+carry `CNT_SF_MISSING`. An absent mandatory field means *no information was
+supplied*, which is not the same statement as `1`.
+
+**For ICES.** Should a missing `SubsamplingFactor` be read as 1, as unknown, or
+reconstructed as `TotalNumber` / `SubsampledNumber`? The groups with an
+implied factor above 1 show the first is not safe; whether the third is safe
+depends on whether `TotalNumber` is authoritative when the factor is absent,
+and the groups below 1 show it is not universally so.
+
+## A8. The same weight written on two category codes {#the-same-weight-written-on-two-category-codes}
+
+Keeping the category is right when two categories are two separately weighed
+parts of the catch. It is wrong when the same weight has simply been written on
+two codes — and under **pseudo-category sampling (`DataType` P) that is the
+documented convention**, not an error. The pseudo-category memo states *"CatCatchweight
+value is same in each subcategory"* [@vaishav2021pseudocat], and the archive
+agrees:
+
+```{r}
+p_weight <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType == "P", !is.na(SpeciesCategory)) |>
+  mutate(main_category = substr(SpeciesCategory, 1, 1)) |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, main_category,
+           SpeciesCategory, SpeciesCategoryWeight) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, main_category) |>
+  summarise(sub_categories = n_distinct(SpeciesCategory),
+            distinct_weights = n_distinct(SpeciesCategoryWeight), .groups = "drop") |>
+  filter(sub_categories > 1) |>
+  summarise(main_categories = n(),
+            one_shared_weight = sum(as.integer(distinct_weights == 1))) |>
+  collect()
+p_weight
+```
+
+`r N(p_weight$one_shared_weight)` of `r N(p_weight$main_categories)` carry a
+single identical weight across their sub-categories. The structural reason is
+in the sampling itself: under P the raising factor *is* category weight divided
+by sample weight, so the category weight must appear on every sub-category row.
+`{obus}` therefore collapses P weights on the main category — the first digit
+of a two-digit `SpeciesCategory` — and marks the records `WGT_CAT_REPEAT_P`,
+`kind` `property`.
+
+The same shape occurs under `DataType` R, where ICES documents no sub-category
+convention, and there the cause is not established. Set the published `w_haul`
+against the alternative of collapsing every repeated weight whatever the
+`DataType`:
+
+```{r}
+published <- dr_con("HL_summary") |>
+  group_by(.id, Valid_Aphia, SpeciesValidity) |>
+  summarise(w_pub = sum(w_haul, na.rm = TRUE), .groups = "drop")
+
+collapsed <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(DataType != "C") |>
+  distinct(.id, Valid_Aphia, SpeciesValidity, SpeciesCategoryWeight, DataType) |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, DataType) |>
+  summarise(w_alt = sum(SpeciesCategoryWeight, na.rm = TRUE), .groups = "drop")
+
+excess <- published |>
+  inner_join(collapsed, by = c(".id", "Valid_Aphia", "SpeciesValidity")) |>
+  filter(w_pub > w_alt + 0.5) |>
+  group_by(DataType) |>
+  summarise(records = n(), excess_g = sum(w_pub - w_alt)) |>
+  collect()
+excess
+
+all_weight <- dr_con("HL_summary") |> summarise(g = sum(w_haul, na.rm = TRUE)) |> pull(g)
+r_rep <- dr_con("hl_flag") |> filter(code == "WGT_CAT_REPEAT_R") |>
+  inner_join(dr_con("HH") |> select(.id, Survey, Year, Country, Platform), by = ".id") |>
+  count(Survey, Year, Country, Platform, sort = TRUE) |>
+  collect()
+```
+
+`{obus}` sums the R repeats and flags them `WGT_CAT_REPEAT_R`, `kind`
+`unexplained`: collapsing them would assert a convention no document states.
+They are `r N(sum(r_rep$n))` records, `r N(r_rep$n[1])` of them from one
+platform-year (`r r_rep$Survey[1]` `r r_rep$Year[1]`, `r r_rep$Country[1]`,
+platform `r r_rep$Platform[1]`), and together with the P records that share a
+weight *across* main categories they are the whole of the remaining excess:
+`r N(sum(excess$excess_g))` g, or `r P(100 * sum(excess$excess_g) / all_weight, 2)`
+of the archive's `w_haul`.
+
+**Does it move a product?** Collapsed, the P repeats are the difference between
+a catch weighed once and the same catch counted per sub-category — large,
+because sub-category sampling is used precisely on the big catches. The R
+repeats are small archive-wide and concentrated in one submission.
+
+**For ICES.** Do the R repeats follow a convention that should be documented,
+or are they submission errors? And should P records sharing a weight across
+*main* categories, which the memo does not describe, be collapsed too?
+
+## A9. One length series written under two `LengthType` codes {#duplicated-length-series}
+
+One BITS record, one species, and the whole length series written twice under
+two `LengthType` codes:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "BITS:2017:4:DK:26HF:TVS:552:42", Valid_Aphia == 127082) |>
+  group_by(LengthType) |>
+  summarise(length_rows        = n(),
+            sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+            SubsampledNumber   = max(SubsampledNumber, na.rm = TRUE),
+            TotalNumber        = max(TotalNumber, na.rm = TRUE),
+            SpeciesCategoryWeight = max(SpeciesCategoryWeight, na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+```
+
+Two identical series: every length class appears under both codes carrying the
+same count, and both copies report the same `SubsampledNumber`, `TotalNumber`
+and weight. `LengthType` codes are different length definitions, so the same
+fish measured both ways would give *different* classes. Series identical in
+class, count, sub-sample, total and weight cannot be two genuine measurements
+of one catch. How far this reaches:
+
+```{r}
+lt_dup <- dr_con("HL_length") |>
+  group_by(.id, Valid_Aphia, SpeciesValidity, SpeciesSex, DevelopmentStage,
+           length_mm, accuracy) |>
+  summarise(length_types = n_distinct(LengthType),
+            distinct_counts = n_distinct(n_measured), .groups = "drop") |>
+  filter(length_types > 1, distinct_counts == 1) |>
+  summarise(duplicated_rows = n(),
+            haul_species_groups = n_distinct(paste0(.id, "|", Valid_Aphia))) |>
+  collect()
+lt_dup
+```
+
+**Does it move a product?** It doubles `n_haul` for these
+`r N(lt_dup$haul_species_groups)` haul-species groups — this is the one place
+where `{obus}`'s choice of what makes a row unique measurably moves a number.
+The weight path ignores `LengthType`, so `w_haul` is not inflated.
+
+**What `{obus}` does.** Keeps both copies, because `LengthType` genuinely
+splits other records and merging on a hypothesis would lose those.
+
+**For ICES and the submitting institute.** Are the `LengthType` codes
+non-convertible measurement definitions? If so, are these series one
+measurement submitted twice?
+
+## A10. `HaulDuration` outside its range {#haulduration}
+
+Every hourly rate divides by duration, and every `C` per-haul count multiplies
+by it. The field is documented as 1–120 minutes:
+
+```{r}
+duration <- dr_con("HH") |>
+  filter(HaulDuration < 1 | HaulDuration > 120) |>
+  mutate(range = case_when(HaulDuration < 0  ~ "negative",
+                           HaulDuration == 0 ~ "zero",
+                           TRUE              ~ "over 120 min")) |>
+  count(range, Survey, HaulValidity) |>
+  arrange(range, desc(n)) |>
+  collect()
+duration
+
+with_catch <- dr_con("HH") |>
+  filter(HaulDuration <= 0) |>
+  semi_join(dr_con("HL") |> distinct(.id), by = ".id") |>
+  count(HaulValidity) |>
+  collect()
+with_catch
+```
+
+The zero and negative durations matter less than their count suggests: only
+`r sum(with_catch$n)` of those hauls carry any catch record, all of them
+`HaulValidity` `r paste(unique(with_catch$HaulValidity), collapse = ", ")`, so
+a survey excluding invalid hauls never meets them. The long tows are a
+different matter: most are valid hauls in one survey, so either that survey
+tows longer than the format anticipates or the field is wrong.
+
+**Does it move a product?** A per-hour rate is undefined at zero and
+understated by a wrong long duration; neither is visible downstream.
+
+**What `{obus}` does.** `NA`, never `0` and never `Inf`, for a non-positive
+duration (`REC_DUR_NONPOS`). Long durations are used as submitted.
+
+**For ICES and the survey group.** Is a zero `HaulDuration` a missing value
+that should have been `-9`? A negative one cannot be anything else, and both
+pass upload validation. Are the long tows real?
+
+# B. Records a submitting institute could correct
+
+Here the record contradicts itself or the format, and the institute that
+submitted it holds the information that would correct it.
+
+## B1. A `SubsamplingFactor` below 1 {#factor-below-1}
+
+The raising factor is what you multiply a measured sub-sample by to reach the
+whole catch, so it cannot be less than 1 without saying that the catch was
+smaller than the sample drawn from it. Two John dory, measured and reported by
+EVHOE:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "EVHOE:2011:4:FR:35HT:GOV:P1111:67", Valid_Aphia == 127427) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor,
+         SubsampledNumber, TotalNumber, SpeciesCategoryWeight) |>
+  collect()
+```
+
+The record's own arithmetic is impeccable: two fish measured, a factor of
+0.615, and a reported total of 2 × 0.615 = 1.23. Every identity in the format
+holds. It is the factor that cannot be true — two dory were in the hand and 320
+g of them were weighed.
+
+```{r}
+below_1 <- dr_con("HL") |>
+  filter(!is.na(SubsamplingFactor), SubsamplingFactor < 1) |>
+  group_by(Survey, Country) |>
+  summarise(length_rows = n(), hauls = n_distinct(.id),
+            years = paste(min(Year, na.rm = TRUE), max(Year, na.rm = TRUE), sep = "-"),
+            lowest_factor = min(SubsamplingFactor, na.rm = TRUE), .groups = "drop") |>
+  arrange(desc(length_rows)) |>
+  collect()
+below_1
+```
+
+**Does it move a product?** The published catch comes out smaller than the
+number of fish measured, a signature anyone can test for:
+
+```{r}
+dr_con("HL_summary") |>
+  filter(!is.na(n_haul), !is.na(n_measured), n_measured > 0) |>
+  summarise(records = n(),
+            catch_below_measured = sum(as.integer(n_haul < n_measured - 0.001))) |>
+  collect()
+```
+
+**What `{obus}` does.** Applies the factor as submitted; a reported value is
+not second-guessed.
+
+**For the submitting institutes.** Which half of the record is wrong — the
+factor, or the counts it was applied to?
+
+## B2. `DataType` `C` with a `SubsamplingFactor` above 1 {#c-with-a-factor-above-1}
+
+`DataType` `C` means the catch is reported as a rate per hour, and the format
+requires `SubsamplingFactor` to be 1 [@ices2014datrasfaqs]. These submissions
+report both:
+
+```{r}
+dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType, HaulDuration), by = ".id") |>
+  filter(DataType == "C", SubsamplingFactor > 1) |>
+  distinct(.id, Valid_Aphia, DataType, HaulDuration, SubsamplingFactor) |>
+  arrange(desc(SubsamplingFactor)) |>
+  head(3) |>
+  collect()
+```
+
+A record labelled as an hourly rate, on a 30-minute haul, sub-sampled at one
+part in more than a hundred. The two statements cannot both hold.
+
+```{r}
+c_factor <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType, HaulValidity), by = ".id") |>
+  filter(DataType == "C", SubsamplingFactor > 1) |>
+  group_by(Survey, Country) |>
+  summarise(rows = n(), hauls = n_distinct(.id),
+            years = paste(min(Year, na.rm = TRUE), max(Year, na.rm = TRUE), sep = "-"),
+            valid_hauls = n_distinct(if_else(HaulValidity == "V", .id, NA_character_)),
+            max_factor = max(SubsamplingFactor, na.rm = TRUE), .groups = "drop") |>
+  collect()
+c_factor
+```
+
+**Which of the two statements is wrong?** Under `C` the total should be the
+length rows scaled by duration; under `R` it should be the length rows raised by
+the factor. Only one can reproduce the reported `TotalNumber`:
+
+```{r}
+which_rule <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType, HaulDuration), by = ".id") |>
+  filter(DataType == "C", SubsamplingFactor > 1) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesSex) |>
+  summarise(s   = sum(NumberAtLength, na.rm = TRUE),
+            f   = max(SubsamplingFactor, na.rm = TRUE),
+            d   = max(HaulDuration, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  summarise(groups         = n(),
+            matches_R_rule = sum(as.integer(abs(tot - s * f) < 0.5)),
+            matches_C_rule = sum(as.integer(abs(tot - s * d / 60) < 0.5)),
+            sub_eq_lengths = sum(as.integer(abs(sub - s) < 0.5))) |>
+  collect()
+which_rule
+```
+
+`r which_rule$matches_R_rule` of `r which_rule$groups` groups reproduce under
+the `R` rule and `r which_rule$matches_C_rule` under the `C` rule. So the
+`NumberAtLength` here is a measured sub-sample, not an hourly rate: **the
+`DataType` label is the wrong one, not the factor.**
+
+**Does it move a product?** Applying the duration alone, as the label
+instructs, understates these catches by up to the factor — over a hundredfold.
+
+**What `{obus}` does.** Applies both multipliers and flags the records
+`CNT_C_SUBFACTOR_CONFLICT`.
+
+**For the submitting institutes.** Is the `DataType` wrong on these hauls, or
+the factor? They pass upload validation, and nearly all carry `HaulValidity`
+`V`.
+
+## B3. A length row that reports no fish {#zero-numberatlength}
+
+One Atlantic cod record, and almost every count identity in the format fails on
+it at once:
+
+```{r}
+dr_con("HL") |>
+  filter(.id == "BITS:1992:1:SE:77AR:GOV:50:1", Valid_Aphia == 126436) |>
+  summarise(length_rows        = n(),
+            rows_reporting_0   = sum(as.integer(NumberAtLength == 0)),
+            sum_NumberAtLength = sum(NumberAtLength, na.rm = TRUE),
+            SubsampledNumber   = max(SubsampledNumber, na.rm = TRUE),
+            TotalNumber        = max(TotalNumber, na.rm = TRUE),
+            SubsamplingFactor  = max(SubsamplingFactor, na.rm = TRUE)) |>
+  collect()
+```
+
+Most of its length rows report no fish at that length; the rest sum to 8, while
+`SubsampledNumber` claims 30 were measured and `TotalNumber` a catch of 28 — at
+a factor of 1, so no raising can reconcile them. Zero-count length rows are
+rare:
+
+```{r}
+zero_nal <- dr_con("HL") |>
+  filter(NumberAtLength == 0) |>
+  summarise(rows = n(), hauls = n_distinct(.id),
+            species = n_distinct(Valid_Aphia),
+            surveys = n_distinct(Survey)) |>
+  collect()
+zero_nal
+```
+
+They do not share one explanation: some groups report nothing but zeros, so no
+fish were measured at any length; in others a single zero sits among real
+counts. `r zero_nal$rows` rows is too few to find a mechanism from the data
+alone.
+
+**Does it move a product?** No: a length class with no fish cannot enter a
+length distribution.
+
+**What `{obus}` does.** Drops them.
+
+**For the submitting institutes.** Is a zero `NumberAtLength` a presence
+marker, a placeholder, or an error? And on the record above, which of the three
+counts is right?
+
+## B4. A length distribution submitted twice {#distribution-submitted-twice}
+
+ICES's field descriptions identify a length record by its haul, species, sex,
+development stage and sampling category [@ices2026fielddesc], so one length
+class can appear once in a category. Some records carry the same length
+distribution twice, which doubles the length route while the submitted total
+stays right. A BITS plaice haul:
+
+```{r}
+dup_id <- "BITS:2021:1:DK:26HF:TVS:77:35"
+dr_con("HL") |>
+  filter(.id == dup_id, Valid_Aphia == 127143) |>
+  count(SpeciesCategory, SpeciesSex, LengthClass, NumberAtLength,
+        name = "times_submitted") |>
+  count(times_submitted, name = "length_classes") |>
+  collect()
+
+dr_con("HL_summary") |>
+  filter(.id == dup_id, Valid_Aphia == 127143) |>
+  select(n_totalnumber, n_haul, n_totalnumber_hour) |>
+  collect()
+```
+
+Every length class is there twice, and the raised lengths come to double the
+reported total. `{obus}` marks such records `CNT_LEN_DUP`:
+
+```{r}
+dr_con("hl_flag") |>
+  filter(code == "CNT_LEN_DUP") |>
+  inner_join(dr_con("HH") |> select(.id, Survey, Year, Country), by = ".id") |>
+  group_by(Survey, Country) |>
+  summarise(records = n(),
+            years = paste(min(Year, na.rm = TRUE), max(Year, na.rm = TRUE), sep = "-"),
+            .groups = "drop") |>
+  arrange(desc(records)) |>
+  collect()
+```
+
+The flag compares rows within one category. A distribution resubmitted under a
+second category code would not be caught by it; whether any are is an open
+check ([E](#what-remains-open)).
+
+**Does it move a product?** Anything built on the length route — numbers at
+length, and any total or rate summed from them — doubles for these records.
+
+**What `{obus}` does.** Flags; keeps both copies; prefer the reported total for
+these records.
+
+**For the submitting institutes.** Are these distributions submitted twice, and
+can they be resubmitted once?
+
+## B5. Can-Mar: fish in the total that never entered a length row {#can-mar}
+
+Can-Mar's two routes disagree in a pattern of their own. A lost raising factor
+would apply to a whole haul — every species with the same ratio of reported
+total to measured lengths. Take Can-Mar hauls where three or more species show
+a gap at a factor of 1, and ask how many carry one shared ratio:
+
+```{r}
+canmar_hauls <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(Survey == "Can-Mar", DataType %in% c("R", "P", "S"),
+         !is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia) |>
+  summarise(s = sum(NumberAtLength, na.rm = TRUE),
+            f = max(SubsamplingFactor, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.na(tot), !is.na(f), f == 1, s > 0, tot - s >= 1) |>
+  group_by(.id) |>
+  summarise(species = n(), distinct_ratios = n_distinct(round(tot / s, 3)),
+            .groups = "drop") |>
+  filter(species >= 3) |>
+  summarise(hauls                 = n(),
+            all_species_one_ratio = sum(as.integer(distinct_ratios == 1)),
+            any_two_agree         = sum(as.integer(distinct_ratios < species)),
+            every_ratio_different = sum(as.integer(distinct_ratios == species))) |>
+  collect()
+canmar_hauls
+```
+
+`r N(canmar_hauls$all_species_one_ratio)` of `r N(canmar_hauls$hauls)` hauls
+have a single ratio across their species, so **a haul-level lost factor is
+refuted**. The other candidate — fish counted but never measured — predicts
+whole-fish gaps, and a sub-sample field that sides with the length rows rather
+than with the total:
+
+```{r}
+canmar_gaps <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(Survey == "Can-Mar", DataType %in% c("R", "P", "S"),
+         !is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia) |>
+  summarise(s = sum(NumberAtLength, na.rm = TRUE),
+            f = max(SubsamplingFactor, na.rm = TRUE),
+            sub = max(SubsampledNumber, na.rm = TRUE),
+            tot = max(TotalNumber, na.rm = TRUE), .groups = "drop") |>
+  filter(!is.na(tot), !is.na(f), f == 1, s > 0, tot - s >= 1) |>
+  summarise(groups         = n(),
+            gap_whole_fish = sum(as.integer(abs((tot - s) - round(tot - s)) < 1e-9)),
+            sub_eq_lengths = sum(as.integer(abs(sub - s) < 0.5)),
+            sub_eq_total   = sum(as.integer(abs(sub - tot) < 0.5)),
+            gap_of_1       = sum(as.integer(tot - s == 1)),
+            gap_over_10    = sum(as.integer(tot - s > 10))) |>
+  collect()
+canmar_gaps
+```
+
+`r N(canmar_gaps$gap_whole_fish)` of `r N(canmar_gaps$groups)` gaps are a
+whole number of fish. Where `SubsampledNumber` is present it matches the length
+rows in `r N(canmar_gaps$sub_eq_lengths)` groups and the total in
+`r N(canmar_gaps$sub_eq_total)`. So the record's own account of what was
+measured corroborates the lengths, and `TotalNumber` alone carries the extra
+fish. The ratios concentrate on 4/3, 3/2, 5/4 and the like — what a handful of
+unmeasured fish produce, and implausible as sub-sampling factors.
+
+**Does it move a product?** Built on the length route, Can-Mar catches are
+understated wherever this happens; built on the totals route, they are not.
+
+**What `{obus}` does.** Carries both routes; the records carry
+`CNT_SF_RESET` or `CNT_RAISE_LOST`. Treat Can-Mar separately and prefer the
+reported total.
+
+**For the submitting institute.** Does Can-Mar record fish in `TotalNumber`
+that are deliberately not length-measured, and if so, is that intended under
+the format?
+
+## B6. BITS catch weights a hundredfold too low, 1991–2002 {#bits-weight-unit}
+
+What a single fish weighs is the one diagnostic a weight field cannot escape.
+In the early BITS first-quarter survey, for three common species:
+
+```{r}
+#| fig-width: 7.5
+#| fig-height: 3.6
+#| fig-alt: "Median grams per fish by year in BITS quarter 1, for Denmark, Germany and Sweden. Denmark and Germany sit around two orders of magnitude below Sweden until 1994 and 2002 respectively, then rise to the Swedish level."
+g_per_fish <- dr_con("HL") |>
+  filter(Survey == "BITS", Quarter == 1, Year <= 2006,
+         Valid_Aphia %in% c(126436, 127143, 126417),      # cod, plaice, herring
+         Country %in% c("DE", "DK", "SE")) |>
+  distinct(.id, Year, Country, Valid_Aphia, TotalNumber, SpeciesCategoryWeight) |>
+  filter(TotalNumber > 0, SpeciesCategoryWeight > 0) |>
+  mutate(g = SpeciesCategoryWeight / TotalNumber) |>
+  collect() |>
+  group_by(Year, Country) |>
+  summarise(median_g = median(g), .groups = "drop")
+
+ggplot(g_per_fish, aes(Year, median_g, colour = Country)) +
+  geom_line() + geom_point(size = 1) +
+  scale_y_log10() +
+  labs(x = NULL, y = "median grams per fish (log scale)", colour = NULL) +
+  theme_minimal(base_size = 11)
+```
+
+German and Danish fish weigh a few grams; Swedish fish from the same survey,
+quarter and years weigh what a fish of their length weighs. The lengths in the
+same records are normal. The error corrects on a date per country — Denmark
+after 1994, Germany after 2002 — and its size, about two orders of magnitude,
+points at a unit: weights recorded in hundreds of grams in a field defined as
+grams. The IBTSWG has recorded exactly this kind of correction before, against
+another submission [@ices2026ibtswg].
+
+**Does it move a product? Yes, and it can manufacture one.** A BITS biomass
+series from the reported weights rises by more than a hundredfold across the
+correction dates, for every species. Numbers and lengths are unaffected.
+
+**What `{obus}` does.** Nothing: no flag catches it. The records are
+self-consistent and merely impossible, and every `hl_flag` test is a test of a
+record against itself.
+
+**For the submitting institutes.** What unit were BITS catch weights recorded
+in before the correction dates, and can the records be resubmitted in grams?
+
+## B7. Haul positions: missing, or copied {#haul-positions}
+
+`ShootLatitude`/`ShootLongitude` are where the gear went in;
+`HaulLatitude`/`HaulLongitude` where it came out. The second pair is often
+absent, and where both exist they are sometimes identical:
+
+```{r}
+positions <- dr_con("HH") |>
+  group_by(Country) |>
+  summarise(hauls = n(),
+            no_end_position = sum(as.integer(is.na(HaulLatitude) | is.na(HaulLongitude))),
+            end_equals_shoot = sum(as.integer(ShootLatitude == HaulLatitude &
+                                              ShootLongitude == HaulLongitude), na.rm = TRUE),
+            coarse = sum(as.integer(ShootLatitude == round(ShootLatitude, 1)), na.rm = TRUE),
+            .groups = "drop") |>
+  filter(hauls > 250) |>
+  collect() |>
+  mutate(no_end_pct    = round(100 * no_end_position / hauls, 1),
+         identical_pct = round(100 * end_equals_shoot / (hauls - no_end_position), 1),
+         coarse_pct    = round(100 * coarse / hauls, 1)) |>
+  select(Country, hauls, no_end_pct, identical_pct, coarse_pct) |>
+  arrange(desc(identical_pct))
+positions
+
+position_totals <- dr_con("HH") |>
+  summarise(hauls = n(),
+            no_end = sum(as.integer(is.na(HaulLatitude) | is.na(HaulLongitude))),
+            copied = sum(as.integer(ShootLatitude == HaulLatitude &
+                                    ShootLongitude == HaulLongitude), na.rm = TRUE)) |>
+  collect()
+```
+
+`r N(position_totals$no_end)` of `r N(position_totals$hauls)` hauls
+(`r P(100 * position_totals$no_end / position_totals$hauls)`) have no end
+position, and `r N(position_totals$copied)` have one identical to the shoot
+position.
+
+An identical pair is not rounding: the `coarse_pct` column shows how many
+positions are recorded to one decimal, and the countries with most identical
+pairs record far fewer than that coarsely. These are fine-grained positions
+copied from one slot to the other.
+
+**Does it move a product?** Towed distance from positions, and anything built
+on it: a missing end position needs a fallback, and a copied one returns a
+plausible zero-distance tow instead of an honest gap.
+
+**What `{obus}` does.** Nothing yet; `{obus}` computes no distance. Treat an
+identical pair as a missing end position.
+
+**For the submitting institutes.** Were the end positions recorded? If so, can
+they be resubmitted; if not, can the field be left empty rather than copied?
+
+## B8. Placeholders and out-of-range values in HH {#hh-ranges}
+
+The opus dictionary carries each HH field's declared range, so one query tests
+every declared range at once:
+
+```{r}
+declared <- opus::op_dict("HH") |>
+  filter(!is.na(range_min), !is.na(range_max), r_type %in% c("integer", "numeric")) |>
+  transmute(name, declared_min = as.numeric(range_min), declared_max = as.numeric(range_max))
+
+observed <- dr_con("HH") |>
+  summarise(across(all_of(declared$name),
+                   list(lo = ~ min(.x, na.rm = TRUE), hi = ~ max(.x, na.rm = TRUE)))) |>
+  collect() |>
+  tidyr::pivot_longer(everything(), names_to = c("name", ".value"),
+                      names_sep = "_(?=lo$|hi$)")
+
+breaches <- declared |>
+  left_join(observed, by = "name") |>
+  filter(lo < declared_min | hi > declared_max)
+breaches
+```
+
+`r nrow(breaches)` of `r nrow(declared)` fields with a declared range breach it,
+and the breaches sort into three kinds: **zero standing in for "not recorded"**
+(a haul latitude, a door spread, a wing spread, a codend mesh of 0); **a
+suspiciously round maximum** (999 for a direction, 99.9 knots for a trawling
+speed); and **values that are simply wrong** (a door spread of several hundred
+metres, a wind speed of hundreds of metres per second). None appears in any
+sentinel list, so they arrive as ordinary numbers and are averaged in as
+ordinary numbers:
+
+```{r}
+dr_con("HH") |>
+  summarise(hauls      = n(),
+            lat_zero   = sum(as.integer(HaulLatitude == 0), na.rm = TRUE),
+            mesh_zero  = sum(as.integer(CodendMesh == 0), na.rm = TRUE),
+            dir_999    = sum(as.integer(TowDirection == 999 | WindDirection == 999), na.rm = TRUE),
+            speed_99.9 = sum(as.integer(SpeedGround == 99.9), na.rm = TRUE)) |>
+  collect()
+```
+
+**Does it move a product?** Only through the fields an analysis uses — gear
+geometry and speed for swept area — and only for a few hundred hauls at most.
+
+**What `{obus}` does.** Nothing; these are not flagged. Whether they should be,
+as a family alongside the HL codes, is open.
+
+**For the submitting institutes and ICES.** Should these be `-9`? And should
+upload validation enforce the declared ranges it publishes?
+
+## B9. Age data: records that name no haul, and impossible values {#ca-values}
+
+```{r}
+ca <- dr_con("CA")
+ca_issues <- tibble(
+  age_records        = ca |> count() |> pull(n),
+  naming_no_haul     = ca |> anti_join(dr_con("HH") |> select(.id), by = ".id") |> count() |> pull(n),
+  no_station_or_haul = ca |> filter(is.na(StationName), is.na(HaulNumber)) |> count() |> pull(n),
+  age_below_0        = ca |> filter(Age < 0) |> count() |> pull(n),
+  age_99             = ca |> filter(Age == 99) |> count() |> pull(n),
+  weight_zero        = ca |> filter(IndividualWeight == 0) |> count() |> pull(n)
+)
+ca_issues
+```
+
+- **Records that name no haul.** `r N(ca_issues$naming_no_haul)` age records
+  (`r P(100 * ca_issues$naming_no_haul / ca_issues$age_records, 1)`) match no
+  haul in HH, nearly all because they carry neither a station name nor a haul
+  number. `{obus}` publishes them; an `inner_join()` to HH drops them without
+  a word.
+- **Ages below zero.** The range is 0–99; `r N(ca_issues$age_below_0)` rows
+  fall below it, almost all at `-1` — absence written as a negative number,
+  which drags down any mean age it reaches.
+- **Ages of exactly 99.** `r ca_issues$age_99` fish, after a real tail that
+  thins out smoothly and stops in the fifties: a sentinel the declared ceiling
+  has accidentally made legal.
+- **Individual weights of zero.** `r ca_issues$weight_zero` rows; not a fish.
+
+**Does it move a product?** Mean age and age–length keys, through the negative
+and 99 ages; anything joining age data to hauls, through the records that name
+none.
+
+**For the submitting institutes.** Can the haul of each unlinked record be
+supplied, and the negative and 99 ages be resubmitted as missing?
+
+## B10. Identifications {#identifications}
+
+Two kinds of record a plausibility check would stop. First, birds in a trawl
+survey — plausible as single drowned individuals, not in the numbers recorded
+here:
+
+```{r}
+dr_con("HL_summary") |>
+  filter(Valid_Aphia %in% c(232039, 159048)) |>       # smew and Baird's sandpiper
+  select(.id, latin, n_totalnumber, w_haul) |>
+  collect()
+```
+
+Second, a species group one country left unresolved for a period. Gurnards in
+the North Sea and Channel surveys, the share of each country's catch recorded
+only to genus or family:
+
+```{r}
+unresolved <- c(125598, 126178, 150636)                 # Eutrigla, Chelidonichthys, Triglidae
+gurnards   <- c(unresolved, 127259, 127261, 127262, 127263, 150637)
+gurnard <- dr_con("HL_summary") |>
+  filter(Survey %in% c("NS-IBTS", "FR-CGFS", "BTS"), Valid_Aphia %in% gurnards) |>
+  inner_join(dr_con("HH") |> select(.id, Country), by = ".id") |>
+  mutate(unresolved = Valid_Aphia %in% unresolved) |>
+  group_by(Country, Year) |>
+  summarise(total = sum(n_haul, na.rm = TRUE),
+            unresolved = sum(if_else(unresolved, n_haul, 0), na.rm = TRUE),
+            .groups = "drop") |>
+  collect()
+
+gurnard |>
+  group_by(Country) |>
+  summarise(total = sum(total), pct_unresolved = round(100 * sum(unresolved) / sum(total), 1),
+            years_mostly_unresolved = sum(unresolved > total / 2), .groups = "drop") |>
+  filter(total > 1000) |>
+  arrange(desc(pct_unresolved))
+```
+
+One country stands out, in a block of years with a clean beginning and end;
+its neighbours fishing the same grounds resolve their gurnards to species
+throughout.
+
+**Does it move a product?** Any per-species gurnard series over those years
+loses that country's catch.
+
+**For the submitting institutes.** Can the smew and sandpiper records be
+checked against the sampling sheets? And is there any finer identification
+behind the unresolved gurnards?
+
+# C. ICES's derived products
+
+ICES computes products from the archive centrally. Two of them can be checked
+against the records they are built from.
+
+## C1. CPUEL {#cpuel}
+
+CPUEL is ICES's catch per unit effort at length [@ices2021units].
+[The catch-tables article](catch-tables.html#the-same-calculation-as-cpuel-and-where-the-numbers-differ)
+rebuilds it and compares the two number for number; three properties of the
+product itself are worth knowing:
+
+```{r}
+cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet")
+
+short_key_collisions <- dr_con("HH") |>
+  filter(HaulValidity == "V") |>
+  mutate(short_key = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |>
+  count(Survey, short_key) |>
+  filter(n > 1) |>
+  count(Survey, name = "ambiguous_keys", sort = TRUE) |>
+  collect()
+short_key_collisions
+
+cpuel_validity <- cpuel |>
+  filter(n_hour > 0) |>
+  distinct(.id) |>
+  inner_join(dr_con("HH") |> select(.id, HaulValidity), by = ".id") |>
+  count(HaulValidity) |>
+  collect()
+cpuel_validity
+
+cpuel |> summarise(rows = n(), rows_with_a_sex = sum(as.integer(!is.na(sex)))) |> collect()
+```
+
+- **Its haul identifier is not unique.** CPUEL keys a haul by six fields, and
+  `r N(sum(short_key_collisions$ambiguous_keys))` six-field keys name more than
+  one valid haul. CPUEL's own values are computed on the full identifier, but
+  joining a CPUEL row back to HH for position or gear can land on the wrong
+  haul.
+- **It keeps `r sum(cpuel_validity$n[cpuel_validity$HaulValidity == "I"])`
+  hauls HH marks invalid (`I`)**, among
+  `r N(sum(cpuel_validity$n))` with a catch.
+- **Its sex column is empty on every survey**, including surveys that sex much
+  of their catch: the sexes are summed and the column they were summed over is
+  left behind. A `group_by(sex)` on it runs without complaint and says nothing.
+
+**For ICES.** Should CPUEL carry the eight-field haul key, drop non-valid hauls,
+and either fill or drop its sex column? And what explains the SWC-IBTS
+disagreement?
+
+## C2. The FlexFile's calculated gear spreads {#flexfile}
+
+The FlexFile (`FL.parquet`) carries swept areas computed from door and wing
+spreads, with a flag saying whether each spread was observed or calculated by
+ICES from published rules [@ices2022wksae]. Some calculated spreads are
+negative, and carry straight through into a negative swept area:
+
+```{r}
+fl <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/FL.parquet")
+fl |>
+  summarise(negative_wing  = sum(as.integer(Cal_WingSpread < 0), na.rm = TRUE),
+            negative_door  = sum(as.integer(Cal_DoorSpread < 0), na.rm = TRUE),
+            negative_swept = sum(as.integer(SweptAreaWSKM2 < 0 | SweptAreaDSKM2 < 0),
+                                 na.rm = TRUE)) |>
+  collect()
+```
+
+The mechanism is in ICES's published calculation code. The rule table writes
+its formulas with `log` and no base, and the production script rewrites every
+`log` to `log10` before evaluating
+([utilities.R](https://github.com/ices-tools-prod/DATRAS/blob/master/FlexFile_calculation/utilities.R)).
+Refitting the published rules on the hauls they apply to recovers the published
+coefficients in natural log, not base 10, for nearly every stratum — so the
+rules are evaluated in a base they were not fitted in, which shrinks the
+calculated spreads and pushes intercept-dominated rules through zero. One
+further rule, for a single Norwegian vessel and year, puts the wings outside the
+doors on every haul it applies to. The refit and its arithmetic check are in
+datrasdoodle2's appendix on spread methods.
+
+**Does it move a product?** Every swept area built on a calculated spread. In
+that appendix's comparison, published calculated door spreads sit at about 57%
+of the same rules evaluated in natural log.
+
+**For ICES.** In which base were the WKSAE rules fitted, per stratum? Can the
+rule table write the base explicitly, and the pipeline refuse a negative
+spread?
+
+# D. What is not an error
+
+These shape every analysis but are the format working as documented. They are
+listed so that a submitter can see what `{obus}` does *not* flag.
+
+- **`DataType` `C` reports a rate per hour**, already raised, with the
+  sub-sampling factor set to 1; `{obus}` converts it back to a per-haul count
+  and leaves `n_measured` missing (`CNT_C_SUBSAMPLE_HIDDEN`).
+- **Under pseudo-category sampling the category weight is written on every
+  sub-category** ([A8](#the-same-weight-written-on-two-category-codes)).
+- **Species counted, weighed or noted present but never measured** have no
+  length rows (`CNT_NO_LENGTH`); they are `HL_summary` records with no
+  `HL_length` partner.
+- **What a survey records widens over time.** An absence is only a zero if the
+  taxon was being recorded:
+
+```{r}
+FISH <- c("Teleostei", "Elasmobranchii", "Holocephali", "Actinopteri",
+          "Petromyzonti", "Myxini", "Cladistia")
+dr_con("HL_summary") |>
+  filter(Survey == "NS-IBTS", Quarter == 1) |>
+  distinct(Year, Valid_Aphia) |>
+  left_join(dr_con("species") |> select(Valid_Aphia, phylum, class), by = "Valid_Aphia") |>
+  collect() |>
+  mutate(group = case_when(class %in% FISH            ~ "fish",
+                           phylum == "Echinodermata"  ~ "echinoderms",
+                           phylum == "Mollusca"       ~ "molluscs",
+                           phylum == "Arthropoda"     ~ "arthropods",
+                           TRUE                       ~ "other"),
+         decade = (Year %/% 10) * 10) |>
+  group_by(decade, group) |>
+  summarise(taxa = n_distinct(Valid_Aphia), .groups = "drop") |>
+  tidyr::pivot_wider(names_from = group, values_from = taxa, values_fill = 0)
+```
+
+- **`Quarter` is the survey's label, not the calendar quarter** of the haul,
+  where a survey group has agreed so:
+
+```{r}
+dr_con("HH") |>
+  filter(!is.na(Month)) |>
+  mutate(calendar_quarter = (Month - 1) %/% 3 + 1) |>
+  filter(calendar_quarter != Quarter) |>
+  count(Survey, Quarter, calendar_quarter, sort = TRUE) |>
+  head(5) |>
+  collect()
+```
+
+- **A gear specification can stand in a measurement field.** A constant
+  nominal spread looks the same as a sensor reading:
+
+```{r}
+dr_con("HH") |>
+  filter(Survey == "Can-Mar") |>
+  count(Gear, WingSpread, DoorSpread, sort = TRUE) |>
+  head(3) |>
+  collect()
+```
+
+- **`HaulValidity` is more than valid or invalid**: `I` is invalid, `C` is
+  calibration and not used in products, `A` is excluded from indices, and BITS
+  products use `V` and `N` [@ices2014datrasfaqs]. `{obus}` keeps every code and
+  leaves the choice to the analysis.
+
+# E. What remains open {#what-remains-open}
+
+Stated plainly, because a reader is entitled to know the edges of this
+register.
+
+| Open item | Where it is tracked |
+|---|---|
+| The fish haul-species pairs whose two routes differ by more than rounding and are neither total-only nor duplicated — flagged `unexplained` (`CNT_DIRECTIONAL`, `CNT_LEN_HIGH`, `CNT_SF_UNRECONCILED`, `CNT_OTHER`) | [`TODO.md`](https://github.com/einarhjorleifsson/obus/blob/main/TODO.md) |
+| Whether every distribution submitted twice carries `CNT_LEN_DUP`, including resubmissions under a second category code ([B4](#distribution-submitted-twice)) | `TODO.md` |
+| The record-type pairs whose totals genuinely differ ([A5](#totalnumber-across-validity)) | — |
+| Whether `SubsamplingFactor = SpeciesCategoryWeight / SubsampleWeight` generalises, which would give the weight path its first arithmetic cross-check | [`PLAN-qc-checks.md`](https://github.com/einarhjorleifsson/obus/blob/main/PLAN-qc-checks.md) §8 |
+| `DataType` `C` weight standardisation | `PLAN-qc-checks.md` §8 |
+| Whether excluding `SpeciesSex` from the weight key loses anything ([A3](#weight-across-sex-rows)) | `PLAN-qc-checks.md` §8 |
+| Whether the length series duplicated under two `LengthType` codes ([A9](#duplicated-length-series)) intersect the records whose weight is still summed twice — predicted empty | not computed |
+| A unit check on catch weights, which would have caught [B6](#bits-weight-unit): mean weight per fish, `w_haul / n_haul`, is biologically bounded within about an order of magnitude per species | `PLAN-qc-checks.md` §8 |
+
+# F. Kept in `{opus}`
+
+Issues about what ICES publishes *about* the data, rather than what the records
+say — the vocabularies, the field list and its renames, field types, the two
+meanings of `-9`, and the download endpoints — belong to `{opus}`, which stages
+the archive, and are written up in its
+[issues article](https://github.com/einarhjorleifsson/opus/blob/main/articles/issues.qmd).
+
+# The register at a glance {#at-a-glance}
+
+| | Issue | Ask | Scale | Status |
+|---|---|---|---|---|
+| A1 | What `TotalNumber` means | ICES | the archive follows the raised reading in `r P(100 * tn_def$measured_x_factor / tn_def$groups)` of testable groups | open |
+| A2 | `TotalNumber` across sex rows | ICES | repeated in `r N(sex_rows$one_value_repeated)` groups, one per sex in `r N(sex_rows$one_value_per_sex)` | open |
+| A3 | Weight across sex rows | ICES | repeated in `r N(weight_sex$one_weight_repeated)` groups | open |
+| A4 | `TotalNumber` across categories | ICES | shared in `r N(cat_total)` groups | open |
+| A5 | Totals across record types | ICES | `r N(sum(validity$pairs))` pairs, `r N(sum(validity$different_totals))` with different totals | open |
+| A6 | The two routes to a total | ICES | differ by a fish or more in `r N(routes$differ_1_plus)` groups | open |
+| A7 | `SubsamplingFactor` absent | ICES | `r N(sf_missing$rows)` length rows | open |
+| A8 | One weight on two category codes | ICES | `r N(sum(r_rep$n))` R records unexplained | open |
+| A9 | Series under two `LengthType` codes | ICES, institutes | `r N(lt_dup$haul_species_groups)` haul-species groups | open |
+| A10 | `HaulDuration` out of range | ICES, survey groups | `r N(sum(duration$n))` hauls | open |
+| B1 | Factor below 1 | institutes | `r N(sum(below_1$length_rows))` length rows | open |
+| B2 | `C` with a factor above 1 | institutes | `r N(sum(c_factor$rows))` length rows | open |
+| B3 | Zero `NumberAtLength` | institutes | `r zero_nal$rows` rows | open |
+| B4 | Distribution submitted twice | institutes | flagged `CNT_LEN_DUP` | open |
+| B5 | Can-Mar unmeasured fish | institute | `r N(canmar_gaps$groups)` groups | open |
+| B6 | BITS weights too low | institutes | DE 1991–2002, DK 1991–1994 | open |
+| B7 | Haul positions | institutes | `r N(position_totals$no_end)` hauls with no end position, `r N(position_totals$copied)` copied | open |
+| B8 | HH placeholders and ranges | institutes, ICES | `r nrow(breaches)` fields | open |
+| B9 | Age data | institutes | `r N(ca_issues$naming_no_haul)` records naming no haul | open |
+| B10 | Identifications | institutes | a handful of records; one country's gurnards | open |
+| C1 | CPUEL | ICES | `r N(sum(short_key_collisions$ambiguous_keys))` ambiguous haul keys | open |
+| C2 | FlexFile spreads | ICES | negative spreads; rules evaluated in the wrong base | open |
+
+## Answers received
+
+When a question above is answered, the answer is recorded here with its date
+and source, and the entry's status changes. None has been recorded yet.
+
+## How this article is made
+
+Every number in it is computed by the code shown, from the archive as
+`{obus}` publishes it, when the page is rendered. The one reference to work not
+re-run here is the refit behind [C2](#flexfile), which needs the `{DATRAS}`
+packages.
+
+**Use of AI.** The text and code of this article were written with an AI
+assistant (Claude, by Anthropic) under the direction of the author, who is
+responsible for its content.
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
