@@ -685,13 +685,14 @@ same calculation, that is not a rounding residual.
 Some of it is understood. The two files are independent downloads with their
 own calculation vintages, so a haul revised on one side and not the other will
 differ, and the comparison cannot separate that from a real disagreement. On
-BITS, CPUEL gear-standardises cod and nothing else and does not
-always preserve the submitted length grid — both documented, and
-both choices a generalised product would have to make deliberately rather than
-inherit. Set BITS and SWC-IBTS aside and counts agree on
+BITS, CPUEL converts cod, and only cod, to the survey's standard trawl
+[@ices2014bitsconversion]: every other species agrees, and cod agrees on TVL
+and on no other gear — a choice a generalised product would have to make
+deliberately rather than inherit. Set BITS and SWC-IBTS aside and counts agree on
 `r P(100 * sum(six$agree) / sum(six$matched), 1)` for the remaining
 `r nrow(six)` surveys. **SWC-IBTS is unexplained, and remains so**: it agrees
-on `r N(swc$agree)` of `r N(swc$matched)` matched counts.
+on `r N(swc$agree)` of `r N(swc$matched)` matched counts. Both are taken apart
+in [DATRAS data issues](data-issues.html#cpuel) (C1).
 
 So: the same calculation, demonstrably; the same numbers, not yet. Closing
 that gap is work neither this article nor the package has finished, and a
@@ -1200,8 +1201,7 @@ The causes of the residual are named, though not quantified: nothing in it has
 been traced to the arithmetic. The two files are independent downloads with
 their own calculation vintages, so a haul revised on one side and not the
 other differs, and this comparison cannot tell that apart from a genuine
-disagreement. On BITS two further, documented things apply: CPUEL gear-standardises cod and nothing else and does not
-always preserve the submitted length grid — both of which a
+disagreement. On BITS, CPUEL also converts cod to the standard trawl, which a
 generalised product would have to decide about explicitly rather than inherit.
 
 **The zero rows are the part that is not one aggregation away**, and

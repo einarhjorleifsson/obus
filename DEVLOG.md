@@ -2713,3 +2713,14 @@ Measured while writing it:
   submission date, but 2024 data cannot predate the change.
 - Unexplained weight repeats under `DataType` R grew from 209 records to 330
   since the article's figures were set; cause not checked.
+
+**Later the same day: CPUEL, from the book into C1.** The book's CPUEL appendix
+retired into `data-issues` C1 (the SWC-IBTS investigation, the dated
+web-service check of CPUEL's sex column) and A7 (the ratio validation). The
+catch-tables sentence "CPUEL gear-standardises cod and nothing else ... both
+documented" had no source; measured, BITS species other than cod agree on the
+count 98.1% and cod 39.9%, and cod agrees on TVL and on none of the 11 other
+gears in ICES's conversion table (`BITS_ConversionFactor_to_TVL.csv`, cod
+only), while the four gears it does not list agree. The sentence's second half
+("does not always preserve the submitted length grid") showed no signal: 99.9%
+of BITS cod rows match a length class. It was dropped.

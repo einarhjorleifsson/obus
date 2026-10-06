@@ -757,6 +757,31 @@ simply act on the ratio: they imply a factor **below** 1, a total smaller than
 the sub-sample it was raised from. In those records `TotalNumber` and
 `SubsampledNumber` cannot both be right, and nothing says which to keep.
 
+Whether the ratio can stand in for a missing factor can be tested on the rows
+that carry all three fields:
+
+```{r}
+ratio_test <- dr_con("HL") |>
+  inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
+  filter(!is.na(SubsamplingFactor), !is.na(SubsampledNumber),
+         !is.na(TotalNumber), SubsampledNumber > 0) |>
+  mutate(implied = TotalNumber / SubsampledNumber) |>
+  group_by(DataType) |>
+  summarise(rows = n(),
+            within_1pct = sum(as.integer(abs(implied - SubsamplingFactor) <
+                                           0.01 * SubsamplingFactor)),
+            .groups = "drop") |>
+  collect() |>
+  mutate(pct = round(100 * within_1pct / rows, 1)) |>
+  arrange(desc(rows))
+ratio_test
+```
+
+Under `R`, where every row with a missing factor sits, the ratio reproduces the
+recorded factor to within 1% on
+`r P(ratio_test$pct[ratio_test$DataType == "R"], 1)` of rows; under `C` it
+cannot, because `C` reports a rate per hour.
+
 **Does it move a product?** Reading a missing factor as 1 — what the
 `{DATRAS}` package does with `DataType` `R` — understates the catch in every
 group where the implied factor is above 1, which is concentrated in Can-Mar.
@@ -1531,14 +1556,166 @@ against the records they are built from.
 
 ## C1. CPUEL {#cpuel}
 
-CPUEL is ICES's catch per unit effort at length [@ices2021units].
-[The catch-tables article](catch-tables.html#the-same-calculation-as-cpuel-and-where-the-numbers-differ)
-rebuilds it and compares the two number for number; three properties of the
-product itself are worth knowing:
+CPUEL is ICES's catch per unit effort at length [@ices2021units]: numbers per
+hour by haul, species and length class. [The catch-tables
+article](catch-tables.html#the-same-calculation-as-cpuel-and-where-the-numbers-differ)
+rebuilds it from the published length table and compares the two record by
+record. The same comparison, by survey, with the date each side was last
+calculated:
 
 ```{r}
+#| code-fold: true
+#| code-summary: "The comparison, and the calculation dates"
 cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet")
+cutoff <- cpuel |> filter(n_hour > 0) |> group_by(Survey) |>
+  summarise(cutoff = max(Year, na.rm = TRUE), .groups = "drop")
+comparable <- dr_con("HH") |>
+  filter(HaulValidity == "V") |>
+  inner_join(cutoff, by = "Survey") |> filter(Year <= cutoff) |>
+  mutate(short_key = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |>
+  group_by(short_key) |> filter(n() == 1) |> ungroup() |>
+  select(Survey, .id, short_key, Gear)
+ours <- dr_con("HL_length") |>
+  select(.id, Valid_Aphia, length_mm, n_hour) |>
+  inner_join(comparable, by = ".id") |>
+  group_by(Survey, short_key, Gear, Valid_Aphia, length_mm) |>
+  summarise(n_obus = sum(n_hour, na.rm = TRUE), .groups = "drop")
+paired <- cpuel |>
+  filter(n_hour > 0) |>
+  mutate(short_key = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |>
+  semi_join(comparable, by = "short_key") |>
+  group_by(Survey, short_key, Valid_Aphia = aphia, length_mm) |>
+  summarise(n_cpuel = sum(n_hour, na.rm = TRUE), .groups = "drop") |>
+  left_join(ours, by = c("Survey", "short_key", "Valid_Aphia", "length_mm"))
 
+calculated <- dr_con_raw("HL") |>
+  group_by(Survey) |>
+  summarise(archive_calculated = max(DateofCalculation, na.rm = TRUE), .groups = "drop") |>
+  inner_join(cpuel |> group_by(Survey) |>
+               summarise(cpuel_calculated = max(DateofCalculation, na.rm = TRUE),
+                         .groups = "drop"),
+             by = "Survey")
+
+by_survey <- paired |>
+  group_by(Survey) |>
+  summarise(cpuel_rows = n(),
+            matched    = sum(as.integer(!is.na(n_obus)), na.rm = TRUE),
+            agree      = sum(as.integer(!is.na(n_obus) & abs(n_obus - n_cpuel) < 0.01),
+                             na.rm = TRUE),
+            .groups = "drop") |>
+  left_join(calculated, by = "Survey") |>
+  collect() |>
+  mutate(counts_agree_pct = round(100 * agree / matched, 1),
+         across(ends_with("_calculated"), \(x) substr(as.character(x), 1, 10))) |>
+  select(Survey, cpuel_rows, counts_agree_pct, archive_calculated, cpuel_calculated) |>
+  arrange(counts_agree_pct)
+by_survey
+```
+
+```{r, include = FALSE}
+agree_of <- function(sv) by_survey$counts_agree_pct[by_survey$Survey == sv]
+calc_of  <- function(sv, col) by_survey[[col]][by_survey$Survey == sv]
+```
+
+Most surveys agree on the count in the high nineties. Two do not, and for
+different reasons.
+
+**BITS: cod, and only cod, is converted to a standard gear.** Split the BITS
+comparison by species and, for cod, by the gear that caught it:
+
+```{r}
+bits <- paired |>
+  filter(Survey == "BITS", !is.na(n_obus)) |>
+  mutate(species = if_else(Valid_Aphia == 126436L, "cod", "all other species")) |>
+  group_by(species) |>
+  summarise(matched = n(),
+            agree = sum(as.integer(abs(n_obus - n_cpuel) < 0.01)), .groups = "drop") |>
+  collect() |>
+  mutate(counts_agree_pct = round(100 * agree / matched, 1))
+bits
+
+bits_cod <- paired |>
+  filter(Survey == "BITS", Valid_Aphia == 126436L, !is.na(n_obus)) |>
+  group_by(Gear) |>
+  summarise(matched = n(),
+            agree = sum(as.integer(abs(n_obus - n_cpuel) < 0.01)),
+            median_cpuel_over_obus = median(n_cpuel / n_obus), .groups = "drop") |>
+  collect() |>
+  mutate(counts_agree_pct = round(100 * agree / matched, 1)) |>
+  arrange(desc(matched))
+bits_cod
+```
+
+Every species but cod agrees on
+`r P(bits$counts_agree_pct[bits$species == "all other species"], 1)` of
+counts; cod on `r P(bits$counts_agree_pct[bits$species == "cod"], 1)`. And cod
+agrees exactly on TVL, the survey's standard trawl, and on none of the other
+gears in ICES's published conversion table, which covers cod alone and gives a
+factor per gear and length class [@ices2014bitsconversion]; gears the table
+does not list agree. So CPUEL converts BITS cod to TVL-equivalent catches: a
+documented choice, not an error — but nothing in CPUEL's columns says it was
+made, so a CPUEL cod count is not the cod that was caught.
+
+**SWC-IBTS: two different length distributions.** One haul, one species, from
+the exchange record, from `HL_length`, and from CPUEL:
+
+```{r}
+swc_id <- dr_con("HH") |>
+  filter(Survey == "SWC-IBTS", Year == 1994, Quarter == 1,
+         Platform == "749S", HaulNumber == 36) |>
+  pull(.id)
+
+dr_con("HL") |>
+  filter(.id == swc_id, Valid_Aphia == 127023) |>
+  select(LengthClass, NumberAtLength, SubsamplingFactor, TotalNumber) |>
+  arrange(LengthClass) |>
+  collect()
+
+dr_con("HL_length") |>
+  filter(.id == swc_id, Valid_Aphia == 127023) |>
+  select(length_mm, n_haul, n_hour) |>
+  arrange(length_mm) |>
+  collect()
+
+cpuel |>
+  filter(.id == swc_id, aphia == 127023) |>
+  select(length_mm, n_hour) |>
+  arrange(length_mm) |>
+  collect()
+```
+
+A `DataType` `C` haul of 60 minutes, so the submitted numbers already are the
+hourly rate, and `HL_length` reproduces them exactly; they sum to the record's
+own `TotalNumber`. CPUEL arrives at about the same total, spread over more
+length classes in non-integer counts. Across the survey, the ratio of the two
+scatters over orders of magnitude rather than sitting on one line, so it is not
+a unit or raising error, and it narrows towards the survey's last years:
+
+```{r}
+paired |>
+  filter(Survey == "SWC-IBTS", !is.na(n_obus), n_obus > 0) |>
+  mutate(Year = as.integer(substr(short_key, 10, 13))) |>
+  group_by(Year) |>
+  summarise(pairs = n(),
+            median_cpuel_over_obus = median(n_cpuel / n_obus),
+            exact = sum(as.integer(abs(n_obus - n_cpuel) < 0.01)), .groups = "drop") |>
+  arrange(Year) |>
+  collect()
+```
+
+Nor is it a stale download. The archive's SWC-IBTS records were last calculated
+on `r calc_of("SWC-IBTS", "archive_calculated")` and CPUEL's on
+`r calc_of("SWC-IBTS", "cpuel_calculated")` — but ROCKALL has the same shape
+of gap and agrees on `r P(agree_of("ROCKALL"), 1)`, and the archive is
+re-downloaded from ICES in full at every rebuild, so there is no newer exchange
+version to fetch. (`DateofCalculation` is a per-product timestamp, not a
+per-haul fact, which is why it cannot rank two products by freshness; `{opus}`
+records that among its issues.) SWC-IBTS's two tables are, for now, simply
+different, and only ICES can say which is current.
+
+**Three properties of the product itself:**
+
+```{r}
 short_key_collisions <- dr_con("HH") |>
   filter(HaulValidity == "V") |>
   mutate(short_key = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |>
@@ -1565,15 +1742,34 @@ cpuel |> summarise(rows = n(), rows_with_a_sex = sum(as.integer(!is.na(sex)))) |
   joining a CPUEL row back to HH for position or gear can land on the wrong
   haul.
 - **It keeps `r sum(cpuel_validity$n[cpuel_validity$HaulValidity == "I"])`
-  hauls HH marks invalid (`I`)**, among
-  `r N(sum(cpuel_validity$n))` with a catch.
+  hauls HH marks invalid (`I`)**, among `r N(sum(cpuel_validity$n))` with a
+  catch.
 - **Its sex column is empty on every survey**, including surveys that sex much
-  of their catch: the sexes are summed and the column they were summed over is
-  left behind. A `group_by(sex)` on it runs without complaint and says nothing.
+  of their catch. This is ICES's product, not the copy read here: asked
+  directly through the DATRAS web service in September 2026, CPUEL for EVHOE
+  2018 quarter 4 returned 45,171 records with no sex, the XML carrying
+  `<Sex>-9</Sex>` on every one, while the haul records for the same survey
+  carry a sex on 2,618 of 24,965. On a sole haul submitted as separate female
+  and male rows at each length, CPUEL returns one row per length with the two
+  summed. A `group_by(sex)` on CPUEL runs without complaint and says nothing.
+  The check needs the web service, so it is not re-run here:
 
-**For ICES.** Should CPUEL carry the eight-field haul key, drop non-valid hauls,
-and either fill or drop its sex column? And what explains the SWC-IBTS
-disagreement?
+```{r, eval = FALSE}
+ices_cpuel <- icesDatras::getCPUELength("EVHOE", 2018, 4)
+ices_hl    <- icesDatras::getHLdata("EVHOE", 2018, 4)
+c(cpuel_rows = nrow(ices_cpuel), cpuel_sexed = sum(!is.na(ices_cpuel$Sex)),
+  hl_rows    = nrow(ices_hl),    hl_sexed    = sum(!is.na(ices_hl$Sex)))
+```
+
+**Does it move a product?** A CPUEL-based cod series for BITS is a
+gear-standardised series, whether or not the user meant it to be one; a
+CPUEL-based SWC-IBTS length distribution is not the one submitted; and any
+analysis by sex cannot be built on CPUEL at all.
+
+**For ICES.** Why do SWC-IBTS's CPUEL length distributions differ from its
+exchange records, and which is current? Could CPUEL mark a gear-converted
+value as converted? And should it carry the eight-field haul key, drop invalid
+hauls, and either fill its sex column or drop it?
 
 ## C2. The FlexFile's calculated gear spreads {#flexfile}
 
@@ -1725,7 +1921,7 @@ the archive, and are written up in its
 | B8 | HH placeholders and ranges | institutes, ICES | `r nrow(breaches)` fields | open |
 | B9 | Age data | institutes | `r N(ca_issues$naming_no_haul)` records naming no haul | open |
 | B10 | Identifications | institutes | a handful of records; one country's gurnards | open |
-| C1 | CPUEL | ICES | `r N(sum(short_key_collisions$ambiguous_keys))` ambiguous haul keys | open |
+| C1 | CPUEL | ICES | BITS cod gear-converted unmarked; SWC-IBTS distributions differ; `r N(sum(short_key_collisions$ambiguous_keys))` ambiguous haul keys | open |
 | C2 | FlexFile spreads | ICES | negative spreads; rules evaluated in the wrong base | open |
 
 ## Answers received
