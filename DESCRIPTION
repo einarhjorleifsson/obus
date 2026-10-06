@@ -20,8 +20,7 @@ Imports:
     httr2,
     lifecycle,
     opus,
-    rlang,
-    scales
+    rlang
 Suggests:
     broom,
     maps,

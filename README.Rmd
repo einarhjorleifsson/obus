@@ -56,44 +56,57 @@ duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL_length.parquet
 duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/HL_summary.parquet") |> dplyr::glimpse()
 ```
 
-One could do:
+## What it looks like
 
-```{r}
-system.time({
-  library(obus)
-  library(dplyr)
-  library(ggplot2)
-  library(tidyr)
-  
-  options(width = 100)
-  
-  focus <- c("Atlantic cod", "haddock", "whiting", "Atlantic herring")
-  
-  hh <- dr_con_raw("HH") |>
-    dr_add_id() |> 
-    filter(Survey == "NS-IBTS", Quarter == 1, Gear == "GOV",
-           Year >= 1984, HaulValidity == "V") |>
-    select(.id, Year) |>
-    collect()
-  
-  catch <- dr_con("HL_summary") |>
-    filter(Survey == "NS-IBTS", Quarter == 1, species %in% focus) |>
-    group_by(.id, species) |>
-    summarise(n_hour = sum(n_totalnumber_hour, na.rm = TRUE), .groups = "drop") |>
-    collect()
-  
-  # every haul x every species, so that "not caught" becomes a zero
-  # rather than a missing row - the next section is about why
-  abundance <- crossing(hh, species = focus) |>
-    left_join(catch, by = c(".id", "species")) |>
-    mutate(n_hour = coalesce(n_hour, 0))
-})
+The same few steps recur: **get** a table, **add** what you need, **summarise**
+it, and **draw** it. Every step returns an ordinary table, so you can stop and
+look at it, join it, or draw it yourself.
+
+```{r setup-example}
+library(obus)
+library(dplyr)
+library(ggplot2)
+
+hh <- dr_con("HH") |>
+  filter(Survey == "NS-IBTS", Quarter == 1, Gear == "GOV",
+         Year >= 1984, HaulValidity == "V")
 ```
 
-```{r simple-plot, fig.alt = "Mean numbers caught per hour by year, with bootstrap confidence intervals, for four species in separate panels. Atlantic cod falls steadily from about 75 per hour in the mid-1980s to under 15 by the 2020s. Atlantic herring, haddock and whiting fluctuate from year to year with no comparable trend."}
-ggplot(abundance, aes(Year, n_hour)) +
-  stat_summary(fun.data = "mean_cl_boot") +
-  facet_wrap(~species, scales = "free_y") +
-  labs(x = NULL, y = "Numbers per hour")
+Mean catch per hour by year, with a 95% interval, for four species. Every haul
+counts, the ones that caught nothing included, and the species are named by
+their Latin names (or `Valid_Aphia` codes):
+
+```{r simple-plot, fig.alt = "Mean numbers caught per hour by year, with 95 percent intervals, for four species in separate panels. Atlantic cod falls steadily from the mid-1980s to the 2020s. Haddock arrives in pulses. Whiting and herring fluctuate with no comparable trend."}
+hh |>
+  dr_summarise_cpue(c("Gadus morhua", "Melanogrammus aeglefinus",
+                      "Merlangius merlangus", "Clupea harengus"), Year) |>
+  autoplot()
 ```
 
+The same hauls, grouped by ICES rectangle instead, give the share of hauls that
+caught thornback ray:
+
+```{r map-plot, fig.alt = "Map of the North Sea and the English Channel in one-degree by half-degree cells, coloured by the share of valid hauls that caught thornback ray. The share is highest in the southern North Sea and low elsewhere."}
+hh |>
+  filter(Year >= 2015) |>
+  dr_add_cell() |>
+  dr_summarise_occurrence("Raja clavata", cell_lon, cell_lat) |>
+  autoplot()
+```
+
+The pieces:
+
+| step | functions |
+|---|---|
+| get | `dr_con()`, `dr_con_raw()`, `dr_get()` |
+| add | `dr_add_id()`, `dr_add_length_cm()`, `dr_add_length_mid()`, `dr_add_catch()`, `dr_add_cell()` |
+| build the catch tables | `dr_hl_length()`, `dr_hl_summary()`, `dr_hl_collapse()` |
+| summarise | `dr_summarise_hauls()`, `dr_summarise_occurrence()`, `dr_summarise_cpue()`, `dr_summarise_length()` |
+| draw | `autoplot()` |
+| weight from length | `dr_add_length_tl()`, `dr_add_predicted_weight()`, `dr_compare_length_weight()` |
+| use with {DATRAS} | `dr_get_datras()` |
+
+The summaries run on the lazy table and collect only the small result, so they
+give the same answer whether the hauls are on the server or already in memory.
+{ggplot2} cannot summarise a lazy table (it quietly collects every row first),
+which is why the work is done by the verbs and the drawing is the last step.

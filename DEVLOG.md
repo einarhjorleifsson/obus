@@ -2453,3 +2453,157 @@ back, and committing it stops the article build depending on someone having
 run `build_site()` once), and *does it belong in the tarball* (no). So it is
 committed **and** added to `.Rbuildignore` as `^vignettes/_quarto\.yaml$`.
 Check back to 0/0/0.
+
+## 2026-10-04/05 — the table-first redesign
+
+**Why.** datrasdoodle2 had become technical, and the book is the evidence for
+what obus should export. The repeated work across the book, datrasdoodle v1,
+tidydatras, imbus and the OSPAR FC-1 repository is the same handful of
+summaries of a haul table (hauls per year and survey, share of hauls with a
+species, mean CPUE per haul, numbers at length), each preceded by a hand-written
+zero-fill. The user chose, in three questions: tables first and `autoplot()`
+draws them; grouping as bare columns after the species, like `dplyr::count()`;
+maps as tables of cells.
+
+**Evidence behind the shape.**
+- `ggplot(lazy_tbl)` builds without error and silently collects every row
+  (ggplot2 4.0.3, checked); a custom Stat runs after that, so nothing can
+  aggregate in DuckDB through ggplot2. Hence no custom stat or geom (the retired
+  `geom_envelope()`/`geom_predict()` became bloat) and a `fortify.tbl_lazy` that
+  aborts.
+- `ramb::rb_grade()` misbins positions exactly on a cell edge (`%/%` floating
+  point, about 1% of positions at 0.1 degrees); `ramb::rb_midpoint()` rounds the
+  quotient first and is what `dr_add_cell()` follows.
+- Intervals are computed in R from counts and sums (Wilson for occurrence, a
+  normal approximation floored at 0 for CPUE), so the lazy and in-memory paths
+  give identical results and no resampling is needed.
+
+**Speed.** `dr_con()` opened the remote file three times per verb call, about
+4.5 s; a handle cache brought a repeat verb call to 1.5-2 s, with about 9 s for
+the first call in a session (HH 0.4 s; occurrence, CPUE and the map 1.5-2 s;
+length 2.0 s, all measured 2026-10-04).
+
+**Bugs caught on the way.** `.dr_length()` collided on `Year` when joining
+`HL_length` to the haul keys (it now selects only `.id`, `latin`, `length_cm`,
+`n_hour` first). Numbers at length combed in 2020, when finer length classes
+appear; classes are merged to whole centimetres. And `dr_add_catch()` keeps an
+unknown catch rate as `NA`, where the book's hand-built zero-fill had counted
+such a haul as absent: two quoted figures in `catch-and-length` moved (wolffish
+rank correlation +0.12 to +0.10, squid share 41.6% to 41.7%).
+
+**Later the same days.** The point-in-rectangle map (after osmx's
+`sm_plot_glyph()`), first as bars, then lines, then points at the user's
+suggestion, with `autoplot(top = )` taking a function of the plotted values
+(default the 95th percentile). The hauls-in-tile fade was removed at the user's
+request: it added a legend and no information.
+
+**A counting slip, recorded so it is not repeated.** The plan said seventeen
+exports; two it meant to demote (`dr_add_length_tl()`, `dr_hl_collapse()`)
+stayed exported, so there are nineteen current functions. The pushed commit
+message says seventeen. The user's response — counts go stale, keep AGENTS.md
+on the bigger issues — is why AGENTS.md now carries no count of exports.
+
+R CMD check 0/0/0; 567 test expectations, all passing (2026-10-05).
+
+## 2026-10-05 — two routes to a haul total, measured archive-wide
+
+Prompted by converting datrasdoodle2's `before-the-model` to the verbs. Its
+hand-built BITS Q1 plaice rate equals `HL_length`'s `n_hour` to 7e-12 on all
+10,924 valid hauls, while `dr_add_catch()`'s `n_totalnumber_hour` (the totals
+route, `HL_summary`) differs on 7.7% of them, by up to 7,088 fish an hour. So
+that chapter was not converted.
+
+**BITS Q1 plaice.** Of 6,153 hauls with a plaice record, 843 (13.7%) differ:
+R hauls 17.6%, C hauls 6.7%; 4.0% in 1991-99, 8.1% in 2000-14, 21.5% in
+2015-26. The covariate is `SubsamplingFactor`: 0.7% of hauls with a factor of 1
+differ, 69-85% of those above 1. By cause: rounding under 1%, 730 hauls (0.01%
+of fish per hour); total only with no length rows, 50 (49 of them
+`SpeciesValidity` 4); 1-10%, 27; over 10%, 25 (several DataType C); and 11
+hauls whose submission carries the whole length distribution twice, so the
+length route doubles (14,176 against 7,088 fish an hour on
+`BITS:2021:1:DK:26HF:TVS:77:35`, with `TotalNumber` 3,307.83 correct). Those 11
+carry 0.69% of all plaice per hour; overall the length route is 0.68% higher.
+
+**Archive-wide**, 2,295,064 haul-species pairs: 74.3% exactly equal; 15.9% total
+only (no length rows), carrying 15.8% of all individuals per hour; within 1%
+7.0%; over 10% 1.3% (0.39% of individuals per hour); 1-10% 0.9%; the length
+route about 2x on 366 pairs (0.018%), concentrated in BITS 2017-2021, PT-IBTS
+2022 and NSSS 2012-2018. Overall the length route sums to 0.838 of the totals
+route.
+
+Split by `class` (fish = Teleostei, Elasmobranchii, Holocephali, Actinopteri,
+Petromyzonti, Myxini, Cladistia; the rest is mostly invertebrates plus anything
+without a class): fish pairs are 87.2% equal, 8.2% within 1%, 2.6% differ
+more (0.57% of fish per hour), 1.4% total only (0.70%), 0.02% doubled; the
+length route sums to 0.988 of the totals route. For the rest, 68.1% of pairs
+are total only, 40.4% of that group's individuals per hour, and the length
+route sums to 0.596. The top total-only taxa are *Ophiura ophiura*, *Asterias
+rubens*, *Polybius holsatus*, *Ophiothrix fragilis*, *Astropecten irregularis*;
+by survey DYFS, BTS and SNS. Among fish, total-only pairs sit mainly in BITS
+and NS-IBTS.
+
+**Most of this was already written down**: the 16% of `HL_summary` rows with no
+length data in `AGENTS.md`, and the disagreement rates, the rounding and the
+counted-not-measured direction in datrasdoodle2's "The two routes disagree, and
+that is on purpose". The user asked why it was being rediscovered. The new
+parts are the weight in individuals per hour, the fish/invertebrate split, and
+duplicated submissions as the largest per-haul cause. The qualitative claims
+went into `AGENTS.md` ("Two routes to a haul total"); the figures stay here.
+
+## 2026-10-05 — the live DATRAS field list against opus
+
+`https://datras.ices.dk/WebServices/DATRASWebService.asmx/getDatrasFieldList`
+is ICES's own field list: one block per record type and field with
+`RecordHeader`, `FieldName`, `FieldNameOld`, `DataFormat`, `Description`. 349
+entries (CA 33, FA 21, HH 71, HL 27, LT 22). Its XML namespace is
+`ices.dk.local/DATRAS`, which an XPath query has to name exactly. `DataFormat`
+is space-padded. `Year` is `char` in HH, HL and CA; opus types it
+`number(ordinal)`, consistent with its analysis-level types. Fields in ICES's
+list that opus's HH/CA dictionary lacks: `SurveyIndexArea`, `EDMO`,
+`ReasonHaulDisruption`, `LiverWeight`. (`IndividualAge` also looked missing in
+this comparison, but opus records it, as ICES's name for CA `Age`; the archive
+keeps `Age`.) In opus and not in
+ICES's list: `DateofCalculation`, `Valid_Aphia` (both added by DATRAS
+processing). `Distance` is `float` in ICES's list and INT32 in the archive; opus's
+registry entry on field-list type divergence covers only `Year` and the species
+code. In ICES's `FA` record three descriptions are shifted by one row:
+`StationName` carries `HaulNumber`'s text, `HaulNumber` carries `Year`'s, and
+`Year` carries `SpeciesCodeType`'s (checked on the live list). Handed to opus in
+its `TODO.md` and known-issues registry.
+
+## 2026-10-05 — the working documents rewritten to current state
+
+At the user's direction, `AGENTS.md`, `TODO.md` and Claude's memory now hold
+current state and rules only. How things were found goes here, and earlier
+versions of `AGENTS.md` are in git (the last one before the rewrite is in commit
+`ae1b5ec`). Counts that go stale on an archive refresh were taken out; the
+archive itself was rebuilt by opus on 2026-10-04, so every count tied to the
+earlier build was already stale.
+
+What the rewrite changed, beyond removing narrative:
+- **Principle 9** (two audiences; a quirk matters where it moves a product,
+  manufactures a finding, or is invoked to dismiss one that survives it) and a
+  widened **Principle 7** (ICES's documents in `imbus/DATRAS/external` and opus's
+  YAMLs are the evidence; read what is recorded before measuring; where ICES
+  contradicts itself, say so).
+- **Two statements were wrong and are replaced.** The file said `HL_summary`
+  carries no length-derived total and that its `n_haul` comes from
+  `TotalNumber`. The code (`dr_standardize.R`, the `hl_raised` block) builds
+  `n_haul` from the raised length frequencies; `n_totalnumber` is `TotalNumber`.
+- **ICES contradicts itself on `TotalNumber`**: the field description says
+  `SUM(HLNoAtLngt)`; the DATRAS FAQ, the D2.2 guideline and the IBTSWG 2023
+  report say `NoMeas x SubFactor`, and the IBTSWG calls the specification
+  ambiguous. Now written as a conflict, with sources.
+- **`SpeciesValidity` and summing.** Of 1,219 haul-species pairs with more than
+  one validity record in `HL_summary`, 1,206 carry the identical total on each
+  (mostly codes 1+5 and 4+7; BTS 568 pairs, Can-Mar 535). `dr_add_catch()` sums
+  them, double-counting 0.017% of all individuals per hour. Recorded in `TODO.md`
+  to fix as its own change. The file's two earlier statements — "summing
+  double-counts" and "the remedy is to sum across `SpeciesValidity`" —
+  contradicted each other; the second holds for filtering versus keeping
+  records, not for adding a repeated total.
+- **`HaulValidity`**: "only I means invalid" was too simple. Per ICES, C
+  (calibration) is not used in products, A is excluded from indices, and BITS
+  products use V and N.
+- The stale `inst/DATRAS-data-dict.yaml` references were removed (opus renamed it
+  `DATRAS-imbus.yaml` and added `DATRAS-ices.yaml`).

@@ -112,7 +112,7 @@ dr_con_raw <- function(table, path = opus::op_archive(), quiet = TRUE) {
 #' 2.9e-11, and no cell present in one and missing from the other. The single
 #' divergence is 23,856 cells (0.18 percent) where \code{SubsamplingFactor} was
 #' never submitted: DATRAS assumes 1, obus returns \code{NA}. See
-#' \code{\link{dr_add_n_and_cpue}}.
+#' \code{\link{dr_hl_length}}.
 #'
 #' The analysis layer is \strong{not lossless}. 13,957,390 of 14,001,605
 #' \code{HL_length} rows (99.68 percent) come from exactly one raw HL row, but
