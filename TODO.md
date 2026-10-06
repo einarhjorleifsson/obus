@@ -14,14 +14,6 @@ looks like; the evidence lives at the pointer.
 
 ## Next
 
-- [ ] **Re-render datrasdoodle2 on the fixed `dr_add_catch()`.** It no longer
-      double-counts a total repeated across `SpeciesValidity` records, the
-      weights included (`DEVLOG.md`, 2026-10-06); the book was rendered on the
-      version that did. The change is per haul, concentrated in BTS, Can-Mar,
-      NL-BSAS and DYFS. Done looks like: obus reinstalled, the book re-rendered,
-      and every number it quotes from `dr_add_catch()` or a `dr_summarise_*()`
-      verb re-checked.
-
 - [ ] **Decide what `dr_add_catch()` offers beside the routes it carries.** It
       already has the reported total (`n_totalnumber`, `n_totalnumber_hour`) and
       the length-derived `n_haul`. Candidates: a length-route rate per hour,

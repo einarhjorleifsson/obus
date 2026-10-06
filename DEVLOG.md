@@ -2671,3 +2671,9 @@ case: Can-Mar 1979 witch flounder (`Can-Mar:1979:4:CA:18LH:W2A:5:73`) now has
 on the documented BITS plaice haul (`BITS:2021:1:DK:26HF:TVS:77:35`, checked
 live). Its duplicate key includes `SpeciesCategory`, so a resubmission under a
 second category code would not be caught; `TODO.md` now asks for that check.
+
+**The book, re-checked the same day.** Occurrence cannot move (`present` is
+unchanged), and exactly one changed pair touches a species and survey the book
+uses: NS-IBTS 2023 Q1 haddock in `catch-and-length`, whose CPUE goes from 2115
+to 2114 fish per hour. That chapter was re-rendered with its cache cleared and
+every quoted number stands (datrasdoodle2 `DEVLOG.md`, 2026-10-06).
