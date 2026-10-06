@@ -1,6 +1,6 @@
 # obus — DATRAS access layer for R
 
-**Status (2026-10-05):** version 2026.10. All ten published tables are live,
+**Status (2026-10-06):** version 2026.10. All ten published tables are live,
 `R CMD check` is clean and the tests pass. Open work is in `TODO.md`. Dated
 history — measurements, and how things were found — is in `DEVLOG.md`, and
 earlier versions of this file are in git.
@@ -301,10 +301,17 @@ FAQ says only 1, the vocabulary labels say most, the BITS index steps use 1 or
   `HL_summary`, and every length measurement of the one survey (Can-Mar) that
   puts real lengths on validity-5 records.
 - **But in `HL_summary`, a haul-species with several validity records almost
-  always repeats the identical total on each** (Principle 5). A total takes it
-  once; summing across `SpeciesValidity` double-counts. `dr_add_catch()`
-  currently sums (`TODO.md`). Whether `HL_length` repeats length rows across
-  validity codes the same way has not been measured.
+  always repeats the identical submitted total on each**, the count and the
+  catch weight alike (Principle 5): a total is taken once, and summing it
+  across `SpeciesValidity` double-counts. The length rows behave the other
+  way. `HL_length` never repeats a row across validity codes; where two codes
+  share a length class they carry different counts, which are separate samples
+  and sum. So reducing `HL_summary` over `SpeciesValidity` needs a rule per
+  column, and `dr_add_catch()` applies it. `n_haul` is summed. A submitted
+  total (`n_totalnumber`, `w_haul` and their per-hour forms) is taken once
+  where its values agree, and summed where they genuinely differ, which is
+  rare and unexplained. "Agree" allows for float noise, because the build adds
+  category totals in no fixed order.
 
 **obus publishes at the finest grain and reduces on request**, never the other
 way round: you can collapse down and never back up. `dr_hl_collapse()` is that

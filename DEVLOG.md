@@ -2607,3 +2607,67 @@ What the rewrite changed, beyond removing narrative:
   products use V and N.
 - The stale `inst/DATRAS-data-dict.yaml` references were removed (opus renamed it
   `DATRAS-imbus.yaml` and added `DATRAS-ices.yaml`).
+
+## 2026-10-06 — `dr_add_catch()` no longer double-counts a repeated total
+
+A review of `TODO.md`'s "Next" found two items already answered by what was on
+record, and the fix for the first item had to be wider than the item said.
+
+**`HL_length` does not repeat rows across `SpeciesValidity`.** The 2026-09-17
+entry had it: collapsing `SpeciesValidity` merges 15 groups. Looked at today,
+all 15 are 1+10 pairs over 10 haul-species (BTS, DYFS, NS-IBTS, 2021-2023)
+whose two rows carry *different* counts at the same length class (e.g. 14 and
+9.7 fish), separate samples rather than copies. So summing `HL_length`'s counts
+across validity codes is safe, and `dr_hl_collapse()` needs no guard.
+
+**What `HL_summary` repeats, column by column**, over the 1,219 haul-species
+pairs with more than one validity record (1,216 with two, 3 with three):
+
+| column | all equal | differ | one value | all `NA` |
+|---|---|---|---|---|
+| `n_totalnumber` | 1,206 | 13 | | |
+| `n_totalnumber_hour` | 1,205 | 14 | | |
+| `w_haul`, `w_hour` | 1,080 | 0 | | 139 |
+| `n_haul` | 9 | 544 | 322 | 344 |
+
+So the weights are repeated exactly like the count totals, which `TODO.md` did
+not say. `n_haul` is the other way round: where it is on several records, the
+length rows are split between them, and the sum of `n_haul` over the records
+matches the repeated total (median ratio 1). Of the 9 pairs with an identical
+`n_haul`, 7 are different length classes that happen to add up to the same
+count (Can-Mar total 9, `n_haul` 4 + 4 at different lengths); 2 Can-Mar pairs
+show the same two classes under both codes.
+
+**Three of the 13 "differing" totals are one total in float noise**:
+`212.40000000000001` against `212.39999999999998`, `36.2` likewise, and one
+`n_totalnumber_hour`. `HL_summary` adds category totals in no fixed order. That
+leaves 10 pairs with genuinely different totals: 6 BTS pairs with validity 1
+alongside 4 or 7 (e.g. 24 and 21) where the weight is still repeated, and 4
+NL-BSAS 2023 pairs with validity 1 and 6 whose second total is the first halved
+and rounded up (14/7, 30/15, 5/3, 7/4). Unexplained; summed, as before.
+
+**The rule, in `.dr_catch()`:** `n_haul` is summed; the submitted columns
+(`n_totalnumber`, `n_totalnumber_hour`, `w_haul`, `w_hour`) are taken once when
+their non-missing values agree to within a relative 1e-9, and summed otherwise.
+"Agree" is `sd()` against the mean rather than `max() - min()`, because `max()`
+warns in R over an all-`NA` group; it translates to DuckDB's `STDDEV` and gives
+identical results on both backends. A test with the three shapes runs on both.
+
+**Effect, measured on the live archive:** 1,209 haul-species pairs were doubled
+(or tripled), and change; 6 more change in weight only; the 10 genuinely
+different ones keep their sum. Archive-wide the old sum overstated individuals
+per hour by 0.017% and weight per hour by 0.018%. By survey, numbers per hour
+fall 2.7% in NL-BSAS and about 0.1% in BTS and Can-Mar; weight per hour falls
+2.0% in DYFS, 0.4% in Can-Mar and 0.2% in BTS. Small in aggregate; the doubling
+is per haul, which is where a map cell or a single year could carry it. Worked
+case: Can-Mar 1979 witch flounder (`Can-Mar:1979:4:CA:18LH:W2A:5:73`) now has
+`n_totalnumber` 9, not 18, with `n_haul` 10.
+
+**The same wrong advice was in three help pages.** `dr_con()`,
+`dr_hl_summary()` and `dr_hl_collapse()`'s refusal message said to sum
+`HL_summary` across `SpeciesValidity`; each now says the rule is per column.
+
+**`CNT_LEN_DUP` already covers a length distribution submitted twice.** It fires
+on the documented BITS plaice haul (`BITS:2021:1:DK:26HF:TVS:77:35`, checked
+live). Its duplicate key includes `SpeciesCategory`, so a resubmission under a
+second category code would not be caught; `TODO.md` now asks for that check.

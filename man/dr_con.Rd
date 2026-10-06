@@ -46,10 +46,12 @@ they survive a spot check and still double-count: dropping
 carried attribute: HL deliberately allows more than one record type
 per species per haul, so 1,219 of the 2,290,235 \code{.id} x
 \code{Valid_Aphia} groups carry two or more (measured 2026-09-09).
-Aggregating without it mixes record types and double-counts -- sum
-across it rather than filtering to \code{"1"}, which would discard
-20.3\\% of the records. See \code{\link{dr_hl_summary}} and
-\code{\link{dr_hl_collapse}}.}
+Aggregating over it needs a rule per column: the length-derived
+\code{n_haul} is summed, but a submitted total (\code{n_totalnumber},
+\code{w_haul} and their per-hour forms) is almost always repeated on
+every record and is taken once, as \code{\link{dr_add_catch}} does.
+Filtering to \code{"1"} instead would discard 20.3\\% of the records.
+See \code{\link{dr_hl_summary}}.}
 \item{\code{"hl_flag"}}{One row per \code{.id} x \code{Valid_Aphia} x
 \code{code}, for records carrying a flag. Long, so a record with
 several flags has several rows. Joins onto \code{"HL_summary"}

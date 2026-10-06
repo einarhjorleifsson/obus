@@ -14,16 +14,13 @@ looks like; the evidence lives at the pointer.
 
 ## Next
 
-- [ ] **Stop `dr_add_catch()` double-counting a repeated total.** In
-      `HL_summary`, a haul-species with more than one `SpeciesValidity` record
-      almost always carries the identical total on each (`AGENTS.md`, "The catch
-      tables"), and `.dr_catch()` sums across them. Small archive-wide,
-      concentrated in BTS and Can-Mar, where it doubles particular hauls. Fix:
-      per haul and species, a total repeated identically across validity records
-      is taken once and genuinely different ones are summed, in dplyr so the lazy
-      and in-memory paths agree. Done looks like: a test on both backends, obus
-      reinstalled, the book re-rendered, and every number it quotes from
-      `dr_add_catch()` re-checked.
+- [ ] **Re-render datrasdoodle2 on the fixed `dr_add_catch()`.** It no longer
+      double-counts a total repeated across `SpeciesValidity` records, the
+      weights included (`DEVLOG.md`, 2026-10-06); the book was rendered on the
+      version that did. The change is per haul, concentrated in BTS, Can-Mar,
+      NL-BSAS and DYFS. Done looks like: obus reinstalled, the book re-rendered,
+      and every number it quotes from `dr_add_catch()` or a `dr_summarise_*()`
+      verb re-checked.
 
 - [ ] **Decide what `dr_add_catch()` offers beside the routes it carries.** It
       already has the reported total (`n_totalnumber`, `n_totalnumber_hour`) and
@@ -38,18 +35,19 @@ looks like; the evidence lives at the pointer.
 - [ ] **Diagnose the fish haul-species pairs where the two routes differ by more
       than rounding and are neither total-only nor duplicated.** A couple of
       percent of fish pairs are unexplained (`DEVLOG.md`, the two-routes entry);
-      several BITS plaice cases are `DataType` C. Done looks like: every such pair
-      classified, the residue named or shown to be empty.
+      several BITS plaice cases are `DataType` C. `hl_flag` already codes every
+      pair, so start from its `unexplained` kind (`CNT_DIRECTIONAL`,
+      `CNT_LEN_HIGH`, `CNT_SF_UNRECONCILED`, `CNT_OTHER`) restricted to fish.
+      Done looks like: every such pair classified, the residue named or shown to
+      be empty, and any new pattern a code in `hl_flag_code.csv`.
 
-- [ ] **Measure whether `HL_length` repeats length rows across
-      `SpeciesValidity` codes the way `HL_summary` repeats totals.** Decides
-      whether summing `HL_length` across validity is safe. Done looks like: the
-      answer in `AGENTS.md`, and a guard in `dr_hl_collapse()` if it is not.
-
-- [ ] **Check whether `hl_flag` flags a length distribution submitted twice**
-      (the same lengths and counts for one haul and species), which doubles the
-      length route and breaks ICES's own upload rule. Done looks like: the code
-      that covers it, or a new code and a test.
+- [ ] **Check that `hl_flag` catches every length distribution submitted
+      twice.** `CNT_LEN_DUP` covers it and fires on the documented BITS plaice
+      haul, but its duplicate key includes `SpeciesCategory`, so a distribution
+      resubmitted under a second category code passes unflagged. Done looks
+      like: every pair whose length route is about twice the totals route
+      (`DEVLOG.md`, the two-routes entry) carries `CNT_LEN_DUP`, or the ones
+      that do not have a code and a test.
 
 - [ ] **Decide which of osmx's plots to port, if any**: a station bubble map that
       draws zero hauls distinctly; a bootstrap interval for CPUE (the verb uses a

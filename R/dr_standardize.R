@@ -292,11 +292,15 @@ dr_hl_length <- function(hh, hl, species = NULL, haulval = NULL) {
 #' the table carries, not merely the common ones (verified: 0 duplicates at
 #' \code{"0"}, \code{"1"}, \code{"2"}, \code{"4"}, \code{"5"}, \code{"6"},
 #' \code{"7"} and \code{"10"}).
-#' Summing \code{n_haul} or \code{w_haul} per \code{.id} \eqn{\times}
-#' \code{Valid_Aphia} without accounting for \code{SpeciesValidity} mixes
-#' record types and double-counts. \strong{The remedy is to sum across it,
-#' not to filter to \code{"1"}} -- it is a record type rather than a quality
-#' flag, so filtering discards real records: 464,858 of 2,291,457
+#' Reducing to \code{.id} \eqn{\times} \code{Valid_Aphia} therefore takes a
+#' rule per column. \code{n_haul} and \code{n_measured} come from the length
+#' rows, which are never repeated between records, so they are summed. The
+#' submitted totals (\code{n_totalnumber}, \code{n_totalnumber_hour},
+#' \code{w_haul}, \code{w_hour}) almost always repeat one species total on
+#' every record, so summing them double-counts: a repeated total is taken
+#' once, which is what \code{\link{dr_add_catch}} does.
+#' \strong{Do not filter to \code{"1"} instead} -- it is a record type rather
+#' than a quality flag, so filtering discards real records: 464,858 of 2,291,457
 #' \code{HL_summary} records (20.3\%), and in \code{\link{dr_hl_length}}
 #' 691,163 of 14,001,605 rows covering 37,302,307 fish (measured 2026-09-17).
 #' Can-Mar is the only survey putting real length data on validity-\code{5}

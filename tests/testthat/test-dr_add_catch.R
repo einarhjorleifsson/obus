@@ -35,6 +35,59 @@ test_that("several records in a haul are summed, not dropped", {
   expect_equal(h1$w_haul, 50)
 })
 
+# The three shapes HL_summary takes across SpeciesValidity records. h1: one
+# species total repeated on both records, with the length rows split between
+# them. h2: the same total, but the two copies differ by float noise, as
+# HL_summary's category sums leave them. h3: two totals that genuinely differ,
+# and a weight on one record only.
+repeated_source <- function() {
+  t <- 212.4
+  data.frame(
+    .id                = c("h1", "h1", "h2", "h2", "h3", "h3"),
+    Valid_Aphia        = 1L,
+    SpeciesValidity    = c("1", "5", "1", "7", "1", "4"),
+    n_totalnumber      = c(9, 9, t, t * (1 - .Machine$double.eps), 24, 21),
+    n_totalnumber_hour = c(18, 18, 2 * t, 2 * t, 48, 42),
+    n_haul             = c(5, 5, 170, NA, 6, NA),
+    w_haul             = c(1975, 1975, 2050, 2050, NA, 1630),
+    w_hour             = c(3950, 3950, 4100, 4100, NA, 3260),
+    stringsAsFactors   = FALSE
+  )
+}
+
+test_that("a submitted total repeated across validity records is taken once", {
+  check <- function(x) {
+    x <- as.data.frame(dplyr::arrange(x, .id))
+    h <- function(id) x[x$.id == id & x$latin == "Alpha alpha", ]
+    # repeated: once; the length rows are separate fish, so n_haul is summed
+    expect_equal(h("h1")$n_totalnumber, 9)
+    expect_equal(h("h1")$n_totalnumber_hour, 18)
+    expect_equal(h("h1")$w_haul, 1975)
+    expect_equal(h("h1")$w_hour, 3950)
+    expect_equal(h("h1")$n_haul, 10)
+    # float noise is still a repeat
+    expect_equal(h("h2")$n_totalnumber, 212.4)
+    expect_equal(h("h2")$w_haul, 2050)
+    expect_equal(h("h2")$n_haul, 170)
+    # totals that differ are summed; a weight on one record is that weight
+    expect_equal(h("h3")$n_totalnumber, 45)
+    expect_equal(h("h3")$n_totalnumber_hour, 90)
+    expect_equal(h("h3")$w_haul, 1630)
+    expect_equal(h("h3")$n_haul, 6)
+  }
+
+  check(.dr_catch(hauls(), species(), source = repeated_source()))
+
+  skip_if_not_installed("duckdb")
+  skip_if_not_installed("DBI")
+  con <- DBI::dbConnect(duckdb::duckdb())
+  withr::defer(DBI::dbDisconnect(con, shutdown = TRUE))
+  lz <- .dr_catch(dplyr::copy_to(con, hauls(), "hauls"),
+                  dplyr::copy_to(con, species(), "species"),
+                  source = dplyr::copy_to(con, repeated_source(), "catch"))
+  check(dplyr::collect(lz))
+})
+
 test_that("a record whose value is missing stays missing, it is not a zero", {
   x <- out()
   h2 <- x[x$.id == "h2" & x$latin == "Alpha alpha", ]

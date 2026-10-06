@@ -166,9 +166,11 @@ dr_hl_collapse <- function(data, collapse, check = TRUE, x = lifecycle::deprecat
          paste(sQuote(summary_only), collapse = ", "),
          ". This verb is for the length table; it would leave those columns ",
          "in the grain rather than summing them. To collapse HL_summary over ",
-         "SpeciesValidity, group and sum the columns you want explicitly, ",
-         "choosing for each whether a sum is meaningful (p_females is a ",
-         "proportion, not a count).", call. = FALSE)
+         "SpeciesValidity, choose a rule per column: n_haul and n_measured ",
+         "sum, a submitted total repeated on every record (n_totalnumber, ",
+         "w_haul and their per-hour forms) is taken once, and p_females is a ",
+         "proportion. dr_add_catch() does this for the catch columns.",
+         call. = FALSE)
   }
 
   measures <- intersect(.DR_HL_MEASURES, nm)

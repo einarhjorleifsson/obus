@@ -51,9 +51,13 @@ decide this for you: which field applies depends on the species and on the
 survey's own standard list.
 
 \strong{Several records per haul and species.} HL allows more than one
-(\code{SpeciesValidity} is a record type, not a quality flag), so the catch
-columns are summed across them; a total reported as missing in every record
-stays missing rather than becoming zero.
+(\code{SpeciesValidity} is a record type, not a quality flag), and they are
+combined in two ways. \code{n_haul} comes from the length rows, which are never
+repeated across records, so it is summed. The submitted totals
+(\code{n_totalnumber}, \code{n_totalnumber_hour}, \code{w_haul}, \code{w_hour}) almost always
+repeat one species total on every record, so a value that is the same on
+each record is taken once; values that differ are summed. A total reported
+as missing in every record stays missing rather than becoming zero.
 }
 \examples{
 \dontrun{

@@ -9,6 +9,11 @@
 .DR_CATCH_MEASURES <- c("n_totalnumber", "n_totalnumber_hour", "n_haul",
                         "w_haul", "w_hour")
 
+# The ones that come from a submitted species total rather than from the length
+# rows. Where a haul and species has several SpeciesValidity records, DATRAS
+# repeats such a total on each of them, so it is taken once, not summed.
+.DR_CATCH_SUBMITTED <- c("n_totalnumber", "n_totalnumber_hour", "w_haul", "w_hour")
+
 #' Add the catch of chosen species to hauls, zeros included
 #'
 #' Crosses every haul in `data` with every species in `species` and attaches
@@ -37,9 +42,13 @@
 #' survey's own standard list.
 #'
 #' **Several records per haul and species.** HL allows more than one
-#' (`SpeciesValidity` is a record type, not a quality flag), so the catch
-#' columns are summed across them; a total reported as missing in every record
-#' stays missing rather than becoming zero.
+#' (`SpeciesValidity` is a record type, not a quality flag), and they are
+#' combined in two ways. `n_haul` comes from the length rows, which are never
+#' repeated across records, so it is summed. The submitted totals
+#' (`n_totalnumber`, `n_totalnumber_hour`, `w_haul`, `w_hour`) almost always
+#' repeat one species total on every record, so a value that is the same on
+#' each record is taken once; values that differ are summed. A total reported
+#' as missing in every record stays missing rather than becoming zero.
 #'
 #' @param data Hauls: one row per haul, with `.id` (see [dr_add_id()]); lazy
 #'   or in memory. Usually `dr_con("HH")`, optionally filtered.
@@ -100,15 +109,26 @@ dr_add_catch <- function(data, species, zeros = c("hauls", "reported")) {
     dplyr::semi_join(species, by = "Valid_Aphia", copy = TRUE) |>
     dplyr::group_by(.id, Valid_Aphia) |>
     dplyr::summarise(
+      # A total missing in every record of the group is unknown, not zero:
+      # sum(x, na.rm = TRUE) over all-NA is 0 in R but NULL in SQL, and the two
+      # backends must agree.
       dplyr::across(
-        dplyr::all_of(.DR_CATCH_MEASURES),
-        # A total missing in every record of the group is unknown, not zero:
-        # sum(x, na.rm = TRUE) over all-NA is 0 in R but NULL in SQL, and the
-        # two backends must agree.
-        ~ dplyr::if_else(sum(as.integer(!is.na(.x)), na.rm = TRUE) == 0L,
-                         NA_real_, sum(.x, na.rm = TRUE))),
+        dplyr::all_of(.DR_CATCH_SUBMITTED),
+        # A submitted total repeated on every record is taken once. "The same"
+        # allows for float noise: HL_summary adds category totals in no fixed
+        # order, so one total can arrive as 212.4 on one record and a bit off
+        # it on the next. sd() is used rather than max() - min(), which warns
+        # in R on an all-NA group.
+        ~ dplyr::case_when(
+          sum(as.integer(!is.na(.x)), na.rm = TRUE) == 0L ~ NA_real_,
+          dplyr::coalesce(stats::sd(.x, na.rm = TRUE), 0) <=
+            1e-9 * abs(mean(.x, na.rm = TRUE)) ~ mean(.x, na.rm = TRUE),
+          .default = sum(.x, na.rm = TRUE))),
+      n_haul = dplyr::if_else(sum(as.integer(!is.na(n_haul)), na.rm = TRUE) == 0L,
+                              NA_real_, sum(n_haul, na.rm = TRUE)),
       .seen = 1L,
-      .groups = "drop")
+      .groups = "drop") |>
+    dplyr::select(".id", "Valid_Aphia", dplyr::all_of(.DR_CATCH_MEASURES), ".seen")
 
   if (!lazy) {
     catch   <- dplyr::collect(catch)
