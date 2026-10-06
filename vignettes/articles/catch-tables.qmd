@@ -37,8 +37,9 @@ computed once, centrally, and served to everyone, rather than re-implemented
 once per institute, once per language and once per working group.
 
 This is not a proposal in the abstract. Built from these two tables and nothing
-else, `{obus}` rebuilds ICES's own CPUEL product and agrees with it on the
-overwhelming majority of cells; and the `{DATRAS}` and `{DATRASextra}` packages
+else, `{obus}` computes ICES's own CPUEL product for every survey in the
+archive, where ICES computes it for a few, and agrees with it on most counts
+where the two overlap, the exceptions named below; and the `{DATRAS}` and `{DATRASextra}` packages
 run on them **unmodified**, reproducing numbers at length, totals per haul,
 swept area and a stratified abundance index with no difference at all — the
 index a working group would report comes out the same to every digit. Both
@@ -53,13 +54,14 @@ library(ggplot2)
 ```
 
 ```{r, include = FALSE}
-# Structural counts, measured once here and referenced inline throughout, so
-# they cannot drift apart as the archive grows (Working Principle 8). Before
-# this block they were typed into the prose, and HL_summary's group count had
-# already been written down at two different vintages in two different files.
-# Analytical findings below -- reconciliation buckets, confidence intervals,
-# rounding regimes -- are NOT computed here: they are dated evidence, and
-# re-running them on every render would embed whole analyses in the article.
+# Every number the prose quotes is measured on render and referenced inline,
+# so the text cannot drift from the archive (Working Principle 8). Numbers a
+# displayed chunk prints are taken from that chunk's result; the ones the
+# prose needs before any chunk has shown them are measured here. The article
+# used to type its analytical figures in as "dated evidence" without dates,
+# and after the archive rebuild of 2026-10-04 a dozen of them disagreed with
+# the chunk printed directly above them. The whole article knits in about two
+# minutes, so nothing is too expensive to measure.
 M <- list(
   len_rows   = dr_con("HL_length")  |> count() |> pull(n),
   sum_rows   = dr_con("HL_summary") |> count() |> pull(n),
@@ -84,8 +86,102 @@ M$sum_nolen_hauls <- dr_con("HL_summary") |>
   distinct(.id) |> count() |> pull(n)
 M$sum_nolen_pct <- 100 * M$sum_nolen / M$sum_rows
 M$sum_nolen_haul_pct <- 100 * M$sum_nolen_hauls / M$sum_hauls
-# Thousands separators, so the prose reads the way it always has.
+
+# Part I: how much of the archive is DataType C, and how short its hauls are.
+hl_dt <- dr_con("HL") |> inner_join(dr_con("HH") |> select(.id, DataType), by = ".id")
+x <- dr_con("HH") |>
+  summarise(hauls = n(), c = sum(as.integer(DataType == "C"), na.rm = TRUE),
+            c_short = sum(as.integer(DataType == "C" & HaulDuration < 60), na.rm = TRUE)) |>
+  collect()
+M$c_haul_pct  <- 100 * x$c / x$hauls
+M$c_short_pct <- 100 * x$c_short / x$c
+x <- hl_dt |> summarise(rows = n(), c = sum(as.integer(DataType == "C"), na.rm = TRUE)) |> collect()
+M$c_row_pct <- 100 * x$c / x$rows
+
+# How much of the format is in use. -9 and NA are not codes.
+M$n_datatype <- dr_con("HH") |> filter(DataType != "-9") |> distinct(DataType) |> count() |> pull(n)
+M$n_lengthcode <- dr_con("HL") |> filter(!is.na(LengthCode), LengthCode != "-9") |>
+  distinct(LengthCode) |> count() |> pull(n)
+M$n_category <- dr_con("HL") |> filter(!is.na(SpeciesCategory)) |>
+  distinct(SpeciesCategory) |> count() |> pull(n)
+M$platforms <- dr_con("HH") |> distinct(Country, Platform) |> count(Country) |> collect() |>
+  (\(d) setNames(d$n, d$Country))()
+x <- dr_con("HL") |> filter(!is.na(LengthCode), LengthCode != "-9") |>
+  group_by(Country, Platform, Year, Valid_Aphia) |>
+  summarise(codes = n_distinct(LengthCode), .groups = "drop") |>
+  summarise(n = n(), one = sum(as.integer(codes == 1))) |> collect()
+M$code_constant_pct <- 100 * x$one / x$n
+
+# The units that submit: countries, and platform-years of the platforms the
+# displayed chunk counts (5,000 length rows or more).
+x <- hl_dt |> group_by(Country) |>
+  summarise(rows = n(), dt = n_distinct(DataType), .groups = "drop") |>
+  filter(rows >= 5000) |> summarise(n = n(), one = sum(as.integer(dt == 1))) |> collect()
+M$countries <- x$n; M$countries_one <- x$one
+big <- hl_dt |> group_by(Country, Platform) |> summarise(rows = n(), .groups = "drop") |>
+  filter(rows >= 5000) |> select(Country, Platform)
+x <- hl_dt |> semi_join(big, by = c("Country", "Platform")) |>
+  group_by(Country, Platform, Year) |>
+  summarise(dt = n_distinct(DataType), .groups = "drop") |>
+  summarise(n = n(), one = sum(as.integer(dt == 1))) |> collect()
+M$platform_years <- x$n; M$platform_years_one <- x$one
+x <- dr_con("HH") |> filter(Survey %in% c("NS-IBTS", "BITS"), DataType != "-9") |>
+  group_by(Survey, Country) |> summarise(dt = n_distinct(DataType), .groups = "drop") |>
+  summarise(n = n(), one = sum(as.integer(dt == 1))) |> collect()
+M$programmes <- x$n; M$programmes_one <- x$one
+x <- dr_con("HL") |> filter(!is.na(LengthCode), LengthCode != "-9") |>
+  group_by(Survey) |> summarise(k = n_distinct(LengthCode), .groups = "drop") |>
+  summarise(n = n(), multi = sum(as.integer(k > 1))) |> collect()
+M$surveys <- x$n; M$surveys_lc_multi <- x$multi
+
+# Part II: CPUEL's coverage and zeros, and how heavily surveys sex their catch.
+cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet")
+M$cpuel_surveys <- cpuel |> distinct(Survey) |> count() |> pull(n)
+x <- cpuel |> summarise(rows = n(), zero = sum(as.integer(n_hour == 0), na.rm = TRUE)) |> collect()
+M$cpuel_rows <- x$rows; M$cpuel_zero <- x$zero
+M$sexed <- dr_con("HL_length") |> group_by(Survey) |>
+  summarise(rows = n(), sexed = sum(as.integer(SpeciesSex %in% c("F", "M", "B")), na.rm = TRUE),
+            .groups = "drop") |>
+  filter(rows >= 100000) |> collect() |>
+  mutate(pct = 100 * sexed / rows) |> arrange(desc(pct))
+
+# What makes a row unique: the coarser key, and how often each field splits it.
+x <- dr_con("HL_length") |>
+  mutate(ds = coalesce(DevelopmentStage, "<NA>"), lt = coalesce(LengthType, "<NA>"),
+         sv = coalesce(SpeciesValidity, "<NA>")) |>
+  group_by(.id, Valid_Aphia, length_mm, SpeciesSex) |>
+  summarise(ds = n_distinct(ds), lt = n_distinct(lt), sv = n_distinct(sv),
+            acc = n_distinct(accuracy), .groups = "drop") |>
+  summarise(n = n(), ds = sum(as.integer(ds > 1)), lt = sum(as.integer(lt > 1)),
+            sv = sum(as.integer(sv > 1)), acc = sum(as.integer(acc > 1))) |>
+  collect()
+M$coarse <- x
+M$ds_na_pct <- dr_con("HL_length") |>
+  summarise(p = 100 * sum(as.integer(is.na(DevelopmentStage))) / n()) |> pull(p)
+# HL_length rows that combine more than one submitted row.
+x <- dr_con("HL") |> filter(!is.na(LengthClass), NumberAtLength != 0) |>
+  group_by(.id, Valid_Aphia, LengthClass, LengthCode, LengthType, SpeciesSex,
+           DevelopmentStage, SpeciesValidity) |>
+  summarise(n = n(), .groups = "drop") |>
+  summarise(rows = n(), combined = sum(as.integer(n > 1))) |> collect()
+M$combined_one_in <- x$rows / x$combined
+# TotalNumber over several sex rows: one value repeated, or one per sex.
+x <- dr_con("HL") |>
+  distinct(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, DevelopmentStage,
+           SpeciesSex, TotalNumber) |>
+  group_by(.id, Valid_Aphia, SpeciesCategory, SpeciesValidity, DevelopmentStage) |>
+  summarise(n_sex = n_distinct(SpeciesSex), n_val = n_distinct(TotalNumber), .groups = "drop") |>
+  filter(n_sex > 1) |>
+  summarise(n = n(), repeated = sum(as.integer(n_val == 1)),
+            per_sex = sum(as.integer(n_val == n_sex))) |> collect()
+M$sex_repeated_pct <- 100 * x$repeated / x$n
+M$sex_per_sex_pct  <- 100 * x$per_sex / x$n
+M$sex_na_pct <- dr_con("HL") |>
+  summarise(p = 100 * sum(as.integer(is.na(SpeciesSex))) / n()) |> pull(p)
+
+# Thousands separators, so the prose reads the way it always has, and percent.
 N <- function(x) formatC(as.numeric(x), format = "d", big.mark = ",")
+P <- function(x, digits = 0) sprintf(paste0("%.", digits, "f%%"), x)
 ```
 
 Every claim below is either a quotation from an ICES document or a measurement
@@ -113,12 +209,12 @@ number and weight.
 most conventions it is fish *measured*, and the raising factor is what relates
 it to fish caught. Under `DataType` C it is neither: the submitter has already
 raised it *and* already scaled it to one hour of towing, so the row carries a
-catch rate and the factor is 1. Note which way that scaling goes: nearly nine
-`C` hauls in ten are shorter than an hour, most of them half-hour tows, so the
-number written on the row is usually **larger** than the number of fish
-actually caught, not smaller. This is not a corner case. `C` covers about a
-third of all the hauls in the archive, and about a third of every length row
-in it.
+catch rate and the factor is 1. Note which way that scaling goes:
+`r P(M$c_short_pct)` of `C` hauls are shorter than an hour, most of them
+half-hour tows, so the number written on the row is usually **larger** than
+the number of fish actually caught, not smaller. This is not a corner case.
+`C` covers `r P(M$c_haul_pct)` of all the hauls in the archive, and
+`r P(M$c_row_pct)` of its length rows.
 
 Given the `DataType`, any one row is unambiguous. **It is the column that is
 ambiguous**, across submissions — and the `DataType` is not in HL at all. It
@@ -133,7 +229,8 @@ survey in the archive:
 - turn the length class into a length, in known units;
 - decide what to do when the raising factor is missing, or the haul lasted no
   time at all;
-- avoid adding up a total the submitter repeated across sex or category rows.
+- avoid adding up a total the submitter repeated across sex rows, sampling
+  categories or record types.
 
 Nearly every DATRAS analysis begins there, and they are the same steps every
 time.
@@ -215,7 +312,8 @@ Two further properties compound it:
 
 **The resolution is the harder half because the unit does not imply it.** Two
 codes report millimetres and two of the three centimetre codes are not 1 cm:
-`.` is 1 mm classes and `0` is 5 mm; `1`, `2` and `5` are 1, 2 and 5 cm. So a
+`.` is 1 mm classes and `0` is 5 mm; `1`, `2` and `5` are 1, 2 and 5 cm
+(though the archive holds no `2`). So a
 `LengthClass` of 150 is the same 15 cm fish under `.` and under `0`, but in one
 case it stands for a class 1 mm wide and in the other 5 mm. Across the archive
 the classes run from 1 mm to 5 cm — a fiftyfold range — and `LengthClass` is
@@ -224,7 +322,7 @@ where the class starts nor how far it extends.
 
 **Most of that variation is good practice, not sloppiness.** Resolution is
 chosen to suit the fish: within one country, platform and year, the code is
-constant for a given species in 96% of cases — and the choices are the ones a
+constant for a given species in `r P(M$code_constant_pct)` of cases — and the choices are the ones a
 biologist would make, herring and sprat measured in 5 mm classes, cod, plaice,
 haddock and whiting in 1 cm.
 
@@ -243,7 +341,7 @@ dr_con("HL") |>
 same fish is measured at different resolutions by different programmes:
 
 ```{r}
-dr_con("HL") |>
+widths <- dr_con("HL") |>
   filter(Valid_Aphia %in% c(126436, 126417), !is.na(LengthCode), LengthCode != "-9") |>
   left_join(dr_con("species") |> select(Valid_Aphia, species), by = "Valid_Aphia") |>
   count(species, LengthCode) |>
@@ -252,10 +350,13 @@ dr_con("HL") |>
                                  LengthCode == "5" ~ "5 cm")) |>
   arrange(species, desc(n)) |>
   collect()
+widths
 ```
 
-Cod arrives in all four widths — mostly 1 cm, but 122,188 length rows at 1 mm
-and a few thousand at 5 cm, a fiftyfold spread for one species. Herring is
+Cod arrives in all four widths — mostly 1 cm, but
+`r N(widths$n[widths$species == "Atlantic cod" & widths$LengthCode == "."])`
+length rows at 1 mm and a few thousand at 5 cm, a fiftyfold spread for one
+species. Herring is
 mostly 5 mm and substantially 1 mm. So the moment you pool a species across
 surveys — which is what a stratified index does — you are pooling classes of
 different widths.
@@ -287,7 +388,7 @@ dr_con("HH") |>
 ```
 
 Neither `S` nor `P` ever defines a survey on its own: every `S` haul in the
-archive sits inside a survey that otherwise submits `R`, and `P` appears only
+archive sits inside a survey that also submits `R`, and `P` appears only
 in surveys that also use `R` and `C`. So the two conventions that stand alone
 are exactly the two that disagree about what `NumberAtLength` counts.
 
@@ -297,19 +398,22 @@ else in the next survey along. The column is clear locally and ambiguous only
 archive-wide, which is the kind of problem that survives a long time, because
 every individual dataset is self-consistent. The mixed surveys are where it
 becomes visible without leaving home — NS-IBTS carries `R`, `C` and `P`
-together, BITS `R` and `C`. Even there it tends to nest: about half the
-national programmes inside those two surveys have only ever used one
-convention, so a single country's series can still look perfectly uniform.
+together, BITS `R` and `C`. Even there it tends to nest:
+`r M$programmes_one` of the `r M$programmes` national programmes inside those
+two surveys have only ever used one convention, so a single country's series
+can still look perfectly uniform.
 
 **And no one who submits ever uses the whole format.** The archive as a whole
-draws on five `DataType` conventions, five `LengthCode` values and fourteen
-`SpeciesCategory` codes. The unit that actually samples and uploads is nearer a
-platform than a country — `Platform` stands in for the institutes within a
-country, and Germany runs nineteen of them, the Netherlands thirteen, Norway
-twelve — so count what each country and platform between them ever uses:
+draws on `r M$n_datatype` `DataType` conventions, `r M$n_lengthcode`
+`LengthCode` values and `r M$n_category` `SpeciesCategory` codes. The unit
+that actually samples and uploads is nearer a platform than a country —
+`Platform` stands in for the institutes within a country, and Germany runs
+`r M$platforms[["DE"]]` of them, the Netherlands `r M$platforms[["NL"]]`,
+Norway `r M$platforms[["NO"]]` — so count what each country and platform
+between them ever uses:
 
 ```{r}
-dr_con("HL") |>
+pl <- dr_con("HL") |>
   inner_join(dr_con("HH") |> select(.id, DataType), by = ".id") |>
   group_by(Country, Platform) |>
   summarise(rows           = n(),
@@ -322,14 +426,18 @@ dr_con("HL") |>
             most_data_types_by_any_one = max(data_types),
             most_category_codes_by_any_one = max(category_codes)) |>
   collect()
+pl
 ```
 
-Eighty of the ninety-seven record their catch one way only, and no single
-platform ever uses more than three of the five conventions. The closer you look
-at the unit that does the work, the smaller its corner of the format gets: at
-country level thirteen of twenty-two never vary, at platform level eighty of
-ninety-seven. Adding time tightens it again — in 1,229 of 1,347 platform-years
-the catch is reported one way throughout.
+`r pl$recording_one_way_only` of the `r pl$platforms` record their catch one
+way only, and no single platform ever uses more than
+`r pl$most_data_types_by_any_one` of the `r M$n_datatype` conventions. The
+closer you look at the unit that does the work, the smaller its corner of the
+format gets: at country level `r M$countries_one` of `r M$countries` never
+vary, at platform level `r pl$recording_one_way_only` of `r pl$platforms`.
+Adding time tightens it again — in `r N(M$platform_years_one)` of
+`r N(M$platform_years)` platform-years the catch is reported one way
+throughout.
 
 That is the position someone is in when they upload. They sample in a single,
 settled way, and must then express it in a format built wide enough to hold
@@ -339,13 +447,11 @@ they never use are the parts they are most likely to fill in wrongly.
 
 This is worth stating plainly, because the register in Part III could otherwise
 read as a list of other people's mistakes. It is better read as the cost of one
-row shape serving every sampling practice in the community at once. It is better read as the cost of one
-row shape serving twenty different sampling practices.
+row shape serving every sampling practice in the community at once.
 
-
-Length units run the other way and are worse for it: **20 of the 29 surveys
-use more than one `LengthCode`**, so there the variation is inside the series
-rather than between them.
+Length units run the other way and are worse for it: **`r M$surveys_lc_multi`
+of the `r M$surveys` surveys use more than one `LengthCode`**, so there the
+variation is inside the series rather than between them.
 
 The remedy for the first problem — several different things being counted in
 one table — is to give each of them a table of its own, and that is what
@@ -472,7 +578,11 @@ guards that a
 hand-rolled `group_by()` loses; it is described under [what makes a row
 unique](#what-makes-a-row-unique). And `SpeciesValidity` is in
 both keys because it is a record type rather than a quality flag — filtering
-it away discards real records.
+it away discards real records. Adding across it needs one rule per column:
+where a species has several record types in a haul, `HL_summary` almost always
+carries the same submitted total and weight on each, so those are taken once,
+while the length-derived `n_haul` is summed. `dr_add_catch()` does exactly
+that.
 
 **You never need an AphiaID.** Both tables carry `latin`, `species` and
 `rank` alongside `Valid_Aphia`, so a species is selected by name:
@@ -493,26 +603,77 @@ effort at length: numbers per hour by haul, species and length class,
 [@ices2021units] — and it is the natural starting point for length-based work,
 computed centrally so that nobody has to raise a sub-sample again.
 
-It covers **8 of the archive's 29 surveys**:
+It covers **`r M$cpuel_surveys` of the archive's `r M$surveys` surveys**:
 
 ```{r}
-duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet") |>
-  distinct(Survey) |> count() |> collect()
+cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet")
+cpuel |> distinct(Survey) |> count() |> collect()
 
 dr_con("HH") |> distinct(Survey) |> count() |> collect()
 ```
 
-**`HL_length` computes the same quantity for all 29.** That is a claim about
-definition and coverage: raised numbers at length, per haul, species and
-length class, by the same arithmetic, for every survey in the archive rather
-than for eight of them.
+**`HL_length` computes the same quantity for all `r M$surveys`.** That is a
+claim about definition and coverage: raised numbers at length, per haul,
+species and length class, by the same arithmetic, for every survey in the
+archive rather than for `r M$cpuel_surveys` of them.
 
 Whether the two also agree *number for number* where they overlap is a
 separate question, and it deserves a straight answer rather than a match rate.
-Across 5.5 million comparable records, **1.5% of CPUEL's rows have no
-`HL_length` partner and 5.9% of its counts differ** — roughly eighty thousand
-rows and three hundred thousand counts. For two tables that should be the same
-calculation, that is not a rounding residual.
+Take every CPUEL record with a real catch and ask whether `HL_length` has the
+same haul, species and length, and if so whether the count agrees. CPUEL
+identifies a haul by six fields, not eight, so hauls whose six fields are
+ambiguous are left out, as are hauls HH marks non-valid and years after the
+last one CPUEL computed for each survey:
+
+```{r}
+#| code-fold: true
+#| code-summary: "The comparison, all surveys at once"
+cutoff <- cpuel |> filter(n_hour > 0) |> group_by(Survey) |>
+  summarise(cutoff = max(Year, na.rm = TRUE), .groups = "drop")
+comparable <- dr_con("HH") |>
+  filter(HaulValidity == "V") |>
+  inner_join(cutoff, by = "Survey") |> filter(Year <= cutoff) |>
+  mutate(short_key = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |>
+  group_by(short_key) |> filter(n() == 1) |> ungroup() |>
+  select(Survey, .id, short_key)
+ours <- dr_con("HL_length") |>
+  select(.id, Valid_Aphia, length_mm, n_hour) |>
+  inner_join(comparable, by = ".id") |>
+  group_by(Survey, short_key, Valid_Aphia, length_mm) |>
+  summarise(n_obus = sum(n_hour, na.rm = TRUE), .groups = "drop")
+agreement <- cpuel |>
+  filter(n_hour > 0) |>
+  mutate(short_key = paste(Survey, Year, Quarter, Platform, Gear, HaulNumber, sep = ":")) |>
+  semi_join(comparable, by = "short_key") |>
+  group_by(Survey, short_key, Valid_Aphia = aphia, length_mm) |>
+  summarise(n_cpuel = sum(n_hour, na.rm = TRUE), .groups = "drop") |>
+  left_join(ours, by = c("Survey", "short_key", "Valid_Aphia", "length_mm")) |>
+  group_by(Survey) |>
+  summarise(cpuel_rows = n(),
+            matched    = sum(as.integer(!is.na(n_obus)), na.rm = TRUE),
+            agree      = sum(as.integer(!is.na(n_obus) & abs(n_obus - n_cpuel) < 0.01),
+                             na.rm = TRUE),
+            .groups = "drop") |>
+  collect() |>
+  mutate(rows_matched_pct = round(100 * matched / cpuel_rows, 1),
+         counts_agree_pct = round(100 * agree / matched, 1)) |>
+  arrange(desc(cpuel_rows))
+agreement
+```
+
+```{r, include = FALSE}
+A <- colSums(agreement[, c("cpuel_rows", "matched", "agree")])
+six <- agreement |> filter(!Survey %in% c("BITS", "SWC-IBTS"))
+swc <- agreement |> filter(Survey == "SWC-IBTS")
+```
+
+Across `r N(A[["cpuel_rows"]])` comparable records,
+**`r P(100 * (1 - A[["matched"]] / A[["cpuel_rows"]]), 1)` of CPUEL's rows
+have no `HL_length` partner and
+`r P(100 * (1 - A[["agree"]] / A[["matched"]]), 1)` of its counts differ** —
+`r N(A[["cpuel_rows"]] - A[["matched"]])` rows and
+`r N(A[["matched"]] - A[["agree"]])` counts. For two tables that should be the
+same calculation, that is not a rounding residual.
 
 Some of it is understood. The two files are independent downloads with their
 own calculation vintages, so a haul revised on one side and not the other will
@@ -520,8 +681,10 @@ differ, and the comparison cannot separate that from a real disagreement. On
 BITS, CPUEL gear-standardises cod and nothing else and does not
 always preserve the submitted length grid — both documented, and
 both choices a generalised product would have to make deliberately rather than
-inherit. Set BITS and SWC-IBTS aside and counts agree on 97.4% for the
-remaining six surveys. **SWC-IBTS is unexplained, and remains so.**
+inherit. Set BITS and SWC-IBTS aside and counts agree on
+`r P(100 * sum(six$agree) / sum(six$matched), 1)` for the remaining
+`r nrow(six)` surveys. **SWC-IBTS is unexplained, and remains so**: it agrees
+on `r N(swc$agree)` of `r N(swc$matched)` matched counts.
 
 So: the same calculation, demonstrably; the same numbers, not yet. Closing
 that gap is work neither this article nor the package has finished, and a
@@ -533,14 +696,17 @@ comparison looks like on a single survey-quarter.
 **Two further differences are by design, not residual.**
 
 - **Sex.** CPUEL carries `sex` as `NA` on every survey. `HL_length` keeps
-  `SpeciesSex` wherever it was recorded, and some surveys record it heavily —
-  everything on ROCKALL, 64% of SWC-IBTS, 76% of EVHOE.
-- **Zero rows.** Roughly half of CPUEL's rows are explicit zeros; `HL_length`
-  adds none. That is not an oversight but the reason it generalises. A zero
-  only means *none caught* if you know the species was in scope for that haul,
-  and settling that universe is a survey-by-survey judgement. Leaving it out
-  is what lets the same function work identically on all 29 surveys instead of
-  stopping at eight — and it leaves the choice of universe with you.
+  `SpeciesSex` wherever it was recorded, and some surveys sex much of what
+  they measure — `r P(M$sexed$pct[1])` of `r M$sexed$Survey[1]`'s length
+  records are female, male or berried, `r P(M$sexed$pct[2])` of
+  `r M$sexed$Survey[2]`'s and `r P(M$sexed$pct[3])` of `r M$sexed$Survey[3]`'s.
+- **Zero rows.** `r P(100 * M$cpuel_zero / M$cpuel_rows)` of CPUEL's rows are
+  explicit zeros; `HL_length` adds none. That is not an oversight but the
+  reason it generalises. A zero only means *none caught* if you know the
+  species was in scope for that haul, and settling that universe is a
+  survey-by-survey judgement. Leaving it out is what lets the same function
+  work identically on all `r M$surveys` surveys instead of stopping at
+  `r M$cpuel_surveys` — and it leaves the choice of universe with you.
 
 None of that is a complaint about CPUEL. ICES's Data Centre builds and
 maintains real, working products — CPUE by length, by age, catch weight,
@@ -638,9 +804,9 @@ out:
 | What you want to know | Where to get it |
 |---|---|
 | length spectra, size-based indices, inputs to age–length keys, length–weight work | `HL_length` |
-| numbers or weighed biomass per haul, CPUE, species composition, stratified indices | `HL_summary` |
+| numbers or weighed biomass per haul, CPUE, species composition, stratified indices | `HL_summary`, through `dr_add_catch()`, which puts the zeros back and takes a total repeated across record types once |
 | where a species occurs — distribution, occupancy, range | `HL_summary`, because it lists every species recorded and not only the measured ones |
-| species richness or diversity per haul | `HL_summary`. Counting species in `HL_length` instead loses at least one in a third of hauls |
+| species richness or diversity per haul | `HL_summary`. Counting species in `HL_length` instead loses at least one species in `r P(M$sum_nolen_haul_pct)` of hauls |
 | biomass of a length-measured species, **estimated** rather than weighed | `HL_length`, via `dr_add_length_mid()` then `dr_add_predicted_weight()` |
 | how much of a catch was sub-sampled, anything per `SpeciesCategory`, per-category weights, or rebuilding an exchange file | `dr_con("HL")` — the submitted records, unchanged apart from `.id` |
 | age, individual weight, maturity, age–length keys | `dr_con("CA")` — `{obus}` derives no CA table |
@@ -794,8 +960,8 @@ adding them back returns it.
 | `HL_length` | `.id` × `Valid_Aphia` × `length_mm` × `length_cm` × `accuracy` × `LengthType` × `SpeciesSex` × `DevelopmentStage` × `SpeciesValidity` |
 | `HL_summary` | `.id` × `Valid_Aphia` × `SpeciesValidity` |
 
-Each is exactly unique there — no repeated combinations at all, over 14 million
-rows — and at anything coarser it is not, so **add `n_haul` up rather than
+Each is exactly unique there — no repeated combinations at all, over
+`r N(M$len_rows)` rows — and at anything coarser it is not, so **add `n_haul` up rather than
 assuming one row**:
 
 ```{r}
@@ -811,12 +977,13 @@ dr_con("HL_length") |>
 labels carried along, because ICES's record identity puts them there: one haul
 can measure the same species at the same length under two measurement
 conventions, or as both egg-bearing and unstaged, and each is its own count.
-Over the 13,992,024 combinations at the coarser `.id` × `Valid_Aphia` ×
-`length_mm` × `SpeciesSex` level, 5,611 split on `DevelopmentStage` (0.040%),
-4,044 on `LengthType` (0.029%), and 15 each on `SpeciesValidity` and
-`accuracy` (0.0001%). Rare — but each split is a separate count, and collapsing
-one is silent. `DevelopmentStage` is the easiest to overlook, being `NA` for
-99.8% of rows, and dropping it would add a berried record to an unstaged one.
+Over the `r N(M$coarse$n)` combinations at the coarser `.id` × `Valid_Aphia` ×
+`length_mm` × `SpeciesSex` level, `r N(M$coarse$ds)` split on
+`DevelopmentStage`, `r N(M$coarse$lt)` on `LengthType`, `r N(M$coarse$sv)` on
+`SpeciesValidity` and `r N(M$coarse$acc)` on `accuracy`. Rare — but each split
+is a separate count, and collapsing one is silent. `DevelopmentStage` is the
+easiest to overlook, being `NA` for `r P(M$ds_na_pct, 1)` of rows, and
+dropping it would add a berried record to an unstaged one.
 
 **If you want the numbers added up more coarsely, ask for that — do not do it by hand.**
 Everyone else's table is one of these with something added away, so wanting
@@ -852,10 +1019,10 @@ limitation of the package.
 
 `NumberAtLength` is a genuine per-sex, per-length count, and — checked over the
 whole archive — never repeats one placeholder value across a species' sex rows.
-`TotalNumber` does. Where a haul's record splits a species by sex, roughly two
-thirds of the time the total genuinely varies from sex to sex, and the
-remaining third of the time one species-level figure has simply been written
-onto every sex row. Per-sex arithmetic can tell those two apart, and `{obus}`
+`TotalNumber` does. Where a haul's record splits a species by sex,
+`r P(M$sex_per_sex_pct)` of the time the total genuinely varies from sex to
+sex, and `r P(M$sex_repeated_pct)` of the time one species-level figure has
+simply been written onto every sex row. Per-sex arithmetic can tell those two apart, and `{obus}`
 does exactly that — the measurement, and what the package does about it, are in
 [one `TotalNumber` written across several sex
 rows](#totalnumber-across-sex-rows).
@@ -886,12 +1053,14 @@ dr_con("HL_length") |>
 
 Yes, and this is checked rather than argued. `HL_length`
 has been compared cell by cell against the `{DATRAS}` package's own `Count`
-[@kristensen2023datraspkg], over every species and survey in the archive — more
-than thirteen million haul × species × length cells. **No cell differed by as
-much as half a fish**, the largest difference anywhere being floating-point
-dust, and no row appeared in `HL_length` that was not in the submitted record.
-The comparison is reproduced by `data-raw/CHECK_datras_interop.R`; it needs the
-`{DATRAS}` package, so it is not re-run when this page is built.
+[@kristensen2023datraspkg], over every species and survey in the archive.
+**No cell differed by as much as half a fish**, the largest difference anywhere
+being floating-point dust, and no row appeared in `HL_length` that was not in
+the submitted record. The field-by-field harness,
+[`data-raw/CHECK_datras_interop.R`](https://github.com/einarhjorleifsson/obus/blob/main/data-raw/CHECK_datras_interop.R),
+repeats the comparison on `{DATRASextra}`'s NS-IBTS dab fixture; it needs the
+`{DATRAS}` package, so it is not re-run when this page is built (last run
+2026-10-06: 25 checks, no differences).
 
 The differences run one way only. A few rows are in the submitted record and
 not in `HL_length`, and they are all the same case: the raising factor is
@@ -910,8 +1079,8 @@ does not, because ICES makes the field mandatory. That is a choice, argued in
 absent](#subsamplingfactor-absent), not an error.
 
 The tables are faithful, but they are **not lossless**. Nearly every row in
-`HL_length` comes from exactly one submitted HL row. About one row in three
-hundred combines several, and where that happens the raising factor and the
+`HL_length` comes from exactly one submitted HL row. About one row in
+`r round(M$combined_one_in, -1)` combines several, and where that happens the raising factor and the
 sub-sampling category are added away and cannot be recovered from the
 published table. Also gone at this level: `SubsampledNumber`,
 `SubsampleWeight`, per-category `SpeciesCategoryWeight` (`w_haul` is added up
@@ -924,11 +1093,14 @@ ICES's own exchange tables use to key a haul, concatenated with `:` —
 
 `Survey : Year : Quarter : Country : Platform : Gear : StationName : HaulNumber`
 
-— for example `"BITS:1991:1:DE:06S1:H20:33:28"`. `NA` fields (most often
-`StationName`) are skipped rather than rendered as the literal string `"NA"`,
-matching the convention the published archive already uses. When every field
-is `NA` the result is `NA`, not the empty string, because an empty string
-would collide every such row onto one identifier.
+— for example `"BITS:1991:1:DE:06S1:H20:33:28"`. It always has eight fields:
+a missing one (most often `StationName`) is written as the literal string
+`"NA"`, so `.id` splits back into its eight columns, two hauls cannot collide
+by having different fields missing, and the result is byte-identical to the
+`{DATRAS}` package's own `haul.id`. The token is `"NA"` and not `-9`, because
+the archive stores the field as missing and writing `-9` back would invent a
+value it does not contain. No `StationName` in the archive is itself `"NA"`,
+so the token is unambiguous. When every field is `NA` the result is `NA`.
 
 `dr_add_id()` accepts only the current names. A legacy-named table must be
 renamed first (`opus::op_rename()`); `Ship`, `StNo` and `HaulNo` are not
@@ -1572,7 +1744,7 @@ because a consumer reading HL flat will get them wrong.
 | `LengthClass` holds millimetres and centimetres in one column, per `LengthCode` | a tenfold error on a length | resolved on reading into `length_mm`, `length_cm` and `accuracy` |
 | `LengthClass` is a bin **lower bound**, not a midpoint | biases any weight predicted from it, since \eqn{W = aL^b} is convex | carried as the bound it is; `dr_add_length_mid()` where a midpoint is wanted |
 | `-9` marks an absent value | a sentinel enters the arithmetic | nulled once, upstream, per field; never written back |
-| One species can appear under several `SpeciesValidity` record types | the same fish counted twice | `SpeciesValidity` is part of what makes an `HL_summary` row unique |
+| One species can appear under several `SpeciesValidity` record types, usually with the same total and weight repeated on each | the same fish counted twice | `SpeciesValidity` is part of what makes an `HL_summary` row unique; `dr_add_catch()` takes a repeated total once and sums `n_haul` |
 | `DataType` `C` reports `NumberAtLength` as an hourly rate | a rate summed as a count | `n_measured` is `NA` under `C`, never `0` |
 | Invalid hauls are present unless excluded | silent inclusion | `haulval` has no default — the survey's call, not the package's |
 
@@ -1644,24 +1816,28 @@ cpuel_like <- dr_con("HL_length") |>
 Set that against ICES's own file for the same hauls:
 
 ```{r}
-cpuel <- duckdbfs::open_dataset("https://heima.hafro.is/~einarhj/datras/CPUEL.parquet") |>
+cpuel_q <- cpuel |>
   filter(Survey == "NS-IBTS", Year == 2023, Quarter == 1, n_hour > 0) |>
   select(.id, Valid_Aphia = aphia, length_mm, cpuel = n_hour)
+cpuel_cells <- cpuel_q |> count() |> pull(n)
 
-cpuel_like |>
-  inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
-  summarise(cells = n(),
+cmp <- cpuel_like |>
+  inner_join(cpuel_q, by = c(".id", "Valid_Aphia", "length_mm")) |>
+  summarise(hauls = n_distinct(.id),
+            cells = n(),
             agree = sum(ifelse(abs(n_hour - cpuel) < 0.001, 1, 0))) |>
   collect()
+cmp
 ```
 
-Over the 317 hauls both sides cover, the rebuild matches **96.6% of CPUEL's
-non-zero cells** and agrees with **96.45%** of those to a thousandth of a fish
-per hour. A worked haul, three cod:
+Over the `r cmp$hauls` hauls both sides cover, the rebuild matches
+**`r P(100 * cmp$cells / cpuel_cells, 1)` of CPUEL's non-zero cells** and
+agrees with **`r P(100 * cmp$agree / cmp$cells, 1)`** of those to a
+thousandth of a fish per hour. A worked haul, three cod:
 
 ```{r}
 cpuel_like |>
-  inner_join(cpuel, by = c(".id", "Valid_Aphia", "length_mm")) |>
+  inner_join(cpuel_q, by = c(".id", "Valid_Aphia", "length_mm")) |>
   filter(.id == "NS-IBTS:2023:1:DE:06NI:GOV:104:22", Valid_Aphia == 126436) |>
   arrange(length_mm) |>
   collect()
@@ -1676,27 +1852,29 @@ always preserve the submitted length grid — both of which a
 generalised product would have to decide about explicitly rather than inherit.
 
 **The zero rows are the part that is not one aggregation away**, and
-deliberately so. Half of CPUEL is explicit zeros — 5,874,543 of 11,774,468
-rows, each carrying `length_mm = 0` — and they encode a judgement about which
-species were in scope for a haul. Add them yourself and the judgement stays
-yours:
+deliberately so. `r P(100 * M$cpuel_zero / M$cpuel_rows)` of CPUEL is
+explicit zeros — `r N(M$cpuel_zero)` of `r N(M$cpuel_rows)` rows — and they
+encode a judgement about which species were in scope for a haul. Add them
+yourself and the judgement stays yours:
 
 ```{r}
 hauls   <- cpuel_like |> distinct(.id) |> collect()
 species <- cpuel_like |> distinct(Valid_Aphia) |> collect()    # your universe, not ours
 
-tidyr::crossing(hauls, species) |>
+filled <- tidyr::crossing(hauls, species) |>
   left_join(collect(cpuel_like), by = c(".id", "Valid_Aphia")) |>
   tidyr::replace_na(list(n_hour = 0, length_mm = 0))
+filled
 ```
 
-On this one survey-quarter that turns 318 hauls and 141 species into 81,557
-rows, 38,513 of them explicit zeros — the same roughly-half proportion CPUEL
-carries, arrived at from a universe you chose rather than one you inherited.
+On this one survey-quarter that turns `r nrow(hauls)` hauls and
+`r nrow(species)` species into `r N(nrow(filled))` rows,
+`r N(sum(filled$n_hour == 0))` of them explicit zeros — a proportion like
+CPUEL's, arrived at from a universe you chose rather than one you inherited.
 
 That is the whole distance between `HL_length` and a CPUEL product covering
-29 surveys rather than 8: one `group_by()`, plus a species universe that only a
-survey group can properly set.
+`r M$surveys` surveys rather than `r M$cpuel_surveys`: one `group_by()`, plus
+a species universe that only a survey group can properly set.
 
 ## Existing analyses run on them unchanged
 
@@ -1706,7 +1884,8 @@ the usual chain still be run — numbers at length raised to the haul, summed to
 total numbers and weight per haul, divided by swept area and carried through to
 a stratified abundance index?
 
-`data-raw/CHECK_datras_adapter.R` answers that against real numbers. It
+[`data-raw/CHECK_datras_adapter.R`](https://github.com/einarhjorleifsson/obus/blob/main/data-raw/CHECK_datras_adapter.R)
+answers that against real numbers. It
 assembles an object whose HL comes **only** from `HL_length` and `HL_summary`,
 never from raw HL, runs [`{DATRAS}`](https://github.com/DTUAqua/DATRAS) and
 `{DATRASextra}` on it unmodified, and compares with the same steps run on their
@@ -1725,7 +1904,7 @@ expect. **No arithmetic on any number** — the raised number at length is
 | swept area | `SweptArea` | **max gap 0** |
 | stratified abundance index, per hour, by statistical rectangle | index and CV | **identical** |
 
-Eleven checks, no differences (re-run 2026-09-08). The last of them is the
+Thirteen checks, no differences (last run 2026-10-06). The stratified index is the
 figure a survey working group would report, and it comes out the same to every
 digit:
 
@@ -1744,7 +1923,8 @@ them. And **CA is out of scope**: `{obus}` derives no age table, so nothing
 age-, maturity- or individual-weight-based is exercised.
 
 Underneath sits the field-by-field comparison,
-`data-raw/CHECK_datras_interop.R` — 25 checks, no differences, including the
+[`data-raw/CHECK_datras_interop.R`](https://github.com/einarhjorleifsson/obus/blob/main/data-raw/CHECK_datras_interop.R)
+— 25 checks, no differences (last run 2026-10-06), including the
 raised number at length (max gap 2.3 × 10⁻¹³ over 24,960 cells) and the
 measured number at length, `NumberAtLength`, against `n_measured` (max gap 0 over
 16,196 cells).
@@ -1810,10 +1990,11 @@ parquet footer. `{obus}` reads it back from the same file as the data, so it
 cannot describe a different vintage than the data it accompanies:
 
 ```{r}
-opus::op_crosswalk("HL")
+xw <- opus::op_crosswalk("HL")
+xw
 ```
 
-29 rows — two more than either ICES list. Neither `getDatrasFieldList` nor the
+`r nrow(xw)` rows — two more than either ICES list. Neither `getDatrasFieldList` nor the
 December 2024 lookup documents HL's `DateofCalculation` or `Valid_Aphia` under
 any name, though both are real fields that `getHLdata` and
 `getHLdataNewHeaders` alike return; they appear here unrenamed, which is what
@@ -1836,7 +2017,7 @@ lazily (DuckDB, in the build), and the two backends differ in four ways.
 Anyone extending these functions needs all four.
 
 **1. Joining.** SQL treats `NULL = NULL` as unknown, so a lazy join drops
-every row with an `NA` key — and `SpeciesSex` is `NA` in 54% of HL, with
+every row with an `NA` key — and `SpeciesSex` is `NA` in `r P(M$sex_na_pct)` of HL, with
 `SpeciesCategory`, `SpeciesValidity` and `TotalNumber` able to be `NA` too.
 Every join in `dr_hl_summary()` whose key can hold `NA` carries
 `na_matches = "na"`, which dbplyr renders as `IS NOT DISTINCT FROM` and DuckDB
@@ -1864,12 +2045,11 @@ agree by construction rather than by luck.
 renders an `NA` field as the literal two-character string `"NA"`; on a
 `tbl_lazy`, dbplyr translates the same call to DuckDB's `CONCAT_WS()`, which
 drops `NA` fields instead. `.id` is the join key between HH, HL and CA, so it
-must come out identical whichever backend built it. `.dr_concat_ws()` builds
-the `NA`-skipping behaviour explicitly from `is.na()`, `case_when()` and
-`paste0()`, which translate the same way on both — with one deliberate
-departure from raw `CONCAT_WS()`: when every field is `NA` it returns `NA`,
-not `CONCAT_WS()`'s `""`, because an empty string would collide every such row
-onto one `.id`.
+must come out identical whichever backend built it. `.dr_concat_ws()`
+substitutes the token `"NA"` for a missing field before concatenating, using
+`is.na()`, `case_when()` and `paste0()`, which translate the same way on both,
+so every `.id` keeps its eight fields on either backend. When every field is
+`NA` it returns `NA` rather than a string of separators.
 
 Each of these produced a real, silent, wrong number at some point. Keeping
 both an eager test suite and a lazy build is what catches them; neither does
@@ -2184,17 +2364,19 @@ document or a measurement of the archive, and the measurements are given as
 code that reads the published tables directly, so they need nothing but the
 package.
 
-**A note on the numbers, because DATRAS grows.** The structural counts — how
-many rows each table has, how many haul x species groups, how many of those
-carry no length data — are **measured when this article is rendered**, not
-typed in, so they cannot drift apart from each other or from the archive. The
-analytical figures are different: the CPUEL reconciliation, the rounding
-regimes, the confidence intervals took real work to establish, and re-running
-them on every render would embed whole analyses in a reference article. Those
-are stated once, as dated evidence, and the claims they support are written in
-the form that survives the archive growing — *only*, *exactly one*, *never* —
-so that if one ever stops being true, that is a finding rather than a stale
+**A note on the numbers, because DATRAS grows.** Every number in the text is
+**measured when this article is rendered**, not typed in, so it cannot drift
+from the code printed beside it or from the archive. The one exception is the
+pair of `{DATRAS}` harnesses, which need packages this page does not load; their
+results carry the date of their last run. Claims that should survive the
+archive growing are written in that form — *only*, *exactly one*, *never* — so
+that if one ever stops being true, that is a finding rather than a stale
 number.
+
+**Use of AI.** The text and code of this article were written with an AI
+assistant (Claude, by Anthropic) under the direction of the author, who is
+responsible for its content. Every number in it is computed by the code shown,
+from the published archive.
 
 **On the package.** [`{obus}`](https://github.com/einarhjorleifsson/obus) is a
 reference implementation of the proposal and a demonstration that it holds for
