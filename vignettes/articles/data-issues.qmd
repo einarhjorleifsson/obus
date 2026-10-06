@@ -946,6 +946,56 @@ duration (`REC_DUR_NONPOS`). Long durations are used as submitted.
 that should have been `-9`? A negative one cannot be anything else, and both
 pass upload validation. Are the long tows real?
 
+## A11. Maturity: several scales in one column {#maturity-scales}
+
+`IndividualMaturity` holds codes from at least five scales at once — numeric
+1–6, ICES 61–66, roman numerals, R-codes and letters:
+
+```{r}
+maturity <- dr_con("CA") |>
+  filter(!is.na(IndividualMaturity)) |>
+  mutate(family = case_when(
+    IndividualMaturity %in% c("1", "2", "3", "4", "5", "6")          ~ "numeric 1-6",
+    IndividualMaturity %in% c("61", "62", "63", "64", "65", "66")    ~ "ICES 61-66",
+    IndividualMaturity %in% c("I", "II", "III", "IV", "V", "VI",
+                              "VII", "VIII", "IX", "X")               ~ "roman numerals",
+    IndividualMaturity %like% "R%"                                    ~ "R-codes",
+    TRUE                                                              ~ "letters")) |>
+  count(MaturityScale, family) |>
+  arrange(desc(n)) |>
+  collect()
+maturity
+
+scale_coverage <- dr_con("CA") |>
+  filter(!is.na(IndividualMaturity)) |>
+  mutate(decade = (Year %/% 10) * 10) |>
+  group_by(decade) |>
+  summarise(rows = n(), with_scale = sum(as.integer(!is.na(MaturityScale))),
+            .groups = "drop") |>
+  collect() |>
+  mutate(pct_with_scale = round(100 * with_scale / rows, 1)) |>
+  arrange(decade)
+scale_coverage
+```
+
+`MaturityScale`, the field that says which scale a code belongs to, came late:
+it is on `r P(scale_coverage$pct_with_scale[nrow(scale_coverage)])` of rows in
+the latest decade and on under a tenth before the 2010s. For most historical
+rows the scale can only be inferred from the shape of the code, which works
+because the families do not overlap — but it is inference, not a lookup. And
+where `MaturityScale` is present it is not always consistent with the codes
+beside it.
+
+**Does it move a product?** A maturity ogive pooled across submitters or
+decades mixes scales unless it is harmonised first.
+
+**What `{obus}` does.** Nothing; it publishes no maturity product, for this
+reason.
+
+**For ICES and the survey groups.** Can `MaturityScale` be made mandatory and
+back-filled where the scale is known, and the codes that contradict it
+resolved?
+
 # B. Records a submitting institute could correct
 
 Here the record contradicts itself or the format, and the institute that
@@ -1664,6 +1714,7 @@ the archive, and are written up in its
 | A8 | One weight on two category codes | ICES | `r N(sum(r_rep$n))` R records unexplained | open |
 | A9 | Series under two `LengthType` codes | ICES, institutes | `r N(lt_dup$haul_species_groups)` haul-species groups | open |
 | A10 | `HaulDuration` out of range | ICES, survey groups | `r N(sum(duration$n))` hauls | open |
+| A11 | Maturity scales | ICES, survey groups | `r nrow(distinct(maturity, family))` code families in one column | open |
 | B1 | Factor below 1 | institutes | `r N(sum(below_1$length_rows))` length rows | open |
 | B2 | `C` with a factor above 1 | institutes | `r N(sum(c_factor$rows))` length rows | open |
 | B3 | Zero `NumberAtLength` | institutes | `r zero_nal$rows` rows | open |
